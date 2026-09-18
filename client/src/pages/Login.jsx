@@ -1,11 +1,30 @@
 import React, { useState } from 'react';
-import { Snowflake, Lock, User, LogIn, ShieldAlert } from 'lucide-react';
+import { 
+  Snowflake, 
+  Lock, 
+  User, 
+  LogIn, 
+  ShieldAlert, 
+  ShieldCheck, 
+  Eye, 
+  EyeOff, 
+  Boxes, 
+  Zap, 
+  ReceiptText, 
+  TrendingUp,
+  Crown,
+  ShoppingCart,
+  Package,
+  Calculator
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const { login } = useAuth();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin123');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -25,151 +44,243 @@ export default function Login() {
   const setDemoUser = (u, p) => {
     setUsername(u);
     setPassword(p);
+    setErrorMsg('');
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-      padding: '1.5rem'
-    }}>
-      <div style={{
-        background: '#ffffff',
-        borderRadius: '16px',
-        maxWidth: '440px',
-        width: '100%',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
-        padding: '2.5rem',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1.5rem'
-      }}>
-        {/* LOGO & TITLE */}
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '56px',
-            height: '56px',
-            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-            borderRadius: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1rem',
-            boxShadow: '0 10px 20px rgba(2, 132, 199, 0.3)'
-          }}>
-            <Snowflake size={32} color="#fff" />
+    <div className="login-universe">
+      <div className="login-stage">
+        {/* LEFT ENTERPRISE SHOWCASE PANEL */}
+        <div className="login-hero-pane">
+          <div>
+            <div className="login-brand-badge">
+              <div className="login-brand-icon">
+                <Snowflake size={28} />
+              </div>
+              <div>
+                <h2 className="login-brand-title">LATIF TRADERS</h2>
+                <div className="login-brand-sub">Frozen Food ERP & POS</div>
+              </div>
+            </div>
+
+            <div className="login-hero-content">
+              <h1 className="login-hero-heading">
+                Intelligent <span>Cold-Chain</span> & Commerce Ecosystem.
+              </h1>
+              <p className="login-hero-desc">
+                Engineered for high-volume frozen food wholesale, multi-location cold storage batch tracing, rapid POS checkout, and comprehensive ledger management.
+              </p>
+
+              <div className="login-feature-list">
+                <div className="login-feature-item">
+                  <div className="login-feature-icon">
+                    <Boxes size={18} />
+                  </div>
+                  <div className="login-feature-text">
+                    <h4>Sub-Zero FIFO Batch Tracking</h4>
+                    <p>Precise manufacturing & expiration controls with cold room location tags.</p>
+                  </div>
+                </div>
+
+                <div className="login-feature-item">
+                  <div className="login-feature-icon">
+                    <Zap size={18} />
+                  </div>
+                  <div className="login-feature-text">
+                    <h4>High-Speed Counter POS</h4>
+                    <p>Instant barcode scanning, quick cash chips, and thermal receipt printing.</p>
+                  </div>
+                </div>
+
+                <div className="login-feature-item">
+                  <div className="login-feature-icon">
+                    <TrendingUp size={18} />
+                  </div>
+                  <div className="login-feature-text">
+                    <h4>Real-Time Financial Ledgers</h4>
+                    <p>Customer receivables (Udhaar), vendor payables, and automated daily P&L.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
-            LATIF TRADERS
-          </h2>
-          <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.25rem' }}>
-            Frozen Food Business Management System
-          </p>
+
+          <div className="login-hero-footer">
+            <div className="login-status-indicator">
+              <span className="login-pulse-dot"></span>
+              <span>All Cold Systems Active</span>
+            </div>
+            <span>Latif Traders Enterprise v2.4</span>
+          </div>
         </div>
 
-        {errorMsg && (
-          <div style={{
-            padding: '0.75rem 1rem',
-            background: '#fee2e2',
-            border: '1px solid #fca5a5',
-            borderRadius: '8px',
-            color: '#991b1b',
-            fontSize: '0.85rem',
-            fontWeight: 500,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
-            <ShieldAlert size={16} />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
-          <div className="form-group">
-            <label className="form-label">Username / Email</label>
-            <div style={{ position: 'relative' }}>
-              <User size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: '#94a3b8' }} />
-              <input
-                type="text"
-                className="form-control"
-                style={{ paddingLeft: '2.5rem' }}
-                required
-                placeholder="Enter username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
+        {/* RIGHT AUTHENTICATION CARD */}
+        <div className="login-form-pane">
+          <div>
+            <div className="login-form-header">
+              <h3>Sign In</h3>
+              <p>Enter your staff credentials to access the terminal.</p>
             </div>
+
+            {errorMsg && (
+              <div style={{
+                padding: '0.85rem 1rem',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '12px',
+                color: '#b91c1c',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.65rem',
+                marginBottom: '1.25rem'
+              }}>
+                <ShieldAlert size={18} style={{ flexShrink: 0 }} />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit}>
+              <div className="login-field-group">
+                <label>Username / Staff ID</label>
+                <div className="login-input-wrap">
+                  <User size={18} className="login-input-icon" />
+                  <input
+                    type="text"
+                    className="login-input"
+                    required
+                    autoFocus
+                    placeholder="Enter your username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="login-field-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                  <label style={{ margin: 0 }}>Password</label>
+                  <span style={{ fontSize: '0.725rem', color: '#64748b' }}>Default: role123</span>
+                </div>
+                <div className="login-input-wrap">
+                  <Lock size={18} className="login-input-icon" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className="login-input"
+                    style={{ paddingRight: '2.75rem' }}
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="login-password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0.85rem 0 1.25rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.8rem', color: '#475569', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{ borderRadius: '4px', accentColor: '#0284c7' }}
+                  />
+                  <span>Keep me signed in</span>
+                </label>
+                <span style={{ fontSize: '0.775rem', color: '#64748b' }}>
+                  Press <kbd style={{ padding: '2px 5px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.7rem' }}>Enter ↵</kbd>
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="login-submit-btn"
+              >
+                <LogIn size={18} />
+                <span>{loading ? 'Authenticating...' : 'Sign In to Workspace'}</span>
+              </button>
+            </form>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={18} style={{ position: 'absolute', left: '12px', top: '12px', color: '#94a3b8' }} />
-              <input
-                type="password"
-                className="form-control"
-                style={{ paddingLeft: '2.5rem' }}
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+          {/* QUICK ROLE SELECTOR FOR DEMO / ACCESS */}
+          <div>
+            <div className="login-demo-section">
+              <div className="login-demo-label">
+                <span>Quick Role Access</span>
+                <span style={{ color: '#0284c7', fontWeight: 600 }}>Click to fill</span>
+              </div>
+              <div className="login-demo-grid">
+                <button
+                  type="button"
+                  onClick={() => setDemoUser('admin', 'admin123')}
+                  className={`login-demo-btn ${username === 'admin' ? 'active' : ''}`}
+                >
+                  <div className="login-demo-badge" style={{ color: '#d97706', background: '#fef3c7', borderColor: '#fde68a' }}>
+                    <Crown size={14} />
+                  </div>
+                  <div className="login-demo-info">
+                    <span className="login-demo-title">Administrator</span>
+                    <span className="login-demo-user">admin</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDemoUser('cashier', 'cashier123')}
+                  className={`login-demo-btn ${username === 'cashier' ? 'active' : ''}`}
+                >
+                  <div className="login-demo-badge" style={{ color: '#0284c7', background: '#e0f2fe', borderColor: '#bae6fd' }}>
+                    <ShoppingCart size={14} />
+                  </div>
+                  <div className="login-demo-info">
+                    <span className="login-demo-title">Cashier Staff</span>
+                    <span className="login-demo-user">cashier</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDemoUser('store', 'store123')}
+                  className={`login-demo-btn ${username === 'store' ? 'active' : ''}`}
+                >
+                  <div className="login-demo-badge" style={{ color: '#059669', background: '#d1fae5', borderColor: '#a7f3d0' }}>
+                    <Package size={14} />
+                  </div>
+                  <div className="login-demo-info">
+                    <span className="login-demo-title">Store & Stock</span>
+                    <span className="login-demo-user">store</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDemoUser('accountant', 'accountant123')}
+                  className={`login-demo-btn ${username === 'accountant' ? 'active' : ''}`}
+                >
+                  <div className="login-demo-badge" style={{ color: '#7c3aed', background: '#ede9fe', borderColor: '#ddd6fe' }}>
+                    <Calculator size={14} />
+                  </div>
+                  <div className="login-demo-info">
+                    <span className="login-demo-title">Accountant</span>
+                    <span className="login-demo-user">accountant</span>
+                  </div>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn btn-primary btn-lg"
-            style={{ width: '100%', marginTop: '0.5rem' }}
-          >
-            <LogIn size={18} />
-            <span>{loading ? 'Signing in...' : 'Sign In to System'}</span>
-          </button>
-        </form>
-
-        {/* DEMO ROLES SHORTCUTS */}
-        <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.75rem', textAlign: 'center' }}>
-            Quick Demo Login Accounts:
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => setDemoUser('admin', 'admin123')}
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', padding: '6px 8px' }}
-            >
-              👑 Owner / Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemoUser('cashier', 'cashier123')}
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', padding: '6px 8px' }}
-            >
-              🛒 Cashier Staff
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemoUser('store', 'store123')}
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', padding: '6px 8px' }}
-            >
-              📦 Store Staff
-            </button>
-            <button
-              type="button"
-              onClick={() => setDemoUser('accountant', 'accountant123')}
-              className="btn btn-secondary btn-sm"
-              style={{ fontSize: '0.75rem', padding: '6px 8px' }}
-            >
-              📊 Accountant
-            </button>
+            <div className="login-footer-trust">
+              <ShieldCheck size={14} style={{ color: '#10b981' }} />
+              <span>TLS 1.3 Encrypted • Latif Traders Security Guard</span>
+            </div>
           </div>
         </div>
       </div>
