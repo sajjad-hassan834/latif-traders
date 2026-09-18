@@ -1,10 +1,10 @@
 const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
-const { db, DB_PATH } = require('../config/database');
+const { db, DB_PATH, DATA_DIR } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
 
-const BACKUP_DIR = path.join(__dirname, '..', '..', 'data', 'backups');
+const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 if (!fs.existsSync(BACKUP_DIR)) {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
 }

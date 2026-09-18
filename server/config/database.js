@@ -3,12 +3,12 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..', 'data');
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const DB_PATH = path.join(DATA_DIR, 'latif_traders.db');
+const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'latif_traders.db');
 const db = new Database(DB_PATH);
 
 // Enable WAL mode for high concurrency and performance
@@ -409,5 +409,6 @@ initializeDatabase();
 module.exports = {
   db,
   initializeDatabase,
-  DB_PATH
+  DB_PATH,
+  DATA_DIR
 };

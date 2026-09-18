@@ -53,3 +53,38 @@ npm run dev
 | `cashier` | `cashier123` | Sales / Cashier | POS Counter & Day Register |
 | `store` | `store123` | Inventory | Stock, Batches & Purchases |
 | `accountant` | `accountant123` | Accountant | Ledgers, Expenses & P&L |
+
+---
+
+## Deployment Guide
+
+### 1. Backend Deployment (Railway)
+
+1. Go to [Railway](https://railway.app/) and create a **New Project** -> **Deploy from GitHub Repo**.
+2. Select `sajjad-hassan834/latif-traders`.
+3. In the Railway Service settings:
+   - **Build Command**: Railway will use Nixpacks automatically.
+   - **Start Command**: `node server/index.js` (handled by `Procfile` / `railway.json`).
+4. **Environment Variables**:
+   - `NODE_ENV`: `production`
+   - `JWT_SECRET`: Generate a secure random string (e.g. `your_long_secure_jwt_secret`)
+   - `FRONTEND_URL`: Your Vercel frontend URL (e.g. `https://latif-traders.vercel.app`)
+5. *(Recommended for SQLite persistence)* **Add Persistent Volume**:
+   - In your Railway service dashboard, click **Add Volume**.
+   - Set **Mount Path** to `/data`.
+   - Add environment variable: `DATA_DIR=/data`.
+   - This ensures your SQLite database, uploads, and backups persist across redeployments!
+6. Generate a public domain under **Networking** (e.g. `https://latif-traders-production.up.railway.app`).
+
+### 2. Frontend Deployment (Vercel)
+
+1. Go to [Vercel](https://vercel.com/) and click **Add New** -> **Project**.
+2. Import `sajjad-hassan834/latif-traders`.
+3. In **Project Configuration**:
+   - **Framework Preset**: `Vite`
+   - **Root Directory**: `client` (or leave as root, both are supported with included `vercel.json` configs)
+4. **Environment Variables**:
+   - `VITE_API_URL`: Your Railway backend URL (e.g. `https://latif-traders-production.up.railway.app`)
+5. Click **Deploy**.
+6. When deployment finishes, copy your Vercel URL and ensure it is added to the Railway backend's `FRONTEND_URL` variable.
+

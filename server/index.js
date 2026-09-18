@@ -5,28 +5,67 @@ const path = require('path');
 require('dotenv').config();
 
 // Initialize DB schema & seeds
-require('./config/database');
+const { DATA_DIR } = require('./config/database');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CORS setup supporting both Authorization header and httpOnly cookies
+// Configured allowed origins (local + custom frontend URLs)
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://localhost:5000'
+];
+
+if (process.env.FRONTEND_URL) {
+  process.env.FRONTEND_URL.split(',').forEach(url => {
+    const trimmed = url.trim();
+    if (trimmed) allowedOrigins.push(trimmed);
+  });
+}
+if (process.env.CLIENT_URL) {
+  process.env.CLIENT_URL.split(',').forEach(url => {
+    const trimmed = url.trim();
+    if (trimmed) allowedOrigins.push(trimmed);
+  });
+}
+
+// CORS setup supporting Vercel, Railway, and localhost environments
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:3000',
-    'http://localhost:5000'
-  ],
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow non-browser requests (e.g. mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+
+    // Explicitly allowed origin
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Automatically allow any Vercel deployment preview or production domain
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+
+    // Allow development localhost ports
+    if (/^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow and reflect origin
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// Static directory for uploaded receipts or temp files if needed
-const UPLOADS_DIR = path.join(__dirname, '..', 'data', 'uploads');
+// Static directory for uploaded receipts or temp files
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const fs = require('fs');
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
