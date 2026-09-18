@@ -35,7 +35,12 @@ export default function Login() {
       setLoading(true);
       await login(username, password);
     } catch (err) {
-      setErrorMsg(err.message || 'Invalid username or password');
+      const msg = err.message || '';
+      if (msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('failed')) {
+        setErrorMsg('Backend server unreachable. Connect your Railway URL in Vercel settings (VITE_API_URL).');
+      } else {
+        setErrorMsg(msg || 'Invalid username or password');
+      }
     } finally {
       setLoading(false);
     }
@@ -55,7 +60,7 @@ export default function Login() {
           <div>
             <div className="login-brand-badge">
               <div className="login-brand-icon">
-                <Snowflake size={28} />
+                <Snowflake size={22} />
               </div>
               <div>
                 <h2 className="login-brand-title">LATIF TRADERS</h2>
@@ -65,40 +70,30 @@ export default function Login() {
 
             <div className="login-hero-content">
               <h1 className="login-hero-heading">
-                Intelligent <span>Cold-Chain</span> & Commerce Ecosystem.
+                Cold-Chain & <span>Commerce</span> System.
               </h1>
               <p className="login-hero-desc">
-                Engineered for high-volume frozen food wholesale, multi-location cold storage batch tracing, rapid POS checkout, and comprehensive ledger management.
+                High-volume frozen food wholesale, cold room batch expiry tracking, counter POS, and automated ledgers.
               </p>
 
               <div className="login-feature-list">
                 <div className="login-feature-item">
                   <div className="login-feature-icon">
-                    <Boxes size={18} />
+                    <Boxes size={15} />
                   </div>
                   <div className="login-feature-text">
-                    <h4>Sub-Zero FIFO Batch Tracking</h4>
-                    <p>Precise manufacturing & expiration controls with cold room location tags.</p>
+                    <h4>Sub-Zero FIFO Batch Control</h4>
+                    <p>Expiry dates & cold room rack assignments.</p>
                   </div>
                 </div>
 
                 <div className="login-feature-item">
                   <div className="login-feature-icon">
-                    <Zap size={18} />
+                    <Zap size={15} />
                   </div>
                   <div className="login-feature-text">
-                    <h4>High-Speed Counter POS</h4>
-                    <p>Instant barcode scanning, quick cash chips, and thermal receipt printing.</p>
-                  </div>
-                </div>
-
-                <div className="login-feature-item">
-                  <div className="login-feature-icon">
-                    <TrendingUp size={18} />
-                  </div>
-                  <div className="login-feature-text">
-                    <h4>Real-Time Financial Ledgers</h4>
-                    <p>Customer receivables (Udhaar), vendor payables, and automated daily P&L.</p>
+                    <h4>Counter POS & Thermal Billing</h4>
+                    <p>Barcode checkout, quick cash & thermal receipts.</p>
                   </div>
                 </div>
               </div>
@@ -108,9 +103,9 @@ export default function Login() {
           <div className="login-hero-footer">
             <div className="login-status-indicator">
               <span className="login-pulse-dot"></span>
-              <span>All Cold Systems Active</span>
+              <span>All Systems Online</span>
             </div>
-            <span>Latif Traders Enterprise v2.4</span>
+            <span>v2.4 Enterprise</span>
           </div>
         </div>
 
@@ -124,19 +119,20 @@ export default function Login() {
 
             {errorMsg && (
               <div style={{
-                padding: '0.85rem 1rem',
+                padding: '0.65rem 0.85rem',
                 background: '#fef2f2',
                 border: '1px solid #fecaca',
-                borderRadius: '12px',
+                borderRadius: '8px',
                 color: '#b91c1c',
-                fontSize: '0.85rem',
+                fontSize: '0.785rem',
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.65rem',
-                marginBottom: '1.25rem'
+                gap: '0.5rem',
+                marginBottom: '0.85rem',
+                lineHeight: 1.35
               }}>
-                <ShieldAlert size={18} style={{ flexShrink: 0 }} />
+                <ShieldAlert size={16} style={{ flexShrink: 0 }} />
                 <span>{errorMsg}</span>
               </div>
             )}
