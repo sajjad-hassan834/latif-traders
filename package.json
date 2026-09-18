@@ -17,8 +17,9 @@
     "erp",
     "management"
   ],
-  "author": "Latif Traders",
-  "license": "ISC",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.8.1",
