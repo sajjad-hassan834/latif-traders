@@ -1,0 +1,35 @@
+{
+  "name": "latif-traders",
+  "version": "1.0.0",
+  "description": "Latif Traders - Frozen Food Business Management System",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "server": "node server/index.js",
+    "client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "dev": "concurrently \"node server/index.js\" \"npm --prefix client run dev\""
+  },
+  "keywords": [
+    "pos",
+    "inventory",
+    "frozen-food",
+    "erp",
+    "management"
+  ],
+  "author": "Latif Traders",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.8.1",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

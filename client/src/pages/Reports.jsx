@@ -1,0 +1,731 @@
+import React, { useState, useEffect } from 'react';
+import {
+  BarChart3,
+  TrendingUp,
+  Calendar,
+  Printer,
+  AlertTriangle,
+  Package,
+  Clock,
+  Download,
+  Receipt,
+  DollarSign,
+  ArrowDownRight,
+  ArrowUpRight,
+  RefreshCw
+} from 'lucide-react';
+import { api } from '../utils/api';
+import { formatPKR, formatDate, formatDateTime } from '../utils/formatters';
+import { exportToCSV } from '../utils/exportCsv';
+import ErrorBoundary from '../components/common/ErrorBoundary';
+import { useAuth } from '../context/AuthContext';
+
+function ReportsContent() {
+  const { isAdmin, canSell, canManageInventory, canViewFinances, role } = useAuth();
+
+  const [activeReport, setActiveReport] = useState(() => {
+    if (role === 'sales') return 'register';
+    if (role === 'inventory') return 'stock';
+    return 'pnl';
+  });
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0]; // 1st of month
+  });
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [registerDate, setRegisterDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Data states
+  const [pnl, setPnl] = useState(null);
+  const [dailySales, setDailySales] = useState([]);
+  const [stockReport, setStockReport] = useState(null);
+  const [expiryReport, setExpiryReport] = useState(null);
+  const [dayRegister, setDayRegister] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(null);
+
+  const loadReportData = async () => {
+    try {
+      setLoading(true);
+      setErrorMessage(null);
+
+      if (activeReport === 'pnl') {
+        const res = await api.get(`/reports/profit-loss?start_date=${startDate}&end_date=${endDate}`);
+        if (res && res.success) {
+          setPnl(res);
+        } else {
+          setErrorMessage(res?.message || 'Unable to compute Profit & Loss statement.');
+        }
+      } else if (activeReport === 'daily') {
+        const res = await api.get(`/reports/daily-sales?start_date=${startDate}&end_date=${endDate}`);
+        if (res && res.success) {
+          const list = Array.isArray(res.daily_summary) ? res.daily_summary : (Array.isArray(res.data) ? res.data : []);
+          setDailySales(list);
+        } else {
+          setErrorMessage(res?.message || 'Unable to load daily sales ledger.');
+        }
+      } else if (activeReport === 'stock') {
+        const res = await api.get('/reports/stock');
+        if (res && res.success) {
+          setStockReport(res);
+        } else {
+          setErrorMessage(res?.message || 'Unable to load stock valuation.');
+        }
+      } else if (activeReport === 'expiry') {
+        const res = await api.get('/reports/expiry');
+        if (res && res.success) {
+          setExpiryReport(res);
+        } else {
+          setErrorMessage(res?.message || 'Unable to load expiry warnings.');
+        }
+      } else if (activeReport === 'register') {
+        const res = await api.get(`/reports/day-register?date=${registerDate}`);
+        if (res && res.success) {
+          setDayRegister(res);
+        } else {
+          setErrorMessage(res?.message || 'Unable to load day register closing report.');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load report:', err);
+      setErrorMessage(err?.message || 'Network error while contacting reporting server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadReportData();
+  }, [activeReport, startDate, endDate, registerDate]);
+
+  // Safe normalized P&L variables
+  const m = pnl?.metrics || {};
+  const grossSales = pnl?.revenue?.gross_sales ?? m.gross_sales ?? 0;
+  const invoiceCount = pnl?.revenue?.invoice_count ?? m.invoice_count ?? 0;
+  const discounts = pnl?.revenue?.discounts ?? m.discounts ?? 0;
+  const netSales = pnl?.revenue?.net_sales ?? m.net_sales ?? (grossSales - discounts);
+  const cogs = pnl?.cogs?.total_cogs ?? m.cogs ?? 0;
+  const grossProfit = pnl?.gross_profit ?? m.gross_profit ?? (netSales - cogs);
+  const totalExpenses = pnl?.expenses?.total_expenses ?? m.total_expenses ?? 0;
+  const netProfit = pnl?.net_profit ?? m.net_profit ?? (grossProfit - totalExpenses);
+
+  const rawExpenseBreakdown = pnl?.expenses?.category_breakdown || pnl?.expense_breakdown || [];
+  const categoryBreakdown = Array.isArray(rawExpenseBreakdown)
+    ? rawExpenseBreakdown.map(e => ({
+        category_name: e.category_name || e.category || 'General',
+        total_amount: Number(e.total_amount ?? e.amount ?? 0)
+      }))
+    : [];
+
+  // Safe normalized Day Register variables
+  const regSales = dayRegister?.sales || {};
+  const regCustomerReceipts = dayRegister?.customer_receipts || {};
+  const regExpenses = dayRegister?.expenses || {};
+  const regSupplier = dayRegister?.supplier_disbursements || {};
+  const regCash = dayRegister?.cash_summary || {};
+  const regSettings = dayRegister?.settings || {};
+  const regExpenseList = Array.isArray(regExpenses.list) ? regExpenses.list : [];
+
+  // Safe normalized Stock variables
+  const stockItems = Array.isArray(stockReport?.stock) ? stockReport.stock : [];
+  const stockTotals = stockReport?.totals || {};
+
+  // Safe normalized Expiry variables
+  const expiryBatches = Array.isArray(expiryReport?.batches) ? expiryReport.batches : [];
+  const expiryAlertDays = expiryReport?.alert_days ?? 15;
+
+  // CSV Export Handlers
+  const handleExportCSV = () => {
+    if (activeReport === 'daily' && dailySales.length) {
+      exportToCSV(`Daily_Sales_${startDate}_${endDate}`, dailySales, [
+        { label: 'Date', key: 'sale_date' },
+        { label: 'Invoices', key: 'invoice_count' },
+        { label: 'Total Sales (PKR)', key: 'total_sales' },
+        { label: 'Cash Collected (PKR)', key: 'cash_received' },
+        { label: 'Credit Sales (PKR)', key: 'credit_sales' }
+      ]);
+    } else if (activeReport === 'stock' && stockItems.length) {
+      exportToCSV('Stock_Valuation_Report', stockItems, [
+        { label: 'Product Name', key: 'name' },
+        { label: 'Category', key: 'category_name' },
+        { label: 'Available Qty', key: 'available_qty' },
+        { label: 'Unit', key: 'unit' },
+        { label: 'Cost Price (PKR)', key: 'purchase_price' },
+        { label: 'Retail Price (PKR)', key: 'sale_price' },
+        { label: 'Total Cost Value (PKR)', key: 'total_cost_value' },
+        { label: 'Total Retail Value (PKR)', key: 'total_retail_value' },
+        { label: 'Potential Profit (PKR)', key: 'potential_profit' }
+      ]);
+    } else if (activeReport === 'expiry' && expiryBatches.length) {
+      exportToCSV('Batch_Expiry_Report', expiryBatches, [
+        { label: 'Product Name', key: 'product_name' },
+        { label: 'Batch No', key: 'batch_no' },
+        { label: 'Expiry Date', key: 'expiry_date' },
+        { label: 'Remaining Qty', key: 'quantity' },
+        { label: 'Unit', key: 'unit' },
+        { label: 'Days Remaining', key: 'days_remaining' },
+        { label: 'Status', key: 'status_indicator' }
+      ]);
+    } else if (activeReport === 'register' && dayRegister) {
+      const rows = [
+        { Metric: 'Date', Amount: dayRegister.date || registerDate },
+        { Metric: 'Total Bills Count', Amount: regSales.total_bills || 0 },
+        { Metric: 'Total Items Sold', Amount: regSales.items_sold || 0 },
+        { Metric: 'Total Gross Sales', Amount: regSales.total_sales || 0 },
+        { Metric: 'Cash Sales', Amount: regSales.cash_sales || 0 },
+        { Metric: 'Bank/Card Sales', Amount: Number(regSales.bank_sales || 0) + Number(regSales.card_sales || 0) },
+        { Metric: 'Credit Sales (Receivable)', Amount: regSales.credit_sales || 0 },
+        { Metric: 'Customer Recoveries (Debt Cash Collected)', Amount: regCustomerReceipts.cash_recovered || 0 },
+        { Metric: 'Total Cash In', Amount: regCash.total_cash_in || 0 },
+        { Metric: 'Cash Expenses Paid', Amount: regExpenses.cash_expenses || 0 },
+        { Metric: 'Supplier Cash Disbursements', Amount: regSupplier.cash_disbursed || 0 },
+        { Metric: 'Total Cash Out', Amount: regCash.total_cash_out || 0 },
+        { Metric: 'Net Drawer Cash Balance', Amount: regCash.net_drawer_cash || 0 }
+      ];
+      exportToCSV(`Day_Register_${registerDate}`, rows, [
+        { label: 'Register Metric', key: 'Metric' },
+        { label: 'Value / Amount (PKR)', key: 'Amount' }
+      ]);
+    } else if (activeReport === 'pnl' && (pnl || m)) {
+      const rows = [
+        { Category: 'Gross Sales Revenue', Amount: grossSales },
+        { Category: 'Discounts Allowed', Amount: -discounts },
+        { Category: 'Net Sales Revenue', Amount: netSales },
+        { Category: 'Cost of Goods Sold (COGS)', Amount: -cogs },
+        { Category: 'Gross Profit', Amount: grossProfit },
+        { Category: 'Total Operating Expenses', Amount: -totalExpenses },
+        { Category: 'Net Business Profit', Amount: netProfit }
+      ];
+      exportToCSV(`Profit_and_Loss_${startDate}_${endDate}`, rows, [
+        { label: 'Financial Category', key: 'Category' },
+        { label: 'Amount (PKR)', key: 'Amount' }
+      ]);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* REPORT TYPE SELECTOR */}
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', padding: '0.75rem 1rem' }}>
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+          {(isAdmin || canViewFinances) && (
+            <button
+              onClick={() => setActiveReport('pnl')}
+              className={`btn btn-sm ${activeReport === 'pnl' ? 'btn-primary' : 'btn-secondary'}`}
+            >
+              <TrendingUp size={14} />
+              <span>P&L Statement</span>
+            </button>
+          )}
+
+          {(isAdmin || canSell || canViewFinances) && (
+            <button
+              onClick={() => setActiveReport('daily')}
+              className={`btn btn-sm ${activeReport === 'daily' ? 'btn-primary' : 'btn-secondary'}`}
+            >
+              <BarChart3 size={14} />
+              <span>Daily Sales</span>
+            </button>
+          )}
+
+          {(isAdmin || canSell || canViewFinances) && (
+            <button
+              onClick={() => setActiveReport('register')}
+              className={`btn btn-sm ${activeReport === 'register' ? 'btn-primary' : 'btn-secondary'}`}
+            >
+              <Receipt size={14} />
+              <span>Day-End Z-Register</span>
+            </button>
+          )}
+
+          {(isAdmin || canManageInventory || canViewFinances) && (
+            <button
+              onClick={() => setActiveReport('stock')}
+              className={`btn btn-sm ${activeReport === 'stock' ? 'btn-primary' : 'btn-secondary'}`}
+            >
+              <Package size={14} />
+              <span>Stock Valuation</span>
+            </button>
+          )}
+
+          {(isAdmin || canManageInventory || canViewFinances) && (
+            <button
+              onClick={() => setActiveReport('expiry')}
+              className={`btn btn-sm ${activeReport === 'expiry' ? 'btn-primary' : 'btn-secondary'}`}
+            >
+              <Clock size={14} />
+              <span>Batch Expiry</span>
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {(activeReport === 'pnl' || activeReport === 'daily') && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <input
+                type="date"
+                className="form-control"
+                style={{ height: '30px', fontSize: '0.775rem' }}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <span style={{ color: '#64748b', fontSize: '0.775rem' }}>to</span>
+              <input
+                type="date"
+                className="form-control"
+                style={{ height: '30px', fontSize: '0.775rem' }}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          )}
+
+          {activeReport === 'register' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ color: '#64748b', fontSize: '0.775rem' }}>Shift Date:</span>
+              <input
+                type="date"
+                className="form-control"
+                style={{ height: '30px', fontSize: '0.775rem' }}
+                value={registerDate}
+                onChange={(e) => setRegisterDate(e.target.value)}
+              />
+            </div>
+          )}
+
+          <button onClick={loadReportData} className="btn btn-secondary btn-sm" title="Refresh Report Data">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            <span>Refresh</span>
+          </button>
+
+          <button onClick={handleExportCSV} className="btn btn-secondary btn-sm" title="Download Excel / CSV">
+            <Download size={13} />
+            <span>Export CSV</span>
+          </button>
+
+          <button onClick={() => window.print()} className="btn btn-secondary btn-sm" title="Print Report">
+            <Printer size={13} />
+            <span>Print</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ERROR BANNER IF ANY */}
+      {errorMessage && (
+        <div style={{
+          padding: '0.75rem 1rem',
+          background: '#fef2f2',
+          border: '1px solid #fecaca',
+          borderRadius: '8px',
+          color: '#991b1b',
+          fontSize: '0.85rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <AlertTriangle size={16} />
+            <span>{errorMessage}</span>
+          </div>
+          <button onClick={loadReportData} className="btn btn-secondary btn-sm" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* REPORT DISPLAY AREA */}
+      <div className="printable-area">
+        {/* 1. PROFIT & LOSS STATEMENT */}
+        {activeReport === 'pnl' && (
+          <div className="card" style={{ maxWidth: '850px', margin: '0 auto' }}>
+            <div style={{ borderBottom: '2px solid #0f172a', paddingBottom: '0.75rem', marginBottom: '1.25rem', textAlign: 'center' }}>
+              <h2 style={{ fontSize: '1.35rem', fontWeight: 800 }}>LATIF TRADERS</h2>
+              <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0284c7' }}>Profit & Loss (P&L) Statement</div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>
+                Period: {formatDate(startDate)} to {formatDate(endDate)}
+              </div>
+            </div>
+
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>Calculating financial statements...</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {/* REVENUE SECTION */}
+                <div>
+                  <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginBottom: '0.4rem' }}>
+                    1. Revenue / Turnover
+                  </h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.825rem' }}>
+                    <span>Gross Sales {invoiceCount > 0 ? `(${invoiceCount} invoices)` : ''}</span>
+                    <span style={{ fontWeight: 600 }}>{formatPKR(grossSales)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', color: '#ef4444', fontSize: '0.825rem' }}>
+                    <span>Less: Discounts Allowed</span>
+                    <span>- {formatPKR(discounts)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderTop: '1px dashed #cbd5e1', fontWeight: 700, fontSize: '0.85rem' }}>
+                    <span>Net Sales Revenue</span>
+                    <span style={{ color: '#0284c7' }}>{formatPKR(netSales)}</span>
+                  </div>
+                </div>
+
+                {/* COGS SECTION */}
+                <div>
+                  <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginBottom: '0.4rem' }}>
+                    2. Cost of Goods Sold (COGS)
+                  </h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.825rem' }}>
+                    <span>Cost of Frozen Items Sold (FIFO/Lot Cost)</span>
+                    <span style={{ fontWeight: 600 }}>{formatPKR(cogs)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderTop: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', fontWeight: 800, fontSize: '0.95rem' }}>
+                    <span>Gross Profit</span>
+                    <span style={{ color: grossProfit >= 0 ? '#10b981' : '#ef4444' }}>{formatPKR(grossProfit)}</span>
+                  </div>
+                </div>
+
+                {/* EXPENSES SECTION */}
+                <div>
+                  <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginBottom: '0.4rem' }}>
+                    3. Operating Expenses
+                  </h4>
+                  {categoryBreakdown.length === 0 ? (
+                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', padding: '0.25rem 0' }}>No operating expenses recorded for this period.</div>
+                  ) : (
+                    categoryBreakdown.map((exp, idx) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0', fontSize: '0.825rem', color: '#475569' }}>
+                        <span>{exp.category_name}</span>
+                        <span>{formatPKR(exp.total_amount)}</span>
+                      </div>
+                    ))
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderTop: '1px dashed #cbd5e1', fontWeight: 700, color: '#ef4444', fontSize: '0.85rem' }}>
+                    <span>Total Operating Expenses</span>
+                    <span>- {formatPKR(totalExpenses)}</span>
+                  </div>
+                </div>
+
+                {/* NET PROFIT */}
+                <div style={{
+                  background: netProfit >= 0 ? '#ecfdf5' : '#fef2f2',
+                  border: `2px solid ${netProfit >= 0 ? '#10b981' : '#ef4444'}`,
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: netProfit >= 0 ? '#065f46' : '#991b1b' }}>
+                      NET BUSINESS PROFIT / (LOSS)
+                    </h3>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                      Net Sales ({formatPKR(netSales)}) - COGS ({formatPKR(cogs)}) - Expenses ({formatPKR(totalExpenses)})
+                    </div>
+                  </div>
+                  <div style={{
+                    fontSize: '1.4rem',
+                    fontWeight: 900,
+                    color: netProfit >= 0 ? '#059669' : '#dc2626'
+                  }}>
+                    {formatPKR(netProfit)}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 2. DAILY SALES SUMMARY */}
+        {activeReport === 'daily' && (
+          <div className="card" style={{ padding: 0 }}>
+            <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1rem' }}>Daily Sales Ledger</h3>
+              <span style={{ fontSize: '0.775rem', color: '#64748b' }}>{dailySales.length} Days Recorded</span>
+            </div>
+
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th style={{ textAlign: 'center' }}>Invoices</th>
+                    <th style={{ textAlign: 'right' }}>Total Sales (PKR)</th>
+                    <th style={{ textAlign: 'right' }}>Cash Received (PKR)</th>
+                    <th style={{ textAlign: 'right' }}>Credit Sales (PKR)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dailySales.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                        {loading ? 'Loading daily records...' : 'No sales recorded for this date range.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    dailySales.map((row, idx) => (
+                      <tr key={idx}>
+                        <td style={{ fontWeight: 600 }}>{formatDate(row.sale_date || row.date)}</td>
+                        <td style={{ textAlign: 'center' }}><span className="badge badge-info">{row.invoice_count || 0}</span></td>
+                        <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatPKR(row.total_sales || 0)}</td>
+                        <td style={{ textAlign: 'right', color: '#10b981', fontWeight: 600 }}>{formatPKR(row.cash_received ?? row.cash_collected ?? 0)}</td>
+                        <td style={{ textAlign: 'right', color: (row.credit_sales || 0) > 0 ? '#ef4444' : '#64748b' }}>
+                          {formatPKR(row.credit_sales || 0)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* 3. END-OF-DAY REGISTER / SHIFT CLOSING Z-REPORT */}
+        {activeReport === 'register' && (
+          <div className="card" style={{ maxWidth: '650px', margin: '0 auto' }}>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '2.5rem' }}>Loading Day Register...</div>
+            ) : dayRegister ? (
+              <div>
+                <div style={{ textAlign: 'center', borderBottom: '2px dashed #94a3b8', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+                  <h2 style={{ fontSize: '1.3rem', fontWeight: 800 }}>{regSettings.shop_name || 'LATIF TRADERS'}</h2>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284c7' }}>END-OF-DAY REGISTER / Z-REPORT</div>
+                  <div style={{ fontSize: '0.775rem', color: '#64748b' }}>
+                    Shift Closing Date: <strong>{formatDate(dayRegister.date || registerDate)}</strong>
+                  </div>
+                </div>
+
+                {/* COUNTER SALES BREAKDOWN */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.25rem', marginBottom: '0.4rem' }}>
+                    1. Counter Sales Breakdown
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem' }}>
+                    <div>Total Invoices: <strong>{regSales.total_bills || 0}</strong></div>
+                    <div>Items Sold: <strong>{regSales.items_sold || 0} units</strong></div>
+                    <div>Gross Sales: <strong>{formatPKR(regSales.total_sales || 0)}</strong></div>
+                    <div>Discounts: <strong style={{ color: '#ef4444' }}>- {formatPKR(regSales.total_discount || 0)}</strong></div>
+                  </div>
+                  <div style={{ marginTop: '0.4rem', padding: '0.4rem 0.6rem', background: '#f8fafc', borderRadius: '6px', fontSize: '0.775rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Cash Sales:</span>
+                      <strong style={{ color: '#10b981' }}>{formatPKR(regSales.cash_sales || 0)}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Bank / Card Sales:</span>
+                      <strong>{formatPKR(Number(regSales.bank_sales || 0) + Number(regSales.card_sales || 0))}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Credit (Unpaid) Sales:</span>
+                      <strong style={{ color: '#ef4444' }}>{formatPKR(regSales.credit_sales || 0)}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CASH INFLOW & OUTFLOW SUMMARY */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.25rem', marginBottom: '0.4rem' }}>
+                    2. Cash Inflow & Outflow (Cash Drawer)
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.8rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981' }}>
+                      <span>+ Cash Counter Sales:</span>
+                      <span>{formatPKR(regSales.cash_sales || 0)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981' }}>
+                      <span>+ Customer Debt Cash Recoveries:</span>
+                      <span>{formatPKR(regCustomerReceipts.cash_recovered || 0)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, borderTop: '1px dashed #cbd5e1', paddingTop: '0.2rem' }}>
+                      <span>TOTAL CASH IN:</span>
+                      <span style={{ color: '#10b981' }}>{formatPKR(regCash.total_cash_in || 0)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444', marginTop: '0.2rem' }}>
+                      <span>- Cash Shop Expenses:</span>
+                      <span>- {formatPKR(regExpenses.cash_expenses || 0)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
+                      <span>- Supplier Cash Paid:</span>
+                      <span>- {formatPKR(regSupplier.cash_disbursed || 0)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, borderTop: '1px dashed #cbd5e1', paddingTop: '0.2rem' }}>
+                      <span>TOTAL CASH OUT:</span>
+                      <span style={{ color: '#ef4444' }}>- {formatPKR(regCash.total_cash_out || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* NET DRAWER CASH BOX */}
+                <div style={{
+                  background: '#f0f9ff',
+                  border: '2px solid #0284c7',
+                  borderRadius: '8px',
+                  padding: '0.85rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '1rem'
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0369a1' }}>
+                      NET CASH IN DRAWER TO HAND OVER:
+                    </div>
+                    <div style={{ fontSize: '0.725rem', color: '#64748b' }}>
+                      Cash In ({formatPKR(regCash.total_cash_in || 0)}) - Cash Out ({formatPKR(regCash.total_cash_out || 0)})
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#0284c7' }}>
+                    {formatPKR(regCash.net_drawer_cash || 0)}
+                  </div>
+                </div>
+
+                {/* EXPENSES LIST TODAY */}
+                {regExpenseList.length > 0 && (
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.8rem', color: '#64748b', marginBottom: '0.25rem' }}>
+                      Today's Logged Expenses ({regExpenseList.length}):
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.75rem' }}>
+                      {regExpenseList.map((e, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0.35rem', background: '#f8fafc', borderRadius: '4px' }}>
+                          <span>{e.title} ({e.category_name || 'General'}) - {e.payment_method}</span>
+                          <span style={{ fontWeight: 600 }}>{formatPKR(e.amount || 0)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                No register data found for this date.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 4. STOCK VALUATION REPORT */}
+        {activeReport === 'stock' && (
+          <div className="card" style={{ padding: 0 }}>
+            <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1rem' }}>Inventory Stock & Valuation</h3>
+                <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Current physical stock valuation across all active frozen items</p>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem' }}>
+                <div>Total Cost: <strong>{formatPKR(stockTotals.total_cost_value || 0)}</strong></div>
+                <div>Retail Value: <strong style={{ color: '#0284c7' }}>{formatPKR(stockTotals.total_retail_value || 0)}</strong></div>
+                <div>Potential Profit: <strong style={{ color: '#10b981' }}>{formatPKR(stockTotals.total_potential_profit || 0)}</strong></div>
+              </div>
+            </div>
+
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th style={{ textAlign: 'center' }}>In Stock</th>
+                    <th style={{ textAlign: 'right' }}>Cost (PKR)</th>
+                    <th style={{ textAlign: 'right' }}>Sale (PKR)</th>
+                    <th style={{ textAlign: 'right' }}>Total Cost (PKR)</th>
+                    <th style={{ textAlign: 'right' }}>Retail Value (PKR)</th>
+                    <th style={{ textAlign: 'right' }}>Profit (PKR)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stockItems.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                        {loading ? 'Loading inventory data...' : 'No inventory items found.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    stockItems.map(item => (
+                      <tr key={item.id}>
+                        <td style={{ fontWeight: 600 }}>{item.name}</td>
+                        <td>{item.category_name || '-'}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 700 }}>{item.available_qty || 0} {item.unit || ''}</td>
+                        <td style={{ textAlign: 'right' }}>{formatPKR(item.purchase_price || 0)}</td>
+                        <td style={{ textAlign: 'right' }}>{formatPKR(item.sale_price || 0)}</td>
+                        <td style={{ textAlign: 'right' }}>{formatPKR(item.total_cost_value || 0)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#0284c7' }}>{formatPKR(item.total_retail_value || 0)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#10b981' }}>{formatPKR(item.potential_profit || 0)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* 5. EXPIRY ALERT REPORT */}
+        {activeReport === 'expiry' && (
+          <div className="card" style={{ padding: 0 }}>
+            <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
+              <h3 style={{ fontSize: '1rem' }}>Batch Expiration & Quality Control</h3>
+              <p style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                Batches monitored within a {expiryAlertDays}-day warning threshold.
+              </p>
+            </div>
+
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Batch Lot #</th>
+                    <th>Expiry Date</th>
+                    <th style={{ textAlign: 'center' }}>Batch Qty</th>
+                    <th style={{ textAlign: 'right' }}>Days Remaining</th>
+                    <th style={{ textAlign: 'center' }}>Quality Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expiryBatches.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                        {loading ? 'Checking batch expiration dates...' : 'No expiring or expired batches found.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    expiryBatches.map(b => (
+                      <tr key={b.id}>
+                        <td style={{ fontWeight: 600 }}>{b.product_name}</td>
+                        <td className="mono">{b.batch_no}</td>
+                        <td>{formatDate(b.expiry_date)}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 700 }}>{b.quantity || 0} {b.unit || ''}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                          {(b.days_remaining || 0) <= 0 ? '0' : b.days_remaining} days
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {b.status_indicator === 'EXPIRED' ? (
+                            <span className="badge badge-danger">Expired</span>
+                          ) : b.status_indicator === 'NEAR_EXPIRY' ? (
+                            <span className="badge badge-warning">Expiring Soon</span>
+                          ) : (
+                            <span className="badge badge-success">Good</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function Reports() {
+  return (
+    <ErrorBoundary fallbackTitle="Reports Page Error">
+      <ReportsContent />
+    </ErrorBoundary>
+  );
+}
