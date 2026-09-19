@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sliders, Database, Download, RotateCcw, Save, ShieldAlert, CheckCircle } from 'lucide-react';
+import { Sliders, Database, Download, RotateCcw, Save, ShieldAlert, CheckCircle, Table, RefreshCw, ExternalLink } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
 
@@ -24,6 +24,12 @@ export default function Settings() {
   const [saveSuccess, setSaveSuccess] = useState('');
   const [backupSuccess, setBackupSuccess] = useState('');
 
+  // Database Explorer States
+  const [dbTables, setDbTables] = useState([]);
+  const [selectedTable, setSelectedTable] = useState('products');
+  const [tableData, setTableData] = useState(null);
+  const [loadingTable, setLoadingTable] = useState(false);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -41,8 +47,35 @@ export default function Settings() {
     }
   };
 
+  const loadDbTables = async () => {
+    try {
+      const res = await api.get('/settings/db-tables');
+      if (res.success && res.tables) {
+        setDbTables(res.tables);
+      }
+    } catch (err) {
+      console.error('Failed to load db tables:', err);
+    }
+  };
+
+  const loadTableData = async (tableName) => {
+    try {
+      setLoadingTable(true);
+      const res = await api.get(`/settings/db-table/${tableName}`);
+      if (res.success) {
+        setTableData(res);
+      }
+    } catch (err) {
+      console.error('Failed to load table rows:', err);
+    } finally {
+      setLoadingTable(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
+    loadDbTables();
+    loadTableData('products');
   }, []);
 
   const handleSaveSettings = async (e) => {
@@ -289,6 +322,141 @@ export default function Settings() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* 3. LIVE DATABASE EXPLORER (UI TABLE VIEWER) */}
+      <div className="card" style={{ padding: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <Table size={20} color="var(--primary)" />
+            <div>
+              <h3 style={{ fontSize: '1.15rem', margin: 0 }}>Live Database Explorer (Raw Tables)</h3>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
+                Direct visual inspector for live SQLite database tables, schema columns, and records.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button
+              onClick={() => {
+                loadDbTables();
+                loadTableData(selectedTable);
+              }}
+              className="btn btn-secondary btn-sm"
+              title="Refresh Current Table"
+            >
+              <RefreshCw size={14} />
+              <span>Refresh</span>
+            </button>
+            <a
+              href="https://sqliteviewer.app"
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-secondary btn-sm"
+              title="Open External Web GUI Viewer"
+            >
+              <ExternalLink size={14} />
+              <span>sqliteviewer.app ↗</span>
+            </a>
+          </div>
+        </div>
+
+        {/* Table Selector Pills */}
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          {dbTables.map(t => (
+            <button
+              key={t.name}
+              type="button"
+              onClick={() => {
+                setSelectedTable(t.name);
+                loadTableData(t.name);
+              }}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '0.775rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: selectedTable === t.name ? '1px solid #0284c7' : '1px solid #cbd5e1',
+                background: selectedTable === t.name ? '#0284c7' : '#f8fafc',
+                color: selectedTable === t.name ? '#ffffff' : '#334155',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>{t.name}</span>
+              <span style={{
+                background: selectedTable === t.name ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                color: selectedTable === t.name ? '#ffffff' : '#64748b',
+                padding: '1px 5px',
+                borderRadius: '4px',
+                fontSize: '0.675rem'
+              }}>
+                {t.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Selected Table Records View */}
+        {loadingTable ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Loading table records...</div>
+        ) : !tableData || !tableData.columns ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Select a table above to view data.</div>
+        ) : (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8rem', color: '#64748b' }}>
+              <span>Showing up to 100 recent rows in <strong>{selectedTable}</strong> ({tableData.totalRows} total records)</span>
+              <span>{tableData.columns.length} columns</span>
+            </div>
+
+            <div className="table-responsive" style={{ maxHeight: '420px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+              <table className="table" style={{ fontSize: '0.75rem' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                  <tr>
+                    {tableData.columns.map(col => (
+                      <th key={col.name} style={{ background: '#f1f5f9', whiteSpace: 'nowrap' }}>
+                        <div>{col.name}</div>
+                        <span style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>{col.type}</span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableData.rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={tableData.columns.length} style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>
+                        Table is currently empty (0 records).
+                      </td>
+                    </tr>
+                  ) : (
+                    tableData.rows.map((row, idx) => (
+                      <tr key={idx}>
+                        {tableData.columns.map(col => {
+                          const val = row[col.name];
+                          return (
+                            <td key={col.name} style={{ whiteSpace: 'nowrap', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {val === null || val === undefined ? (
+                                <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>null</span>
+                              ) : typeof val === 'object' ? (
+                                JSON.stringify(val)
+                              ) : (
+                                String(val)
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
