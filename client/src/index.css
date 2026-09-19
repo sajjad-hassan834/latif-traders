@@ -65,7 +65,7 @@
   --shadow-card: 0 2px 4px 0 rgba(15, 23, 42, 0.04), 0 1px 2px 0 rgba(15, 23, 42, 0.02);
 
   /* Layout Proportions */
-  --sidebar-width: 220px;
+  --sidebar-width: 210px;
   --header-height: 52px;
 }
 
@@ -345,7 +345,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Page Body */
 .page-body {
-  padding: 1rem 1.25rem;
+  padding: 0.85rem 1rem;
   flex: 1;
   max-width: 1600px;
   width: 100%;
@@ -528,6 +528,22 @@ h1, h2, h3, h4, h5, h6 {
 .table-responsive {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 5px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 .table {
@@ -537,20 +553,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .table th {
-  padding: 0.5rem 0.75rem;
+  padding: 0.45rem 0.6rem;
   background: #f8fafc;
   font-weight: 700;
   font-size: 0.725rem;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.035em;
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
 .table td {
-  padding: 0.55rem 0.75rem;
+  padding: 0.45rem 0.6rem;
   border-bottom: 1px solid var(--border);
-  font-size: 0.825rem;
+  font-size: 0.8125rem;
+  vertical-align: middle;
 }
 
 .table tbody tr:hover {

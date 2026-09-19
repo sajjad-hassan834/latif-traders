@@ -223,62 +223,64 @@ export default function Inventory() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* TOOLBAR */}
-      <div className="card" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', flex: 1, minWidth: '320px', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
-            <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: '#94a3b8' }} />
-            <input
-              type="text"
+      <div className="card" style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flex: '1 1 340px', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: '1 1 180px', minWidth: '150px' }}>
+              <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: '#94a3b8' }} />
+              <input
+                type="text"
+                className="form-control"
+                style={{ paddingLeft: '2rem', height: '32px', fontSize: '0.8rem' }}
+                placeholder="Search product, SKU, barcode..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && loadData()}
+              />
+            </div>
+
+            <select
               className="form-control"
-              style={{ paddingLeft: '2rem', height: '32px' }}
-              placeholder="Search product, SKU, barcode..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && loadData()}
-            />
+              style={{ width: '135px', height: '32px', fontSize: '0.8rem' }}
+              value={selectedCat}
+              onChange={(e) => setSelectedCat(e.target.value)}
+            >
+              <option value="">All Categories</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => setLowStockOnly(!lowStockOnly)}
+              className={`btn btn-sm ${lowStockOnly ? 'btn-danger' : 'btn-secondary'}`}
+              style={{ height: '32px', padding: '0 8px', fontSize: '0.75rem' }}
+            >
+              <AlertTriangle size={13} />
+              <span>Low Stock</span>
+            </button>
           </div>
 
-          <select
-            className="form-control"
-            style={{ width: '160px', height: '32px' }}
-            value={selectedCat}
-            onChange={(e) => setSelectedCat(e.target.value)}
-          >
-            <option value="">All Categories</option>
-            {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-
-          <button
-            onClick={() => setLowStockOnly(!lowStockOnly)}
-            className={`btn btn-sm ${lowStockOnly ? 'btn-danger' : 'btn-secondary'}`}
-            style={{ height: '32px' }}
-          >
-            <AlertTriangle size={14} />
-            <span>Low Stock</span>
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={handleExportStock} className="btn btn-secondary btn-sm" title="Export to Excel / CSV">
-            <Download size={14} />
-            <span>Export CSV</span>
-          </button>
-
-          {canManageInventory && (
-            <button onClick={() => setShowMetaModal(true)} className="btn btn-secondary btn-sm" title="Manage Categories & Units">
-              <Layers size={14} />
-              <span>Categories & Units</span>
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button onClick={handleExportStock} className="btn btn-secondary btn-sm" style={{ height: '32px', padding: '0 8px', fontSize: '0.75rem' }} title="Export to Excel / CSV">
+              <Download size={13} />
+              <span>Export CSV</span>
             </button>
-          )}
 
-          {canManageInventory && (
-            <button onClick={() => setShowAddModal(true)} className="btn btn-primary btn-sm">
-              <Plus size={14} />
-              <span>Add Product</span>
-            </button>
-          )}
+            {canManageInventory && (
+              <button onClick={() => setShowMetaModal(true)} className="btn btn-secondary btn-sm" style={{ height: '32px', padding: '0 8px', fontSize: '0.75rem' }} title="Manage Categories & Units">
+                <Layers size={13} />
+                <span>Categories & Units</span>
+              </button>
+            )}
+
+            {canManageInventory && (
+              <button onClick={() => setShowAddModal(true)} className="btn btn-primary btn-sm" style={{ height: '32px', padding: '0 10px', fontSize: '0.75rem' }}>
+                <Plus size={14} />
+                <span>Add Product</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -288,16 +290,16 @@ export default function Inventory() {
           <table className="table">
             <thead>
               <tr>
-                <th style={{ minWidth: '170px' }}>Product Name</th>
-                <th style={{ minWidth: '110px' }}>SKU / Barcode</th>
-                <th style={{ minWidth: '120px' }}>Category</th>
-                <th style={{ textAlign: 'center', minWidth: '90px' }}>Current Stock</th>
-                <th style={{ textAlign: 'center', minWidth: '55px' }}>Unit</th>
-                <th style={{ textAlign: 'right', minWidth: '80px' }}>Cost Price</th>
-                <th style={{ textAlign: 'right', minWidth: '80px' }}>Sale Price</th>
-                <th style={{ textAlign: 'right', minWidth: '80px' }}>Wholesale</th>
-                <th style={{ minWidth: '110px' }}>Location</th>
-                <th style={{ textAlign: 'center', width: '85px' }}>Actions</th>
+                <th style={{ minWidth: '140px', maxWidth: '200px' }}>Product Name</th>
+                <th style={{ width: '95px' }}>SKU / Barcode</th>
+                <th style={{ width: '110px' }}>Category</th>
+                <th style={{ textAlign: 'center', width: '65px' }}>Stock</th>
+                <th style={{ textAlign: 'center', width: '45px' }}>Unit</th>
+                <th style={{ textAlign: 'right', width: '70px' }}>Cost</th>
+                <th style={{ textAlign: 'right', width: '70px' }}>Sale</th>
+                <th style={{ textAlign: 'right', width: '70px' }}>Wholesale</th>
+                <th style={{ width: '85px' }}>Location</th>
+                <th style={{ textAlign: 'center', width: '75px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -315,25 +317,29 @@ export default function Inventory() {
                   const isOut = p.current_stock === 0;
                   return (
                     <tr key={p.id}>
-                      <td style={{ fontWeight: 600 }}>
-                        <div style={{ whiteSpace: 'nowrap' }}>{p.name}</div>
+                      <td style={{ fontWeight: 600, maxWidth: '200px' }}>
+                        <div style={{ wordBreak: 'break-word', lineHeight: 1.25, fontSize: '0.8125rem' }}>{p.name}</div>
                         {p.brand && <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>{p.brand}</div>}
                       </td>
-                      <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-                        <div>{p.sku}</div>
-                        {p.barcode && <div style={{ color: '#64748b' }}>{p.barcode}</div>}
+                      <td className="mono" style={{ fontSize: '0.725rem', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 600 }}>{p.sku}</div>
+                        {p.barcode && <div style={{ color: '#64748b', fontSize: '0.7rem' }}>{p.barcode}</div>}
                       </td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{p.category_name || '-'}</td>
+                      <td style={{ maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.category_name}>
+                        {p.category_name || '-'}
+                      </td>
                       <td style={{ textAlign: 'center' }}>
-                        <span className={`badge ${isOut ? 'badge-danger' : isLow ? 'badge-warning' : 'badge-success'}`}>
+                        <span className={`badge ${isOut ? 'badge-danger' : isLow ? 'badge-warning' : 'badge-success'}`} style={{ padding: '0.15rem 0.4rem' }}>
                           {p.current_stock}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'center', color: '#64748b' }}>{p.unit}</td>
-                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{formatPKR(p.purchase_price)}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#0284c7', whiteSpace: 'nowrap' }}>{formatPKR(p.sale_price)}</td>
-                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{formatPKR(p.wholesale_price)}</td>
-                      <td style={{ whiteSpace: 'nowrap' }}><span style={{ fontSize: '0.75rem', color: '#64748b' }}>{p.storage_location || 'Freezer'}</span></td>
+                      <td style={{ textAlign: 'center', color: '#64748b', fontSize: '0.75rem' }}>{p.unit}</td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{formatPKR(p.purchase_price)}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#0284c7', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{formatPKR(p.sale_price)}</td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{formatPKR(p.wholesale_price)}</td>
+                      <td style={{ maxWidth: '85px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.storage_location || 'Freezer'}>
+                        <span style={{ fontSize: '0.725rem', color: '#64748b' }}>{p.storage_location || 'Freezer'}</span>
+                      </td>
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ position: 'relative', display: 'inline-block' }}>
                           <button
