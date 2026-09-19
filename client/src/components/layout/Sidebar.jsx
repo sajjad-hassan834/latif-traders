@@ -12,8 +12,7 @@ import {
   BarChart3,
   Sliders,
   Snowflake,
-  X,
-  PanelLeftClose
+  X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -107,29 +106,6 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
             <p>Frozen Food System</p>
           </div>
         </div>
-
-        {/* Desktop collapse button */}
-        {toggleCollapse && (
-          <button
-            onClick={toggleCollapse}
-            className="hide-mobile"
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              border: 'none',
-              color: '#94a3b8',
-              cursor: 'pointer',
-              padding: '5px',
-              borderRadius: '5px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.15s'
-            }}
-            title="Collapse Sidebar (Alt + B)"
-          >
-            <PanelLeftClose size={15} />
-          </button>
-        )}
 
         {/* Mobile close button */}
         <button

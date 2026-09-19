@@ -2,8 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Menu,
   PlusCircle,
-  AlertTriangle,
-  Clock,
   ChevronDown,
   User,
   KeyRound,
@@ -88,33 +86,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
         </div>
 
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          {/* Low Stock Indicator */}
-          {alerts.low_stock_count > 0 && (
-            <button
-              onClick={() => hasTabAccess('inventory') && setTab('inventory')}
-              className="badge badge-warning"
-              title={`${alerts.low_stock_count} items below minimum stock`}
-              style={{ cursor: 'pointer', padding: '0.25rem 0.5rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '3px' }}
-            >
-              <AlertTriangle size={13} />
-              <span>{alerts.low_stock_count} <span className="hide-mobile">Low Stock</span></span>
-            </button>
-          )}
-
-          {/* Near Expiry Indicator */}
-          {alerts.near_expiry_count > 0 && (
-            <button
-              onClick={() => hasTabAccess('reports') && setTab('reports')}
-              className="badge badge-danger"
-              title={`${alerts.near_expiry_count} batches expiring soon`}
-              style={{ cursor: 'pointer', padding: '0.25rem 0.5rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '3px' }}
-            >
-              <Clock size={13} />
-              <span>{alerts.near_expiry_count} <span className="hide-mobile">Expiring</span></span>
-            </button>
-          )}
-
-          {/* Notification Center */}
+          {/* Notification Center (Houses Low Stock, Expiry QC, and System Alerts) */}
           <NotificationCenter alerts={alerts} setTab={setTab} />
 
           {/* POS Quick Button */}
