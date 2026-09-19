@@ -599,6 +599,19 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.12);
 }
 
+select.form-control {
+  cursor: pointer;
+  background-color: #ffffff;
+  color: var(--text-main);
+  padding-right: 1.75rem;
+}
+
+select.form-control option {
+  background-color: #ffffff;
+  color: #0f172a;
+  padding: 6px 10px;
+}
+
 /* Tables */
 .table-responsive {
   width: 100%;

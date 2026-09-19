@@ -56,6 +56,8 @@ export default function Inventory() {
   });
 
   const [editFormData, setEditFormData] = useState(null);
+  const [customBrandModeAdd, setCustomBrandModeAdd] = useState(false);
+  const [customBrandModeEdit, setCustomBrandModeEdit] = useState(false);
   const [metaTab, setMetaTab] = useState('categories');
   const [newCatName, setNewCatName] = useState('');
   const [newCatDesc, setNewCatDesc] = useState('');
@@ -139,6 +141,7 @@ export default function Inventory() {
       const res = await api.post('/products', formData);
       if (res.success) {
         setShowAddModal(false);
+        setCustomBrandModeAdd(false);
         setFormData({
           name: '',
           sku: '',
@@ -180,6 +183,7 @@ export default function Inventory() {
       storage_location: p.storage_location || '',
       status: p.status || 'active'
     });
+    setCustomBrandModeEdit(false);
     setShowEditModal(true);
   };
 
@@ -320,7 +324,14 @@ export default function Inventory() {
             )}
 
             {canManageInventory && (
-              <button onClick={() => setShowAddModal(true)} className="btn btn-primary btn-sm" style={{ height: '32px', padding: '0 10px', fontSize: '0.75rem' }}>
+              <button
+                onClick={() => {
+                  setCustomBrandModeAdd(false);
+                  setShowAddModal(true);
+                }}
+                className="btn btn-primary btn-sm"
+                style={{ height: '32px', padding: '0 10px', fontSize: '0.75rem' }}
+              >
                 <Plus size={14} />
                 <span>Add Product</span>
               </button>
@@ -533,15 +544,24 @@ export default function Inventory() {
       {/* ADD PRODUCT MODAL */}
       {showAddModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '680px', overflowX: 'hidden' }}>
-            <div className="modal-header">
-              <h3>Add New Frozen Food Item</h3>
-              <button onClick={() => setShowAddModal(false)}>✕</button>
+          <div className="modal-content" style={{ maxWidth: '760px', width: '96%', maxHeight: '92vh', overflowY: 'auto' }}>
+            <div className="modal-header" style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary)' }} />
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Add New Product Item</h3>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
             </div>
             <form onSubmit={handleSaveProduct}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', overflowX: 'hidden' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', padding: '1.25rem' }}>
+                {/* Row 1: Product Name & Brand */}
                 <div className="form-grid-2">
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Product Name *</label>
                     <input
                       type="text"
@@ -552,47 +572,54 @@ export default function Inventory() {
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Brand / Company</label>
-                    <input
-                      type="text"
-                      list="brand-list-add"
-                      className="form-control"
-                      placeholder="Select or enter brand"
-                      value={formData.brand}
-                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                    />
-                    <datalist id="brand-list-add">
-                      {brands.map(b => (
-                        <option key={b.id || b.name} value={b.name} />
-                      ))}
-                    </datalist>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <label className="form-label" style={{ margin: 0 }}>Brand / Company</label>
+                      <button
+                        type="button"
+                        style={{ fontSize: '0.72rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontWeight: 600 }}
+                        onClick={() => setCustomBrandModeAdd(!customBrandModeAdd)}
+                      >
+                        {customBrandModeAdd ? '← Select from list' : '+ Enter custom brand'}
+                      </button>
+                    </div>
+                    {customBrandModeAdd ? (
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Type brand name..."
+                        value={formData.brand}
+                        onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                        autoFocus
+                      />
+                    ) : (
+                      <select
+                        className="form-control"
+                        value={formData.brand}
+                        onChange={(e) => {
+                          if (e.target.value === '__custom__') {
+                            setCustomBrandModeAdd(true);
+                          } else {
+                            setFormData({ ...formData, brand: e.target.value });
+                          }
+                        }}
+                      >
+                        <option value="">-- Select Brand / Company --</option>
+                        {brands.map(b => (
+                          <option key={b.id || b.name} value={b.name}>{b.name}</option>
+                        ))}
+                        {formData.brand && !brands.some(b => b.name.toLowerCase() === formData.brand.toLowerCase()) && (
+                          <option value={formData.brand}>{formData.brand} (Custom)</option>
+                        )}
+                        <option value="__custom__">➕ Type Custom Brand Name...</option>
+                      </select>
+                    )}
                   </div>
                 </div>
 
-                <div className="form-grid-4">
-                  <div className="form-group">
-                    <label className="form-label">SKU / Code *</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      required
-                      placeholder="e.g. DW-PRT-010"
-                      value={formData.sku}
-                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Barcode (Scan)</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Scan or leave blank"
-                      value={formData.barcode}
-                      onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group">
+                {/* Row 2: Category & Default Supplier (Full 2-column width for ample breathing room) */}
+                <div className="form-grid-2">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Category</label>
                     <select
                       className="form-control"
@@ -605,8 +632,8 @@ export default function Inventory() {
                       ))}
                     </select>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Default Supplier</label>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Default Supplier (Vendor)</label>
                     <select
                       className="form-control"
                       value={formData.supplier_id}
@@ -621,8 +648,30 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div className="form-grid-4">
-                  <div className="form-group">
+                {/* Row 3: SKU, Barcode, Unit */}
+                <div className="form-grid-3">
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">SKU / Item Code *</label>
+                    <input
+                      type="text"
+                      className="form-control mono"
+                      required
+                      placeholder="e.g. DW-PRT-010"
+                      value={formData.sku}
+                      onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Barcode (Scan USB)</label>
+                    <input
+                      type="text"
+                      className="form-control mono"
+                      placeholder="Scan or leave blank"
+                      value={formData.barcode}
+                      onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Unit</label>
                     <select
                       className="form-control"
@@ -636,55 +685,68 @@ export default function Inventory() {
                       <option value="pcs">Piece (pcs)</option>
                     </select>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Purchase Price</label>
+                </div>
+
+                {/* Row 4: Pricing */}
+                <div className="form-grid-3">
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Purchase Price (Cost PKR)</label>
                     <input
                       type="number"
                       className="form-control"
-                      placeholder="Cost (PKR)"
+                      placeholder="0"
+                      min="0"
+                      step="any"
                       value={formData.purchase_price}
                       onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
                     />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Retail Sale Price *</label>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Retail Sale Price * (PKR)</label>
                     <input
                       type="number"
                       className="form-control"
                       required
-                      placeholder="Sale (PKR)"
+                      placeholder="0"
+                      min="0"
+                      step="any"
                       value={formData.sale_price}
                       onChange={(e) => setFormData({ ...formData, sale_price: e.target.value })}
                     />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Wholesale Price</label>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Wholesale Price (PKR)</label>
                     <input
                       type="number"
                       className="form-control"
-                      placeholder="Bulk (PKR)"
+                      placeholder="0"
+                      min="0"
+                      step="any"
                       value={formData.wholesale_price}
                       onChange={(e) => setFormData({ ...formData, wholesale_price: e.target.value })}
                     />
                   </div>
                 </div>
 
+                {/* Row 5: Min Stock Alert & Storage Location */}
                 <div className="form-grid-2">
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Min Stock Level (Alert)</label>
                     <input
                       type="number"
                       className="form-control"
+                      placeholder="5"
+                      min="0"
                       value={formData.min_stock_level}
                       onChange={(e) => setFormData({ ...formData, min_stock_level: e.target.value })}
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Storage Location</label>
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="e.g. Deep Freezer #2 - Shelf B"
+                      placeholder="e.g. Deep Freezer #1 - Shelf A"
                       value={formData.storage_location}
                       onChange={(e) => setFormData({ ...formData, storage_location: e.target.value })}
                     />
@@ -692,9 +754,12 @@ export default function Inventory() {
                 </div>
 
                 {/* OPENING STOCK */}
-                <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.825rem', marginBottom: '0.5rem', color: '#0f172a' }}>
-                    Opening Stock Lot (Optional)
+                <div style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '0.2rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.825rem', color: '#0f172a' }}>
+                      📦 Opening Stock Lot (Optional)
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Creates initial FIFO inventory batch</span>
                   </div>
                   <div className="form-grid-3">
                     <div className="form-group" style={{ margin: 0 }}>
@@ -703,6 +768,7 @@ export default function Inventory() {
                         type="number"
                         className="form-control"
                         placeholder="0"
+                        min="0"
                         value={formData.opening_stock}
                         onChange={(e) => setFormData({ ...formData, opening_stock: e.target.value })}
                       />
@@ -711,7 +777,7 @@ export default function Inventory() {
                       <label className="form-label">Batch / Lot No</label>
                       <input
                         type="text"
-                        className="form-control"
+                        className="form-control mono"
                         placeholder="e.g. LOT-2609"
                         value={formData.batch_no}
                         onChange={(e) => setFormData({ ...formData, batch_no: e.target.value })}
@@ -729,9 +795,9 @@ export default function Inventory() {
                   </div>
                 </div>
               </div>
-              <div className="modal-footer">
+              <div className="modal-footer" style={{ padding: '0.75rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm">Save Product</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '0.4rem 1.25rem' }}>Save Product</button>
               </div>
             </form>
           </div>
@@ -826,15 +892,24 @@ export default function Inventory() {
       {/* EDIT PRODUCT MODAL */}
       {showEditModal && editFormData && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '680px', overflowX: 'hidden' }}>
-            <div className="modal-header">
-              <h3>Edit Frozen Product</h3>
-              <button onClick={() => setShowEditModal(false)}>✕</button>
+          <div className="modal-content" style={{ maxWidth: '760px', width: '96%', maxHeight: '92vh', overflowY: 'auto' }}>
+            <div className="modal-header" style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary)' }} />
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Edit Product Details</h3>
+              </div>
+              <button
+                onClick={() => setShowEditModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
             </div>
             <form onSubmit={handleUpdateProduct}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', overflowX: 'hidden' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', padding: '1.25rem' }}>
+                {/* Row 1: Product Name & Brand */}
                 <div className="form-grid-2">
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Product Name *</label>
                     <input
                       type="text"
@@ -844,29 +919,67 @@ export default function Inventory() {
                       required
                     />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">SKU Code *</label>
-                    <input
-                      type="text"
-                      className="form-control mono"
-                      value={editFormData.sku}
-                      onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
-                      required
-                    />
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <label className="form-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span>Brand / Company</span>
+                        {isAdmin ? (
+                          <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>Admin Edit</span>
+                        ) : (
+                          <span className="badge badge-warning" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>Admin Only</span>
+                        )}
+                      </label>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          style={{ fontSize: '0.72rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontWeight: 600 }}
+                          onClick={() => setCustomBrandModeEdit(!customBrandModeEdit)}
+                        >
+                          {customBrandModeEdit ? '← Select from list' : '+ Enter custom brand'}
+                        </button>
+                      )}
+                    </div>
+                    {customBrandModeEdit ? (
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editFormData.brand || ''}
+                        onChange={(e) => setEditFormData({ ...editFormData, brand: e.target.value })}
+                        disabled={!isAdmin}
+                        style={!isAdmin ? { background: '#f8fafc', color: '#64748b', cursor: 'not-allowed' } : {}}
+                        placeholder="e.g. Big Bird / Dawn"
+                        autoFocus
+                      />
+                    ) : (
+                      <select
+                        className="form-control"
+                        value={editFormData.brand || ''}
+                        onChange={(e) => {
+                          if (e.target.value === '__custom__') {
+                            setCustomBrandModeEdit(true);
+                          } else {
+                            setEditFormData({ ...editFormData, brand: e.target.value });
+                          }
+                        }}
+                        disabled={!isAdmin}
+                        style={!isAdmin ? { background: '#f8fafc', color: '#64748b', cursor: 'not-allowed' } : {}}
+                      >
+                        <option value="">-- Select Brand / Company --</option>
+                        {brands.map(b => (
+                          <option key={b.id || b.name} value={b.name}>{b.name}</option>
+                        ))}
+                        {editFormData.brand && !brands.some(b => b.name.toLowerCase() === editFormData.brand.toLowerCase()) && (
+                          <option value={editFormData.brand}>{editFormData.brand} (Custom)</option>
+                        )}
+                        {isAdmin && <option value="__custom__">➕ Type Custom Brand Name...</option>}
+                      </select>
+                    )}
                   </div>
                 </div>
 
-                <div className="form-grid-4">
-                  <div className="form-group">
-                    <label className="form-label">Barcode</label>
-                    <input
-                      type="text"
-                      className="form-control mono"
-                      value={editFormData.barcode}
-                      onChange={(e) => setEditFormData({ ...editFormData, barcode: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group">
+                {/* Row 2: Category & Default Supplier (Dedicated 2-col row for generous width) */}
+                <div className="form-grid-2">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Category</label>
                     <select
                       className="form-control"
@@ -877,34 +990,8 @@ export default function Inventory() {
                       {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>Brand</span>
-                      {isAdmin ? (
-                        <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>Admin Edit</span>
-                      ) : (
-                        <span className="badge badge-warning" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>Admin Only</span>
-                      )}
-                    </label>
-                    <input
-                      type="text"
-                      list="brand-list-edit"
-                      className="form-control"
-                      value={editFormData.brand || ''}
-                      onChange={(e) => setEditFormData({ ...editFormData, brand: e.target.value })}
-                      disabled={!isAdmin}
-                      style={!isAdmin ? { background: '#f8fafc', color: '#64748b', cursor: 'not-allowed' } : {}}
-                      title={!isAdmin ? 'Brand name can only be edited by an Administrator' : ''}
-                      placeholder="e.g. Big Bird / Dawn"
-                    />
-                    <datalist id="brand-list-edit">
-                      {brands.map(b => (
-                        <option key={b.id || b.name} value={b.name} />
-                      ))}
-                    </datalist>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Default Supplier</label>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Default Supplier (Vendor)</label>
                     <select
                       className="form-control"
                       value={editFormData.supplier_id || ''}
@@ -919,8 +1006,28 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div className="form-grid-4">
-                  <div className="form-group">
+                {/* Row 3: SKU, Barcode, Unit */}
+                <div className="form-grid-3">
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">SKU Code *</label>
+                    <input
+                      type="text"
+                      className="form-control mono"
+                      value={editFormData.sku}
+                      onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Barcode (Scan USB)</label>
+                    <input
+                      type="text"
+                      className="form-control mono"
+                      value={editFormData.barcode}
+                      onChange={(e) => setEditFormData({ ...editFormData, barcode: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Unit</label>
                     <select
                       className="form-control"
@@ -930,8 +1037,12 @@ export default function Inventory() {
                       {units.map(u => <option key={u.id} value={u.short_code}>{u.name} ({u.short_code})</option>)}
                     </select>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Cost (PKR)</label>
+                </div>
+
+                {/* Row 4: Pricing */}
+                <div className="form-grid-3">
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Purchase / Cost (PKR)</label>
                     <input
                       type="number"
                       className="form-control"
@@ -941,8 +1052,8 @@ export default function Inventory() {
                       onChange={(e) => setEditFormData({ ...editFormData, purchase_price: e.target.value })}
                     />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Sale (PKR) *</label>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Retail Sale (PKR) *</label>
                     <input
                       type="number"
                       className="form-control"
@@ -953,8 +1064,8 @@ export default function Inventory() {
                       required
                     />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Wholesale</label>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Wholesale (PKR)</label>
                     <input
                       type="number"
                       className="form-control"
@@ -966,9 +1077,10 @@ export default function Inventory() {
                   </div>
                 </div>
 
+                {/* Row 5: Min Stock Alert, Storage Location, Status */}
                 <div className="form-grid-3">
-                  <div className="form-group">
-                    <label className="form-label">Min Stock Alert</label>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Min Stock Alert Level</label>
                     <input
                       type="number"
                       className="form-control"
@@ -977,7 +1089,7 @@ export default function Inventory() {
                       onChange={(e) => setEditFormData({ ...editFormData, min_stock_level: e.target.value })}
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Storage Location</label>
                     <input
                       type="text"
@@ -986,7 +1098,7 @@ export default function Inventory() {
                       onChange={(e) => setEditFormData({ ...editFormData, storage_location: e.target.value })}
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Status</label>
                     <select
                       className="form-control"
@@ -999,9 +1111,9 @@ export default function Inventory() {
                   </div>
                 </div>
               </div>
-              <div className="modal-footer">
+              <div className="modal-footer" style={{ padding: '0.75rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm">Update Product</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '0.4rem 1.25rem' }}>Update Product</button>
               </div>
             </form>
           </div>
