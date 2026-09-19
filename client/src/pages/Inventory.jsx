@@ -377,14 +377,14 @@ export default function Inventory() {
       {/* ADD PRODUCT MODAL */}
       {showAddModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '640px' }}>
+          <div className="modal-content" style={{ maxWidth: '680px', overflowX: 'hidden' }}>
             <div className="modal-header">
               <h3>Add New Frozen Food Item</h3>
               <button onClick={() => setShowAddModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSaveProduct}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.75rem' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', overflowX: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label">Product Name *</label>
                     <input
@@ -408,7 +408,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label">SKU / Item Code *</label>
                     <input
@@ -445,7 +445,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label">Unit</label>
                     <select
@@ -493,7 +493,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label">Min Stock Level (Alert)</label>
                     <input
@@ -648,14 +648,14 @@ export default function Inventory() {
       {/* EDIT PRODUCT MODAL */}
       {showEditModal && editFormData && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '650px' }}>
+          <div className="modal-content" style={{ maxWidth: '680px', overflowX: 'hidden' }}>
             <div className="modal-header">
               <h3>Edit Frozen Product</h3>
               <button onClick={() => setShowEditModal(false)}>✕</button>
             </div>
             <form onSubmit={handleUpdateProduct}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', overflowX: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label">Product Name *</label>
                     <input
@@ -678,7 +678,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label">Barcode</label>
                     <input
@@ -710,7 +710,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label">Unit</label>
                     <select
@@ -757,7 +757,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label">Min Stock Alert</label>
                     <input

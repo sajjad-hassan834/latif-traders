@@ -496,6 +496,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .form-control {
+  width: 100%;
+  min-width: 0;
   padding: 0.45rem 0.65rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -894,6 +896,7 @@ h1, h2, h3, h4, h5, h6 {
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
@@ -910,6 +913,7 @@ h1, h2, h3, h4, h5, h6 {
 .modal-body {
   padding: 1.15rem;
   flex: 1;
+  overflow-x: hidden;
 }
 
 .modal-footer {
