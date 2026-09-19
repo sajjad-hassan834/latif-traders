@@ -79,15 +79,27 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
   const userRole = role || 'sales';
 
   const [brandInfo, setBrandInfo] = React.useState({
-    name: localStorage.getItem('lt_shop_name') || 'LATIF TRADERS',
-    tagline: localStorage.getItem('lt_shop_tagline') || 'Frozen Food System'
+    name: localStorage.getItem('lt_shop_name') || 'Sajjad Traders',
+    tagline: localStorage.getItem('lt_shop_tagline') || 'Frozen Food Wholesalers'
   });
 
   React.useEffect(() => {
+    // Fetch live shop branding directly from server on mount
+    api.get('/settings').then(res => {
+      if (res?.success && res.settings) {
+        if (res.settings.shop_name) localStorage.setItem('lt_shop_name', res.settings.shop_name);
+        if (res.settings.tagline) localStorage.setItem('lt_shop_tagline', res.settings.tagline);
+        setBrandInfo({
+          name: res.settings.shop_name || 'Sajjad Traders',
+          tagline: res.settings.tagline || 'Frozen Food Wholesalers'
+        });
+      }
+    }).catch(() => {});
+
     const handleSettingsUpdate = () => {
       setBrandInfo({
-        name: localStorage.getItem('lt_shop_name') || 'LATIF TRADERS',
-        tagline: localStorage.getItem('lt_shop_tagline') || 'Frozen Food System'
+        name: localStorage.getItem('lt_shop_name') || 'Sajjad Traders',
+        tagline: localStorage.getItem('lt_shop_tagline') || 'Frozen Food Wholesalers'
       });
     };
     window.addEventListener('settings_updated', handleSettingsUpdate);

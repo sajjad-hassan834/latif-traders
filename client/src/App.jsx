@@ -46,21 +46,27 @@ function MainApp() {
     }
   }, [user, role]);
 
-  // Load shop branding settings on mount
+  // Load shop branding settings on mount, login, and window focus
   useEffect(() => {
-    api.get('/settings').then(res => {
-      if (res && res.success && res.settings) {
-        if (res.settings.shop_name) {
-          localStorage.setItem('lt_shop_name', res.settings.shop_name);
-          document.title = `${res.settings.shop_name} - Frozen Food System`;
+    const syncSettings = () => {
+      api.get('/settings').then(res => {
+        if (res && res.success && res.settings) {
+          if (res.settings.shop_name) {
+            localStorage.setItem('lt_shop_name', res.settings.shop_name);
+            document.title = `${res.settings.shop_name} - Frozen Food System`;
+          }
+          if (res.settings.tagline) {
+            localStorage.setItem('lt_shop_tagline', res.settings.tagline);
+          }
+          window.dispatchEvent(new Event('settings_updated'));
         }
-        if (res.settings.tagline) {
-          localStorage.setItem('lt_shop_tagline', res.settings.tagline);
-        }
-        window.dispatchEvent(new Event('settings_updated'));
-      }
-    }).catch(() => {});
-  }, []);
+      }).catch(() => {});
+    };
+
+    syncSettings();
+    window.addEventListener('focus', syncSettings);
+    return () => window.removeEventListener('focus', syncSettings);
+  }, [user]);
 
   useEffect(() => {
     if (user) {
