@@ -355,8 +355,8 @@ function ReportsContent() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       {/* REPORT TYPE SELECTOR */}
-      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', padding: '0.75rem 1rem' }}>
-        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.75rem 1rem' }}>
+        <div className="horizontal-scroll-tabs">
           {(isAdmin || canViewFinances) && (
             <button
               onClick={() => setActiveReport('pnl')}
@@ -438,7 +438,7 @@ function ReportsContent() {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem' }}>
           {(activeReport === 'pnl' || activeReport === 'daily' || activeReport === 'purchases' || activeReport === 'product-sales' || activeReport === 'movements') && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <input
@@ -680,7 +680,7 @@ function ReportsContent() {
                   <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.25rem', marginBottom: '0.4rem' }}>
                     1. Counter Sales Breakdown
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem' }}>
+                  <div className="form-grid-2" style={{ gap: '0.5rem', fontSize: '0.8rem' }}>
                     <div>Total Invoices: <strong>{regSales.total_bills || 0}</strong></div>
                     <div>Items Sold: <strong>{regSales.items_sold || 0} units</strong></div>
                     <div>Gross Sales: <strong>{formatPKR(regSales.total_sales || 0)}</strong></div>

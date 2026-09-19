@@ -604,7 +604,7 @@ export default function PosSales() {
           </div>
 
           {/* CATEGORIES HORIZONTAL PILLS */}
-          <div className="pos-categories-bar">
+          <div className="pos-categories-bar horizontal-scroll-tabs">
             <button
               onClick={() => setSelectedCategory('ALL')}
               className={`pos-cat-pill ${selectedCategory === 'ALL' ? 'active' : ''}`}
@@ -1153,7 +1153,7 @@ export default function PosSales() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div className="form-grid-2" style={{ gap: '0.5rem' }}>
                   <div className="form-group">
                     <label className="form-label">Sale Price (PKR) *</label>
                     <input
@@ -1177,7 +1177,7 @@ export default function PosSales() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div className="form-grid-2" style={{ gap: '0.5rem' }}>
                   <div className="form-group">
                     <label className="form-label">Unit</label>
                     <select
@@ -1248,7 +1248,7 @@ export default function PosSales() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div className="form-grid-2" style={{ gap: '0.5rem' }}>
                   <div className="form-group">
                     <label className="form-label">Customer Type</label>
                     <select

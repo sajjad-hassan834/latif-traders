@@ -331,7 +331,7 @@ export default function Purchases() {
 
             <form onSubmit={handleSavePurchase}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem' }}>
+                <div className="form-grid-3">
                   <div className="form-group">
                     <label className="form-label">Supplier *</label>
                     <select
@@ -469,7 +469,7 @@ export default function Purchases() {
                 </div>
 
                 {/* PAYMENT & SETTLEMENT */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                <div className="form-grid-3" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label">Grand Total (PKR)</label>
                     <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0284c7' }}>
@@ -667,7 +667,7 @@ export default function Purchases() {
                   </table>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', alignItems: 'center' }}>
+                <div className="form-grid-2" style={{ alignItems: 'center' }}>
                   <div className="form-group">
                     <label className="form-label">Return Reason / Explanation *</label>
                     <input

@@ -280,7 +280,7 @@ export default function Settings() {
         </div>
 
         <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label className="form-label">Shop Name *</label>
               <input
@@ -302,7 +302,7 @@ export default function Settings() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="form-grid-2">
             <div className="form-group">
               <label className="form-label">Phone Numbers</label>
               <input
@@ -336,7 +336,7 @@ export default function Settings() {
           {/* BUSINESS RULES */}
           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
             <h4 style={{ fontSize: '1rem', marginBottom: '1rem', color: '#0f172a' }}>Inventory Policies & Warnings</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+            <div className="form-grid-2">
               <div className="form-group">
                 <label className="form-label">Near-Expiry Warning Threshold (Days)</label>
                 <input
@@ -503,7 +503,7 @@ export default function Settings() {
         </div>
 
         {/* Category Filter Chips */}
-        <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
+        <div className="horizontal-scroll-tabs" style={{ marginBottom: '0.75rem' }}>
           {[
             { id: 'all', label: 'All Tables' },
             { id: 'inventory', label: '📦 Inventory' },
@@ -536,7 +536,7 @@ export default function Settings() {
         </div>
 
         {/* Table Selector Pills */}
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.25rem', background: '#f8fafc', padding: '0.65rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+        <div className="horizontal-scroll-tabs" style={{ marginBottom: '1.25rem', background: '#f8fafc', padding: '0.65rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           {filteredTables.map(t => (
             <button
               key={t.name}

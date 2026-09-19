@@ -188,6 +188,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                 top: 'calc(100% + 6px)',
                 right: 0,
                 width: '255px',
+                maxWidth: 'calc(100vw - 20px)',
                 background: '#ffffff',
                 borderRadius: '10px',
                 boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12), 0 8px 10px -6px rgba(0,0,0,0.08)',

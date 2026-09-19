@@ -492,7 +492,7 @@ export default function Inventory() {
             </div>
             <form onSubmit={handleSaveProduct}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', overflowX: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '0.75rem' }}>
+                <div className="form-grid-2">
                   <div className="form-group">
                     <label className="form-label">Product Name *</label>
                     <input
@@ -516,7 +516,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem' }}>
+                <div className="form-grid-3">
                   <div className="form-group">
                     <label className="form-label">SKU / Item Code *</label>
                     <input
@@ -553,7 +553,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.75rem' }}>
+                <div className="form-grid-4">
                   <div className="form-group">
                     <label className="form-label">Unit</label>
                     <select
@@ -601,7 +601,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+                <div className="form-grid-2">
                   <div className="form-group">
                     <label className="form-label">Min Stock Level (Alert)</label>
                     <input
@@ -628,7 +628,7 @@ export default function Inventory() {
                   <div style={{ fontWeight: 600, fontSize: '0.825rem', marginBottom: '0.5rem', color: '#0f172a' }}>
                     Opening Stock Lot (Optional)
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-grid-3">
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label">Opening Qty</label>
                       <input
@@ -763,7 +763,7 @@ export default function Inventory() {
             </div>
             <form onSubmit={handleUpdateProduct}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', overflowX: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '0.75rem' }}>
+                <div className="form-grid-2">
                   <div className="form-group">
                     <label className="form-label">Product Name *</label>
                     <input
@@ -786,7 +786,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem' }}>
+                <div className="form-grid-3">
                   <div className="form-group">
                     <label className="form-label">Barcode</label>
                     <input
@@ -829,7 +829,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.75rem' }}>
+                <div className="form-grid-4">
                   <div className="form-group">
                     <label className="form-label">Unit</label>
                     <select
@@ -876,7 +876,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.75rem' }}>
+                <div className="form-grid-3">
                   <div className="form-group">
                     <label className="form-label">Min Stock Alert</label>
                     <input

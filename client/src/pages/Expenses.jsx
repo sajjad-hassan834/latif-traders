@@ -298,7 +298,7 @@ function ExpensesContent() {
             </span>
             <CreditCard size={15} color="#0284c7" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.5rem' }}>
+          <div className="form-grid-2" style={{ gap: '0.75rem', marginTop: '0.5rem' }}>
             <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '0.5rem 0.65rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: '#166534', fontWeight: 600 }}>
                 <Banknote size={12} />
@@ -756,7 +756,7 @@ function ExpensesContent() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div className="form-grid-2" style={{ gap: '0.5rem' }}>
                   <div className="form-group">
                     <label className="form-label">Category</label>
                     <select
@@ -784,7 +784,7 @@ function ExpensesContent() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div className="form-grid-2" style={{ gap: '0.5rem' }}>
                   <div className="form-group">
                     <label className="form-label">Expense Date</label>
                     <input
@@ -869,7 +869,7 @@ function ExpensesContent() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div className="form-grid-2" style={{ gap: '0.5rem' }}>
                   <div className="form-group">
                     <label className="form-label">Category</label>
                     <select
@@ -896,7 +896,7 @@ function ExpensesContent() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <div className="form-grid-2" style={{ gap: '0.5rem' }}>
                   <div className="form-group">
                     <label className="form-label">Expense Date</label>
                     <input

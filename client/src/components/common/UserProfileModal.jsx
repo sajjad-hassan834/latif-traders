@@ -157,11 +157,10 @@ export default function UserProfileModal({ isOpen, onClose, initialTab = 'profil
         </div>
 
         {/* TABS HEADER */}
-        <div style={{
-          display: 'flex',
+        <div className="horizontal-scroll-tabs" style={{
           borderBottom: '1px solid #e2e8f0',
           background: '#fafafa',
-          padding: '0 1rem'
+          padding: '0 0.5rem'
         }}>
           <button
             onClick={() => setActiveTab('profile')}
@@ -234,7 +233,7 @@ export default function UserProfileModal({ isOpen, onClose, initialTab = 'profil
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className="form-grid-2" style={{ gap: '0.75rem' }}>
                 <div className="form-group">
                   <label className="form-label">Username</label>
                   <input
