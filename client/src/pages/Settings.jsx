@@ -38,6 +38,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState('');
   const [backupSuccess, setBackupSuccess] = useState('');
+  const [downloadingBackup, setDownloadingBackup] = useState(null);
 
   // Database Explorer States
   const [dbTables, setDbTables] = useState([]);
@@ -195,6 +196,44 @@ export default function Settings() {
       }
     } catch (err) {
       alert('Backup failed: ' + err.message);
+    }
+  };
+
+  const handleDownloadBackup = async (filename) => {
+    try {
+      setDownloadingBackup(filename);
+      const token = localStorage.getItem('lt_token');
+      const rawBase = import.meta.env.VITE_API_URL || '';
+      const apiBase = rawBase ? `${rawBase.replace(/\/$/, '')}/api` : '/api';
+
+      const res = await fetch(`${apiBase}/backups/download/${encodeURIComponent(filename)}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+
+      if (!res.ok) {
+        let errMsg = `Download failed with status ${res.status}`;
+        try {
+          const errData = await res.json();
+          if (errData.message) errMsg = errData.message;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
+
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(link);
+    } catch (err) {
+      alert('Failed to download database backup: ' + err.message);
+    } finally {
+      setDownloadingBackup(null);
     }
   };
 
@@ -388,15 +427,15 @@ export default function Settings() {
                     <td>{formatDateTime(b.created_at)}</td>
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                        <a
-                          href={`/api/backups/download/${encodeURIComponent(b.filename)}`}
-                          download
+                        <button
+                          onClick={() => handleDownloadBackup(b.filename)}
+                          disabled={downloadingBackup === b.filename}
                           className="btn btn-secondary btn-sm"
-                          title="Download .db to Computer / USB"
+                          title="Download authentic .db snapshot file"
                         >
-                          <Download size={14} />
-                          <span>Download</span>
-                        </a>
+                          <Download size={14} className={downloadingBackup === b.filename ? 'animate-spin' : ''} />
+                          <span>{downloadingBackup === b.filename ? 'Downloading...' : 'Download'}</span>
+                        </button>
                         <button
                           onClick={() => handleRestoreBackup(b.filename)}
                           className="btn btn-danger btn-sm"

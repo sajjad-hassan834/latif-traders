@@ -21,8 +21,120 @@ import { exportToCSV } from '../utils/exportCsv';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useAuth } from '../context/AuthContext';
 
+function ReportPrintHeader({
+  settings = {},
+  reportTitle,
+  reportSubtitle,
+  dateRangeText,
+  docRef,
+  user
+}) {
+  const shopName = settings.shop_name || localStorage.getItem('lt_shop_name') || 'Sajjad Traders';
+  const tagline = settings.tagline || localStorage.getItem('lt_shop_tagline') || 'Premium Frozen Food Wholesalers & Cold Chain Logistics';
+  const phone = settings.phone || '+92 300 1234567';
+  const email = settings.email || '';
+  const address = settings.address || 'Commercial Market, Lahore, Pakistan';
+  const generatedAt = new Date().toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+  const printedBy = user?.full_name || user?.username || 'Latif Admin (Owner)';
+
+  return (
+    <div className="report-print-header">
+      {/* Top Trademark & Corporate Brand Letterhead */}
+      <div className="report-brand-row">
+        <div className="report-brand-left">
+          <div className="report-logo-badge">
+            <div className="report-logo-icon">❄️</div>
+            <div>
+              <div className="report-company-name">
+                {shopName} <span className="trademark-symbol">™</span>
+              </div>
+              <div className="report-company-tagline">{tagline}</div>
+              <div className="report-company-contacts">
+                <span>📍 {address}</span>
+                <span>📞 {phone}</span>
+                {email && <span>✉️ {email}</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="report-brand-right">
+          <div className="report-seal-badge">
+            <span className="seal-verified">✔ AUDIT VERIFIED</span>
+            <span className="seal-reg">REGISTERED TRADEMARK</span>
+          </div>
+          <div className="report-ref-box">
+            <div className="report-ref-line"><strong>REF:</strong> {docRef || `TR-${Date.now().toString().slice(-6)}`}</div>
+            <div className="report-ref-line"><strong>DATE:</strong> {generatedAt}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Report Document Title Banner */}
+      <div className="report-title-banner">
+        <div>
+          <h2 className="report-main-title">{reportTitle}</h2>
+          {reportSubtitle && <div className="report-main-subtitle">{reportSubtitle}</div>}
+        </div>
+        <div className="report-meta-chips">
+          {dateRangeText && (
+            <div className="report-meta-chip">
+              <span className="chip-label">PERIOD:</span>
+              <span className="chip-val">{dateRangeText}</span>
+            </div>
+          )}
+          <div className="report-meta-chip">
+            <span className="chip-label">ISSUED BY:</span>
+            <span className="chip-val">{printedBy}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReportPrintFooter({ shopName = 'Sajjad Traders' }) {
+  return (
+    <div className="report-print-footer">
+      <div className="report-signatures-grid">
+        <div className="signature-box">
+          <div className="signature-line"></div>
+          <div className="signature-title">Prepared By / Cashier</div>
+          <div className="signature-sub">Signature & Timestamp</div>
+        </div>
+
+        <div className="signature-box">
+          <div className="signature-line"></div>
+          <div className="signature-title">Audited & Verified By</div>
+          <div className="signature-sub">Branch Manager / Accountant</div>
+        </div>
+
+        <div className="signature-stamp-box">
+          <div className="stamp-frame">
+            <span>OFFICIAL COMPANY SEAL</span>
+            <span className="stamp-sub">{shopName}™</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="report-legal-notice">
+        <p>
+          CONFIDENTIAL & PROPRIETARY • This is an official computer-generated audit record issued under the authority of {shopName}™ ERP Management System. Any alteration or unauthorized reproduction invalidates this certificate.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ReportsContent() {
-  const { isAdmin, canSell, canManageInventory, canViewFinances, role } = useAuth();
+  const { user, isAdmin, canSell, canManageInventory, canViewFinances, role } = useAuth();
 
   const [activeReport, setActiveReport] = useState(() => {
     if (role === 'sales') return 'register';
@@ -37,6 +149,24 @@ function ReportsContent() {
   const [registerDate, setRegisterDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Data states
+  const [settings, setSettings] = useState(() => ({
+    shop_name: localStorage.getItem('lt_shop_name') || 'Sajjad Traders',
+    tagline: localStorage.getItem('lt_shop_tagline') || 'Premium Frozen Food Wholesalers & Cold Chain Logistics',
+    phone: '+92 300 1234567',
+    address: 'Commercial Market, Lahore, Pakistan',
+    email: ''
+  }));
+
+  useEffect(() => {
+    api.get('/settings').then(res => {
+      if (res && res.success && res.settings) {
+        setSettings(res.settings);
+        if (res.settings.shop_name) localStorage.setItem('lt_shop_name', res.settings.shop_name);
+        if (res.settings.tagline) localStorage.setItem('lt_shop_tagline', res.settings.tagline);
+      }
+    }).catch(() => {});
+  }, []);
+
   const [pnl, setPnl] = useState(null);
   const [dailySales, setDailySales] = useState([]);
   const [stockReport, setStockReport] = useState(null);
@@ -47,6 +177,76 @@ function ReportsContent() {
   const [movementsReport, setMovementsReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
+
+  const getReportMeta = () => {
+    switch (activeReport) {
+      case 'pnl':
+        return {
+          title: 'PROFIT & LOSS (P&L) FINANCIAL STATEMENT',
+          subtitle: 'Net operating margin, gross sales turnover, cost of goods sold & operational expenses',
+          period: `${formatDate(startDate)} to ${formatDate(endDate)}`,
+          ref: `PNL-${startDate.replace(/-/g, '')}-${endDate.replace(/-/g, '')}`
+        };
+      case 'daily':
+        return {
+          title: 'DAILY SALES AUDIT LEDGER',
+          subtitle: 'Daily transaction logs, revenue totals, cash collections, and credit receivables',
+          period: `${formatDate(startDate)} to ${formatDate(endDate)}`,
+          ref: `DSL-${startDate.replace(/-/g, '')}-${endDate.replace(/-/g, '')}`
+        };
+      case 'register':
+        return {
+          title: 'END-OF-DAY SHIFT CLOSING REGISTER (Z-REPORT)',
+          subtitle: 'Counter cash reconciliation, debt recoveries, disbursements & cash drawer verification',
+          period: `Shift Date: ${formatDate(registerDate)}`,
+          ref: `ZREG-${registerDate.replace(/-/g, '')}`
+        };
+      case 'stock':
+        return {
+          title: 'INVENTORY STOCK VALUATION & ASSET AUDIT',
+          subtitle: 'Certified physical stock count, unit purchase valuation, retail value & gross potential margin',
+          period: `Valuation As Of: ${formatDate(new Date().toISOString().split('T')[0])}`,
+          ref: `STK-VAL-${new Date().toISOString().split('T')[0].replace(/-/g, '')}`
+        };
+      case 'expiry':
+        return {
+          title: 'BATCH EXPIRATION & QUALITY CONTROL STATEMENT',
+          subtitle: `Inventory batch health and near-expiry risk tracking within 15-day alert threshold`,
+          period: `Inspection Date: ${formatDate(new Date().toISOString().split('T')[0])}`,
+          ref: `EXP-${new Date().toISOString().split('T')[0].replace(/-/g, '')}`
+        };
+      case 'purchases':
+        return {
+          title: 'SUPPLIER RESTOCKING & PURCHASES LEDGER',
+          subtitle: 'Vendor procurement records, trade payables, cash disbursements & balance dues',
+          period: `${formatDate(startDate)} to ${formatDate(endDate)}`,
+          ref: `PUR-${startDate.replace(/-/g, '')}-${endDate.replace(/-/g, '')}`
+        };
+      case 'product-sales':
+        return {
+          title: 'PRODUCT-WISE SALES & MARGIN BREAKDOWN',
+          subtitle: 'Ranking of sold merchandise by gross revenue contribution, unit dispatch, and profit margin',
+          period: `${formatDate(startDate)} to ${formatDate(endDate)}`,
+          ref: `PRD-SLS-${startDate.replace(/-/g, '')}-${endDate.replace(/-/g, '')}`
+        };
+      case 'movements':
+        return {
+          title: 'MASTER STOCK MOVEMENT AUDIT TRAIL',
+          subtitle: 'Traceable history of all inventory restocks, sales deductions, returns & damage adjustments',
+          period: `${formatDate(startDate)} to ${formatDate(endDate)}`,
+          ref: `STK-MOV-${startDate.replace(/-/g, '')}-${endDate.replace(/-/g, '')}`
+        };
+      default:
+        return {
+          title: 'BUSINESS AUDIT REPORT',
+          subtitle: '',
+          period: `${formatDate(startDate)} to ${formatDate(endDate)}`,
+          ref: `REP-${Date.now().toString().slice(-6)}`
+        };
+    }
+  };
+
+  const currentMeta = getReportMeta();
 
   const loadReportData = async () => {
     try {
@@ -424,26 +624,33 @@ function ReportsContent() {
 
       {/* REPORT DISPLAY AREA */}
       <div className="printable-area">
-        {/* 1. PROFIT & LOSS STATEMENT */}
-        {activeReport === 'pnl' && (
-          <div className="card" style={{ maxWidth: '850px', margin: '0 auto' }}>
-            <div style={{ borderBottom: '2px solid #0f172a', paddingBottom: '0.75rem', marginBottom: '1.25rem', textAlign: 'center' }}>
-              <h2 style={{ fontSize: '1.35rem', fontWeight: 800 }}>LATIF TRADERS</h2>
-              <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0284c7' }}>Profit & Loss (P&L) Statement</div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>
-                Period: {formatDate(startDate)} to {formatDate(endDate)}
-              </div>
-            </div>
+        {/* Subtle diagonal background watermark for authentic business branding */}
+        <div className="report-watermark">
+          {settings.shop_name || 'Sajjad Traders'}™ • OFFICIAL BUSINESS RECORD
+        </div>
 
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>Calculating financial statements...</div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* REVENUE SECTION */}
-                <div>
-                  <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginBottom: '0.4rem' }}>
-                    1. Revenue / Turnover
-                  </h4>
+        <div className="report-print-container">
+          <ReportPrintHeader
+            settings={settings}
+            reportTitle={currentMeta.title}
+            reportSubtitle={currentMeta.subtitle}
+            dateRangeText={currentMeta.period}
+            docRef={currentMeta.ref}
+            user={user}
+          />
+
+          {/* 1. PROFIT & LOSS STATEMENT */}
+          {activeReport === 'pnl' && (
+            <div className="card" style={{ maxWidth: '850px', margin: '0 auto', width: '100%' }}>
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>Calculating financial statements...</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* REVENUE SECTION */}
+                  <div>
+                    <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginBottom: '0.4rem' }}>
+                      1. Revenue / Turnover
+                    </h4>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.825rem' }}>
                     <span>Gross Sales {invoiceCount > 0 ? `(${invoiceCount} invoices)` : ''}</span>
                     <span style={{ fontWeight: 600 }}>{formatPKR(grossSales)}</span>
@@ -572,18 +779,11 @@ function ReportsContent() {
 
         {/* 3. END-OF-DAY REGISTER / SHIFT CLOSING Z-REPORT */}
         {activeReport === 'register' && (
-          <div className="card" style={{ maxWidth: '650px', margin: '0 auto' }}>
+          <div className="card" style={{ maxWidth: '650px', margin: '0 auto', width: '100%' }}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '2.5rem' }}>Loading Day Register...</div>
             ) : dayRegister ? (
               <div>
-                <div style={{ textAlign: 'center', borderBottom: '2px dashed #94a3b8', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
-                  <h2 style={{ fontSize: '1.3rem', fontWeight: 800 }}>{regSettings.shop_name || 'LATIF TRADERS'}</h2>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284c7' }}>END-OF-DAY REGISTER / Z-REPORT</div>
-                  <div style={{ fontSize: '0.775rem', color: '#64748b' }}>
-                    Shift Closing Date: <strong>{formatDate(dayRegister.date || registerDate)}</strong>
-                  </div>
-                </div>
 
                 {/* COUNTER SALES BREAKDOWN */}
                 <div style={{ marginBottom: '1rem' }}>
@@ -687,8 +887,9 @@ function ReportsContent() {
                 )}
               </div>
             ) : (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                No register data found for this date.
+              <div style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                <p style={{ fontWeight: 600, fontSize: '0.95rem', color: '#475569' }}>No register transactions recorded for {formatDate(registerDate)}.</p>
+                <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>Select another shift date above or conduct counter sales in POS.</p>
               </div>
             )}
           </div>
@@ -1007,6 +1208,9 @@ function ReportsContent() {
             </div>
           </div>
         )}
+
+          <ReportPrintFooter shopName={settings.shop_name || 'Sajjad Traders'} />
+        </div>
       </div>
     </div>
   );

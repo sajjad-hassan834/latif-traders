@@ -365,7 +365,7 @@ exports.getDayRegister = (req, res) => {
         COALESCE(SUM(CASE WHEN payment_method = 'Cash' THEN amount ELSE 0 END), 0) as cash_recovered,
         COALESCE(SUM(CASE WHEN payment_method != 'Cash' THEN amount ELSE 0 END), 0) as bank_recovered
       FROM payments
-      WHERE payment_date = ? AND party_type = 'Customer' AND (reference_type IS NULL OR reference_type != 'SALE')
+      WHERE payment_date = ? AND (UPPER(party_type) = 'CUSTOMER' OR party_type = 'Customer') AND reference_id IS NULL
     `).get(date);
 
     // Cash Expenses paid today
@@ -393,7 +393,7 @@ exports.getDayRegister = (req, res) => {
         COALESCE(SUM(CASE WHEN payment_method = 'Cash' THEN amount ELSE 0 END), 0) as cash_disbursed,
         COALESCE(SUM(CASE WHEN payment_method != 'Cash' THEN amount ELSE 0 END), 0) as bank_disbursed
       FROM payments
-      WHERE payment_date = ? AND party_type = 'Supplier' AND (reference_type IS NULL OR reference_type != 'PURCHASE')
+      WHERE payment_date = ? AND (UPPER(party_type) = 'SUPPLIER' OR party_type = 'Supplier') AND reference_id IS NULL
     `).get(date);
 
     // Net Cash in Drawer
@@ -429,7 +429,8 @@ exports.getDayRegister = (req, res) => {
       settings
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: 'Failed to generate register report.' });
+    console.error('getDayRegister error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to generate register report: ' + err.message });
   }
 };
 
