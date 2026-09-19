@@ -37,7 +37,7 @@ const MENU_SECTIONS = [
     title: 'Inventory & Stock',
     roles: ['admin', 'inventory', 'sales'],
     items: [
-      { id: 'inventory', label: 'Frozen Stock', icon: Package, roles: ['admin', 'inventory', 'sales'] },
+      { id: 'inventory', label: 'All Products', icon: Package, roles: ['admin', 'inventory', 'sales'] },
       { id: 'stock-adjust', label: 'Stock Adjustments', icon: Sliders, roles: ['admin', 'inventory'] },
       { id: 'purchases', label: 'Purchases / Restock', icon: ArrowDownToLine, roles: ['admin', 'inventory', 'accountant'] }
     ]

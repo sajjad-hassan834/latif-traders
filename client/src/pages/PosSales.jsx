@@ -31,7 +31,7 @@ import { useAuth } from '../context/AuthContext';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
 
 function getCategoryIcon(catName = '') {
-  const name = catName.toLowerCase();
+  const name = String(catName || '').toLowerCase();
   if (name.includes('chicken') || name.includes('nugget')) return '🍗';
   if (name.includes('fries') || name.includes('potato')) return '🍟';
   if (name.includes('paratha') || name.includes('roti') || name.includes('bread')) return '🫓';
@@ -179,21 +179,23 @@ export default function PosSales() {
 
   const filteredProducts = products.filter(p => {
     const matchesCat = selectedCategory === 'ALL' || p.category_id === Number(selectedCategory);
-    const q = searchQuery.toLowerCase().trim();
-    const matchesSearch = !q ||
-      p.name.toLowerCase().includes(q) ||
-      p.sku.toLowerCase().includes(q) ||
-      (p.barcode && p.barcode.toLowerCase().includes(q)) ||
-      (p.brand && p.brand.toLowerCase().includes(q));
-    return matchesCat && matchesSearch;
+    const q = String(searchQuery || '').toLowerCase().trim();
+    if (!matchesCat) return false;
+    if (!q) return true;
+    const nameStr = String(p.name || '').toLowerCase();
+    const skuStr = String(p.sku || '').toLowerCase();
+    const barcodeStr = String(p.barcode || '').toLowerCase();
+    const brandStr = String(p.brand || '').toLowerCase();
+    return nameStr.includes(q) || skuStr.includes(q) || barcodeStr.includes(q) || brandStr.includes(q);
   });
 
   const handleBarcodeSubmit = (e) => {
-    if (e.key === 'Enter' && searchQuery.trim()) {
+    if (e.key === 'Enter' && searchQuery?.trim()) {
       e.preventDefault();
+      const q = String(searchQuery).trim().toLowerCase();
       const exactMatch = products.find(p =>
-        (p.barcode && p.barcode.toLowerCase() === searchQuery.trim().toLowerCase()) ||
-        p.sku.toLowerCase() === searchQuery.trim().toLowerCase()
+        (p.barcode && String(p.barcode).toLowerCase() === q) ||
+        (p.sku && String(p.sku).toLowerCase() === q)
       );
 
       if (exactMatch) {

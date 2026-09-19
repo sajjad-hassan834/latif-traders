@@ -37,7 +37,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
     dashboard: 'Business Overview & Analytics',
     pos: 'Point of Sale (POS) Counter',
     sales: 'Sales Transactions & Invoices',
-    inventory: 'Frozen Food Inventory & Batches',
+    inventory: 'All Products Inventory & Batches',
     'stock-adjust': 'Stock Adjustments & Waste Log',
     purchases: 'Supplier Purchases & Restocking',
     customers: 'Customer Accounts & Ledgers',
