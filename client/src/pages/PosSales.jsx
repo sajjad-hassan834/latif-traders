@@ -78,6 +78,11 @@ export default function PosSales() {
   });
   const [showHeldModal, setShowHeldModal] = useState(false);
 
+  // Recent Receipts / Invoices View Modal State
+  const [showRecentInvoicesModal, setShowRecentInvoicesModal] = useState(false);
+  const [recentInvoices, setRecentInvoices] = useState([]);
+  const [recentSearch, setRecentSearch] = useState('');
+
   // Quick Add Item Modal State
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickItem, setQuickItem] = useState({
