@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Eye, Edit, AlertTriangle, Layers, Clock, Download, Barcode } from 'lucide-react';
+import { Search, Plus, Eye, Edit, AlertTriangle, Layers, Clock, Download, Barcode, ChevronDown, MoreVertical } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import BarcodeLabelModal from '../components/common/BarcodeLabelModal';
 
 export default function Inventory() {
-  const { canManageInventory } = useAuth();
+  const { isAdmin, canManageInventory } = useAuth();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]);
@@ -25,6 +25,13 @@ export default function Inventory() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [batches, setBatches] = useState([]);
   const [movements, setMovements] = useState([]);
+  const [actionMenuId, setActionMenuId] = useState(null);
+
+  useEffect(() => {
+    const handleOutsideClick = () => setActionMenuId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -281,16 +288,16 @@ export default function Inventory() {
           <table className="table">
             <thead>
               <tr>
-                <th>Product Name</th>
-                <th>SKU / Barcode</th>
-                <th>Category</th>
-                <th style={{ textAlign: 'center' }}>Current Stock</th>
-                <th style={{ textAlign: 'center' }}>Unit</th>
-                <th style={{ textAlign: 'right' }}>Cost Price</th>
-                <th style={{ textAlign: 'right' }}>Sale Price</th>
-                <th style={{ textAlign: 'right' }}>Wholesale</th>
-                <th>Location</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
+                <th style={{ minWidth: '170px' }}>Product Name</th>
+                <th style={{ minWidth: '110px' }}>SKU / Barcode</th>
+                <th style={{ minWidth: '120px' }}>Category</th>
+                <th style={{ textAlign: 'center', minWidth: '90px' }}>Current Stock</th>
+                <th style={{ textAlign: 'center', minWidth: '55px' }}>Unit</th>
+                <th style={{ textAlign: 'right', minWidth: '80px' }}>Cost Price</th>
+                <th style={{ textAlign: 'right', minWidth: '80px' }}>Sale Price</th>
+                <th style={{ textAlign: 'right', minWidth: '80px' }}>Wholesale</th>
+                <th style={{ minWidth: '110px' }}>Location</th>
+                <th style={{ textAlign: 'center', width: '85px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -309,51 +316,146 @@ export default function Inventory() {
                   return (
                     <tr key={p.id}>
                       <td style={{ fontWeight: 600 }}>
-                        <div>{p.name}</div>
-                        {p.brand && <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{p.brand}</div>}
+                        <div style={{ whiteSpace: 'nowrap' }}>{p.name}</div>
+                        {p.brand && <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>{p.brand}</div>}
                       </td>
-                      <td className="mono" style={{ fontSize: '0.75rem' }}>
+                      <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
                         <div>{p.sku}</div>
                         {p.barcode && <div style={{ color: '#64748b' }}>{p.barcode}</div>}
                       </td>
-                      <td>{p.category_name || '-'}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{p.category_name || '-'}</td>
                       <td style={{ textAlign: 'center' }}>
                         <span className={`badge ${isOut ? 'badge-danger' : isLow ? 'badge-warning' : 'badge-success'}`}>
                           {p.current_stock}
                         </span>
                       </td>
                       <td style={{ textAlign: 'center', color: '#64748b' }}>{p.unit}</td>
-                      <td style={{ textAlign: 'right' }}>{formatPKR(p.purchase_price)}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#0284c7' }}>{formatPKR(p.sale_price)}</td>
-                      <td style={{ textAlign: 'right' }}>{formatPKR(p.wholesale_price)}</td>
-                      <td><span style={{ fontSize: '0.75rem', color: '#64748b' }}>{p.storage_location || 'Freezer'}</span></td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{formatPKR(p.purchase_price)}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#0284c7', whiteSpace: 'nowrap' }}>{formatPKR(p.sale_price)}</td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{formatPKR(p.wholesale_price)}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}><span style={{ fontSize: '0.75rem', color: '#64748b' }}>{p.storage_location || 'Freezer'}</span></td>
                       <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
                           <button
-                            onClick={() => openBarcode(p)}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActionMenuId(actionMenuId === p.id ? null : p.id);
+                            }}
                             className="btn btn-secondary btn-sm"
-                            title="Print Barcode Labels"
+                            style={{
+                              padding: '3px 8px',
+                              fontSize: '0.725rem',
+                              fontWeight: 600,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              borderRadius: '5px'
+                            }}
+                            title="Product Actions"
                           >
-                            <Barcode size={13} />
-                            <span>Barcode</span>
+                            <span>Action</span>
+                            <ChevronDown size={12} />
                           </button>
-                          <button
-                            onClick={() => viewProductDetail(p.id)}
-                            className="btn btn-secondary btn-sm"
-                            title="View Batches & Movements"
-                          >
-                            <Eye size={13} />
-                            <span>Batches</span>
-                          </button>
-                          {canManageInventory && (
-                            <button
-                              onClick={() => openEditProduct(p)}
-                              className="btn btn-secondary btn-sm"
-                              title="Edit Product Details & Prices"
+
+                          {actionMenuId === p.id && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                right: 0,
+                                top: '100%',
+                                marginTop: '4px',
+                                background: '#ffffff',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '6px',
+                                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.15), 0 4px 6px -2px rgba(0,0,0,0.08)',
+                                zIndex: 100,
+                                minWidth: '155px',
+                                padding: '4px 0',
+                                textAlign: 'left'
+                              }}
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              <Edit size={13} />
-                              <span>Edit</span>
-                            </button>
+                              {canManageInventory && (
+                                <button
+                                  onClick={() => {
+                                    setActionMenuId(null);
+                                    openEditProduct(p);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '7px 12px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    background: 'none',
+                                    border: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    color: '#1e293b',
+                                    cursor: 'pointer',
+                                    textAlign: 'left'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                >
+                                  <Edit size={13} color="#0284c7" />
+                                  <span>Edit Product</span>
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => {
+                                  setActionMenuId(null);
+                                  openBarcode(p);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  background: 'none',
+                                  border: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#1e293b',
+                                  cursor: 'pointer',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                              >
+                                <Barcode size={13} color="#6366f1" />
+                                <span>Barcode Sticker</span>
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setActionMenuId(null);
+                                  viewProductDetail(p.id);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  background: 'none',
+                                  border: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#1e293b',
+                                  cursor: 'pointer',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                              >
+                                <Eye size={13} color="#10b981" />
+                                <span>Batches & History</span>
+                              </button>
+                            </div>
                           )}
                         </div>
                       </td>
@@ -700,12 +802,23 @@ export default function Inventory() {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Brand</label>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>Brand</span>
+                      {isAdmin ? (
+                        <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>Admin Edit</span>
+                      ) : (
+                        <span className="badge badge-warning" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>Admin Only</span>
+                      )}
+                    </label>
                     <input
                       type="text"
                       className="form-control"
-                      value={editFormData.brand}
+                      value={editFormData.brand || ''}
                       onChange={(e) => setEditFormData({ ...editFormData, brand: e.target.value })}
+                      disabled={!isAdmin}
+                      style={!isAdmin ? { background: '#f8fafc', color: '#64748b', cursor: 'not-allowed' } : {}}
+                      title={!isAdmin ? 'Brand name can only be edited by an Administrator' : ''}
+                      placeholder="e.g. Big Bird / Dawn"
                     />
                   </div>
                 </div>

@@ -24,7 +24,18 @@ function MainApp() {
   const { user, loading, role, roleLabel, defaultTab, hasTabAccess } = useAuth();
   const [currentTab, setTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('lt_sidebar_collapsed') === 'true';
+  });
   const [alerts, setAlerts] = useState({ low_stock_count: 0, near_expiry_count: 0 });
+
+  const toggleSidebarCollapse = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('lt_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   // When user loads or changes, ensure currentTab is an allowed tab
   useEffect(() => {
@@ -42,17 +53,24 @@ function MainApp() {
         if (res && res.success) {
           setAlerts({
             low_stock_count: res.data?.low_stock_count || 0,
-            near_expiry_count: res.data?.near_expiry_count || 0
+            near_expiry_count: res.data?.near_expiry_count || 0,
+            low_stock_items: res.data?.low_stock_items || [],
+            near_expiry_batches: res.data?.near_expiry_batches || []
           });
         }
       }).catch(err => console.error(err));
     }
   }, [user, currentTab]);
 
-  // Global Quick Switch Shortcuts (Alt + 0-7) with role validation
+  // Global Quick Switch Shortcuts (Alt + 0-7, Alt + B for sidebar) with role validation
   useEffect(() => {
     const handleGlobalShortcuts = (e) => {
       if (!e.altKey) return;
+      if (e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebarCollapse();
+        return;
+      }
       const targetMap = {
         '1': 'pos',
         '2': 'inventory',
@@ -100,7 +118,7 @@ function MainApp() {
   const isTabAllowed = hasTabAccess(currentTab);
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       {sidebarOpen && (
         <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
       )}
@@ -109,6 +127,8 @@ function MainApp() {
         setTab={setTab}
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
+        isCollapsed={sidebarCollapsed}
+        toggleCollapse={toggleSidebarCollapse}
       />
 
       <div className="main-content">
@@ -116,6 +136,8 @@ function MainApp() {
           currentTab={currentTab}
           setTab={setTab}
           toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          sidebarCollapsed={sidebarCollapsed}
+          toggleSidebarCollapse={toggleSidebarCollapse}
           alerts={alerts}
         />
 

@@ -9,12 +9,15 @@ import {
   KeyRound,
   ShieldCheck,
   LogOut,
-  Users
+  Users,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import UserProfileModal from '../common/UserProfileModal';
+import NotificationCenter from '../common/NotificationCenter';
 
-export default function Header({ currentTab, setTab, toggleSidebar, alerts = {} }) {
+export default function Header({ currentTab, setTab, toggleSidebar, sidebarCollapsed, toggleSidebarCollapse, alerts = {} }) {
   const { user, logout, role, roleLabel, isAdmin, canSell, hasTabAccess } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -60,6 +63,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, alerts = {} 
     <>
       <header className="top-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+          {/* Mobile hamburger */}
           <button
             onClick={toggleSidebar}
             className="btn btn-secondary btn-sm mobile-hamburger-btn"
@@ -67,6 +71,17 @@ export default function Header({ currentTab, setTab, toggleSidebar, alerts = {} 
           >
             <Menu size={16} />
           </button>
+
+          {/* Desktop sidebar toggle button */}
+          <button
+            onClick={toggleSidebarCollapse}
+            className="btn btn-secondary btn-sm hide-mobile"
+            title={sidebarCollapsed ? "Open Sidebar Menu (Alt + B)" : "Close Sidebar Menu (Alt + B)"}
+            style={{ padding: '5px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen size={16} color="#0284c7" /> : <PanelLeftClose size={16} color="#64748b" />}
+          </button>
+
           <h1 className="page-title" title={tabTitles[currentTab] || 'Latif Traders'}>
             {tabTitles[currentTab] || 'Latif Traders'}
           </h1>
@@ -98,6 +113,9 @@ export default function Header({ currentTab, setTab, toggleSidebar, alerts = {} 
               <span>{alerts.near_expiry_count} <span className="hide-mobile">Expiring</span></span>
             </button>
           )}
+
+          {/* Notification Center */}
+          <NotificationCenter alerts={alerts} setTab={setTab} />
 
           {/* POS Quick Button */}
           {canSell && currentTab !== 'pos' && (

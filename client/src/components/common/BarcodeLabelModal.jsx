@@ -118,7 +118,7 @@ export default function BarcodeLabelModal({ product, onClose }) {
               <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '2px' }}>Format</label>
               <select
                 className="form-control"
-                style={{ height: '28px', fontSize: '0.8rem' }}
+                style={{ height: '34px', fontSize: '0.825rem', minWidth: '240px', padding: '0.35rem 0.65rem' }}
                 value={labelSize}
                 onChange={(e) => setLabelSize(e.target.value)}
               >
@@ -130,60 +130,166 @@ export default function BarcodeLabelModal({ product, onClose }) {
 
           {/* PRINTABLE BARCODE LABELS CONTAINER */}
           <div style={{ textAlign: 'center', marginBottom: '0.5rem', fontSize: '0.75rem', color: '#64748b' }}>
-            Showing sticker for: <strong style={{ color: '#0f172a' }}>{product.name}</strong> • Code: <strong className="mono" style={{ color: '#0284c7' }}>{code}</strong>
+            Product: <strong style={{ color: '#0f172a' }}>{product.name}</strong> • Barcode: <strong className="mono" style={{ color: '#0284c7' }}>{code}</strong>
           </div>
+
           <div className="printable-area">
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: labelSize === 'single' ? '1fr' : 'repeat(3, 1fr)',
-              gap: '8px',
-              maxWidth: labelSize === 'single' ? '240px' : '100%',
-              margin: '0 auto',
-              background: '#fff',
-              padding: '12px',
-              borderRadius: '6px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-            }}>
-              {Array.from({ length: copies }).map((_, idx) => (
-                <div key={idx} style={{
-                  border: '1px dashed #cbd5e1',
-                  borderRadius: '4px',
-                  padding: '6px',
-                  textAlign: 'center',
-                  background: '#fff'
-                }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase' }}>
-                    LATIF TRADERS
-                  </div>
-                  <div style={{ fontSize: '9px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {product.name}
+            {labelSize === 'single' ? (
+              <>
+                {/* On-screen preview: Show exactly 1 clean sticker */}
+                <div style={{
+                  maxWidth: '240px',
+                  margin: '0 auto',
+                  background: '#fff',
+                  padding: '12px',
+                  borderRadius: '6px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                }} className="thermal-preview-single">
+                  <div style={{
+                    border: '1px dashed #cbd5e1',
+                    borderRadius: '4px',
+                    padding: '8px',
+                    textAlign: 'center',
+                    background: '#fff'
+                  }}>
+                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase' }}>
+                      LATIF TRADERS
+                    </div>
+                    <div style={{ fontSize: '9px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {product.name}
+                    </div>
+
+                    {/* SVG Barcode */}
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '4px 0', height: '28px' }}>
+                      <svg height="28" width="120">
+                        {bars.reduce((acc, bar, i) => {
+                          const x = acc.currentX;
+                          acc.currentX += bar.width + 1;
+                          if (bar.isBlack) {
+                            acc.elements.push(
+                              <rect key={i} x={x} y="0" width={bar.width} height="28" fill="#000" />
+                            );
+                          }
+                          return acc;
+                        }, { currentX: 0, elements: [] }).elements}
+                      </svg>
+                    </div>
+
+                    <div className="mono" style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '1px' }}>
+                      {code}
+                    </div>
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#0284c7', marginTop: '2px' }}>
+                      Price: {formatPKR(product.sale_price)}
+                    </div>
                   </div>
 
-                  {/* SVG Barcode */}
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '4px 0', height: '28px' }}>
-                    <svg height="28" width="120">
-                      {bars.reduce((acc, bar, i) => {
-                        const x = acc.currentX;
-                        acc.currentX += bar.width + 1;
-                        if (bar.isBlack) {
-                          acc.elements.push(
-                            <rect key={i} x={x} y="0" width={bar.width} height="28" fill="#000" />
-                          );
-                        }
-                        return acc;
-                      }, { currentX: 0, elements: [] }).elements}
-                    </svg>
-                  </div>
-
-                  <div className="mono" style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '1px' }}>
-                    {code}
-                  </div>
-                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#0284c7', marginTop: '2px' }}>
-                    Price: {formatPKR(product.sale_price)}
+                  <div style={{
+                    textAlign: 'center',
+                    marginTop: '8px',
+                    fontSize: '0.72rem',
+                    color: '#0284c7',
+                    fontWeight: 700,
+                    background: '#f0f9ff',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    border: '1px solid #bae6fd'
+                  }}>
+                    {copies === 1 ? '1 Sticker Ready to Print' : `${copies} Identical Stickers Will Be Printed`}
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Print engine: repeats for thermal printer when window.print() triggers */}
+                <div className="print-only-copies" style={{ display: 'none' }}>
+                  {Array.from({ length: copies }).map((_, idx) => (
+                    <div key={idx} style={{
+                      pageBreakInside: 'avoid',
+                      marginBottom: '10px',
+                      padding: '8px',
+                      textAlign: 'center',
+                      background: '#fff'
+                    }}>
+                      <div style={{ fontSize: '10px', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase' }}>
+                        LATIF TRADERS
+                      </div>
+                      <div style={{ fontSize: '9px', fontWeight: 600, color: '#334155' }}>
+                        {product.name}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '4px 0', height: '28px' }}>
+                        <svg height="28" width="120">
+                          {bars.reduce((acc, bar, i) => {
+                            const x = acc.currentX;
+                            acc.currentX += bar.width + 1;
+                            if (bar.isBlack) {
+                              acc.elements.push(
+                                <rect key={i} x={x} y="0" width={bar.width} height="28" fill="#000" />
+                              );
+                            }
+                            return acc;
+                          }, { currentX: 0, elements: [] }).elements}
+                        </svg>
+                      </div>
+                      <div className="mono" style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '1px' }}>
+                        {code}
+                      </div>
+                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#0284c7', marginTop: '2px' }}>
+                        Price: {formatPKR(product.sale_price)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              /* A4 Sheet Grid */
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '8px',
+                maxWidth: '100%',
+                margin: '0 auto',
+                background: '#fff',
+                padding: '12px',
+                borderRadius: '6px',
+                maxHeight: '400px',
+                overflowY: 'auto'
+              }}>
+                {Array.from({ length: copies }).map((_, idx) => (
+                  <div key={idx} style={{
+                    border: '1px dashed #cbd5e1',
+                    borderRadius: '4px',
+                    padding: '6px',
+                    textAlign: 'center',
+                    background: '#fff'
+                  }}>
+                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase' }}>
+                      LATIF TRADERS
+                    </div>
+                    <div style={{ fontSize: '9px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {product.name}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '4px 0', height: '28px' }}>
+                      <svg height="28" width="120">
+                        {bars.reduce((acc, bar, i) => {
+                          const x = acc.currentX;
+                          acc.currentX += bar.width + 1;
+                          if (bar.isBlack) {
+                            acc.elements.push(
+                              <rect key={i} x={x} y="0" width={bar.width} height="28" fill="#000" />
+                            );
+                          }
+                          return acc;
+                        }, { currentX: 0, elements: [] }).elements}
+                      </svg>
+                    </div>
+                    <div className="mono" style={{ fontSize: '9px', fontWeight: 700, letterSpacing: '1px' }}>
+                      {code}
+                    </div>
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#0284c7', marginTop: '2px' }}>
+                      Price: {formatPKR(product.sale_price)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

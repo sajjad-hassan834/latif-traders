@@ -185,6 +185,9 @@ exports.updateProduct = (req, res) => {
       }
     }
 
+    const isAdmin = req.user && req.user.role === 'admin';
+    const updatedBrand = isAdmin && brand !== undefined ? (brand ? brand.trim() : null) : existing.brand;
+
     db.prepare(`
       UPDATE products SET
         name = ?, sku = ?, barcode = ?, category_id = ?, brand = ?, unit = ?,
@@ -197,7 +200,7 @@ exports.updateProduct = (req, res) => {
       sku ? sku.trim() : existing.sku,
       barcode !== undefined ? barcode : existing.barcode,
       category_id !== undefined ? category_id : existing.category_id,
-      brand !== undefined ? brand : existing.brand,
+      updatedBrand,
       unit || existing.unit,
       Number(purchase_price) ?? existing.purchase_price,
       Number(sale_price) ?? existing.sale_price,

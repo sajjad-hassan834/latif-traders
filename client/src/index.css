@@ -125,6 +125,16 @@ h1, h2, h3, h4, h5, h6 {
   bottom: 0;
   z-index: 100;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Collapsed Sidebar */
+.sidebar-collapsed .sidebar {
+  transform: translateX(-100%);
+}
+
+.sidebar-collapsed .main-content {
+  margin-left: 0 !important;
 }
 
 .sidebar-header {
@@ -304,6 +314,7 @@ h1, h2, h3, h4, h5, h6 {
   flex-direction: column;
   min-height: 100vh;
   background: var(--bg-app);
+  transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Header */
@@ -939,6 +950,12 @@ h1, h2, h3, h4, h5, h6 {
     left: 0;
     top: 0;
     width: 100%;
+  }
+  .thermal-preview-single {
+    display: none !important;
+  }
+  .print-only-copies {
+    display: block !important;
   }
 }
 

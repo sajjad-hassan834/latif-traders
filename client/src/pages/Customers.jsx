@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, FileText, DollarSign, Printer, Search, Edit } from 'lucide-react';
+import { Users, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 
@@ -15,6 +15,13 @@ export default function Customers() {
   const [showPayModal, setShowPayModal] = useState(false);
   const [selectedCust, setSelectedCust] = useState(null);
   const [ledgerData, setLedgerData] = useState(null);
+  const [actionMenuId, setActionMenuId] = useState(null);
+
+  useEffect(() => {
+    const handleOutsideClick = () => setActionMenuId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   // Add Customer Form
   const [formData, setFormData] = useState({
@@ -172,11 +179,11 @@ export default function Customers() {
               <tr>
                 <th>Customer Name</th>
                 <th>Type</th>
-                <th>Phone</th>
-                <th>Address</th>
-                <th style={{ textAlign: 'right' }}>Credit Limit</th>
-                <th style={{ textAlign: 'right' }}>Current Balance</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
+                <th style={{ minWidth: '130px' }}>Phone</th>
+                <th style={{ minWidth: '150px' }}>Address</th>
+                <th style={{ textAlign: 'right', minWidth: '100px' }}>Credit Limit</th>
+                <th style={{ textAlign: 'right', minWidth: '110px' }}>Current Balance</th>
+                <th style={{ textAlign: 'center', width: '85px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -187,16 +194,16 @@ export default function Customers() {
               ) : (
                 customers.map(c => (
                   <tr key={c.id}>
-                    <td style={{ fontWeight: 600 }}>{c.name}</td>
+                    <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{c.name}</td>
                     <td>
                       <span className={`badge ${c.customer_type === 'Wholesale' ? 'badge-info' : 'badge-success'}`}>
                         {c.customer_type}
                       </span>
                     </td>
-                    <td>{c.phone || '-'}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{c.phone || '-'}</td>
                     <td><span style={{ fontSize: '0.85rem', color: '#64748b' }}>{c.address || '-'}</span></td>
-                    <td style={{ textAlign: 'right' }}>{c.credit_limit > 0 ? formatPKR(c.credit_limit) : 'No Limit'}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{c.credit_limit > 0 ? formatPKR(c.credit_limit) : 'No Limit'}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>
                       {c.current_balance > 0 ? (
                         <span style={{ color: '#ef4444' }}>{formatPKR(c.current_balance)}</span>
                       ) : (
@@ -204,32 +211,127 @@ export default function Customers() {
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
                         <button
-                          onClick={() => openEditCustomer(c)}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActionMenuId(actionMenuId === c.id ? null : c.id);
+                          }}
                           className="btn btn-secondary btn-sm"
-                          title="Edit Customer Details"
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '0.725rem',
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            borderRadius: '5px'
+                          }}
+                          title="Customer Actions"
                         >
-                          <Edit size={14} />
-                          <span>Edit</span>
+                          <span>Action</span>
+                          <ChevronDown size={12} />
                         </button>
-                        <button
-                          onClick={() => openLedger(c)}
-                          className="btn btn-secondary btn-sm"
-                          title="Customer Statement / Ledger"
-                        >
-                          <FileText size={15} />
-                          <span>Ledger</span>
-                        </button>
-                        {c.current_balance > 0 && (
-                          <button
-                            onClick={() => openPaymentModal(c)}
-                            className="btn btn-primary btn-sm"
-                            title="Receive Payment"
+
+                        {actionMenuId === c.id && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              right: 0,
+                              top: '100%',
+                              marginTop: '4px',
+                              background: '#ffffff',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.15), 0 4px 6px -2px rgba(0,0,0,0.08)',
+                              zIndex: 100,
+                              minWidth: '150px',
+                              padding: '4px 0',
+                              textAlign: 'left'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <DollarSign size={15} />
-                            <span>Receive</span>
-                          </button>
+                            <button
+                              onClick={() => {
+                                setActionMenuId(null);
+                                openEditCustomer(c);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '7px 12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                background: 'none',
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                color: '#1e293b',
+                                cursor: 'pointer',
+                                textAlign: 'left'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                            >
+                              <Edit size={13} color="#0284c7" />
+                              <span>Edit Customer</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setActionMenuId(null);
+                                openLedger(c);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '7px 12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                background: 'none',
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                color: '#1e293b',
+                                cursor: 'pointer',
+                                textAlign: 'left'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                            >
+                              <FileText size={13} color="#6366f1" />
+                              <span>View Statement</span>
+                            </button>
+
+                            {c.current_balance > 0 && (
+                              <button
+                                onClick={() => {
+                                  setActionMenuId(null);
+                                  openPaymentModal(c);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  background: 'none',
+                                  border: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#15803d',
+                                  cursor: 'pointer',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f0fdf4'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                              >
+                                <DollarSign size={13} color="#15803d" />
+                                <span>Receive Payment</span>
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </td>
