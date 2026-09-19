@@ -1,5 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Sliders, Database, Download, RotateCcw, Save, ShieldAlert, CheckCircle, Table, RefreshCw, ExternalLink } from 'lucide-react';
+import {
+  Sliders,
+  Database,
+  Download,
+  RotateCcw,
+  Save,
+  ShieldAlert,
+  CheckCircle,
+  Table,
+  RefreshCw,
+  ExternalLink,
+  Edit2,
+  Search,
+  X,
+  Check
+} from 'lucide-react';
 import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
 
@@ -29,6 +44,11 @@ export default function Settings() {
   const [selectedTable, setSelectedTable] = useState('products');
   const [tableData, setTableData] = useState(null);
   const [loadingTable, setLoadingTable] = useState(false);
+  const [tableCategory, setTableCategory] = useState('all');
+  const [tableSearch, setTableSearch] = useState('');
+  const [editingRow, setEditingRow] = useState(null);
+  const [editRowData, setEditRowData] = useState({});
+  const [savingRow, setSavingRow] = useState(false);
 
   const loadData = async () => {
     try {
@@ -38,7 +58,11 @@ export default function Settings() {
         api.get('/backups')
       ]);
 
-      if (sRes.success) setSettings(prev => ({ ...prev, ...sRes.settings }));
+      if (sRes.success) {
+        setSettings(prev => ({ ...prev, ...sRes.settings }));
+        if (sRes.settings.shop_name) localStorage.setItem('lt_shop_name', sRes.settings.shop_name);
+        if (sRes.settings.tagline) localStorage.setItem('lt_shop_tagline', sRes.settings.tagline);
+      }
       if (bRes.success) setBackups(bRes.backups);
     } catch (err) {
       console.error(err);
@@ -78,6 +102,61 @@ export default function Settings() {
     loadTableData('products');
   }, []);
 
+  const categoryTableMap = {
+    inventory: ['products', 'batches', 'categories', 'units', 'inventory_movements', 'stock_adjustments'],
+    sales: ['sales', 'sale_items', 'returns', 'return_items'],
+    purchases: ['purchases', 'purchase_items'],
+    parties: ['customers', 'suppliers', 'payments'],
+    finances: ['expenses', 'expense_categories'],
+    system: ['settings', 'users', 'audit_logs']
+  };
+
+  const filteredTables = dbTables.filter(t => {
+    if (tableCategory === 'all') return true;
+    return (categoryTableMap[tableCategory] || []).includes(t.name);
+  });
+
+  const searchedRows = (tableData?.rows || []).filter(row => {
+    if (!tableSearch.trim()) return true;
+    const term = tableSearch.toLowerCase();
+    return Object.values(row).some(val => String(val ?? '').toLowerCase().includes(term));
+  });
+
+  const handleOpenEditRow = (row) => {
+    setEditingRow(row);
+    setEditRowData({ ...row });
+  };
+
+  const handleSaveRow = async (e) => {
+    e.preventDefault();
+    if (!editingRow) return;
+    try {
+      setSavingRow(true);
+      const rowId = editingRow.id !== undefined ? editingRow.id : editingRow.key;
+      const res = await api.put(`/settings/db-table/${selectedTable}/${encodeURIComponent(rowId)}`, editRowData);
+      if (res.success) {
+        setEditingRow(null);
+        loadTableData(selectedTable);
+        loadDbTables();
+        if (selectedTable === 'settings') {
+          if (editRowData.key === 'shop_name' && editRowData.value) {
+            localStorage.setItem('lt_shop_name', editRowData.value);
+            document.title = `${editRowData.value} - Frozen Food System`;
+          }
+          if (editRowData.key === 'tagline' && editRowData.value) {
+            localStorage.setItem('lt_shop_tagline', editRowData.value);
+          }
+          window.dispatchEvent(new Event('settings_updated'));
+          loadData();
+        }
+      }
+    } catch (err) {
+      alert('Failed to update record: ' + (err.message || 'Error'));
+    } finally {
+      setSavingRow(false);
+    }
+  };
+
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     try {
@@ -85,6 +164,18 @@ export default function Settings() {
       const res = await api.put('/settings', settings);
       if (res.success) {
         setSaveSuccess('Settings saved successfully!');
+        if (settings.shop_name) {
+          localStorage.setItem('lt_shop_name', settings.shop_name);
+          document.title = `${settings.shop_name} - Frozen Food System`;
+        }
+        if (settings.tagline) {
+          localStorage.setItem('lt_shop_tagline', settings.tagline);
+        }
+        window.dispatchEvent(new Event('settings_updated'));
+        loadDbTables();
+        if (selectedTable === 'settings') {
+          loadTableData('settings');
+        }
         setTimeout(() => setSaveSuccess(''), 4000);
       }
     } catch (err) {
@@ -324,15 +415,23 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* 3. LIVE DATABASE EXPLORER (UI TABLE VIEWER) */}
-      <div className="card" style={{ padding: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <Table size={20} color="var(--primary)" />
+      {/* 3. LIVE DATABASE EXPLORER (MODERNIZED UI & LIVE EDITOR) */}
+      <div className="card" style={{ padding: '1.25rem', border: '1px solid #cbd5e1', boxShadow: '0 4px 15px -3px rgba(0,0,0,0.07)' }}>
+        {/* Modern Header Banner */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', padding: '9px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)' }}>
+              <Table size={20} color="#ffffff" />
+            </div>
             <div>
-              <h3 style={{ fontSize: '1.15rem', margin: 0 }}>Live Database Explorer (Raw Tables)</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.2rem', margin: 0, fontWeight: 800, color: '#0f172a' }}>Live Database Explorer</h3>
+                <span className="badge badge-success" style={{ fontSize: '0.675rem', padding: '2px 8px' }}>
+                  SQLite WAL • Live
+                </span>
+              </div>
               <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
-                Direct visual inspector for live SQLite database tables, schema columns, and records.
+                Visual inspector for live database tables, schema definitions, and in-place record management.
               </p>
             </div>
           </div>
@@ -344,9 +443,10 @@ export default function Settings() {
                 loadTableData(selectedTable);
               }}
               className="btn btn-secondary btn-sm"
-              title="Refresh Current Table"
+              title="Refresh Live Data"
+              style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
             >
-              <RefreshCw size={14} />
+              <RefreshCw size={13} className={loadingTable ? 'spin' : ''} />
               <span>Refresh</span>
             </button>
             <a
@@ -354,46 +454,83 @@ export default function Settings() {
               target="_blank"
               rel="noreferrer"
               className="btn btn-secondary btn-sm"
-              title="Open External Web GUI Viewer"
+              title="Open in External Web SQLite Viewer"
+              style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
             >
-              <ExternalLink size={14} />
+              <ExternalLink size={13} />
               <span>sqliteviewer.app ↗</span>
             </a>
           </div>
         </div>
 
+        {/* Category Filter Chips */}
+        <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
+          {[
+            { id: 'all', label: 'All Tables' },
+            { id: 'inventory', label: '📦 Inventory' },
+            { id: 'sales', label: '🛒 Sales' },
+            { id: 'purchases', label: '🚚 Purchases' },
+            { id: 'parties', label: '👥 Parties' },
+            { id: 'finances', label: '💰 Finance' },
+            { id: 'system', label: '⚙️ System' }
+          ].map(cat => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setTableCategory(cat.id)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '20px',
+                fontSize: '0.75rem',
+                fontWeight: tableCategory === cat.id ? 700 : 500,
+                background: tableCategory === cat.id ? '#0f172a' : '#f1f5f9',
+                color: tableCategory === cat.id ? '#ffffff' : '#475569',
+                border: 'none',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
         {/* Table Selector Pills */}
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-          {dbTables.map(t => (
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.25rem', background: '#f8fafc', padding: '0.65rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+          {filteredTables.map(t => (
             <button
               key={t.name}
               type="button"
               onClick={() => {
                 setSelectedTable(t.name);
                 loadTableData(t.name);
+                setTableSearch('');
               }}
               style={{
                 padding: '4px 10px',
                 borderRadius: '6px',
-                fontSize: '0.775rem',
+                fontSize: '0.75rem',
                 fontWeight: 600,
                 cursor: 'pointer',
-                border: selectedTable === t.name ? '1px solid #0284c7' : '1px solid #cbd5e1',
-                background: selectedTable === t.name ? '#0284c7' : '#f8fafc',
+                border: selectedTable === t.name ? '1px solid #0284c7' : '1px solid #e2e8f0',
+                background: selectedTable === t.name ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : '#ffffff',
                 color: selectedTable === t.name ? '#ffffff' : '#334155',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
+                boxShadow: selectedTable === t.name ? '0 2px 6px rgba(2, 132, 199, 0.35)' : 'none',
                 transition: 'all 0.15s ease'
               }}
             >
               <span>{t.name}</span>
               <span style={{
-                background: selectedTable === t.name ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                background: selectedTable === t.name ? 'rgba(255,255,255,0.25)' : '#f1f5f9',
                 color: selectedTable === t.name ? '#ffffff' : '#64748b',
                 padding: '1px 5px',
                 borderRadius: '4px',
-                fontSize: '0.675rem'
+                fontSize: '0.65rem',
+                fontWeight: 700
               }}>
                 {t.count}
               </span>
@@ -403,52 +540,113 @@ export default function Settings() {
 
         {/* Selected Table Records View */}
         {loadingTable ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Loading table records...</div>
+          <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+            <RefreshCw size={24} className="spin" style={{ margin: '0 auto 0.5rem', display: 'block', color: '#0284c7' }} />
+            Loading records from table "{selectedTable}"...
+          </div>
         ) : !tableData || !tableData.columns ? (
           <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Select a table above to view data.</div>
         ) : (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8rem', color: '#64748b' }}>
-              <span>Showing up to 100 recent rows in <strong>{selectedTable}</strong> ({tableData.totalRows} total records)</span>
-              <span>{tableData.columns.length} columns</span>
+            {/* Table Action / Search Bar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#0f172a' }}>
+                  {selectedTable}
+                </span>
+                <span className="badge badge-info" style={{ fontSize: '0.675rem' }}>
+                  {tableData.totalRows} total rows
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>•</span>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  {tableData.columns.length} columns
+                </span>
+              </div>
+
+              {/* Instant Search Bar */}
+              <div style={{ position: 'relative', minWidth: '220px' }}>
+                <Search size={13} style={{ position: 'absolute', left: '10px', top: '8px', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ paddingLeft: '1.9rem', height: '28px', fontSize: '0.775rem' }}
+                  placeholder={`Search in ${selectedTable}...`}
+                  value={tableSearch}
+                  onChange={(e) => setTableSearch(e.target.value)}
+                />
+                {tableSearch && (
+                  <button
+                    onClick={() => setTableSearch('')}
+                    style={{ position: 'absolute', right: '6px', top: '6px', color: '#94a3b8', cursor: 'pointer' }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="table-responsive" style={{ maxHeight: '420px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <table className="table" style={{ fontSize: '0.75rem' }}>
+            {/* Visual Data Grid */}
+            <div className="table-responsive" style={{ maxHeight: '460px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.03)' }}>
+              <table className="table" style={{ fontSize: '0.775rem', borderCollapse: 'separate', borderSpacing: 0 }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-                  <tr>
+                  <tr style={{ background: '#0f172a', color: '#ffffff' }}>
+                    <th style={{ background: '#0f172a', color: '#94a3b8', width: '45px', textAlign: 'center', fontSize: '0.65rem' }}>#</th>
                     {tableData.columns.map(col => (
-                      <th key={col.name} style={{ background: '#f1f5f9', whiteSpace: 'nowrap' }}>
-                        <div>{col.name}</div>
-                        <span style={{ fontSize: '0.625rem', color: '#94a3b8', fontWeight: 500 }}>{col.type}</span>
+                      <th key={col.name} style={{ background: '#0f172a', color: '#f8fafc', whiteSpace: 'nowrap', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ fontWeight: 700 }}>{col.name}</div>
+                        <div style={{ fontSize: '0.6rem', color: col.pk ? '#38bdf8' : '#94a3b8', fontWeight: 500 }}>
+                          {col.type || 'TEXT'} {col.pk ? '🔑 PK' : ''}
+                        </div>
                       </th>
                     ))}
+                    {selectedTable !== 'audit_logs' && (
+                      <th style={{ background: '#0f172a', color: '#94a3b8', textAlign: 'center', width: '65px' }}>Action</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
-                  {tableData.rows.length === 0 ? (
+                  {searchedRows.length === 0 ? (
                     <tr>
-                      <td colSpan={tableData.columns.length} style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>
-                        Table is currently empty (0 records).
+                      <td colSpan={tableData.columns.length + 2} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                        {tableSearch ? 'No rows match your search query.' : 'Table is currently empty (0 records).'}
                       </td>
                     </tr>
                   ) : (
-                    tableData.rows.map((row, idx) => (
-                      <tr key={idx}>
+                    searchedRows.map((row, idx) => (
+                      <tr key={idx} style={{ background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                        <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.7rem', fontWeight: 600 }}>
+                          {idx + 1}
+                        </td>
                         {tableData.columns.map(col => {
                           const val = row[col.name];
                           return (
-                            <td key={col.name} style={{ whiteSpace: 'nowrap', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <td key={col.name} style={{ whiteSpace: 'nowrap', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {val === null || val === undefined ? (
-                                <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>null</span>
-                              ) : typeof val === 'object' ? (
-                                JSON.stringify(val)
+                                <span style={{ color: '#cbd5e1', fontStyle: 'italic', fontSize: '0.7rem' }}>null</span>
+                              ) : col.name.includes('price') || col.name.includes('amount') || col.name.includes('total') || col.name.includes('balance') ? (
+                                <span style={{ fontWeight: 600, color: '#0284c7' }}>₨ {Number(val).toLocaleString()}</span>
+                              ) : col.pk ? (
+                                <span style={{ fontWeight: 700, color: '#0f172a' }}>{val}</span>
                               ) : (
                                 String(val)
                               )}
                             </td>
                           );
                         })}
+                        {selectedTable !== 'audit_logs' && (
+                          <td style={{ textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditRow(row)}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: '2px 6px', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                              title="Edit this record"
+                            >
+                              <Edit2 size={11} />
+                              <span>Edit</span>
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -458,6 +656,70 @@ export default function Settings() {
           </div>
         )}
       </div>
+
+      {/* IN-PLACE ROW EDIT MODAL */}
+      {editingRow && (
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+          <div className="modal-card card" style={{ maxWidth: '540px', width: '90%', maxHeight: '85vh', overflowY: 'auto', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Edit2 size={18} color="var(--primary)" />
+                <h3 style={{ fontSize: '1.1rem', margin: 0 }}>
+                  Edit Record in <strong>{selectedTable}</strong>
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingRow(null)}
+                style={{ cursor: 'pointer', color: '#94a3b8' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRow} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {tableData && tableData.columns && tableData.columns.map(col => {
+                const isReadOnly = col.pk || col.name === 'id' || col.name === 'created_at' || col.name === 'updated_at';
+                return (
+                  <div key={col.name} className="form-group">
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>{col.name} {col.pk ? '(Primary Key)' : ''}</span>
+                      <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{col.type}</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      disabled={isReadOnly}
+                      style={{ background: isReadOnly ? '#f1f5f9' : '#ffffff' }}
+                      value={editRowData[col.name] ?? ''}
+                      onChange={(e) => setEditRowData({ ...editRowData, [col.name]: e.target.value })}
+                    />
+                  </div>
+                );
+              })}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingRow(null)}
+                  className="btn btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingRow}
+                  className="btn btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
+                  <Check size={14} />
+                  <span>{savingRow ? 'Saving Changes...' : 'Save Record'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

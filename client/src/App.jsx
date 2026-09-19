@@ -46,6 +46,22 @@ function MainApp() {
     }
   }, [user, role]);
 
+  // Load shop branding settings on mount
+  useEffect(() => {
+    api.get('/settings').then(res => {
+      if (res && res.success && res.settings) {
+        if (res.settings.shop_name) {
+          localStorage.setItem('lt_shop_name', res.settings.shop_name);
+          document.title = `${res.settings.shop_name} - Frozen Food System`;
+        }
+        if (res.settings.tagline) {
+          localStorage.setItem('lt_shop_tagline', res.settings.tagline);
+        }
+        window.dispatchEvent(new Event('settings_updated'));
+      }
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (user) {
       // Fetch badge alert counts

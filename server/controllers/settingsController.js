@@ -91,3 +91,60 @@ exports.getTableData = (req, res) => {
   }
 };
 
+exports.updateTableRow = (req, res) => {
+  try {
+    const { tableName, id } = req.params;
+    const updates = req.body;
+
+    // Security check: verify table exists
+    const exists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(tableName);
+    if (!exists) {
+      return res.status(404).json({ success: false, message: 'Table does not exist.' });
+    }
+
+    // Disallow editing audit_logs or internal schema
+    if (tableName === 'audit_logs' || tableName.startsWith('sqlite_')) {
+      return res.status(403).json({ success: false, message: 'Editing audit logs is strictly prohibited.' });
+    }
+
+    if (!updates || typeof updates !== 'object' || Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, message: 'No fields provided for update.' });
+    }
+
+    const columnsInfo = db.prepare(`PRAGMA table_info("${tableName}")`).all();
+    const validColNames = columnsInfo.map(c => c.name);
+
+    if (tableName === 'settings') {
+      // settings uses `key` as PK
+      const stmt = db.prepare("UPDATE settings SET value = ? WHERE key = ?");
+      stmt.run(String(updates.value ?? ''), id);
+    } else {
+      // Standard table with id as PK
+      const setClauses = [];
+      const values = [];
+      for (const [col, val] of Object.entries(updates)) {
+        if (col === 'id' || !validColNames.includes(col)) continue;
+        setClauses.push(`"${col}" = ?`);
+        values.push(val === '' ? null : val);
+      }
+
+      if (setClauses.length === 0) {
+        return res.status(400).json({ success: false, message: 'No valid columns provided to update.' });
+      }
+
+      values.push(id);
+      const sql = `UPDATE "${tableName}" SET ${setClauses.join(', ')} WHERE id = ?`;
+      const stmt = db.prepare(sql);
+      stmt.run(...values);
+    }
+
+    logAudit(req.user.id, req.user.full_name, 'UPDATE', tableName.toUpperCase(), id, `Updated record in ${tableName}: ${JSON.stringify(updates)}`, req);
+
+    return res.json({ success: true, message: `Record in ${tableName} updated successfully.` });
+  } catch (err) {
+    console.error('Error updating table record:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to update record.' });
+  }
+};
+
+

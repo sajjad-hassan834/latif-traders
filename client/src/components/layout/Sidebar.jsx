@@ -78,6 +78,22 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
   const { role, isAdmin } = useAuth();
   const userRole = role || 'sales';
 
+  const [brandInfo, setBrandInfo] = React.useState({
+    name: localStorage.getItem('lt_shop_name') || 'LATIF TRADERS',
+    tagline: localStorage.getItem('lt_shop_tagline') || 'Frozen Food System'
+  });
+
+  React.useEffect(() => {
+    const handleSettingsUpdate = () => {
+      setBrandInfo({
+        name: localStorage.getItem('lt_shop_name') || 'LATIF TRADERS',
+        tagline: localStorage.getItem('lt_shop_tagline') || 'Frozen Food System'
+      });
+    };
+    window.addEventListener('settings_updated', handleSettingsUpdate);
+    return () => window.removeEventListener('settings_updated', handleSettingsUpdate);
+  }, []);
+
   // Filter sections that have at least one visible item for this role
   const visibleSections = MENU_SECTIONS.map(section => {
     const visibleItems = section.items.filter(item => {
@@ -97,13 +113,17 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: 1 }}>
-          <div className="brand-icon">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: 1, minWidth: 0 }}>
+          <div className="brand-icon" style={{ flexShrink: 0 }}>
             <Snowflake size={18} color="#ffffff" />
           </div>
-          <div className="brand-text">
-            <h2>LATIF TRADERS</h2>
-            <p>Frozen Food System</p>
+          <div className="brand-text" style={{ minWidth: 0, overflow: 'hidden' }}>
+            <h2 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.95rem' }} title={brandInfo.name}>
+              {brandInfo.name}
+            </h2>
+            <p style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.7rem' }} title={brandInfo.tagline}>
+              {brandInfo.tagline}
+            </p>
           </div>
         </div>
 
