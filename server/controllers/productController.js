@@ -327,6 +327,77 @@ exports.getAdjustments = (req, res) => {
   }
 };
 
+// Quick Restock Product (Inward new batch with FIFO & price update)
+exports.restockProduct = (req, res) => {
+  const transaction = db.transaction(() => {
+    const { id } = req.params;
+    const { quantity, purchase_price, sale_price, wholesale_price, supplier_id, batch_no, expiry_date, storage_location } = req.body;
+
+    const qty = Number(quantity);
+    if (!qty || qty <= 0) throw new Error('Quantity must be greater than 0.');
+
+    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+    if (!product) throw new Error('Product not found.');
+
+    const pPrice = purchase_price !== undefined && purchase_price !== '' ? Number(purchase_price) : product.purchase_price;
+    const sPrice = sale_price !== undefined && sale_price !== '' ? Number(sale_price) : product.sale_price;
+    const wPrice = wholesale_price !== undefined && wholesale_price !== '' ? Number(wholesale_price) : product.wholesale_price;
+    const batchCode = batch_no ? batch_no.trim() : `INW-${Date.now().toString().slice(-6)}`;
+    const exp = expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
+
+    // Create new FIFO batch
+    const bRes = db.prepare(`
+      INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, storage_location, supplier_id, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
+    `).run(id, batchCode, exp, qty, pPrice, storage_location || product.storage_location, supplier_id || product.supplier_id);
+
+    // Update product latest purchase price and optional new sale_price
+    db.prepare(`
+      UPDATE products SET
+        purchase_price = ?,
+        sale_price = ?,
+        wholesale_price = ?,
+        supplier_id = COALESCE(?, supplier_id),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(
+      pPrice,
+      sPrice,
+      wPrice,
+      supplier_id ? Number(supplier_id) : null,
+      id
+    );
+
+    // Record inventory movement
+    const newTotal = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active'").get(id).s;
+
+    db.prepare(`
+      INSERT INTO inventory_movements (
+        product_id, batch_id, type, quantity_delta, unit_price,
+        balance_after, reference_type, reason, user_id
+      ) VALUES (?, ?, 'PURCHASE', ?, ?, ?, 'DIRECT_RESTOCK', ?, ?)
+    `).run(
+      id,
+      bRes.lastInsertRowid,
+      qty,
+      pPrice,
+      newTotal,
+      `Inward Restock Lot ${batchCode} (+${qty} ${product.unit})`,
+      req.user.id
+    );
+
+    return { success: true, message: `Successfully added ${qty} ${product.unit} to ${product.name}! Available stock is now ${newTotal} ${product.unit}.` };
+  });
+
+  try {
+    const result = transaction();
+    return res.json(result);
+  } catch (err) {
+    console.error('Restock error:', err);
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
 // Categories CRUD
 exports.getCategories = (req, res) => {
   try {

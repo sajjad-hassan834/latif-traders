@@ -22,7 +22,8 @@ import {
   VolumeX,
   UserPlus,
   TrendingUp,
-  Edit2
+  Edit2,
+  FileText
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR } from '../utils/formatters';
@@ -227,7 +228,7 @@ export default function PosSales() {
 
     if (existingIndex >= 0) {
       const updated = [...cart];
-      updated[existingIndex].quantity += 1;
+      updated[existingIndex].quantity = (Number(updated[existingIndex].quantity) || 0) + 1;
       setCart(updated);
     } else {
       setCart([...cart, {
@@ -236,6 +237,7 @@ export default function PosSales() {
         sku: product.sku,
         unit: product.unit,
         unit_price: price,
+        original_price: product.sale_price,
         purchase_price: product.purchase_price || 0,
         quantity: 1,
         discount: 0,
@@ -244,10 +246,32 @@ export default function PosSales() {
     }
   };
 
+  const handleSetQuantity = (index, val) => {
+    setErrorMsg('');
+    const raw = String(val);
+    if (raw === '') {
+      const updated = [...cart];
+      updated[index].quantity = '';
+      setCart(updated);
+      return;
+    }
+    const qty = Number(raw);
+    if (isNaN(qty) || qty < 0) return;
+    const item = cart[index];
+    if (qty > item.current_stock) {
+      playBeep('error');
+      setErrorMsg(`Stock limit reached for ${item.name} (${item.current_stock} available).`);
+    }
+    const updated = [...cart];
+    updated[index].quantity = qty;
+    setCart(updated);
+  };
+
   const updateQuantity = (index, delta) => {
     setErrorMsg('');
     const item = cart[index];
-    const newQty = item.quantity + delta;
+    const currentQty = Number(item.quantity) || 0;
+    const newQty = currentQty + delta;
 
     if (newQty <= 0) {
       removeFromCart(index);
@@ -350,8 +374,8 @@ export default function PosSales() {
     setCart(updated);
   };
 
-  const subtotal = cart.reduce((acc, item) => acc + (item.quantity * item.unit_price) - (item.discount || 0), 0);
-  const totalCost = cart.reduce((acc, item) => acc + (item.quantity * (item.purchase_price || 0)), 0);
+  const subtotal = cart.reduce((acc, item) => acc + ((Number(item.quantity) || 0) * Number(item.unit_price)) - (item.discount || 0), 0);
+  const totalCost = cart.reduce((acc, item) => acc + ((Number(item.quantity) || 0) * (item.purchase_price || 0)), 0);
   const totalDiscount = Number(discount) || 0;
   const grandTotal = Math.max(0, subtotal - totalDiscount);
   const estimatedProfit = Math.max(0, grandTotal - totalCost);
@@ -416,9 +440,9 @@ export default function PosSales() {
         sale_date: new Date().toISOString().split('T')[0],
         items: cart.map(i => ({
           product_id: i.product_id,
-          quantity: i.quantity,
+          quantity: Number(i.quantity) || 1,
           unit: i.unit,
-          unit_price: i.unit_price,
+          unit_price: Number(i.unit_price) || 0,
           discount: i.discount || 0
         })),
         discount: totalDiscount,
@@ -441,6 +465,30 @@ export default function PosSales() {
       setErrorMsg(err.message || 'Failed to complete transaction.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openRecentInvoices = async () => {
+    try {
+      const res = await api.get('/sales');
+      if (res.success) {
+        setRecentInvoices(res.sales || []);
+        setShowRecentInvoicesModal(true);
+      }
+    } catch (err) {
+      alert('Failed to load recent sales history');
+    }
+  };
+
+  const handleSelectRecentInvoice = async (id) => {
+    try {
+      const saleDetail = await api.get(`/sales/${id}`);
+      if (saleDetail.success) {
+        setCompletedSale(saleDetail);
+        setShowRecentInvoicesModal(false);
+      }
+    } catch (err) {
+      alert('Failed to load invoice receipt');
     }
   };
 
@@ -600,6 +648,16 @@ export default function PosSales() {
             >
               <PlusCircle size={13} color="#0284c7" />
               <span>+ Item</span>
+            </button>
+
+            <button
+              onClick={openRecentInvoices}
+              className="btn btn-secondary btn-sm"
+              title="View & Print Specific Receipt"
+              style={{ height: '30px', fontSize: '0.75rem', padding: '0 0.55rem' }}
+            >
+              <FileText size={13} color="#6366f1" />
+              <span>Receipts</span>
             </button>
 
             <button
@@ -797,11 +855,11 @@ export default function PosSales() {
                 className="form-control"
                 value={selectedCustomer}
                 onChange={(e) => handleCustomerChange(e.target.value)}
-                style={{ fontSize: '0.725rem', height: '26px', padding: '1px 4px' }}
+                style={{ fontSize: '0.725rem', height: '28px', padding: '1px 6px', fontWeight: 600 }}
               >
                 {customers.map(c => (
                   <option key={c.id} value={c.id}>
-                    {c.name} {c.current_balance > 0 ? `(Bal: ₨ ${c.current_balance})` : ''}
+                    {c.name} {c.id !== 1 && c.current_balance > 0 ? `— (Bakaya Udhaar: ₨ ${c.current_balance})` : c.id !== 1 ? '— (Bal: ₨ 0)' : ''}
                   </option>
                 ))}
               </select>
@@ -897,9 +955,18 @@ export default function PosSales() {
                         />
                         <span style={{ fontSize: '0.62rem', color: '#64748b' }}>/{item.unit || 'unit'}</span>
                       </div>
+                      {/* Actual standard catalog price */}
+                      {item.original_price && Number(item.original_price) !== Number(item.unit_price) && (
+                        <span
+                          style={{ fontSize: '0.62rem', color: '#94a3b8', textDecoration: 'line-through', background: '#f8fafc', padding: '1px 3px', borderRadius: '3px', border: '1px solid #e2e8f0' }}
+                          title="Actual standard catalog price"
+                        >
+                          ₨{item.original_price}
+                        </span>
+                      )}
                       <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>•</span>
                       <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0f172a' }}>
-                        {formatPKR((item.quantity * item.unit_price) - (item.discount || 0))}
+                        {formatPKR(((Number(item.quantity) || 0) * Number(item.unit_price)) - (item.discount || 0))}
                       </span>
                       {item.discount > 0 && (
                         <span style={{ fontSize: '0.62rem', color: '#16a34a' }}>(-₨{item.discount})</span>
@@ -945,19 +1012,44 @@ export default function PosSales() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <div className="pos-stepper">
+                    <div className="pos-stepper" style={{ border: '1px solid #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', background: '#fff' }}>
                       <button
                         type="button"
                         className="pos-stepper-btn"
                         onClick={() => updateQuantity(idx, -1)}
+                        style={{ border: 'none', background: 'none', padding: '2px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                       >
                         <Minus size={9} />
                       </button>
-                      <span className="pos-stepper-qty">{item.quantity}</span>
+                      <input
+                        type="number"
+                        min="0.1"
+                        step="any"
+                        value={item.quantity === '' ? '' : item.quantity}
+                        onChange={(e) => handleSetQuantity(idx, e.target.value)}
+                        onBlur={() => {
+                          if (!item.quantity || Number(item.quantity) <= 0) {
+                            removeFromCart(idx);
+                          }
+                        }}
+                        style={{
+                          width: '42px',
+                          height: '21px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          textAlign: 'center',
+                          border: 'none',
+                          background: 'transparent',
+                          padding: '0 2px',
+                          color: '#0f172a'
+                        }}
+                        title="Directly enter item quantity (e.g. 50, 100, 200)"
+                      />
                       <button
                         type="button"
                         className="pos-stepper-btn"
                         onClick={() => updateQuantity(idx, 1)}
+                        style={{ border: 'none', background: 'none', padding: '2px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                       >
                         <Plus size={9} />
                       </button>
@@ -1059,23 +1151,60 @@ export default function PosSales() {
               </div>
             </div>
 
-            {/* STATUS & CREDIT LEDGER TRACKING */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.7rem', marginBottom: '0.35rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                {balanceDue > 0 ? (
-                  <span style={{ color: '#ef4444' }}>This Bill Due: {formatPKR(balanceDue)}</span>
-                ) : changeDue > 0 ? (
-                  <span style={{ color: '#10b981' }}>Change Due: {formatPKR(changeDue)}</span>
-                ) : (
-                  <span style={{ color: '#10b981' }}>Fully Settled</span>
-                )}
-              </div>
+            {/* CHANGE RETURN & CUSTOMER UDHAAR BREAKDOWN */}
+            <div style={{
+              background: changeDue > 0 ? '#ecfdf5' : balanceDue > 0 ? '#fef2f2' : '#f8fafc',
+              border: `1px solid ${changeDue > 0 ? '#a7f3d0' : balanceDue > 0 ? '#fecaca' : '#e2e8f0'}`,
+              borderRadius: '6px',
+              padding: '6px 8px',
+              marginBottom: '0.4rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '3px',
+              fontSize: '0.725rem'
+            }}>
+              {/* Cash Return / Wapis */}
+              {changeDue > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#065f46', fontWeight: 800, fontSize: '0.85rem' }}>
+                  <span>💵 Change Return (Wapis):</span>
+                  <span style={{ fontSize: '0.95rem' }}>{formatPKR(changeDue)}</span>
+                </div>
+              )}
+
+              {/* Unpaid on this bill */}
+              {balanceDue > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#b91c1c', fontWeight: 700 }}>
+                  <span>⚠️ Unpaid on this bill:</span>
+                  <span>{formatPKR(balanceDue)}</span>
+                </div>
+              )}
+
+              {balanceDue === 0 && changeDue === 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: 600 }}>
+                  <span>Status:</span>
+                  <span>✔ Exact Payment Settled</span>
+                </div>
+              )}
+
+              {/* Registered Customer Udhaar Ledger Details */}
               {activeCustomer && activeCustomer.id !== 1 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.675rem' }}>
-                  <span>Prev. Balance: {formatPKR(activeCustomer.current_balance || 0)}</span>
-                  <span style={{ fontWeight: 700, color: (activeCustomer.current_balance || 0) + balanceDue > 0 ? '#b91c1c' : '#16a34a' }}>
-                    Net Udhaar: {formatPKR((activeCustomer.current_balance || 0) + balanceDue)}
-                  </span>
+                <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '4px', marginTop: '3px', display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.675rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                    <span>Previous Udhaar:</span>
+                    <strong>{formatPKR(activeCustomer.current_balance || 0)}</strong>
+                  </div>
+                  {balanceDue > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c' }}>
+                      <span>Added to Udhaar (This Bill):</span>
+                      <strong>+{formatPKR(balanceDue)}</strong>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0369a1', fontWeight: 700 }}>
+                    <span>Total Remaining Udhaar:</span>
+                    <span style={{ color: ((activeCustomer.current_balance || 0) + balanceDue) > 0 ? '#dc2626' : '#16a34a' }}>
+                      {formatPKR((activeCustomer.current_balance || 0) + balanceDue)}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -1394,6 +1523,80 @@ export default function PosSales() {
             <div className="modal-footer">
               <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowShortcuts(false)}>
                 Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RECENT RECEIPTS MODAL */}
+      {showRecentInvoicesModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '680px' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <FileText size={16} color="var(--primary)" />
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Recent Sales Invoices & Receipts</h3>
+              </div>
+              <button onClick={() => setShowRecentInvoicesModal(false)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search invoice number or customer name..."
+                value={recentSearch}
+                onChange={(e) => setRecentSearch(e.target.value)}
+                autoFocus
+              />
+              <div className="table-responsive" style={{ maxHeight: '360px', overflowY: 'auto' }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Invoice #</th>
+                      <th>Customer</th>
+                      <th>Date</th>
+                      <th style={{ textAlign: 'right' }}>Total</th>
+                      <th style={{ textAlign: 'center' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentInvoices
+                      .filter(s => {
+                        if (!recentSearch) return true;
+                        const q = recentSearch.toLowerCase();
+                        return (
+                          (s.invoice_no && s.invoice_no.toLowerCase().includes(q)) ||
+                          (s.customer_name && s.customer_name.toLowerCase().includes(q))
+                        );
+                      })
+                      .slice(0, 30)
+                      .map(s => (
+                        <tr key={s.id}>
+                          <td className="mono" style={{ fontWeight: 600, color: '#0284c7' }}>{s.invoice_no}</td>
+                          <td>{s.customer_name || 'Walk-in Counter'}</td>
+                          <td style={{ fontSize: '0.75rem' }}>{formatDate(s.sale_date || s.created_at)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatPKR(s.grand_total)}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleSelectRecentInvoice(s.id)}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: '2px 8px', fontSize: '0.75rem' }}
+                            >
+                              <Printer size={12} />
+                              <span>View Receipt</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowRecentInvoicesModal(false)}>
+                Close
               </button>
             </div>
           </div>

@@ -22,6 +22,9 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
   const currentCustomerBalance = Number(sale.customer_current_balance) || 0;
   const previousBalance = Math.max(0, currentCustomerBalance - Number(sale.balance_due || 0));
   const netRemainingBalance = currentCustomerBalance;
+  const paid = Number(sale.paid_amount || 0);
+  const grandTotal = Number(sale.grand_total || 0);
+  const changeReturn = Math.max(0, paid - grandTotal);
 
   // WhatsApp Message Generator
   const generateWhatsAppMessage = () => {
@@ -43,14 +46,17 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
     lines.push(`--------------------------`);
     lines.push(`💰 *Grand Total:* ${formatPKR(sale.grand_total)}`);
     lines.push(`💵 *Paid (${sale.payment_method || 'Cash'}):* ${formatPKR(sale.paid_amount)}`);
+    if (changeReturn > 0) {
+      lines.push(`🔄 *Change Return (Wapis):* ${formatPKR(changeReturn)}`);
+    }
     if (sale.balance_due > 0) {
-      lines.push(`⚠️ *This Bill Balance Due:* ${formatPKR(sale.balance_due)}`);
+      lines.push(`⚠️ *This Bill Due:* ${formatPKR(sale.balance_due)}`);
     } else {
-      lines.push(`✔ *Status:* Fully Paid`);
+      lines.push(`✔ *Status:* Fully Settled`);
     }
     if (hasCustomerBalance) {
-      lines.push(`📜 *Previous Balance:* ${formatPKR(previousBalance)}`);
-      lines.push(`💳 *Total Net Outstanding:* ${formatPKR(netRemainingBalance)}`);
+      lines.push(`📜 *Previous Udhaar:* ${formatPKR(previousBalance)}`);
+      lines.push(`💳 *Total Remaining Udhaar:* ${formatPKR(netRemainingBalance)}`);
     }
     lines.push(`--------------------------`);
     lines.push(`📞 Phone: ${phone}`);
@@ -177,10 +183,16 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                   <span>Paid ({sale.payment_method || 'Cash'}):</span>
                   <span>{formatPKR(sale.paid_amount)}</span>
                 </div>
+                {changeReturn > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#047857', fontWeight: 'bold' }}>
+                    <span>Change Return (Wapis):</span>
+                    <span>{formatPKR(changeReturn)}</span>
+                  </div>
+                )}
                 {sale.balance_due > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c' }}>
-                    <strong>This Bill Due:</strong>
-                    <strong>{formatPKR(sale.balance_due)}</strong>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c', fontWeight: 'bold' }}>
+                    <span>This Bill Due:</span>
+                    <span>{formatPKR(sale.balance_due)}</span>
                   </div>
                 )}
 
@@ -188,11 +200,17 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                   <>
                     <div style={{ borderTop: '1px dashed #777', margin: '4px 0' }}></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#444' }}>
-                      <span>Prev. Balance:</span>
+                      <span>Previous Udhaar:</span>
                       <span>{formatPKR(previousBalance)}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', color: '#b91c1c' }}>
-                      <span>Net Balance (Udhaar):</span>
+                    {sale.balance_due > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#b91c1c' }}>
+                        <span>Added This Bill:</span>
+                        <span>+{formatPKR(sale.balance_due)}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', color: netRemainingBalance > 0 ? '#b91c1c' : '#16a34a' }}>
+                      <span>Total Remaining Udhaar:</span>
                       <span>{formatPKR(netRemainingBalance)}</span>
                     </div>
                   </>
@@ -280,9 +298,15 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                       <span style={{ color: '#0284c7' }}>{formatPKR(sale.grand_total)}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Paid:</span>
+                      <span>Paid ({sale.payment_method || 'Cash'}):</span>
                       <span>{formatPKR(sale.paid_amount)}</span>
                     </div>
+                    {changeReturn > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#047857', fontWeight: 700 }}>
+                        <span>Change Return (Wapis):</span>
+                        <span>{formatPKR(changeReturn)}</span>
+                      </div>
+                    )}
                     {sale.balance_due > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontWeight: 700 }}>
                         <span>This Invoice Due:</span>
@@ -292,11 +316,17 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                     {hasCustomerBalance && (
                       <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', borderTop: '1px dashed #cbd5e1', paddingTop: '0.35rem', marginTop: '0.35rem' }}>
-                          <span>Previous Balance (Udhaar):</span>
+                          <span>Previous Balance (Pehla Udhaar):</span>
                           <span>{formatPKR(previousBalance)}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c', fontWeight: 800, fontSize: '0.95rem' }}>
-                          <span>Net Remaining Balance:</span>
+                        {sale.balance_due > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontSize: '0.8rem' }}>
+                            <span>Added This Bill:</span>
+                            <span>+{formatPKR(sale.balance_due)}</span>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: netRemainingBalance > 0 ? '#b91c1c' : '#16a34a', fontWeight: 800, fontSize: '0.95rem' }}>
+                          <span>Total Remaining Udhaar:</span>
                           <span>{formatPKR(netRemainingBalance)}</span>
                         </div>
                       </>

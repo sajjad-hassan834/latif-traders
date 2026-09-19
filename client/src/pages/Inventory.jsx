@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Eye, Edit, AlertTriangle, Layers, Clock, Download, Barcode, ChevronDown, MoreVertical } from 'lucide-react';
+import { Search, Plus, Eye, Edit, AlertTriangle, Layers, Clock, Download, Barcode, ChevronDown, MoreVertical, PlusCircle } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
@@ -25,6 +25,18 @@ export default function Inventory() {
   const [showMetaModal, setShowMetaModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [restockProduct, setRestockProduct] = useState(null);
+  const [restockForm, setRestockForm] = useState({
+    quantity: '50',
+    purchase_price: '',
+    sale_price: '',
+    wholesale_price: '',
+    supplier_id: '',
+    batch_no: '',
+    expiry_date: '',
+    storage_location: 'Freezer #1'
+  });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [batches, setBatches] = useState([]);
   const [movements, setMovements] = useState([]);
@@ -185,6 +197,35 @@ export default function Inventory() {
     });
     setCustomBrandModeEdit(false);
     setShowEditModal(true);
+  };
+
+  const openRestock = (p) => {
+    setRestockProduct(p);
+    setRestockForm({
+      quantity: '50',
+      purchase_price: p.purchase_price || '',
+      sale_price: p.sale_price || '',
+      wholesale_price: p.wholesale_price || '',
+      supplier_id: p.supplier_id || '',
+      batch_no: `LOT-${Date.now().toString().slice(-4)}`,
+      expiry_date: '',
+      storage_location: p.storage_location || 'Freezer #1'
+    });
+    setShowRestockModal(true);
+  };
+
+  const handleSaveRestock = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api.post(`/products/${restockProduct.id}/restock`, restockForm);
+      if (res.success) {
+        alert(res.message);
+        setShowRestockModal(false);
+        loadData();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to restock product');
+    }
   };
 
   const handleUpdateProduct = async (e) => {
@@ -465,7 +506,35 @@ export default function Inventory() {
                                   onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                                 >
                                   <Edit size={13} color="#0284c7" />
-                                  <span>Edit Product</span>
+                                  <span>Edit Details</span>
+                                </button>
+                              )}
+
+                              {canManageInventory && (
+                                <button
+                                  onClick={() => {
+                                    setActionMenuId(null);
+                                    openRestock(p);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '7px 12px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    background: 'none',
+                                    border: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    color: '#059669',
+                                    cursor: 'pointer',
+                                    textAlign: 'left'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#ecfdf5'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                >
+                                  <PlusCircle size={13} color="#10b981" />
+                                  <span>+ Add Stock (Inward)</span>
                                 </button>
                               )}
 
@@ -539,6 +608,150 @@ export default function Inventory() {
           product={selectedProduct}
           onClose={() => setShowBarcodeModal(false)}
         />
+      )}
+
+      {/* QUICK RESTOCK / STOCK INWARD MODAL */}
+      {showRestockModal && restockProduct && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '640px', width: '96%', maxHeight: '92vh', overflowY: 'auto' }}>
+            <div className="modal-header" style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
+                    + Inward Stock Lot: {restockProduct.name}
+                  </h3>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                    Current Stock: <strong>{restockProduct.current_stock} {restockProduct.unit}</strong> • Standard Sale: <strong>{formatPKR(restockProduct.sale_price)}</strong>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowRestockModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleSaveRestock}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '1.25rem' }}>
+                <div className="form-grid-2">
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Incoming Quantity ({restockProduct.unit}) *</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      required
+                      min="0.1"
+                      step="any"
+                      placeholder="e.g. 50, 100, 200"
+                      value={restockForm.quantity}
+                      onChange={(e) => setRestockForm({ ...restockForm, quantity: e.target.value })}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Supplier / Vendor</label>
+                    <select
+                      className="form-control"
+                      value={restockForm.supplier_id}
+                      onChange={(e) => setRestockForm({ ...restockForm, supplier_id: e.target.value })}
+                    >
+                      <option value="">-- Select Vendor --</option>
+                      {suppliers.map(s => (
+                        <option key={s.id} value={s.id}>{s.name} {s.company_name ? `(${s.company_name})` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-grid-3">
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Purchase Cost (PKR) *</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      required
+                      min="0"
+                      step="any"
+                      placeholder="Cost"
+                      value={restockForm.purchase_price}
+                      onChange={(e) => setRestockForm({ ...restockForm, purchase_price: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">New Retail Price (PKR)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="0"
+                      step="any"
+                      placeholder="New Retail"
+                      value={restockForm.sale_price}
+                      onChange={(e) => setRestockForm({ ...restockForm, sale_price: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">New Wholesale (PKR)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="0"
+                      step="any"
+                      placeholder="Wholesale"
+                      value={restockForm.wholesale_price}
+                      onChange={(e) => setRestockForm({ ...restockForm, wholesale_price: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-grid-3">
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Batch / Lot #</label>
+                    <input
+                      type="text"
+                      className="form-control mono"
+                      placeholder="e.g. LOT-2609"
+                      value={restockForm.batch_no}
+                      onChange={(e) => setRestockForm({ ...restockForm, batch_no: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Expiry Date</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={restockForm.expiry_date}
+                      onChange={(e) => setRestockForm({ ...restockForm, expiry_date: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Storage Location</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. Freezer #1"
+                      value={restockForm.storage_location}
+                      onChange={(e) => setRestockForm({ ...restockForm, storage_location: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '8px 10px', fontSize: '0.75rem', color: '#166534' }}>
+                  💡 <strong>FIFO Rule:</strong> This new batch will be stored as an independent inventory lot. When you sell at POS, the system will automatically sell your older batch first, and then transition to this new batch with its updated cost.
+                </div>
+              </div>
+              <div className="modal-footer" style={{ padding: '0.75rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowRestockModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '0.4rem 1.25rem', background: '#10b981', borderColor: '#059669' }}>
+                  Save Inward Stock
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* ADD PRODUCT MODAL */}

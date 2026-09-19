@@ -21,5 +21,6 @@ router.get('/', productController.getProducts);
 router.get('/:id', productController.getProductById);
 router.post('/', requireRoles('inventory'), productController.createProduct);
 router.put('/:id', requireRoles('inventory'), productController.updateProduct);
+router.post('/:id/restock', requireRoles('inventory'), productController.restockProduct);
 
 module.exports = router;
