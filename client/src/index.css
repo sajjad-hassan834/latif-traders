@@ -1230,6 +1230,20 @@ h1, h2, h3, h4, h5, h6 {
   padding-top: 0.5rem;
 }
 
+.cashbook-print-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.cashbook-summary-card {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
 /* Print Styles */
 @media print {
   @page {
@@ -1327,6 +1341,29 @@ h1, h2, h3, h4, h5, h6 {
   .report-signatures-grid {
     page-break-inside: avoid;
     break-inside: avoid;
+  }
+
+  .table-responsive {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    width: 100% !important;
+  }
+
+  .cashbook-print-summary {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 0.65rem !important;
+    margin: 0.5rem 0 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .cashbook-summary-card {
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 6px !important;
+    border: 1px solid #cbd5e1 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
   }
 
   .thermal-preview-single,
