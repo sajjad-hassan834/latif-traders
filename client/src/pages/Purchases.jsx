@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Eye, ArrowDownToLine, Trash2, RotateCcw } from 'lucide-react';
+import { Search, Plus, Eye, ArrowDownToLine, Trash2, RotateCcw, Printer, Download } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
+import { exportToCSV } from '../utils/exportCsv';
 import { useAuth } from '../context/AuthContext';
 
 export default function Purchases() {
@@ -14,7 +15,12 @@ export default function Purchases() {
   // Modals
   const [showNewModal, setShowNewModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState(null);
+  const [returnPurchase, setReturnPurchase] = useState(null);
+  const [returnItems, setReturnItems] = useState([]);
+  const [returnReason, setReturnReason] = useState('');
+  const [returnSubmitting, setReturnSubmitting] = useState(false);
 
   // New Purchase Form
   const [supplierId, setSupplierId] = useState('');
@@ -133,6 +139,93 @@ export default function Purchases() {
     }
   };
 
+  const openReturnModal = async (id) => {
+    try {
+      const res = await api.get(`/purchases/${id}`);
+      if (res.success) {
+        setReturnPurchase(res.purchase);
+        setReturnItems(res.items.map(it => ({
+          product_id: it.product_id,
+          batch_id: it.batch_id || null,
+          product_name: it.product_name,
+          batch_no: it.batch_no || '-',
+          purchased_qty: it.quantity,
+          unit: it.unit,
+          unit_price: it.unit_price,
+          return_qty: 0,
+          condition: 'DEFECTIVE'
+        })));
+        setReturnReason('');
+        setShowReturnModal(true);
+      }
+    } catch (err) {
+      alert('Failed to load purchase items for return');
+    }
+  };
+
+  const handleReturnItemChange = (index, field, value) => {
+    const updated = [...returnItems];
+    updated[index][field] = value;
+    setReturnItems(updated);
+  };
+
+  const handleSubmitReturn = async (e) => {
+    e.preventDefault();
+    const activeReturns = returnItems.filter(it => Number(it.return_qty) > 0);
+    if (activeReturns.length === 0) {
+      alert('Please enter a return quantity greater than 0 for at least one item.');
+      return;
+    }
+
+    // Validate return qty does not exceed purchased qty
+    for (const it of activeReturns) {
+      if (Number(it.return_qty) > it.purchased_qty) {
+        alert(`Cannot return more than purchased quantity (${it.purchased_qty}) for ${it.product_name}`);
+        return;
+      }
+    }
+
+    try {
+      setReturnSubmitting(true);
+      const payload = {
+        original_purchase_id: returnPurchase.id,
+        reason: returnReason.trim() || 'Supplier return',
+        items: activeReturns.map(it => ({
+          product_id: it.product_id,
+          batch_id: it.batch_id,
+          quantity: Number(it.return_qty),
+          unit_price: Number(it.unit_price),
+          condition: it.condition
+        }))
+      };
+
+      const res = await api.post('/purchases/returns', payload);
+      if (res.success) {
+        alert(`Purchase return recorded successfully! Ref: ${res.data.return_no}`);
+        setShowReturnModal(false);
+        loadData();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to submit purchase return');
+    } finally {
+      setReturnSubmitting(false);
+    }
+  };
+
+  const handleExportPurchases = () => {
+    exportToCSV('Latif_Traders_Purchases', purchases, [
+      { label: 'Invoice No', key: 'invoice_no' },
+      { label: 'Supplier Bill #', key: 'supplier_invoice_no' },
+      { label: 'Date', key: 'purchase_date' },
+      { label: 'Supplier Name', key: 'supplier_name' },
+      { label: 'Items Count', key: 'item_count' },
+      { label: 'Grand Total (PKR)', key: 'grand_total' },
+      { label: 'Paid (PKR)', key: 'paid_amount' },
+      { label: 'Payable Due (PKR)', key: 'balance_due' },
+      { label: 'Payment Method', key: 'payment_method' }
+    ]);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -142,12 +235,18 @@ export default function Purchases() {
             Record cold-chain supplier shipments, batch expiration dates, and payable balances.
           </p>
         </div>
-        {canManageInventory && (
-          <button onClick={() => setShowNewModal(true)} className="btn btn-primary">
-            <Plus size={16} />
-            <span>New Purchase Bill</span>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button onClick={handleExportPurchases} className="btn btn-secondary" title="Export Purchases to CSV">
+            <Download size={16} />
+            <span>Export CSV</span>
           </button>
-        )}
+          {canManageInventory && (
+            <button onClick={() => setShowNewModal(true)} className="btn btn-primary">
+              <Plus size={16} />
+              <span>New Purchase Bill</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* PURCHASES LIST */}
@@ -190,10 +289,22 @@ export default function Purchases() {
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <button onClick={() => viewPurchase(p.id)} className="btn btn-secondary btn-sm">
-                        <Eye size={15} />
-                        <span>View</span>
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                        <button onClick={() => viewPurchase(p.id)} className="btn btn-secondary btn-sm" title="View & Print Bill">
+                          <Eye size={14} />
+                          <span>View</span>
+                        </button>
+                        {canManageInventory && (
+                          <button
+                            onClick={() => openReturnModal(p.id)}
+                            className="btn btn-warning btn-sm"
+                            title="Return goods to supplier"
+                          >
+                            <RotateCcw size={14} />
+                            <span>Return</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -413,9 +524,22 @@ export default function Purchases() {
                   Supplier: {selectedPurchase.purchase.supplier_name} • Date: {formatDate(selectedPurchase.purchase.purchase_date)}
                 </div>
               </div>
-              <button onClick={() => setShowDetailModal(false)}>✕</button>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => window.print()}>
+                  <Printer size={15} />
+                  <span>Print Bill</span>
+                </button>
+                <button onClick={() => setShowDetailModal(false)}>✕</button>
+              </div>
             </div>
             <div className="modal-body">
+              <div className="print-header" style={{ marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>LATIF TRADERS - PURCHASE VOUCHER</h2>
+                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                  Commercial Market, Lahore • Cold-chain Supply Delivery Receiving Record
+                </div>
+              </div>
+
               <table className="table">
                 <thead>
                   <tr>
@@ -461,6 +585,115 @@ export default function Purchases() {
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setShowDetailModal(false)}>Close</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PURCHASE RETURN MODAL */}
+      {showReturnModal && returnPurchase && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '850px' }}>
+            <div className="modal-header">
+              <div>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <RotateCcw size={18} color="#ef4444" />
+                  <span>Return Goods to Supplier</span>
+                </h3>
+                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                  Supplier: <strong>{returnPurchase.supplier_name}</strong> • Bill: <strong>{returnPurchase.invoice_no}</strong>
+                </div>
+              </div>
+              <button onClick={() => setShowReturnModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleSubmitReturn}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '8px', padding: '0.75rem', fontSize: '0.85rem', color: '#991b1b' }}>
+                  Enter the quantity you wish to return. Submitting will automatically decrease inventory batches, create an audit movement, and deduct the return amount from the supplier's payable balance.
+                </div>
+
+                <div className="table-responsive">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Product</th>
+                        <th>Batch Lot</th>
+                        <th style={{ textAlign: 'center' }}>Purchased</th>
+                        <th style={{ width: '130px', textAlign: 'center' }}>Return Qty</th>
+                        <th style={{ width: '160px' }}>Condition</th>
+                        <th style={{ textAlign: 'right' }}>Cost Rate</th>
+                        <th style={{ textAlign: 'right' }}>Total Credit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {returnItems.map((it, idx) => {
+                        const lineCredit = (Number(it.return_qty) || 0) * Number(it.unit_price);
+                        return (
+                          <tr key={idx}>
+                            <td style={{ fontWeight: 600 }}>{it.product_name}</td>
+                            <td className="mono" style={{ fontSize: '0.8rem' }}>{it.batch_no}</td>
+                            <td style={{ textAlign: 'center' }}>{it.purchased_qty} {it.unit}</td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                style={{ textAlign: 'center', fontWeight: 700 }}
+                                min="0"
+                                max={it.purchased_qty}
+                                step="any"
+                                value={it.return_qty}
+                                onChange={(e) => handleReturnItemChange(idx, 'return_qty', e.target.value)}
+                              />
+                            </td>
+                            <td>
+                              <select
+                                className="form-control form-control-sm"
+                                value={it.condition}
+                                onChange={(e) => handleReturnItemChange(idx, 'condition', e.target.value)}
+                              >
+                                <option value="DEFECTIVE">Packaging Defective</option>
+                                <option value="MELTED">Melted / Thawed</option>
+                                <option value="EXPIRED">Short Expiry</option>
+                                <option value="RESELLABLE">Resellable Return</option>
+                              </select>
+                            </td>
+                            <td style={{ textAlign: 'right' }}>{formatPKR(it.unit_price)}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: lineCredit > 0 ? '#ef4444' : '#64748b' }}>
+                              {lineCredit > 0 ? formatPKR(lineCredit) : '-'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem', alignItems: 'center' }}>
+                  <div className="form-group">
+                    <label className="form-label">Return Reason / Explanation *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. 5 boxes arrived thawed / torn packaging from distributor van"
+                      required
+                      value={returnReason}
+                      onChange={(e) => setReturnReason(e.target.value)}
+                    />
+                  </div>
+                  <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Total Deducted from Payable</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ef4444' }}>
+                      {formatPKR(returnItems.reduce((sum, it) => sum + ((Number(it.return_qty) || 0) * Number(it.unit_price)), 0))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowReturnModal(false)}>Cancel</button>
+                <button type="submit" disabled={returnSubmitting} className="btn btn-danger">
+                  {returnSubmitting ? 'Processing Return...' : 'Confirm Purchase Return'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

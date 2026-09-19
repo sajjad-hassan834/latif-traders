@@ -288,6 +288,25 @@ exports.adjustStock = (req, res) => {
   }
 };
 
+// Get stock adjustments history
+exports.getAdjustments = (req, res) => {
+  try {
+    const adjustments = db.prepare(`
+      SELECT sa.*, p.name as product_name, p.sku, p.unit, b.batch_no, u.full_name as user_name
+      FROM stock_adjustments sa
+      JOIN products p ON sa.product_id = p.id
+      LEFT JOIN batches b ON sa.batch_id = b.id
+      LEFT JOIN users u ON sa.user_id = u.id
+      ORDER BY sa.created_at DESC
+      LIMIT 100
+    `).all();
+
+    return res.json({ success: true, adjustments });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Failed to fetch adjustments history.' });
+  }
+};
+
 // Categories CRUD
 exports.getCategories = (req, res) => {
   try {

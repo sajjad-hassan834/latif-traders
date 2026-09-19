@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Sliders, AlertTriangle, CheckCircle, Package } from 'lucide-react';
+import { Sliders, AlertTriangle, CheckCircle, Package, History } from 'lucide-react';
 import { api } from '../utils/api';
-import { formatPKR } from '../utils/formatters';
+import { formatPKR, formatDate, formatDateTime } from '../utils/formatters';
 
 export default function StockAdjustment() {
   const [products, setProducts] = useState([]);
@@ -14,6 +14,20 @@ export default function StockAdjustment() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  const loadHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const res = await api.get('/products/adjust/history');
+      if (res.success) setHistory(res.adjustments);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   useEffect(() => {
     async function loadProducts() {
@@ -25,6 +39,7 @@ export default function StockAdjustment() {
       }
     }
     loadProducts();
+    loadHistory();
   }, []);
 
   const handleProductChange = async (prodId) => {
@@ -72,8 +87,9 @@ export default function StockAdjustment() {
         setSuccessMsg(`Adjustment recorded! Ref: ${res.data.adjustment_no}, New Available Stock: ${res.data.new_stock}`);
         setQuantity('');
         setReason('');
-        // Reload product batches
+        // Reload product batches and audit history
         handleProductChange(selectedProduct);
+        loadHistory();
       }
     } catch (err) {
       setErrorMsg(err.message || 'Failed to submit adjustment.');
@@ -199,6 +215,73 @@ export default function StockAdjustment() {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* STOCK ADJUSTMENT AUDIT HISTORY */}
+      <div className="card" style={{ padding: 0 }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <History size={18} color="var(--primary)" />
+            <h3 style={{ fontSize: '1.05rem', margin: 0 }}>Adjustment History & Waste Audit Log</h3>
+          </div>
+          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Showing last {history.length} events</span>
+        </div>
+
+        <div className="table-responsive">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Ref #</th>
+                <th>Product</th>
+                <th>Batch #</th>
+                <th>Type</th>
+                <th style={{ textAlign: 'center' }}>Qty</th>
+                <th>Mandatory Reason</th>
+                <th>Logged By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingHistory ? (
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>Loading adjustment logs...</td></tr>
+              ) : history.length === 0 ? (
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No stock adjustments recorded yet.</td></tr>
+              ) : (
+                history.map(row => {
+                  const typeColors = {
+                    DAMAGE: 'badge-danger',
+                    MELTED: 'badge-danger',
+                    EXPIRED: 'badge-warning',
+                    SAMPLE: 'badge-info',
+                    LOST: 'badge-danger',
+                    COUNT_DIFF: 'badge-success'
+                  };
+                  return (
+                    <tr key={row.id}>
+                      <td style={{ fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap' }}>{formatDateTime(row.created_at)}</td>
+                      <td className="mono" style={{ fontSize: '0.8rem', fontWeight: 600 }}>{row.adjustment_no}</td>
+                      <td style={{ fontWeight: 600 }}>
+                        <div>{row.product_name}</div>
+                        <div className="mono" style={{ fontSize: '0.7rem', color: '#64748b' }}>{row.sku}</div>
+                      </td>
+                      <td className="mono" style={{ fontSize: '0.8rem' }}>{row.batch_no || '-'}</td>
+                      <td>
+                        <span className={`badge ${typeColors[row.type] || 'badge-secondary'}`}>
+                          {row.type}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center', fontWeight: 700, color: row.type === 'COUNT_DIFF' ? '#10b981' : '#ef4444' }}>
+                        {row.type === 'COUNT_DIFF' ? `+${row.quantity}` : `-${row.quantity}`} {row.unit}
+                      </td>
+                      <td style={{ fontSize: '0.85rem', maxWidth: '250px' }}>{row.reason}</td>
+                      <td style={{ fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap' }}>{row.user_name || 'Staff'}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

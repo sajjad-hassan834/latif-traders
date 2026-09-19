@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, FileText, DollarSign, Printer, Search } from 'lucide-react';
+import { Building2, Plus, FileText, DollarSign, Printer, Search, Edit } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 
@@ -10,6 +10,7 @@ export default function Suppliers() {
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
   const [selectedSup, setSelectedSup] = useState(null);
@@ -24,6 +25,10 @@ export default function Suppliers() {
     opening_balance: '0',
     notes: ''
   });
+
+  const [editFormData, setEditFormData] = useState(null);
+  const [ledgerStartDate, setLedgerStartDate] = useState('');
+  const [ledgerEndDate, setLedgerEndDate] = useState('');
 
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState('Cash');
@@ -67,10 +72,38 @@ export default function Suppliers() {
     }
   };
 
-  const openLedger = async (sup) => {
+  const openEditSupplier = (sup) => {
+    setSelectedSup(sup);
+    setEditFormData({
+      name: sup.name || '',
+      phone: sup.phone || '',
+      address: sup.address || '',
+      contact_person: sup.contact_person || '',
+      notes: sup.notes || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateSupplier = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api.put(`/parties/suppliers/${selectedSup.id}`, editFormData);
+      if (res.success) {
+        setShowEditModal(false);
+        loadSuppliers();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to update supplier');
+    }
+  };
+
+  const openLedger = async (sup, customStart = ledgerStartDate, customEnd = ledgerEndDate) => {
     try {
       setSelectedSup(sup);
-      const res = await api.get(`/parties/suppliers/${sup.id}/ledger`);
+      let url = `/parties/suppliers/${sup.id}/ledger?`;
+      if (customStart) url += `start_date=${customStart}&`;
+      if (customEnd) url += `end_date=${customEnd}&`;
+      const res = await api.get(url);
       if (res.success) {
         setLedgerData(res);
         setShowLedgerModal(true);
@@ -162,6 +195,14 @@ export default function Suppliers() {
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => openEditSupplier(s)}
+                          className="btn btn-secondary btn-sm"
+                          title="Edit Supplier Details"
+                        >
+                          <Edit size={14} />
+                          <span>Edit</span>
+                        </button>
                         <button
                           onClick={() => openLedger(s)}
                           className="btn btn-secondary btn-sm"
@@ -286,6 +327,44 @@ export default function Suppliers() {
               </div>
             </div>
             <div className="modal-body">
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', background: '#f8fafc', padding: '0.6rem 0.75rem', borderRadius: '6px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>From:</span>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={ledgerStartDate}
+                    onChange={(e) => setLedgerStartDate(e.target.value)}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>To:</span>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={ledgerEndDate}
+                    onChange={(e) => setLedgerEndDate(e.target.value)}
+                  />
+                </div>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => openLedger(selectedSup, ledgerStartDate, ledgerEndDate)}
+                >
+                  Filter
+                </button>
+                {(ledgerStartDate || ledgerEndDate) && (
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setLedgerStartDate('');
+                      setLedgerEndDate('');
+                      openLedger(selectedSup, '', '');
+                    }}
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
               <div className="table-responsive">
                 <table className="table">
                   <thead>
@@ -407,6 +486,77 @@ export default function Suppliers() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowPayModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-danger">Confirm Payment</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT SUPPLIER MODAL */}
+      {showEditModal && editFormData && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Edit Supplier Information</h3>
+              <button onClick={() => setShowEditModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleUpdateSupplier}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Supplier / Company Name *</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    required
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Contact Person</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.contact_person}
+                      onChange={(e) => setEditFormData({ ...editFormData, contact_person: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Phone Number</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.phone}
+                      onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Address</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={editFormData.address}
+                    onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Notes</label>
+                  <textarea
+                    className="form-control"
+                    rows="2"
+                    value={editFormData.notes}
+                    onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Update Supplier</button>
               </div>
             </form>
           </div>

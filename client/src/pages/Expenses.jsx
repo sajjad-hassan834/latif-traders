@@ -16,7 +16,11 @@ import {
   CreditCard,
   Banknote,
   RotateCcw,
-  Check
+  Check,
+  Paperclip,
+  Eye,
+  FileText,
+  ExternalLink
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
@@ -42,6 +46,7 @@ function ExpensesContent() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCatModal, setShowCatModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
+  const [previewReceiptUrl, setPreviewReceiptUrl] = useState(null);
 
   // Add Expense Form
   const [formData, setFormData] = useState({
@@ -50,8 +55,44 @@ function ExpensesContent() {
     amount: '',
     payment_method: 'Cash',
     expense_date: new Date().toISOString().split('T')[0],
-    description: ''
+    description: '',
+    receipt_base64: '',
+    receipt_name: ''
   });
+
+  const getFileUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    const rawBase = import.meta.env.VITE_API_URL || '';
+    return rawBase ? `${rawBase.replace(/\/$/, '')}${path}` : path;
+  };
+
+  const handleReceiptFileChange = (e, isEdit = false) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      alert('Attachment exceeds 8MB limit.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (loadEvt) => {
+      const base64 = loadEvt.target.result;
+      if (isEdit) {
+        setEditingExpense(prev => ({
+          ...prev,
+          receipt_base64: base64,
+          receipt_name: file.name
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          receipt_base64: base64,
+          receipt_name: file.name
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const [newCatName, setNewCatName] = useState('');
 
@@ -157,7 +198,9 @@ function ExpensesContent() {
           amount: '',
           payment_method: 'Cash',
           expense_date: new Date().toISOString().split('T')[0],
-          description: ''
+          description: '',
+          receipt_base64: '',
+          receipt_name: ''
         });
         loadExpenses();
       }
@@ -174,7 +217,10 @@ function ExpensesContent() {
       amount: exp.amount,
       payment_method: exp.payment_method || 'Cash',
       expense_date: exp.expense_date,
-      description: exp.description || ''
+      description: exp.description || '',
+      receipt_path: exp.receipt_path || null,
+      receipt_base64: '',
+      receipt_name: ''
     });
     setShowEditModal(true);
   };
@@ -550,23 +596,24 @@ function ExpensesContent() {
               <tr>
                 <th style={{ width: '110px' }}>Date</th>
                 <th>Expense Title</th>
-                <th style={{ width: '160px' }}>Category</th>
-                <th style={{ width: '120px' }}>Method</th>
+                <th style={{ width: '150px' }}>Category</th>
+                <th style={{ width: '110px' }}>Method</th>
                 <th>Notes / Description</th>
-                <th style={{ textAlign: 'right', width: '140px' }}>Amount (PKR)</th>
+                <th style={{ width: '80px', textAlign: 'center' }}>Receipt</th>
+                <th style={{ textAlign: 'right', width: '130px' }}>Amount (PKR)</th>
                 <th style={{ textAlign: 'center', width: '90px' }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
                     Loading expenses...
                   </td>
                 </tr>
               ) : expenses.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
                     No expenses found matching the filter criteria.
                   </td>
                 </tr>
@@ -599,6 +646,33 @@ function ExpensesContent() {
                     </td>
                     <td style={{ fontSize: '0.775rem', color: '#64748b' }}>
                       {e.description || '—'}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {e.receipt_path ? (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewReceiptUrl(getFileUrl(e.receipt_path))}
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            background: '#ecfdf5',
+                            border: '1px solid #a7f3d0',
+                            color: '#047857',
+                            borderRadius: '4px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            cursor: 'pointer'
+                          }}
+                          title="View Receipt / Bill"
+                        >
+                          <Eye size={12} />
+                          <span>Bill</span>
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '0.725rem', color: '#cbd5e1' }}>—</span>
+                      )}
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 800, color: '#ef4444', fontSize: '0.9rem' }}>
                       {formatPKR(e.amount)}
@@ -642,7 +716,7 @@ function ExpensesContent() {
             {expenses.length > 0 && (
               <tfoot>
                 <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
-                  <td colSpan="5" style={{ textAlign: 'right', padding: '0.65rem 1rem', fontSize: '0.8rem', color: '#475569' }}>
+                  <td colSpan="6" style={{ textAlign: 'right', padding: '0.65rem 1rem', fontSize: '0.8rem', color: '#475569' }}>
                     Total ({expenses.length} Records):
                   </td>
                   <td style={{ textAlign: 'right', padding: '0.65rem 1rem', color: '#ef4444', fontSize: '0.95rem' }}>
@@ -743,6 +817,24 @@ function ExpensesContent() {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
+
+                <div className="form-group" style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '6px', padding: '0.65rem' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
+                    <Paperclip size={13} color="#0284c7" />
+                    <span>Receipt / Bill Image (Optional)</span>
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => handleReceiptFileChange(e, false)}
+                    style={{ fontSize: '0.75rem', width: '100%' }}
+                  />
+                  {formData.receipt_name && (
+                    <div style={{ fontSize: '0.72rem', color: '#047857', marginTop: '4px', fontWeight: 600 }}>
+                      ✓ Attached: {formData.receipt_name}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(false)}>Cancel</button>
@@ -836,6 +928,36 @@ function ExpensesContent() {
                     onChange={(e) => setEditingExpense({ ...editingExpense, description: e.target.value })}
                   />
                 </div>
+
+                <div className="form-group" style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '6px', padding: '0.65rem' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
+                    <Paperclip size={13} color="#0284c7" />
+                    <span>Receipt / Bill Image (Optional)</span>
+                  </label>
+                  {editingExpense.receipt_path && !editingExpense.receipt_name && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', background: '#ecfdf5', padding: '4px 8px', borderRadius: '4px', border: '1px solid #a7f3d0' }}>
+                      <span style={{ fontSize: '0.725rem', color: '#065f46', fontWeight: 600 }}>Current Receipt Attached</span>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewReceiptUrl(getFileUrl(editingExpense.receipt_path))}
+                        style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '0.725rem', cursor: 'pointer', textDecoration: 'underline' }}
+                      >
+                        View
+                      </button>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => handleReceiptFileChange(e, true)}
+                    style={{ fontSize: '0.75rem', width: '100%' }}
+                  />
+                  {editingExpense.receipt_name && (
+                    <div style={{ fontSize: '0.72rem', color: '#047857', marginTop: '4px', fontWeight: 600 }}>
+                      ✓ New File Selected: {editingExpense.receipt_name}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
@@ -877,6 +999,59 @@ function ExpensesContent() {
                 <button type="submit" className="btn btn-primary btn-sm">Create</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* 7. PREVIEW RECEIPT MODAL */}
+      {previewReceiptUrl && (
+        <div className="modal-overlay" onClick={() => setPreviewReceiptUrl(null)}>
+          <div
+            className="modal-content"
+            style={{ maxWidth: '650px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <FileText size={16} color="var(--primary)" />
+                <h3 style={{ fontSize: '0.95rem' }}>Expense Receipt / Bill Attachment</h3>
+              </div>
+              <button onClick={() => setPreviewReceiptUrl(null)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem', overflowY: 'auto' }}>
+              <img
+                src={previewReceiptUrl}
+                alt="Expense Receipt"
+                style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '6px', objectFit: 'contain', border: '1px solid #e2e8f0' }}
+                onError={(err) => {
+                  err.target.style.display = 'none';
+                  err.target.parentElement.innerHTML = `<div style="padding: 2rem; text-align: center; color: #64748b;">
+                    <p style="font-weight: 600; margin-bottom: 0.5rem;">Document Preview</p>
+                    <a href="${previewReceiptUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary" style="display: inline-flex; align-items: center; gap: 4px;">
+                      Open Receipt in New Tab ↗
+                    </a>
+                  </div>`;
+                }}
+              />
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
+              <a
+                href={previewReceiptUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-sm btn-secondary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              >
+                <ExternalLink size={13} />
+                <span>Open in New Tab</span>
+              </a>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => setPreviewReceiptUrl(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

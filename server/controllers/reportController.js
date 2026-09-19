@@ -432,3 +432,114 @@ exports.getDayRegister = (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to generate register report.' });
   }
 };
+
+// Purchases Report (Date range, supplier, status)
+exports.getPurchasesReport = (req, res) => {
+  try {
+    const { start_date, end_date, supplier_id } = req.query;
+    const sDate = start_date || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    const eDate = end_date || new Date().toISOString().split('T')[0];
+
+    let query = `
+      SELECT p.*, s.name as supplier_name,
+        (SELECT COUNT(*) FROM purchase_items pi WHERE pi.purchase_id = p.id) as item_count
+      FROM purchases p
+      JOIN suppliers s ON p.supplier_id = s.id
+      WHERE p.purchase_date >= ? AND p.purchase_date <= ?
+    `;
+    const params = [sDate, eDate];
+
+    if (supplier_id) {
+      query += ' AND p.supplier_id = ?';
+      params.push(supplier_id);
+    }
+
+    query += ' ORDER BY p.purchase_date DESC, p.id DESC';
+
+    const purchases = db.prepare(query).all(...params);
+
+    const summary = {
+      total_purchases: purchases.reduce((sum, p) => sum + p.grand_total, 0),
+      total_paid: purchases.reduce((sum, p) => sum + p.paid_amount, 0),
+      total_balance_due: purchases.reduce((sum, p) => sum + p.balance_due, 0),
+      invoice_count: purchases.length
+    };
+
+    return res.json({ success: true, purchases, summary });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Failed to generate purchase report.' });
+  }
+};
+
+// Product-wise Sales Report (Qty sold, revenue, average rate, profit)
+exports.getProductSalesReport = (req, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+    const sDate = start_date || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    const eDate = end_date || new Date().toISOString().split('T')[0];
+
+    const report = db.prepare(`
+      SELECT
+        p.id, p.name, p.sku, p.unit, c.name as category_name,
+        COALESCE(SUM(si.quantity), 0) as total_qty_sold,
+        COALESCE(SUM(si.total_price), 0) as total_revenue,
+        COALESCE(AVG(si.unit_price), 0) as avg_sale_rate,
+        COALESCE(SUM(si.quantity * si.cost_price), 0) as total_cost,
+        COALESCE(SUM(si.total_price - (si.quantity * si.cost_price)), 0) as total_profit
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN sale_items si ON p.id = si.product_id
+      LEFT JOIN sales s ON si.sale_id = s.id AND s.sale_date >= ? AND s.sale_date <= ?
+      GROUP BY p.id
+      HAVING total_qty_sold > 0
+      ORDER BY total_revenue DESC
+    `).all(sDate, eDate);
+
+    const summary = {
+      total_revenue: report.reduce((sum, r) => sum + r.total_revenue, 0),
+      total_profit: report.reduce((sum, r) => sum + r.total_profit, 0),
+      total_units: report.reduce((sum, r) => sum + r.total_qty_sold, 0),
+      product_count: report.length
+    };
+
+    return res.json({ success: true, report, summary });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Failed to generate product sales report.' });
+  }
+};
+
+// Full Stock Movement Audit Ledger
+exports.getStockMovementsReport = (req, res) => {
+  try {
+    const { start_date, end_date, product_id, type } = req.query;
+    const sDate = start_date || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    const eDate = end_date || new Date().toISOString().split('T')[0];
+
+    let query = `
+      SELECT im.*, p.name as product_name, p.sku, p.unit, b.batch_no, u.full_name as user_name
+      FROM inventory_movements im
+      JOIN products p ON im.product_id = p.id
+      LEFT JOIN batches b ON im.batch_id = b.id
+      LEFT JOIN users u ON im.user_id = u.id
+      WHERE date(im.created_at) >= ? AND date(im.created_at) <= ?
+    `;
+    const params = [sDate, eDate];
+
+    if (product_id) {
+      query += ' AND im.product_id = ?';
+      params.push(product_id);
+    }
+    if (type) {
+      query += ' AND im.type = ?';
+      params.push(type);
+    }
+
+    query += ' ORDER BY im.created_at DESC, im.id DESC LIMIT 200';
+
+    const movements = db.prepare(query).all(...params);
+
+    return res.json({ success: true, movements });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Failed to fetch stock movements.' });
+  }
+};

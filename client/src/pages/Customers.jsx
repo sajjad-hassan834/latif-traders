@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, FileText, DollarSign, Printer, Search } from 'lucide-react';
+import { Users, Plus, FileText, DollarSign, Printer, Search, Edit } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 
@@ -10,6 +10,7 @@ export default function Customers() {
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
   const [selectedCust, setSelectedCust] = useState(null);
@@ -25,6 +26,10 @@ export default function Customers() {
     credit_limit: '0',
     notes: ''
   });
+
+  const [editFormData, setEditFormData] = useState(null);
+  const [ledgerStartDate, setLedgerStartDate] = useState('');
+  const [ledgerEndDate, setLedgerEndDate] = useState('');
 
   // Receive Payment Form
   const [payAmount, setPayAmount] = useState('');
@@ -70,10 +75,39 @@ export default function Customers() {
     }
   };
 
-  const openLedger = async (cust) => {
+  const openEditCustomer = (cust) => {
+    setSelectedCust(cust);
+    setEditFormData({
+      name: cust.name || '',
+      phone: cust.phone || '',
+      address: cust.address || '',
+      customer_type: cust.customer_type || 'Retail',
+      credit_limit: cust.credit_limit || 0,
+      notes: cust.notes || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateCustomer = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api.put(`/parties/customers/${selectedCust.id}`, editFormData);
+      if (res.success) {
+        setShowEditModal(false);
+        loadCustomers();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to update customer');
+    }
+  };
+
+  const openLedger = async (cust, customStart = ledgerStartDate, customEnd = ledgerEndDate) => {
     try {
       setSelectedCust(cust);
-      const res = await api.get(`/parties/customers/${cust.id}/ledger`);
+      let url = `/parties/customers/${cust.id}/ledger?`;
+      if (customStart) url += `start_date=${customStart}&`;
+      if (customEnd) url += `end_date=${customEnd}&`;
+      const res = await api.get(url);
       if (res.success) {
         setLedgerData(res);
         setShowLedgerModal(true);
@@ -171,6 +205,14 @@ export default function Customers() {
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => openEditCustomer(c)}
+                          className="btn btn-secondary btn-sm"
+                          title="Edit Customer Details"
+                        >
+                          <Edit size={14} />
+                          <span>Edit</span>
+                        </button>
                         <button
                           onClick={() => openLedger(c)}
                           className="btn btn-secondary btn-sm"
@@ -308,6 +350,44 @@ export default function Customers() {
               </div>
             </div>
             <div className="modal-body">
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', background: '#f8fafc', padding: '0.6rem 0.75rem', borderRadius: '6px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>From:</span>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={ledgerStartDate}
+                    onChange={(e) => setLedgerStartDate(e.target.value)}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>To:</span>
+                  <input
+                    type="date"
+                    className="form-control form-control-sm"
+                    value={ledgerEndDate}
+                    onChange={(e) => setLedgerEndDate(e.target.value)}
+                  />
+                </div>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => openLedger(selectedCust, ledgerStartDate, ledgerEndDate)}
+                >
+                  Filter
+                </button>
+                {(ledgerStartDate || ledgerEndDate) && (
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setLedgerStartDate('');
+                      setLedgerEndDate('');
+                      openLedger(selectedCust, '', '');
+                    }}
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
               <div className="table-responsive">
                 <table className="table">
                   <thead>
@@ -429,6 +509,91 @@ export default function Customers() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowPayModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Record Receipt</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT CUSTOMER MODAL */}
+      {showEditModal && editFormData && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Edit Customer Account</h3>
+              <button onClick={() => setShowEditModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleUpdateCustomer}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Customer / Business Name *</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    required
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Phone Number</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.phone}
+                      onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Account Type</label>
+                    <select
+                      className="form-control"
+                      value={editFormData.customer_type}
+                      onChange={(e) => setEditFormData({ ...editFormData, customer_type: e.target.value })}
+                    >
+                      <option value="Retail">Retail Walk-in</option>
+                      <option value="Wholesale">Wholesale Bulk Buyer</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Address / Shop Location</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.address}
+                      onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Credit Limit (PKR)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="0"
+                      value={editFormData.credit_limit}
+                      onChange={(e) => setEditFormData({ ...editFormData, credit_limit: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Notes</label>
+                  <textarea
+                    className="form-control"
+                    rows="2"
+                    value={editFormData.notes}
+                    onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Update Customer</button>
               </div>
             </form>
           </div>

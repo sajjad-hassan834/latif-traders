@@ -68,6 +68,7 @@ const MENU_SECTIONS = [
     title: 'Administration',
     roles: ['admin'],
     items: [
+      { id: 'users', label: 'Users & Staff', icon: Users, roles: ['admin'] },
       { id: 'settings', label: 'Settings & Backups', icon: Sliders, roles: ['admin'] }
     ]
   }

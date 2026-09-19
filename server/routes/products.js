@@ -7,6 +7,7 @@ router.use(authenticate);
 
 // Products
 router.get('/', productController.getProducts);
+router.get('/adjust/history', productController.getAdjustments);
 router.get('/:id', productController.getProductById);
 router.post('/', requireRoles('inventory'), productController.createProduct);
 router.put('/:id', requireRoles('inventory'), productController.updateProduct);

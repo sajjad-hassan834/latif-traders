@@ -1,5 +1,32 @@
-const { db } = require('../config/database');
+const path = require('path');
+const fs = require('fs');
+const { db, DATA_DIR } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
+
+const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+
+const saveReceiptFile = (base64String, existingPath) => {
+  if (!base64String) return existingPath || null;
+  if (!base64String.startsWith('data:')) return base64String;
+  try {
+    if (!fs.existsSync(UPLOADS_DIR)) {
+      fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    }
+    const matches = base64String.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (matches && matches.length === 3) {
+      let ext = matches[1].split('/')[1] || 'png';
+      if (ext.includes('jpeg')) ext = 'jpg';
+      const safeExt = ext.replace(/[^a-zA-Z0-9]/g, '');
+      const filename = `receipt_${Date.now()}_${Math.floor(Math.random() * 1000)}.${safeExt}`;
+      const filepath = path.join(UPLOADS_DIR, filename);
+      fs.writeFileSync(filepath, Buffer.from(matches[2], 'base64'));
+      return `/uploads/${filename}`;
+    }
+  } catch (err) {
+    console.error('Error writing receipt file:', err);
+  }
+  return existingPath || null;
+};
 
 // List expenses with category info
 exports.getExpenses = (req, res) => {
@@ -52,15 +79,17 @@ exports.getExpenses = (req, res) => {
 // Create Expense
 exports.createExpense = (req, res) => {
   try {
-    const { category_id, title, amount, payment_method, expense_date, description } = req.body;
+    const { category_id, title, amount, payment_method, expense_date, description, receipt_path, receipt_base64 } = req.body;
 
     if (!title || !amount || Number(amount) <= 0) {
       return res.status(400).json({ success: false, message: 'Expense title and a valid amount are required.' });
     }
 
+    const savedReceipt = saveReceiptFile(receipt_base64, receipt_path);
+
     const stmt = db.prepare(`
-      INSERT INTO expenses (category_id, title, amount, payment_method, expense_date, description, user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO expenses (category_id, title, amount, payment_method, expense_date, description, receipt_path, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -70,12 +99,13 @@ exports.createExpense = (req, res) => {
       payment_method || 'Cash',
       expense_date || new Date().toISOString().split('T')[0],
       description ? description.trim() : null,
+      savedReceipt,
       req.user.id
     );
 
     logAudit(req.user.id, req.user.full_name, 'CREATE', 'EXPENSE', result.lastInsertRowid, `Recorded expense: ${title} (₨ ${amount})`, req);
 
-    return res.status(201).json({ success: true, id: result.lastInsertRowid, message: 'Expense recorded.' });
+    return res.status(201).json({ success: true, id: result.lastInsertRowid, receipt_path: savedReceipt, message: 'Expense recorded.' });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }
@@ -85,7 +115,7 @@ exports.createExpense = (req, res) => {
 exports.updateExpense = (req, res) => {
   try {
     const { id } = req.params;
-    const { category_id, title, amount, payment_method, expense_date, description } = req.body;
+    const { category_id, title, amount, payment_method, expense_date, description, receipt_path, receipt_base64 } = req.body;
 
     const existing = db.prepare('SELECT * FROM expenses WHERE id = ?').get(id);
     if (!existing) return res.status(404).json({ success: false, message: 'Expense record not found.' });
@@ -94,9 +124,11 @@ exports.updateExpense = (req, res) => {
       return res.status(400).json({ success: false, message: 'Expense title and a valid amount are required.' });
     }
 
+    const savedReceipt = saveReceiptFile(receipt_base64, receipt_path !== undefined ? receipt_path : existing.receipt_path);
+
     db.prepare(`
       UPDATE expenses
-      SET category_id = ?, title = ?, amount = ?, payment_method = ?, expense_date = ?, description = ?
+      SET category_id = ?, title = ?, amount = ?, payment_method = ?, expense_date = ?, description = ?, receipt_path = ?
       WHERE id = ?
     `).run(
       category_id || null,
@@ -105,6 +137,7 @@ exports.updateExpense = (req, res) => {
       payment_method || 'Cash',
       expense_date || existing.expense_date,
       description ? description.trim() : null,
+      savedReceipt,
       id
     );
 

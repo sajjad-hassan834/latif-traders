@@ -12,7 +12,8 @@ import {
   DollarSign,
   ArrowDownRight,
   ArrowUpRight,
-  RefreshCw
+  RefreshCw,
+  ArrowDownToLine
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate, formatDateTime } from '../utils/formatters';
@@ -41,6 +42,9 @@ function ReportsContent() {
   const [stockReport, setStockReport] = useState(null);
   const [expiryReport, setExpiryReport] = useState(null);
   const [dayRegister, setDayRegister] = useState(null);
+  const [purchasesReport, setPurchasesReport] = useState(null);
+  const [productSalesReport, setProductSalesReport] = useState(null);
+  const [movementsReport, setMovementsReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
 
@@ -84,6 +88,27 @@ function ReportsContent() {
           setDayRegister(res);
         } else {
           setErrorMessage(res?.message || 'Unable to load day register closing report.');
+        }
+      } else if (activeReport === 'purchases') {
+        const res = await api.get(`/reports/purchases?start_date=${startDate}&end_date=${endDate}`);
+        if (res && res.success) {
+          setPurchasesReport(res);
+        } else {
+          setErrorMessage(res?.message || 'Unable to load purchases report.');
+        }
+      } else if (activeReport === 'product-sales') {
+        const res = await api.get(`/reports/product-sales?start_date=${startDate}&end_date=${endDate}`);
+        if (res && res.success) {
+          setProductSalesReport(res);
+        } else {
+          setErrorMessage(res?.message || 'Unable to load product sales report.');
+        }
+      } else if (activeReport === 'movements') {
+        const res = await api.get(`/reports/movements?start_date=${startDate}&end_date=${endDate}`);
+        if (res && res.success) {
+          setMovementsReport(res.movements || []);
+        } else {
+          setErrorMessage(res?.message || 'Unable to load stock movements.');
         }
       }
     } catch (err) {
@@ -200,6 +225,40 @@ function ReportsContent() {
         { label: 'Financial Category', key: 'Category' },
         { label: 'Amount (PKR)', key: 'Amount' }
       ]);
+    } else if (activeReport === 'purchases' && purchasesReport?.purchases?.length) {
+      exportToCSV(`Purchases_Report_${startDate}_${endDate}`, purchasesReport.purchases, [
+        { label: 'Invoice No', key: 'invoice_no' },
+        { label: 'Date', key: 'purchase_date' },
+        { label: 'Supplier', key: 'supplier_name' },
+        { label: 'Items Count', key: 'item_count' },
+        { label: 'Grand Total (PKR)', key: 'grand_total' },
+        { label: 'Paid (PKR)', key: 'paid_amount' },
+        { label: 'Balance Due (PKR)', key: 'balance_due' },
+        { label: 'Payment Method', key: 'payment_method' }
+      ]);
+    } else if (activeReport === 'product-sales' && productSalesReport?.report?.length) {
+      exportToCSV(`Product_Sales_Report_${startDate}_${endDate}`, productSalesReport.report, [
+        { label: 'Product Name', key: 'name' },
+        { label: 'SKU', key: 'sku' },
+        { label: 'Category', key: 'category_name' },
+        { label: 'Units Sold', key: 'total_qty_sold' },
+        { label: 'Unit', key: 'unit' },
+        { label: 'Total Revenue (PKR)', key: 'total_revenue' },
+        { label: 'Total Cost (PKR)', key: 'total_cost' },
+        { label: 'Net Profit (PKR)', key: 'total_profit' }
+      ]);
+    } else if (activeReport === 'movements' && movementsReport?.length) {
+      exportToCSV(`Stock_Movements_${startDate}_${endDate}`, movementsReport, [
+        { label: 'Date', key: 'created_at' },
+        { label: 'Product Name', key: 'product_name' },
+        { label: 'SKU', key: 'sku' },
+        { label: 'Batch No', key: 'batch_no' },
+        { label: 'Movement Type', key: 'type' },
+        { label: 'Delta Qty', key: 'quantity_delta' },
+        { label: 'Balance After', key: 'balance_after' },
+        { label: 'Reason', key: 'reason' },
+        { label: 'Logged By', key: 'user_name' }
+      ]);
     }
   };
 
@@ -257,10 +316,40 @@ function ReportsContent() {
               <span>Batch Expiry</span>
             </button>
           )}
+
+          {(isAdmin || canManageInventory || canViewFinances) && (
+            <button
+              onClick={() => setActiveReport('purchases')}
+              className={`btn btn-sm ${activeReport === 'purchases' ? 'btn-primary' : 'btn-secondary'}`}
+            >
+              <ArrowDownToLine size={14} />
+              <span>Purchases Ledger</span>
+            </button>
+          )}
+
+          {(isAdmin || canSell || canViewFinances) && (
+            <button
+              onClick={() => setActiveReport('product-sales')}
+              className={`btn btn-sm ${activeReport === 'product-sales' ? 'btn-primary' : 'btn-secondary'}`}
+            >
+              <DollarSign size={14} />
+              <span>Product Sales</span>
+            </button>
+          )}
+
+          {(isAdmin || canManageInventory || canViewFinances) && (
+            <button
+              onClick={() => setActiveReport('movements')}
+              className={`btn btn-sm ${activeReport === 'movements' ? 'btn-primary' : 'btn-secondary'}`}
+            >
+              <RefreshCw size={14} />
+              <span>Stock Movements</span>
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {(activeReport === 'pnl' || activeReport === 'daily') && (
+          {(activeReport === 'pnl' || activeReport === 'daily' || activeReport === 'purchases' || activeReport === 'product-sales' || activeReport === 'movements') && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <input
                 type="date"
@@ -711,6 +800,207 @@ function ReportsContent() {
                         </td>
                       </tr>
                     ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* 6. PURCHASES REPORT */}
+        {activeReport === 'purchases' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="grid grid-cols-4">
+              <div className="card" style={{ borderLeft: '4px solid #0284c7' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>TOTAL PURCHASES</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginTop: '0.25rem' }}>
+                  {formatPKR(purchasesReport?.summary?.total_purchases || 0)}
+                </div>
+              </div>
+              <div className="card" style={{ borderLeft: '4px solid #10b981' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>TOTAL CASH/BANK PAID</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981', marginTop: '0.25rem' }}>
+                  {formatPKR(purchasesReport?.summary?.total_paid || 0)}
+                </div>
+              </div>
+              <div className="card" style={{ borderLeft: '4px solid #ef4444' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>PAYABLE DUE (DEBT)</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ef4444', marginTop: '0.25rem' }}>
+                  {formatPKR(purchasesReport?.summary?.total_balance_due || 0)}
+                </div>
+              </div>
+              <div className="card" style={{ borderLeft: '4px solid #8b5cf6' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>BILLS RECEIVED</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#8b5cf6', marginTop: '0.25rem' }}>
+                  {purchasesReport?.summary?.invoice_count || 0} bills
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: 0 }}>
+              <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
+                <h3 style={{ fontSize: '1rem' }}>Supplier Restocking Ledger</h3>
+                <p style={{ fontSize: '0.75rem', color: '#64748b' }}>All purchase bills recorded from {startDate} to {endDate}.</p>
+              </div>
+              <div className="table-responsive">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Internal Inv #</th>
+                      <th>Date</th>
+                      <th>Supplier Name</th>
+                      <th style={{ textAlign: 'center' }}>Items Count</th>
+                      <th style={{ textAlign: 'right' }}>Grand Total</th>
+                      <th style={{ textAlign: 'right' }}>Paid Amount</th>
+                      <th style={{ textAlign: 'right' }}>Payable Due</th>
+                      <th>Payment Method</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!purchasesReport?.purchases?.length ? (
+                      <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No purchase invoices found in date range.</td></tr>
+                    ) : (
+                      purchasesReport.purchases.map(p => (
+                        <tr key={p.id}>
+                          <td className="mono" style={{ fontWeight: 700, color: '#0284c7' }}>{p.invoice_no}</td>
+                          <td>{formatDate(p.purchase_date)}</td>
+                          <td style={{ fontWeight: 600 }}>{p.supplier_name}</td>
+                          <td style={{ textAlign: 'center' }}>{p.item_count}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatPKR(p.grand_total)}</td>
+                          <td style={{ textAlign: 'right', color: '#10b981' }}>{formatPKR(p.paid_amount)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: p.balance_due > 0 ? '#ef4444' : '#64748b' }}>
+                            {formatPKR(p.balance_due)}
+                          </td>
+                          <td><span className="badge badge-secondary">{p.payment_method}</span></td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 7. PRODUCT-WISE SALES REPORT */}
+        {activeReport === 'product-sales' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="grid grid-cols-4">
+              <div className="card" style={{ borderLeft: '4px solid #0284c7' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>TOTAL SALES REVENUE</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0284c7', marginTop: '0.25rem' }}>
+                  {formatPKR(productSalesReport?.summary?.total_revenue || 0)}
+                </div>
+              </div>
+              <div className="card" style={{ borderLeft: '4px solid #10b981' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>GROSS PROFIT EARNED</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981', marginTop: '0.25rem' }}>
+                  {formatPKR(productSalesReport?.summary?.total_profit || 0)}
+                </div>
+              </div>
+              <div className="card" style={{ borderLeft: '4px solid #f59e0b' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>TOTAL UNITS DISPATCHED</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f59e0b', marginTop: '0.25rem' }}>
+                  {productSalesReport?.summary?.total_units || 0}
+                </div>
+              </div>
+              <div className="card" style={{ borderLeft: '4px solid #8b5cf6' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>ACTIVE PRODUCTS SOLD</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#8b5cf6', marginTop: '0.25rem' }}>
+                  {productSalesReport?.summary?.product_count || 0} items
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: 0 }}>
+              <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
+                <h3 style={{ fontSize: '1rem' }}>Product-Wise Sales & Margin Breakdown</h3>
+                <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Ranking of sold items by gross revenue contribution.</p>
+              </div>
+              <div className="table-responsive">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Product Name</th>
+                      <th>Category</th>
+                      <th style={{ textAlign: 'center' }}>Units Sold</th>
+                      <th style={{ textAlign: 'right' }}>Avg Sale Rate</th>
+                      <th style={{ textAlign: 'right' }}>Total Revenue</th>
+                      <th style={{ textAlign: 'right' }}>Cost of Goods</th>
+                      <th style={{ textAlign: 'right' }}>Gross Profit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!productSalesReport?.report?.length ? (
+                      <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No product sales recorded in date range.</td></tr>
+                    ) : (
+                      productSalesReport.report.map((r, idx) => (
+                        <tr key={r.id}>
+                          <td style={{ fontWeight: 600 }}>
+                            <div>{r.name}</div>
+                            <div className="mono" style={{ fontSize: '0.7rem', color: '#64748b' }}>{r.sku}</div>
+                          </td>
+                          <td>{r.category_name || '-'}</td>
+                          <td style={{ textAlign: 'center', fontWeight: 700 }}>{r.total_qty_sold} {r.unit}</td>
+                          <td style={{ textAlign: 'right' }}>{formatPKR(r.avg_sale_rate)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#0284c7' }}>{formatPKR(r.total_revenue)}</td>
+                          <td style={{ textAlign: 'right', color: '#64748b' }}>{formatPKR(r.total_cost)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#10b981' }}>{formatPKR(r.total_profit)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 8. STOCK MOVEMENTS AUDIT LEDGER */}
+        {activeReport === 'movements' && (
+          <div className="card" style={{ padding: 0 }}>
+            <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
+              <h3 style={{ fontSize: '1rem' }}>Master Stock Movement Audit Trail</h3>
+              <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Traceable history of all restocks, sales deductions, returns, and damage adjustments.</p>
+            </div>
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Date & Time</th>
+                    <th>Product</th>
+                    <th>Batch Lot #</th>
+                    <th>Type</th>
+                    <th style={{ textAlign: 'center' }}>Change (Delta)</th>
+                    <th style={{ textAlign: 'center' }}>Balance After</th>
+                    <th>Reference / Reason</th>
+                    <th>Logged By</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {!movementsReport?.length ? (
+                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No stock movements recorded in date range.</td></tr>
+                  ) : (
+                    movementsReport.map(m => {
+                      const isPositive = m.quantity_delta > 0;
+                      return (
+                        <tr key={m.id}>
+                          <td style={{ fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap' }}>{formatDateTime(m.created_at)}</td>
+                          <td style={{ fontWeight: 600 }}>
+                            <div>{m.product_name}</div>
+                            <div className="mono" style={{ fontSize: '0.7rem', color: '#64748b' }}>{m.sku}</div>
+                          </td>
+                          <td className="mono" style={{ fontSize: '0.8rem' }}>{m.batch_no || '-'}</td>
+                          <td><span className="badge badge-info">{m.type}</span></td>
+                          <td style={{ textAlign: 'center', fontWeight: 700, color: isPositive ? '#10b981' : '#ef4444' }}>
+                            {isPositive ? `+${m.quantity_delta}` : m.quantity_delta} {m.unit}
+                          </td>
+                          <td style={{ textAlign: 'center', fontWeight: 600 }}>{m.balance_after}</td>
+                          <td style={{ fontSize: '0.85rem', maxWidth: '240px' }}>{m.reason || '-'}</td>
+                          <td style={{ fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap' }}>{m.user_name || 'Staff'}</td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

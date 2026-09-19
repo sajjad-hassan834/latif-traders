@@ -18,6 +18,8 @@ export default function Inventory() {
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showMetaModal, setShowMetaModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -41,6 +43,13 @@ export default function Inventory() {
     batch_no: '',
     expiry_date: ''
   });
+
+  const [editFormData, setEditFormData] = useState(null);
+  const [metaTab, setMetaTab] = useState('categories');
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatDesc, setNewCatDesc] = useState('');
+  const [newUnitName, setNewUnitName] = useState('');
+  const [newUnitCode, setNewUnitCode] = useState('');
 
   const loadData = async () => {
     try {
@@ -134,6 +143,76 @@ export default function Inventory() {
     }
   };
 
+  const openEditProduct = (p) => {
+    setEditFormData({
+      id: p.id,
+      name: p.name || '',
+      sku: p.sku || '',
+      barcode: p.barcode || '',
+      category_id: p.category_id || '',
+      brand: p.brand || '',
+      unit: p.unit || 'pkt',
+      purchase_price: p.purchase_price || 0,
+      sale_price: p.sale_price || 0,
+      wholesale_price: p.wholesale_price || 0,
+      min_stock_level: p.min_stock_level || 5,
+      storage_location: p.storage_location || '',
+      status: p.status || 'active'
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateProduct = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api.put(`/products/${editFormData.id}`, editFormData);
+      if (res.success) {
+        setShowEditModal(false);
+        loadData();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to update product');
+    }
+  };
+
+  const handleCreateCategory = async (e) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+    try {
+      const res = await api.post('/products/meta/categories', {
+        name: newCatName.trim(),
+        description: newCatDesc.trim()
+      });
+      if (res.success) {
+        setNewCatName('');
+        setNewCatDesc('');
+        const cRes = await api.get('/products/meta/categories');
+        if (cRes.success) setCategories(cRes.categories);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to add category');
+    }
+  };
+
+  const handleCreateUnit = async (e) => {
+    e.preventDefault();
+    if (!newUnitName.trim() || !newUnitCode.trim()) return;
+    try {
+      const res = await api.post('/products/meta/units', {
+        name: newUnitName.trim(),
+        short_code: newUnitCode.trim()
+      });
+      if (res.success) {
+        setNewUnitName('');
+        setNewUnitCode('');
+        const uRes = await api.get('/products/meta/units');
+        if (uRes.success) setUnits(uRes.units);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to add unit');
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* TOOLBAR */}
@@ -179,6 +258,13 @@ export default function Inventory() {
             <Download size={14} />
             <span>Export CSV</span>
           </button>
+
+          {canManageInventory && (
+            <button onClick={() => setShowMetaModal(true)} className="btn btn-secondary btn-sm" title="Manage Categories & Units">
+              <Layers size={14} />
+              <span>Categories & Units</span>
+            </button>
+          )}
 
           {canManageInventory && (
             <button onClick={() => setShowAddModal(true)} className="btn btn-primary btn-sm">
@@ -259,6 +345,16 @@ export default function Inventory() {
                             <Eye size={13} />
                             <span>Batches</span>
                           </button>
+                          {canManageInventory && (
+                            <button
+                              onClick={() => openEditProduct(p)}
+                              className="btn btn-secondary btn-sm"
+                              title="Edit Product Details & Prices"
+                            >
+                              <Edit size={13} />
+                              <span>Edit</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -544,6 +640,283 @@ export default function Inventory() {
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary btn-sm" onClick={() => setShowDetailModal(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT PRODUCT MODAL */}
+      {showEditModal && editFormData && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '650px' }}>
+            <div className="modal-header">
+              <h3>Edit Frozen Product</h3>
+              <button onClick={() => setShowEditModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleUpdateProduct}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Product Name *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.name}
+                      onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">SKU Code *</label>
+                    <input
+                      type="text"
+                      className="form-control mono"
+                      value={editFormData.sku}
+                      onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Barcode</label>
+                    <input
+                      type="text"
+                      className="form-control mono"
+                      value={editFormData.barcode}
+                      onChange={(e) => setEditFormData({ ...editFormData, barcode: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Category</label>
+                    <select
+                      className="form-control"
+                      value={editFormData.category_id}
+                      onChange={(e) => setEditFormData({ ...editFormData, category_id: e.target.value })}
+                    >
+                      <option value="">-- No Category --</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Brand</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.brand}
+                      onChange={(e) => setEditFormData({ ...editFormData, brand: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Unit</label>
+                    <select
+                      className="form-control"
+                      value={editFormData.unit}
+                      onChange={(e) => setEditFormData({ ...editFormData, unit: e.target.value })}
+                    >
+                      {units.map(u => <option key={u.id} value={u.short_code}>{u.name} ({u.short_code})</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Cost (PKR)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="0"
+                      step="any"
+                      value={editFormData.purchase_price}
+                      onChange={(e) => setEditFormData({ ...editFormData, purchase_price: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Sale (PKR) *</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="0"
+                      step="any"
+                      value={editFormData.sale_price}
+                      onChange={(e) => setEditFormData({ ...editFormData, sale_price: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Wholesale</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="0"
+                      step="any"
+                      value={editFormData.wholesale_price}
+                      onChange={(e) => setEditFormData({ ...editFormData, wholesale_price: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Min Stock Alert</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="0"
+                      value={editFormData.min_stock_level}
+                      onChange={(e) => setEditFormData({ ...editFormData, min_stock_level: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Storage Location</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editFormData.storage_location}
+                      onChange={(e) => setEditFormData({ ...editFormData, storage_location: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Status</label>
+                    <select
+                      className="form-control"
+                      value={editFormData.status}
+                      onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary btn-sm">Update Product</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MANAGE CATEGORIES & UNITS MODAL */}
+      {showMetaModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <Layers size={18} color="var(--primary)" />
+                <h3 style={{ margin: 0 }}>Categories & Units Manager</h3>
+              </div>
+              <button onClick={() => setShowMetaModal(false)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setMetaTab('categories')}
+                  className={`btn btn-sm ${metaTab === 'categories' ? 'btn-primary' : 'btn-secondary'}`}
+                >
+                  Product Categories ({categories.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMetaTab('units')}
+                  className={`btn btn-sm ${metaTab === 'units' ? 'btn-primary' : 'btn-secondary'}`}
+                >
+                  Measurement Units ({units.length})
+                </button>
+              </div>
+
+              {metaTab === 'categories' ? (
+                <div>
+                  <form onSubmit={handleCreateCategory} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      style={{ flex: 1, minWidth: '150px' }}
+                      placeholder="Category name (e.g., Seafood)"
+                      value={newCatName}
+                      onChange={(e) => setNewCatName(e.target.value)}
+                      required
+                    />
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      style={{ flex: 1.5, minWidth: '180px' }}
+                      placeholder="Description / notes"
+                      value={newCatDesc}
+                      onChange={(e) => setNewCatDesc(e.target.value)}
+                    />
+                    <button type="submit" className="btn btn-primary btn-sm">Add Category</button>
+                  </form>
+                  <div className="table-responsive" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Category Name</th>
+                          <th>Description</th>
+                          <th style={{ textAlign: 'center' }}>Products</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {categories.map(c => (
+                          <tr key={c.id}>
+                            <td style={{ fontWeight: 600 }}>{c.name}</td>
+                            <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{c.description || '-'}</td>
+                            <td style={{ textAlign: 'center' }}><span className="badge badge-info">{c.product_count || 0}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <form onSubmit={handleCreateUnit} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      style={{ flex: 1.5, minWidth: '140px' }}
+                      placeholder="Unit Name (e.g., Kilogram)"
+                      value={newUnitName}
+                      onChange={(e) => setNewUnitName(e.target.value)}
+                      required
+                    />
+                    <input
+                      type="text"
+                      className="form-control form-control-sm mono"
+                      style={{ flex: 1, minWidth: '100px' }}
+                      placeholder="Code (e.g., kg)"
+                      value={newUnitCode}
+                      onChange={(e) => setNewUnitCode(e.target.value)}
+                      required
+                    />
+                    <button type="submit" className="btn btn-primary btn-sm">Add Unit</button>
+                  </form>
+                  <div className="table-responsive" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Unit Name</th>
+                          <th style={{ textAlign: 'center' }}>Short Code</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {units.map(u => (
+                          <tr key={u.id}>
+                            <td style={{ fontWeight: 600 }}>{u.name}</td>
+                            <td style={{ textAlign: 'center' }}><span className="badge badge-secondary mono">{u.short_code}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowMetaModal(false)}>Close</button>
             </div>
           </div>
         </div>
