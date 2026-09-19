@@ -132,9 +132,9 @@ exports.createPurchase = (req, res) => {
     // Process line items & stock additions
     const insertItem = db.prepare(`
       INSERT INTO purchase_items (
-        purchase_id, product_id, batch_no, expiry_date,
+        purchase_id, product_id, brand, batch_no, expiry_date,
         quantity, unit, unit_price, discount, total_price
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertMovement = db.prepare(`
@@ -144,14 +144,20 @@ exports.createPurchase = (req, res) => {
       ) VALUES (?, ?, 'PURCHASE', ?, ?, ?, ?, 'PURCHASE_INVOICE', ?, ?)
     `);
 
-    for (const item of items) {
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
       const qty = Number(item.quantity);
       const rate = Number(item.unit_price);
       const lineTotal = (qty * rate) - (Number(item.discount) || 0);
 
+      // Fetch product to resolve brand if not explicitly provided
+      const prodInfo = db.prepare('SELECT brand, supplier_id FROM products WHERE id = ?').get(item.product_id);
+      const itemBrand = item.brand ? item.brand.trim() : (prodInfo?.brand || null);
+
       insertItem.run(
         purchaseId,
         item.product_id,
+        itemBrand,
         item.batch_no || null,
         item.expiry_date || null,
         qty,
@@ -161,13 +167,13 @@ exports.createPurchase = (req, res) => {
         lineTotal
       );
 
-      // Create or update batch
+      // Create distinct batch with explicit supplier_id for true FIFO tracking
       let batchId = null;
       if (item.batch_no) {
         const existingBatch = db.prepare(`
           SELECT * FROM batches
-          WHERE product_id = ? AND batch_no = ? AND status = 'active'
-        `).get(item.product_id, item.batch_no);
+          WHERE product_id = ? AND batch_no = ? AND supplier_id = ? AND status = 'active'
+        `).get(item.product_id, item.batch_no, supplier_id);
 
         if (existingBatch) {
           db.prepare('UPDATE batches SET quantity = quantity + ?, purchase_price = ? WHERE id = ?')
@@ -176,25 +182,31 @@ exports.createPurchase = (req, res) => {
         } else {
           const exp = item.expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
           const bRes = db.prepare(`
-            INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, storage_location)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `).run(item.product_id, item.batch_no, exp, qty, rate, item.storage_location || null);
+            INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, storage_location, supplier_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `).run(item.product_id, item.batch_no, exp, qty, rate, item.storage_location || null, supplier_id);
           batchId = bRes.lastInsertRowid;
         }
       } else {
-        // Create an automatic batch
-        const autoBatchNo = `B-${dateStr}-${item.product_id}`;
+        // Unique batch lot per purchase invoice for strict FIFO costing
+        const autoBatchNo = `PUR-${dateStr}-B${idx + 1}-${item.product_id}`;
         const exp = item.expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
         const bRes = db.prepare(`
-          INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, storage_location)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(item.product_id, autoBatchNo, exp, qty, rate, null);
+          INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, storage_location, supplier_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(item.product_id, autoBatchNo, exp, qty, rate, null, supplier_id);
         batchId = bRes.lastInsertRowid;
       }
 
-      // Update product's latest purchase price
-      db.prepare('UPDATE products SET purchase_price = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-        .run(rate, item.product_id);
+      // Update product's latest purchase price and default supplier if empty
+      db.prepare(`
+        UPDATE products SET
+          purchase_price = ?,
+          supplier_id = COALESCE(supplier_id, ?),
+          brand = COALESCE(brand, ?),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(rate, supplier_id, itemBrand, item.product_id);
 
       // Calculate total stock after
       const newTotal = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active'")
@@ -207,7 +219,7 @@ exports.createPurchase = (req, res) => {
         rate,
         newTotal,
         purchaseId,
-        `Purchase Invoice ${invoice_no}`,
+        `Purchase Invoice ${invoice_no} (${supplier.name})`,
         req.user.id
       );
     }
@@ -328,3 +340,42 @@ exports.createPurchaseReturn = (req, res) => {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
+
+// Preview existing stock & active batches with vendor history for a product
+exports.getProductStockPreview = (req, res) => {
+  try {
+    const { productId } = req.params;
+    const product = db.prepare(`
+      SELECT p.id, p.name, p.sku, p.brand, p.unit, p.purchase_price, p.sale_price, s.name as supplier_name
+      FROM products p
+      LEFT JOIN suppliers s ON p.supplier_id = s.id
+      WHERE p.id = ?
+    `).get(productId);
+
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found.' });
+    }
+
+    const batches = db.prepare(`
+      SELECT b.id, b.batch_no, b.quantity, b.purchase_price, b.expiry_date, b.created_at,
+        COALESCE(s.name, 'Initial Opening') as supplier_name
+      FROM batches b
+      LEFT JOIN suppliers s ON b.supplier_id = s.id
+      WHERE b.product_id = ? AND b.status = 'active' AND b.quantity > 0
+      ORDER BY b.id ASC
+    `).all(productId);
+
+    const current_stock = batches.reduce((sum, b) => sum + Number(b.quantity), 0);
+
+    return res.json({
+      success: true,
+      product,
+      current_stock,
+      batches
+    });
+  } catch (err) {
+    console.error('Error fetching stock preview:', err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch stock preview.' });
+  }
+};
+

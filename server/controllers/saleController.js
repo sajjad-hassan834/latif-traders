@@ -193,16 +193,15 @@ exports.createSale = (req, res) => {
       const itemDisc = Number(item.discount) || 0;
       const lineTotal = (remainingQtyToDeduct * rate) - itemDisc;
 
-      // Find batches ordered by expiry date (FEFO)
+      // Find active batches ordered by id ASC (Strict FIFO: First-In, First-Out)
       const batches = db.prepare(`
         SELECT * FROM batches
         WHERE product_id = ? AND status = 'active' AND quantity > 0
-        ORDER BY expiry_date ASC, id ASC
+        ORDER BY id ASC
       `).all(item.product_id);
 
-      let primaryBatchId = null;
-      let primaryBatchNo = null;
-      let costPrice = 0;
+      let totalCostForLine = 0;
+      const consumedBatches = [];
 
       if (batches.length > 0) {
         for (const b of batches) {
@@ -211,33 +210,53 @@ exports.createSale = (req, res) => {
           const deduct = Math.min(b.quantity, remainingQtyToDeduct);
           db.prepare('UPDATE batches SET quantity = quantity - ? WHERE id = ?').run(deduct, b.id);
 
-          if (!primaryBatchId) {
-            primaryBatchId = b.id;
-            primaryBatchNo = b.batch_no;
-            costPrice = b.purchase_price;
-          }
+          const batchUnitCost = Number(b.purchase_price) || 0;
+          totalCostForLine += (deduct * batchUnitCost);
+
+          consumedBatches.push({
+            batchId: b.id,
+            batchNo: b.batch_no,
+            deduct,
+            unitCost: batchUnitCost,
+            supplierId: b.supplier_id
+          });
 
           remainingQtyToDeduct -= deduct;
         }
       }
 
-      // If quantity still remains (allowed in negative stock mode or single batch fallback)
+      // If quantity still remains (allowed in negative stock mode or zero batch fallback)
       if (remainingQtyToDeduct > 0) {
         const fallbackBatch = db.prepare('SELECT * FROM batches WHERE product_id = ? ORDER BY id DESC LIMIT 1').get(item.product_id);
+        const fallbackRate = fallbackBatch ? Number(fallbackBatch.purchase_price) : 0;
+
         if (fallbackBatch) {
           db.prepare('UPDATE batches SET quantity = quantity - ? WHERE id = ?').run(remainingQtyToDeduct, fallbackBatch.id);
-          primaryBatchId = fallbackBatch.id;
-          primaryBatchNo = fallbackBatch.batch_no;
-          costPrice = fallbackBatch.purchase_price;
+          consumedBatches.push({
+            batchId: fallbackBatch.id,
+            batchNo: fallbackBatch.batch_no,
+            deduct: remainingQtyToDeduct,
+            unitCost: fallbackRate,
+            supplierId: fallbackBatch.supplier_id
+          });
         }
+        totalCostForLine += (remainingQtyToDeduct * fallbackRate);
       }
+
+      const totalItemQty = Number(item.quantity);
+      // Exact weighted cost per unit from FIFO batches (No arbitrary averaging across unrelated stock)
+      const costPrice = totalItemQty > 0 ? (totalCostForLine / totalItemQty) : 0;
+      const primaryBatchId = consumedBatches[0]?.batchId || null;
+      const batchNotes = consumedBatches.length > 1
+        ? consumedBatches.map(c => `${c.batchNo || 'Lot'}: ${c.deduct}@${c.unitCost}`).join(', ')
+        : (consumedBatches[0]?.batchNo || null);
 
       insertSaleItem.run(
         saleId,
         item.product_id,
         primaryBatchId,
-        primaryBatchNo,
-        Number(item.quantity),
+        batchNotes,
+        totalItemQty,
         item.unit || 'pkt',
         rate,
         costPrice,
@@ -245,19 +264,34 @@ exports.createSale = (req, res) => {
         lineTotal
       );
 
-      // Record movement
+      // Record detailed inventory movement per consumed FIFO batch
       const totalStockAfter = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active'").get(item.product_id).s;
 
-      insertMovement.run(
-        item.product_id,
-        primaryBatchId,
-        -Number(item.quantity),
-        rate,
-        totalStockAfter,
-        saleId,
-        `Sale Invoice ${invoice_no}`,
-        req.user.id
-      );
+      if (consumedBatches.length > 0) {
+        for (const c of consumedBatches) {
+          insertMovement.run(
+            item.product_id,
+            c.batchId,
+            -c.deduct,
+            c.unitCost,
+            totalStockAfter,
+            saleId,
+            `FIFO Sale ${invoice_no} [Batch ${c.batchNo} @ ₨${c.unitCost}]`,
+            req.user.id
+          );
+        }
+      } else {
+        insertMovement.run(
+          item.product_id,
+          null,
+          -totalItemQty,
+          costPrice,
+          totalStockAfter,
+          saleId,
+          `Sale Invoice ${invoice_no}`,
+          req.user.id
+        );
+      }
     }
 
     // Update Customer Balance if credit remains

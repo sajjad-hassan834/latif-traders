@@ -33,19 +33,23 @@ export default function Purchases() {
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [brands, setBrands] = useState([]);
+  const [activeStockPreview, setActiveStockPreview] = useState(null);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [purRes, supRes, prodRes] = await Promise.all([
+      const [purRes, supRes, prodRes, brandRes] = await Promise.all([
         api.get('/purchases'),
         api.get('/parties/suppliers'),
-        api.get('/products')
+        api.get('/products'),
+        api.get('/products/meta/brands').catch(() => ({ success: false, brands: [] }))
       ]);
 
       if (purRes.success) setPurchases(purRes.purchases);
       if (supRes.success) setSuppliers(supRes.suppliers);
       if (prodRes.success) setProducts(prodRes.products);
+      if (brandRes?.success) setBrands(brandRes.brands);
     } catch (err) {
       console.error(err);
     } finally {
@@ -57,6 +61,17 @@ export default function Purchases() {
     loadData();
   }, []);
 
+  const loadStockPreview = async (productId) => {
+    try {
+      const res = await api.get(`/purchases/product-stock-preview/${productId}`);
+      if (res.success) {
+        setActiveStockPreview(res);
+      }
+    } catch (err) {
+      console.error('Failed to load stock preview:', err);
+    }
+  };
+
   const addItemToBill = (productId) => {
     const prod = products.find(p => p.id === Number(productId));
     if (!prod) return;
@@ -64,13 +79,16 @@ export default function Purchases() {
     setItems([...items, {
       product_id: prod.id,
       name: prod.name,
-      unit: prod.unit,
+      brand: prod.brand || '',
+      unit: prod.unit || 'pkt',
       batch_no: `LOT-${Date.now().toString().slice(-5)}`,
       expiry_date: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
       quantity: 10,
       unit_price: prod.purchase_price || 0,
       discount: 0
     }]);
+
+    loadStockPreview(prod.id);
   };
 
   const updateItem = (index, field, value) => {
@@ -371,71 +389,142 @@ export default function Purchases() {
                 </div>
 
                 {/* ADD PRODUCT TO BILL */}
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
-                  <div style={{ flex: 1 }}>
-                    <label className="form-label">Add Product to Shipment</label>
-                    <select
-                      className="form-control"
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          addItemToBill(e.target.value);
-                          e.target.value = '';
-                        }
-                      }}
-                    >
-                      <option value="">-- Select Product to Add --</option>
-                      {products.map(p => (
-                        <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>
-                      ))}
-                    </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 240px' }}>
+                      <label className="form-label">Add Frozen Product to Shipment *</label>
+                      <select
+                        className="form-control"
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            addItemToBill(e.target.value);
+                            e.target.value = '';
+                          }
+                        }}
+                      >
+                        <option value="">-- Select Product to Add --</option>
+                        {products.map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} {p.brand ? `[${p.brand}]` : ''} • Prev Rate: ₨{p.purchase_price}/{p.unit}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
+
+                  {/* EXISTING STOCK & ACTIVE BATCHES PREVIEW (FIFO RATE COMPARISON) */}
+                  {activeStockPreview && (
+                    <div style={{ background: '#ffffff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '0.75rem 0.85rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.4rem', marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <Package size={16} color="#0284c7" />
+                          <strong style={{ color: '#0369a1', fontSize: '0.875rem' }}>
+                            Existing Stock: {activeStockPreview.product?.name} ({activeStockPreview.product?.brand || 'Frozen Item'})
+                          </strong>
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#334155' }}>
+                          Total Current Available Stock: <strong style={{ color: '#0284c7', fontSize: '0.9rem' }}>{activeStockPreview.current_stock} {activeStockPreview.product?.unit}</strong>
+                        </div>
+                      </div>
+
+                      {activeStockPreview.batches?.length === 0 ? (
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          ℹ️ No active batches in inventory. This purchase will establish the initial FIFO stock lot.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                            Current Active Batches In Stock:
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.45rem' }}>
+                            {activeStockPreview.batches.map(b => (
+                              <div key={b.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.45rem 0.65rem', fontSize: '0.75rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                                  <span className="mono" style={{ color: '#0284c7' }}>{b.batch_no}</span>
+                                  <span style={{ color: '#059669', fontWeight: 700 }}>₨ {b.purchase_price} / {activeStockPreview.product?.unit}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.7rem', marginTop: '2px' }}>
+                                  <span>Qty: {b.quantity} {activeStockPreview.product?.unit}</span>
+                                  <span title="Supplier source">From: <strong>{b.supplier_name}</strong></span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* LINE ITEMS TABLE */}
                 <div className="table-responsive">
-                  <table className="table">
+                  <table className="table" style={{ width: '100%', minWidth: '780px' }}>
                     <thead>
                       <tr>
-                        <th>Product</th>
-                        <th>Batch / Lot No</th>
+                        <th style={{ minWidth: '150px' }}>Product</th>
+                        <th style={{ minWidth: '110px' }}>Brand</th>
+                        <th style={{ minWidth: '85px' }}>Unit</th>
+                        <th style={{ width: '85px' }}>Quantity</th>
+                        <th style={{ width: '110px' }}>Rate (₨)</th>
+                        <th>Batch / Lot #</th>
                         <th>Expiry Date</th>
-                        <th style={{ width: '100px' }}>Quantity</th>
-                        <th style={{ width: '120px' }}>Cost Rate</th>
                         <th style={{ textAlign: 'right' }}>Total (PKR)</th>
-                        <th></th>
+                        <th style={{ width: '40px' }}></th>
                       </tr>
                     </thead>
                     <tbody>
                       {items.length === 0 ? (
-                        <tr><td colSpan="7" style={{ textAlign: 'center', color: '#64748b' }}>No products added to bill yet.</td></tr>
+                        <tr><td colSpan="9" style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem' }}>No products added to bill yet. Select a product above.</td></tr>
                       ) : (
                         items.map((it, idx) => (
                           <tr key={idx}>
-                            <td style={{ fontWeight: 600 }}>{it.name}</td>
-                            <td>
-                              <input
-                                type="text"
-                                className="form-control"
-                                style={{ padding: '4px 8px', fontSize: '0.85rem' }}
-                                value={it.batch_no}
-                                onChange={(e) => updateItem(idx, 'batch_no', e.target.value)}
-                              />
+                            <td style={{ fontWeight: 600 }}>
+                              <button
+                                type="button"
+                                onClick={() => loadStockPreview(it.product_id)}
+                                style={{ background: 'none', border: 'none', color: '#0284c7', fontWeight: 600, cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                                title="Click to view existing stock & batches"
+                              >
+                                {it.name}
+                              </button>
                             </td>
                             <td>
                               <input
-                                type="date"
+                                type="text"
+                                list={`brands-list-${idx}`}
                                 className="form-control"
-                                style={{ padding: '4px 8px', fontSize: '0.85rem' }}
-                                value={it.expiry_date}
-                                onChange={(e) => updateItem(idx, 'expiry_date', e.target.value)}
+                                style={{ padding: '3px 6px', fontSize: '0.775rem' }}
+                                placeholder="Brand"
+                                value={it.brand || ''}
+                                onChange={(e) => updateItem(idx, 'brand', e.target.value)}
                               />
+                              <datalist id={`brands-list-${idx}`}>
+                                {brands.map(b => (
+                                  <option key={b.id} value={b.name} />
+                                ))}
+                              </datalist>
+                            </td>
+                            <td>
+                              <select
+                                className="form-control"
+                                style={{ padding: '3px 6px', fontSize: '0.775rem' }}
+                                value={it.unit || 'pkt'}
+                                onChange={(e) => updateItem(idx, 'unit', e.target.value)}
+                              >
+                                <option value="KG">KG</option>
+                                <option value="Packet">Packet</option>
+                                <option value="pkt">pkt</option>
+                                <option value="box">box</option>
+                                <option value="piece">piece</option>
+                              </select>
                             </td>
                             <td>
                               <input
                                 type="number"
                                 className="form-control"
-                                style={{ padding: '4px 8px', fontSize: '0.85rem', width: '80px' }}
-                                min="1"
+                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '75px' }}
+                                min="0.1"
+                                step="any"
                                 value={it.quantity}
                                 onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
                               />
@@ -444,21 +533,42 @@ export default function Purchases() {
                               <input
                                 type="number"
                                 className="form-control"
-                                style={{ padding: '4px 8px', fontSize: '0.85rem', width: '100px' }}
+                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '95px' }}
+                                min="0"
                                 value={it.unit_price}
                                 onChange={(e) => updateItem(idx, 'unit_price', e.target.value)}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control"
+                                style={{ padding: '4px 6px', fontSize: '0.75rem', width: '100px' }}
+                                placeholder="Auto Lot"
+                                value={it.batch_no}
+                                onChange={(e) => updateItem(idx, 'batch_no', e.target.value)}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="date"
+                                className="form-control"
+                                style={{ padding: '4px 6px', fontSize: '0.75rem' }}
+                                value={it.expiry_date}
+                                onChange={(e) => updateItem(idx, 'expiry_date', e.target.value)}
                               />
                             </td>
                             <td style={{ textAlign: 'right', fontWeight: 700 }}>
                               {formatPKR(Number(it.quantity) * Number(it.unit_price))}
                             </td>
-                            <td>
+                            <td style={{ textAlign: 'center' }}>
                               <button
                                 type="button"
                                 onClick={() => removeItem(idx)}
-                                style={{ color: '#ef4444' }}
+                                style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
+                                title="Remove item"
                               >
-                                <Trash2 size={16} />
+                                <Trash2 size={15} />
                               </button>
                             </td>
                           </tr>
@@ -486,6 +596,15 @@ export default function Purchases() {
                       value={paidAmount}
                       onChange={(e) => setPaidAmount(e.target.value)}
                     />
+                    <div style={{ fontSize: '0.75rem', marginTop: '4px', fontWeight: 600 }}>
+                      {Number(paidAmount || 0) < grandTotal ? (
+                        <span style={{ color: '#ef4444' }}>
+                          Credit / Outstanding: {formatPKR(grandTotal - Number(paidAmount || 0))} (Vendor Ledger)
+                        </span>
+                      ) : (
+                        <span style={{ color: '#10b981' }}>Full Payment (No Udhaar)</span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="form-group">
@@ -497,6 +616,7 @@ export default function Purchases() {
                     >
                       <option value="Cash">Cash</option>
                       <option value="Bank Transfer">Bank Transfer</option>
+                      <option value="Cheque">Cheque</option>
                     </select>
                   </div>
                 </div>

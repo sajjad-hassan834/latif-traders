@@ -63,6 +63,9 @@ function ReportsContent() {
   const [expiryReport, setExpiryReport] = useState(null);
   const [dayRegister, setDayRegister] = useState(null);
   const [purchasesReport, setPurchasesReport] = useState(null);
+  const [supplierPurchasesReport, setSupplierPurchasesReport] = useState([]);
+  const [productPurchasesReport, setProductPurchasesReport] = useState([]);
+  const [purchasesView, setPurchasesView] = useState('summary'); // 'summary' | 'supplier' | 'product'
   const [productSalesReport, setProductSalesReport] = useState(null);
   const [movementsReport, setMovementsReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -180,11 +183,21 @@ function ReportsContent() {
           setErrorMessage(res?.message || 'Unable to load day register closing report.');
         }
       } else if (activeReport === 'purchases') {
-        const res = await api.get(`/reports/purchases?start_date=${startDate}&end_date=${endDate}`);
-        if (res && res.success) {
-          setPurchasesReport(res);
+        const [pRes, sRes, prdRes] = await Promise.all([
+          api.get(`/reports/purchases?start_date=${startDate}&end_date=${endDate}`),
+          api.get(`/reports/purchases/supplier-wise?start_date=${startDate}&end_date=${endDate}`),
+          api.get(`/reports/purchases/product-wise?start_date=${startDate}&end_date=${endDate}`)
+        ]);
+        if (pRes && pRes.success) {
+          setPurchasesReport(pRes);
         } else {
-          setErrorMessage(res?.message || 'Unable to load purchases report.');
+          setErrorMessage(pRes?.message || 'Unable to load purchases report.');
+        }
+        if (sRes && sRes.success) {
+          setSupplierPurchasesReport(sRes.report || []);
+        }
+        if (prdRes && prdRes.success) {
+          setProductPurchasesReport(prdRes.report || []);
         }
       } else if (activeReport === 'product-sales') {
         const res = await api.get(`/reports/product-sales?start_date=${startDate}&end_date=${endDate}`);
@@ -315,17 +328,41 @@ function ReportsContent() {
         { label: 'Financial Category', key: 'Category' },
         { label: 'Amount (PKR)', key: 'Amount' }
       ]);
-    } else if (activeReport === 'purchases' && purchasesReport?.purchases?.length) {
-      exportToCSV(`Purchases_Report_${startDate}_${endDate}`, purchasesReport.purchases, [
-        { label: 'Invoice No', key: 'invoice_no' },
-        { label: 'Date', key: 'purchase_date' },
-        { label: 'Supplier', key: 'supplier_name' },
-        { label: 'Items Count', key: 'item_count' },
-        { label: 'Grand Total (PKR)', key: 'grand_total' },
-        { label: 'Paid (PKR)', key: 'paid_amount' },
-        { label: 'Balance Due (PKR)', key: 'balance_due' },
-        { label: 'Payment Method', key: 'payment_method' }
-      ]);
+    } else if (activeReport === 'purchases') {
+      if (purchasesView === 'supplier' && supplierPurchasesReport.length) {
+        exportToCSV(`Supplier_Wise_Purchases_${startDate}_${endDate}`, supplierPurchasesReport, [
+          { label: 'Supplier Name', key: 'supplier_name' },
+          { label: 'Company Name', key: 'company_name' },
+          { label: 'Phone', key: 'phone' },
+          { label: 'Products Purchased', key: 'products_bought' },
+          { label: 'Total Quantity (KG / Packets)', key: 'total_quantity' },
+          { label: 'Avg Rate / Unit (PKR)', key: 'avg_unit_rate' },
+          { label: 'Total Purchases (PKR)', key: 'total_purchased' },
+          { label: 'Total Paid (PKR)', key: 'total_paid' },
+          { label: 'Balance Due / Payable (PKR)', key: 'total_due' },
+          { label: 'Bills Count', key: 'bills_count' }
+        ]);
+      } else if (purchasesView === 'product' && productPurchasesReport.length) {
+        exportToCSV(`Product_Wise_Purchases_${startDate}_${endDate}`, productPurchasesReport, [
+          { label: 'Product Name', key: 'product_name' },
+          { label: 'Brand', key: 'brand' },
+          { label: 'Suppliers / Vendors', key: 'suppliers' },
+          { label: 'Total Quantity (KG / Packets)', key: 'total_quantity' },
+          { label: 'Avg Rate / Unit (PKR)', key: 'avg_rate' },
+          { label: 'Total Amount (PKR)', key: 'total_amount' }
+        ]);
+      } else if (purchasesReport?.purchases?.length) {
+        exportToCSV(`Purchases_Invoices_${startDate}_${endDate}`, purchasesReport.purchases, [
+          { label: 'Invoice No', key: 'invoice_no' },
+          { label: 'Date', key: 'purchase_date' },
+          { label: 'Supplier', key: 'supplier_name' },
+          { label: 'Items Count', key: 'item_count' },
+          { label: 'Grand Total (PKR)', key: 'grand_total' },
+          { label: 'Paid (PKR)', key: 'paid_amount' },
+          { label: 'Balance Due (PKR)', key: 'balance_due' },
+          { label: 'Payment Method', key: 'payment_method' }
+        ]);
+      }
     } else if (activeReport === 'product-sales' && productSalesReport?.report?.length) {
       exportToCSV(`Product_Sales_Report_${startDate}_${endDate}`, productSalesReport.report, [
         { label: 'Product Name', key: 'name' },
@@ -901,75 +938,235 @@ function ReportsContent() {
         {/* 6. PURCHASES REPORT */}
         {activeReport === 'purchases' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="grid grid-cols-4">
-              <div className="card" style={{ borderLeft: '4px solid #0284c7' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>TOTAL PURCHASES</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginTop: '0.25rem' }}>
+            {/* KPI METRICS CARDS */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem' }}>
+              <div className="card" style={{ borderLeft: '4px solid #0284c7', padding: '0.85rem' }}>
+                <div style={{ fontSize: '0.725rem', fontWeight: 600, color: '#64748b' }}>TOTAL PURCHASES</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginTop: '0.2rem' }}>
                   {formatPKR(purchasesReport?.summary?.total_purchases || 0)}
                 </div>
               </div>
-              <div className="card" style={{ borderLeft: '4px solid #10b981' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>TOTAL CASH/BANK PAID</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981', marginTop: '0.25rem' }}>
+              <div className="card" style={{ borderLeft: '4px solid #f59e0b', padding: '0.85rem' }}>
+                <div style={{ fontSize: '0.725rem', fontWeight: 600, color: '#64748b' }}>TOTAL QUANTITY</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f59e0b', marginTop: '0.2rem' }}>
+                  {Number(purchasesReport?.summary?.total_quantity || 0).toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>KG / Pkts</span>
+                </div>
+              </div>
+              <div className="card" style={{ borderLeft: '4px solid #10b981', padding: '0.85rem' }}>
+                <div style={{ fontSize: '0.725rem', fontWeight: 600, color: '#64748b' }}>TOTAL PAID</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981', marginTop: '0.2rem' }}>
                   {formatPKR(purchasesReport?.summary?.total_paid || 0)}
                 </div>
               </div>
-              <div className="card" style={{ borderLeft: '4px solid #ef4444' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>PAYABLE DUE (DEBT)</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ef4444', marginTop: '0.25rem' }}>
+              <div className="card" style={{ borderLeft: '4px solid #ef4444', padding: '0.85rem' }}>
+                <div style={{ fontSize: '0.725rem', fontWeight: 600, color: '#64748b' }}>PAYABLE DUE (CREDIT)</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ef4444', marginTop: '0.2rem' }}>
                   {formatPKR(purchasesReport?.summary?.total_balance_due || 0)}
                 </div>
               </div>
-              <div className="card" style={{ borderLeft: '4px solid #8b5cf6' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>BILLS RECEIVED</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#8b5cf6', marginTop: '0.25rem' }}>
+              <div className="card" style={{ borderLeft: '4px solid #8b5cf6', padding: '0.85rem' }}>
+                <div style={{ fontSize: '0.725rem', fontWeight: 600, color: '#64748b' }}>BILLS RECORDED</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#8b5cf6', marginTop: '0.2rem' }}>
                   {purchasesReport?.summary?.invoice_count || 0} bills
                 </div>
               </div>
             </div>
 
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
-                <h3 style={{ fontSize: '1rem' }}>Supplier Restocking Ledger</h3>
-                <p style={{ fontSize: '0.75rem', color: '#64748b' }}>All purchase bills recorded from {startDate} to {endDate}.</p>
-              </div>
-              <div className="table-responsive">
-                <table className="table" style={{ width: '100%', minWidth: '760px' }}>
-                  <thead>
-                    <tr>
-                      <th>Internal Inv #</th>
-                      <th>Date</th>
-                      <th>Supplier Name</th>
-                      <th style={{ textAlign: 'center' }}>Items Count</th>
-                      <th style={{ textAlign: 'right' }}>Grand Total</th>
-                      <th style={{ textAlign: 'right' }}>Paid Amount</th>
-                      <th style={{ textAlign: 'right' }}>Payable Due</th>
-                      <th>Payment Method</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {!purchasesReport?.purchases?.length ? (
-                      <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No purchase invoices found in date range.</td></tr>
-                    ) : (
-                      purchasesReport.purchases.map(p => (
-                        <tr key={p.id}>
-                          <td className="mono" style={{ fontWeight: 700, color: '#0284c7' }}>{p.invoice_no}</td>
-                          <td>{formatDate(p.purchase_date)}</td>
-                          <td style={{ fontWeight: 600 }}>{p.supplier_name}</td>
-                          <td style={{ textAlign: 'center' }}>{p.item_count}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatPKR(p.grand_total)}</td>
-                          <td style={{ textAlign: 'right', color: '#10b981' }}>{formatPKR(p.paid_amount)}</td>
-                          <td style={{ textAlign: 'right', fontWeight: 700, color: p.balance_due > 0 ? '#ef4444' : '#64748b' }}>
-                            {formatPKR(p.balance_due)}
-                          </td>
-                          <td><span className="badge badge-secondary">{p.payment_method}</span></td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            {/* PURCHASES SUB-VIEW NAVIGATION */}
+            <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '4px', borderRadius: '8px', width: 'fit-content', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`btn btn-sm ${purchasesView === 'summary' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.775rem', padding: '4px 10px' }}
+                onClick={() => setPurchasesView('summary')}
+              >
+                Overall Invoices ({purchasesReport?.purchases?.length || 0})
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${purchasesView === 'supplier' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.775rem', padding: '4px 10px' }}
+                onClick={() => setPurchasesView('supplier')}
+              >
+                Supplier-Wise Report ({supplierPurchasesReport.length})
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${purchasesView === 'product' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.775rem', padding: '4px 10px' }}
+                onClick={() => setPurchasesView('product')}
+              >
+                Product-Wise Report ({productPurchasesReport.length})
+              </button>
             </div>
+
+            {/* VIEW 1: OVERALL INVOICES */}
+            {purchasesView === 'summary' && (
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ fontSize: '0.95rem' }}>Purchases Invoice Ledger</h3>
+                    <p style={{ fontSize: '0.725rem', color: '#64748b' }}>All purchase bills recorded from {formatDate(startDate)} to {formatDate(endDate)}</p>
+                  </div>
+                  <span className="badge badge-info">{purchasesReport?.purchases?.length || 0} Invoices</span>
+                </div>
+                <div className="table-responsive">
+                  <table className="table" style={{ width: '100%', minWidth: '760px' }}>
+                    <thead>
+                      <tr>
+                        <th>Inv #</th>
+                        <th>Date</th>
+                        <th>Supplier Name</th>
+                        <th style={{ textAlign: 'center' }}>Items</th>
+                        <th style={{ textAlign: 'right' }}>Grand Total</th>
+                        <th style={{ textAlign: 'right' }}>Paid Amount</th>
+                        <th style={{ textAlign: 'right' }}>Balance Due</th>
+                        <th>Method</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {!purchasesReport?.purchases?.length ? (
+                        <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No purchase invoices found in date range.</td></tr>
+                      ) : (
+                        purchasesReport.purchases.map(p => (
+                          <tr key={p.id}>
+                            <td className="mono" style={{ fontWeight: 700, color: '#0284c7' }}>{p.invoice_no}</td>
+                            <td>{formatDate(p.purchase_date)}</td>
+                            <td style={{ fontWeight: 600 }}>{p.supplier_name}</td>
+                            <td style={{ textAlign: 'center' }}>{p.item_count}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatPKR(p.grand_total)}</td>
+                            <td style={{ textAlign: 'right', color: '#10b981' }}>{formatPKR(p.paid_amount)}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: p.balance_due > 0 ? '#ef4444' : '#64748b' }}>
+                              {formatPKR(p.balance_due)}
+                            </td>
+                            <td><span className="badge badge-secondary">{p.payment_method}</span></td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* VIEW 2: SUPPLIER-WISE REPORT */}
+            {purchasesView === 'supplier' && (
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ fontSize: '0.95rem' }}>Supplier-Wise Purchase Report & Credit Ledger</h3>
+                    <p style={{ fontSize: '0.725rem', color: '#64748b' }}>Procurement volume, items bought, average rates, and outstanding balances per supplier</p>
+                  </div>
+                  <span className="badge badge-info">{supplierPurchasesReport.length} Suppliers</span>
+                </div>
+                <div className="table-responsive">
+                  <table className="table" style={{ width: '100%', minWidth: '850px' }}>
+                    <thead>
+                      <tr>
+                        <th>Supplier / Vendor</th>
+                        <th>Products Procured</th>
+                        <th style={{ textAlign: 'center' }}>Total Qty</th>
+                        <th style={{ textAlign: 'right' }}>Avg Rate</th>
+                        <th style={{ textAlign: 'right' }}>Total Purchases</th>
+                        <th style={{ textAlign: 'right' }}>Total Paid</th>
+                        <th style={{ textAlign: 'right' }}>Balance Due (Credit)</th>
+                        <th style={{ textAlign: 'center' }}>Bills</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {supplierPurchasesReport.length === 0 ? (
+                        <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No supplier procurement found for this date range.</td></tr>
+                      ) : (
+                        supplierPurchasesReport.map((s, idx) => (
+                          <tr key={idx}>
+                            <td>
+                              <div style={{ fontWeight: 700, color: '#0f172a' }}>{s.supplier_name}</div>
+                              {s.company_name && <div style={{ fontSize: '0.725rem', color: '#64748b' }}>{s.company_name}</div>}
+                            </td>
+                            <td style={{ fontSize: '0.75rem', color: '#334155', maxWidth: '220px', lineHeight: 1.25 }}>
+                              {s.products_bought || '-'}
+                            </td>
+                            <td style={{ textAlign: 'center', fontWeight: 700, color: '#0284c7' }}>
+                              {Number(s.total_quantity || 0).toLocaleString()}
+                            </td>
+                            <td style={{ textAlign: 'right', fontSize: '0.8rem' }}>
+                              {formatPKR(s.avg_unit_rate || 0)}
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                              {formatPKR(s.total_purchased || 0)}
+                            </td>
+                            <td style={{ textAlign: 'right', color: '#10b981' }}>
+                              {formatPKR(s.total_paid || 0)}
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 800, color: s.total_due > 0 ? '#ef4444' : '#10b981' }}>
+                              {formatPKR(s.total_due || 0)}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <span className="badge badge-secondary">{s.bills_count}</span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* VIEW 3: PRODUCT-WISE REPORT */}
+            {purchasesView === 'product' && (
+              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ fontSize: '0.95rem' }}>Product-Wise Purchase & Cost Report</h3>
+                    <p style={{ fontSize: '0.725rem', color: '#64748b' }}>Breakdown of products purchased, brands, supplying vendors, quantities, and average rates</p>
+                  </div>
+                  <span className="badge badge-info">{productPurchasesReport.length} Products</span>
+                </div>
+                <div className="table-responsive">
+                  <table className="table" style={{ width: '100%', minWidth: '780px' }}>
+                    <thead>
+                      <tr>
+                        <th>Product Name</th>
+                        <th>Brand</th>
+                        <th>Suppliers (Kis se liya)</th>
+                        <th style={{ textAlign: 'center' }}>Total Qty</th>
+                        <th style={{ textAlign: 'right' }}>Avg Unit Rate</th>
+                        <th style={{ textAlign: 'right' }}>Total Cost Spent</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {productPurchasesReport.length === 0 ? (
+                        <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No product procurement records found for this period.</td></tr>
+                      ) : (
+                        productPurchasesReport.map((p, idx) => (
+                          <tr key={idx}>
+                            <td style={{ fontWeight: 700, color: '#0f172a' }}>{p.product_name}</td>
+                            <td>
+                              <span style={{ fontSize: '0.725rem', color: '#0284c7', background: '#f0f9ff', padding: '1px 5px', borderRadius: '3px', border: '1px solid #bae6fd' }}>
+                                {p.brand || 'Frozen'}
+                              </span>
+                            </td>
+                            <td style={{ fontSize: '0.75rem', color: '#475569' }}>
+                              {p.suppliers || '-'}
+                            </td>
+                            <td style={{ textAlign: 'center', fontWeight: 700, color: '#0284c7' }}>
+                              {Number(p.total_quantity || 0).toLocaleString()}
+                            </td>
+                            <td style={{ textAlign: 'right', fontSize: '0.8rem' }}>
+                              {formatPKR(p.avg_rate || 0)}
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>
+                              {formatPKR(p.total_amount || 0)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

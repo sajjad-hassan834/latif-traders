@@ -18,6 +18,11 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
   const address = settings.address || 'Shop # 14-16, Commercial Market, Frozen Food Market, Lahore';
   const footerNote = settings.invoice_footer || 'Thank you for shopping at Latif Traders! Keep frozen at -18°C.';
 
+  const hasCustomerBalance = Boolean(sale.customer_id && sale.customer_id > 1);
+  const currentCustomerBalance = Number(sale.customer_current_balance) || 0;
+  const previousBalance = Math.max(0, currentCustomerBalance - Number(sale.balance_due || 0));
+  const netRemainingBalance = currentCustomerBalance;
+
   // WhatsApp Message Generator
   const generateWhatsAppMessage = () => {
     const lines = [
@@ -39,9 +44,13 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
     lines.push(`💰 *Grand Total:* ${formatPKR(sale.grand_total)}`);
     lines.push(`💵 *Paid (${sale.payment_method || 'Cash'}):* ${formatPKR(sale.paid_amount)}`);
     if (sale.balance_due > 0) {
-      lines.push(`⚠️ *Remaining Balance Due:* ${formatPKR(sale.balance_due)}`);
+      lines.push(`⚠️ *This Bill Balance Due:* ${formatPKR(sale.balance_due)}`);
     } else {
       lines.push(`✔ *Status:* Fully Paid`);
+    }
+    if (hasCustomerBalance) {
+      lines.push(`📜 *Previous Balance:* ${formatPKR(previousBalance)}`);
+      lines.push(`💳 *Total Net Outstanding:* ${formatPKR(netRemainingBalance)}`);
     }
     lines.push(`--------------------------`);
     lines.push(`📞 Phone: ${phone}`);
@@ -170,9 +179,23 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                 </div>
                 {sale.balance_due > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c' }}>
-                    <strong>Balance Due:</strong>
+                    <strong>This Bill Due:</strong>
                     <strong>{formatPKR(sale.balance_due)}</strong>
                   </div>
+                )}
+
+                {hasCustomerBalance && (
+                  <>
+                    <div style={{ borderTop: '1px dashed #777', margin: '4px 0' }}></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#444' }}>
+                      <span>Prev. Balance:</span>
+                      <span>{formatPKR(previousBalance)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', color: '#b91c1c' }}>
+                      <span>Net Balance (Udhaar):</span>
+                      <span>{formatPKR(netRemainingBalance)}</span>
+                    </div>
+                  </>
                 )}
 
                 <div className="divider"></div>
@@ -262,9 +285,21 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                     </div>
                     {sale.balance_due > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontWeight: 700 }}>
-                        <span>Balance Due:</span>
+                        <span>This Invoice Due:</span>
                         <span>{formatPKR(sale.balance_due)}</span>
                       </div>
+                    )}
+                    {hasCustomerBalance && (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', borderTop: '1px dashed #cbd5e1', paddingTop: '0.35rem', marginTop: '0.35rem' }}>
+                          <span>Previous Balance (Udhaar):</span>
+                          <span>{formatPKR(previousBalance)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c', fontWeight: 800, fontSize: '0.95rem' }}>
+                          <span>Net Remaining Balance:</span>
+                          <span>{formatPKR(netRemainingBalance)}</span>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>

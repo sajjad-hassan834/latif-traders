@@ -1,17 +1,18 @@
 const { db } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
 
-// List all products with calculated stock and category info
+// List all products with calculated stock, category, supplier and brand info
 exports.getProducts = (req, res) => {
   try {
-    const { search, category_id, low_stock, status } = req.query;
+    const { search, category_id, brand, supplier_id, low_stock, status } = req.query;
 
     let query = `
-      SELECT p.*, c.name as category_name,
+      SELECT p.*, c.name as category_name, s.name as supplier_name,
         COALESCE(SUM(b.quantity), 0) as current_stock,
         COUNT(b.id) as batch_count
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN suppliers s ON p.supplier_id = s.id
       LEFT JOIN batches b ON p.id = b.product_id AND b.status = 'active'
       WHERE 1=1
     `;
@@ -26,6 +27,16 @@ exports.getProducts = (req, res) => {
     if (category_id) {
       query += ` AND p.category_id = ?`;
       params.push(category_id);
+    }
+
+    if (brand) {
+      query += ` AND p.brand = ?`;
+      params.push(brand);
+    }
+
+    if (supplier_id) {
+      query += ` AND p.supplier_id = ?`;
+      params.push(supplier_id);
     }
 
     if (status) {
@@ -49,15 +60,16 @@ exports.getProducts = (req, res) => {
   }
 };
 
-// Get single product with batches and recent movements
+// Get single product with batches (including supplier) and recent movements
 exports.getProductById = (req, res) => {
   try {
     const { id } = req.params;
     const product = db.prepare(`
-      SELECT p.*, c.name as category_name,
+      SELECT p.*, c.name as category_name, s.name as supplier_name,
         COALESCE(SUM(b.quantity), 0) as current_stock
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
+      LEFT JOIN suppliers s ON p.supplier_id = s.id
       LEFT JOIN batches b ON p.id = b.product_id AND b.status = 'active'
       WHERE p.id = ?
       GROUP BY p.id
@@ -67,10 +79,13 @@ exports.getProductById = (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found.' });
     }
 
+    // Return batches in strict FIFO order (id ASC) with vendor supplier details
     const batches = db.prepare(`
-      SELECT * FROM batches
-      WHERE product_id = ? AND status = 'active'
-      ORDER BY expiry_date ASC
+      SELECT b.*, s.name as supplier_name
+      FROM batches b
+      LEFT JOIN suppliers s ON b.supplier_id = s.id
+      WHERE b.product_id = ? AND b.status = 'active'
+      ORDER BY b.id ASC
     `).all(id);
 
     const movements = db.prepare(`
@@ -93,7 +108,7 @@ exports.getProductById = (req, res) => {
 exports.createProduct = (req, res) => {
   const transaction = db.transaction(() => {
     const {
-      name, sku, barcode, category_id, brand, unit,
+      name, sku, barcode, category_id, brand, unit, supplier_id,
       purchase_price, sale_price, wholesale_price,
       min_stock_level, storage_location,
       opening_stock, batch_no, expiry_date
@@ -111,10 +126,10 @@ exports.createProduct = (req, res) => {
 
     const insertProd = db.prepare(`
       INSERT INTO products (
-        name, sku, barcode, category_id, brand, unit,
+        name, sku, barcode, category_id, brand, unit, supplier_id,
         purchase_price, sale_price, wholesale_price,
         min_stock_level, storage_location, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
     `);
 
     const result = insertProd.run(
@@ -124,6 +139,7 @@ exports.createProduct = (req, res) => {
       category_id || null,
       brand ? brand.trim() : null,
       unit || 'pkt',
+      supplier_id ? Number(supplier_id) : null,
       Number(purchase_price) || 0,
       Number(sale_price) || 0,
       Number(wholesale_price) || Number(sale_price) || 0,
@@ -140,10 +156,10 @@ exports.createProduct = (req, res) => {
       const expDate = expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
 
       const insertBatch = db.prepare(`
-        INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, storage_location)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, storage_location, supplier_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
-      const bRes = insertBatch.run(productId, bNo, expDate, qty, Number(purchase_price) || 0, storage_location || null);
+      const bRes = insertBatch.run(productId, bNo, expDate, qty, Number(purchase_price) || 0, storage_location || null, supplier_id ? Number(supplier_id) : null);
 
       db.prepare(`
         INSERT INTO inventory_movements (product_id, batch_id, type, quantity_delta, unit_price, balance_after, reference_type, reason, user_id)
@@ -168,7 +184,7 @@ exports.updateProduct = (req, res) => {
   try {
     const { id } = req.params;
     const {
-      name, sku, barcode, category_id, brand, unit,
+      name, sku, barcode, category_id, brand, unit, supplier_id,
       purchase_price, sale_price, wholesale_price,
       min_stock_level, storage_location, status
     } = req.body;
@@ -190,7 +206,7 @@ exports.updateProduct = (req, res) => {
 
     db.prepare(`
       UPDATE products SET
-        name = ?, sku = ?, barcode = ?, category_id = ?, brand = ?, unit = ?,
+        name = ?, sku = ?, barcode = ?, category_id = ?, brand = ?, unit = ?, supplier_id = ?,
         purchase_price = ?, sale_price = ?, wholesale_price = ?,
         min_stock_level = ?, storage_location = ?, status = ?,
         updated_at = CURRENT_TIMESTAMP
@@ -202,6 +218,7 @@ exports.updateProduct = (req, res) => {
       category_id !== undefined ? category_id : existing.category_id,
       updatedBrand,
       unit || existing.unit,
+      supplier_id !== undefined ? (supplier_id ? Number(supplier_id) : null) : existing.supplier_id,
       Number(purchase_price) ?? existing.purchase_price,
       Number(sale_price) ?? existing.sale_price,
       Number(wholesale_price) ?? existing.wholesale_price,
@@ -361,5 +378,35 @@ exports.createUnit = (req, res) => {
     return res.status(201).json({ success: true, id: result.lastInsertRowid, message: 'Unit added.' });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// Brands CRUD
+exports.getBrands = (req, res) => {
+  try {
+    const brands = db.prepare(`
+      SELECT b.*, COUNT(p.id) as product_count
+      FROM brands b
+      LEFT JOIN products p ON b.name = p.brand
+      GROUP BY b.id
+      ORDER BY b.name ASC
+    `).all();
+    return res.json({ success: true, brands });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Failed to fetch brands.' });
+  }
+};
+
+exports.createBrand = (req, res) => {
+  try {
+    const { name, description } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Brand name is required.' });
+
+    const stmt = db.prepare('INSERT INTO brands (name, description) VALUES (?, ?)');
+    const result = stmt.run(name.trim(), description ? description.trim() : null);
+
+    return res.status(201).json({ success: true, id: result.lastInsertRowid, message: 'Brand added successfully.' });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message.includes('UNIQUE') ? 'Brand already exists.' : err.message });
   }
 };

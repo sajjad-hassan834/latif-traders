@@ -342,6 +342,12 @@ export default function PosSales() {
     setEditingItemIndex(null);
   };
 
+  const handleUpdateCartRate = (idx, newRate) => {
+    const updated = [...cart];
+    updated[idx].unit_price = Math.max(0, Number(newRate) || 0);
+    setCart(updated);
+  };
+
   const subtotal = cart.reduce((acc, item) => acc + (item.quantity * item.unit_price) - (item.discount || 0), 0);
   const totalCost = cart.reduce((acc, item) => acc + (item.quantity * (item.purchase_price || 0)), 0);
   const totalDiscount = Number(discount) || 0;
@@ -352,6 +358,7 @@ export default function PosSales() {
   const enteredPaid = paidAmount === '' ? grandTotal : Number(paidAmount);
   const balanceDue = Math.max(0, grandTotal - enteredPaid);
   const changeDue = Math.max(0, enteredPaid - grandTotal);
+  const activeCustomer = customers.find(c => c.id === Number(selectedCustomer));
 
   const handleCustomerChange = (custId) => {
     setSelectedCustomer(custId);
@@ -819,6 +826,34 @@ export default function PosSales() {
                 {saleType}
               </button>
             </div>
+
+            {/* CUSTOMER CREDIT & BALANCE DETAIL BADGE */}
+            {activeCustomer && activeCustomer.id !== 1 && (
+              <div style={{
+                background: '#f0f9ff',
+                border: '1px solid #bae6fd',
+                borderRadius: '5px',
+                padding: '4px 6px',
+                marginTop: '0.35rem',
+                fontSize: '0.675rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Udhaar / Bal: <strong style={{ color: activeCustomer.current_balance > 0 ? '#dc2626' : '#16a34a' }}>{formatPKR(activeCustomer.current_balance || 0)}</strong></span>
+                  <span>Limit: <strong>{activeCustomer.credit_limit > 0 ? formatPKR(activeCustomer.credit_limit) : 'No Limit'}</strong></span>
+                </div>
+                {balanceDue > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px', color: '#0369a1', fontWeight: 600 }}>
+                    <span>This Bill Due: +{formatPKR(balanceDue)}</span>
+                    <span>New Bal: {formatPKR((activeCustomer.current_balance || 0) + balanceDue)}</span>
+                  </div>
+                )}
+                {activeCustomer.credit_limit > 0 && ((activeCustomer.current_balance || 0) + balanceDue) > activeCustomer.credit_limit && (
+                  <div style={{ color: '#dc2626', fontWeight: 700, marginTop: '2px' }}>
+                    ⚠️ Exceeds credit limit of {formatPKR(activeCustomer.credit_limit)}!
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* CART ITEMS LIST */}
@@ -837,21 +872,53 @@ export default function PosSales() {
                       {item.name}
                     </div>
 
-                    {editingItemIndex === idx ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '3px' }}>
+                    {/* DIRECT MANUAL RATE OPTION PER KG / PACKET */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                        <span style={{ fontSize: '0.65rem', color: '#64748b' }}>Rate: ₨</span>
                         <input
                           type="number"
-                          className="form-control"
-                          style={{ width: '60px', height: '20px', fontSize: '0.675rem', padding: '0 3px' }}
-                          placeholder="Price"
-                          value={tempItemPrice}
-                          onChange={(e) => setTempItemPrice(e.target.value)}
+                          value={item.unit_price}
+                          onChange={(e) => handleUpdateCartRate(idx, e.target.value)}
+                          style={{
+                            width: '58px',
+                            height: '21px',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            padding: '0 3px',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '4px',
+                            color: '#0284c7',
+                            textAlign: 'right'
+                          }}
+                          title="Direct manual selling rate per KG / Packet"
                         />
+                        <span style={{ fontSize: '0.62rem', color: '#64748b' }}>/{item.unit || 'unit'}</span>
+                      </div>
+                      <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>•</span>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0f172a' }}>
+                        {formatPKR((item.quantity * item.unit_price) - (item.discount || 0))}
+                      </span>
+                      {item.discount > 0 && (
+                        <span style={{ fontSize: '0.62rem', color: '#16a34a' }}>(-₨{item.discount})</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditItem(idx)}
+                        title="Edit Line Discount"
+                        style={{ color: '#0284c7', padding: '0 2px', marginLeft: 'auto' }}
+                      >
+                        <Edit2 size={10} />
+                      </button>
+                    </div>
+
+                    {editingItemIndex === idx && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '3px', background: '#f1f5f9', padding: '2px 4px', borderRadius: '4px' }}>
                         <span style={{ fontSize: '0.65rem' }}>Disc:</span>
                         <input
                           type="number"
                           className="form-control"
-                          style={{ width: '45px', height: '20px', fontSize: '0.675rem', padding: '0 3px' }}
+                          style={{ width: '50px', height: '20px', fontSize: '0.675rem', padding: '0 3px' }}
                           placeholder="Disc"
                           value={tempItemDiscount}
                           onChange={(e) => setTempItemDiscount(e.target.value)}
@@ -870,20 +937,6 @@ export default function PosSales() {
                           style={{ fontSize: '0.7rem', color: '#64748b' }}
                         >
                           ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: '0.65rem', color: '#64748b', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <span>
-                          {formatPKR(item.unit_price)} × {item.quantity} {item.discount > 0 ? `(-₨ ${item.discount})` : ''} = <strong>{formatPKR((item.quantity * item.unit_price) - (item.discount || 0))}</strong>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleStartEditItem(idx)}
-                          title="Edit Line Price / Discount"
-                          style={{ color: '#0284c7', padding: '0 2px' }}
-                        >
-                          <Edit2 size={10} />
                         </button>
                       </div>
                     )}
@@ -1004,14 +1057,24 @@ export default function PosSales() {
               </div>
             </div>
 
-            {/* STATUS */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', marginBottom: '0.35rem', fontWeight: 600 }}>
-              {balanceDue > 0 ? (
-                <span style={{ color: '#ef4444' }}>Credit Due: {formatPKR(balanceDue)}</span>
-              ) : changeDue > 0 ? (
-                <span style={{ color: '#10b981' }}>Change Due: {formatPKR(changeDue)}</span>
-              ) : (
-                <span style={{ color: '#10b981' }}>Fully Settled</span>
+            {/* STATUS & CREDIT LEDGER TRACKING */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.7rem', marginBottom: '0.35rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                {balanceDue > 0 ? (
+                  <span style={{ color: '#ef4444' }}>This Bill Due: {formatPKR(balanceDue)}</span>
+                ) : changeDue > 0 ? (
+                  <span style={{ color: '#10b981' }}>Change Due: {formatPKR(changeDue)}</span>
+                ) : (
+                  <span style={{ color: '#10b981' }}>Fully Settled</span>
+                )}
+              </div>
+              {activeCustomer && activeCustomer.id !== 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.675rem' }}>
+                  <span>Prev. Balance: {formatPKR(activeCustomer.current_balance || 0)}</span>
+                  <span style={{ fontWeight: 700, color: (activeCustomer.current_balance || 0) + balanceDue > 0 ? '#b91c1c' : '#16a34a' }}>
+                    Net Udhaar: {formatPKR((activeCustomer.current_balance || 0) + balanceDue)}
+                  </span>
+                </div>
               )}
             </div>
 

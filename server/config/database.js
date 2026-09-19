@@ -252,6 +252,13 @@ function initializeDatabase() {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS brands (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS audit_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER,
@@ -266,6 +273,39 @@ function initializeDatabase() {
   `;
 
   db.exec(schema);
+
+  // Safe schema migrations for existing databases
+  try {
+    db.prepare("ALTER TABLE batches ADD COLUMN supplier_id INTEGER REFERENCES suppliers(id)").run();
+  } catch (_) {}
+
+  try {
+    db.prepare("ALTER TABLE products ADD COLUMN supplier_id INTEGER REFERENCES suppliers(id)").run();
+  } catch (_) {}
+
+  try {
+    db.prepare("ALTER TABLE purchase_items ADD COLUMN brand TEXT").run();
+  } catch (_) {}
+
+  // Seed default frozen food brands if empty
+  const brandCount = db.prepare('SELECT COUNT(*) as count FROM brands').get().count;
+  if (brandCount === 0) {
+    const insertBrand = db.prepare('INSERT OR IGNORE INTO brands (name, description) VALUES (?, ?)');
+    const defaultBrands = [
+      ['Sabroso', 'Premium Chicken & Ready to Cook Frozen Products'],
+      ["K&N's", 'Pure & Safe Chicken Nuggets, Sausages & Delights'],
+      ['Menu', 'Crispy Fries, Burgers & Chicken Treats'],
+      ['Seasons', 'Samosas, Rolls & Frozen Delicacies'],
+      ['Dawn', 'Parathas, Breads & Bakery Frozen Treats'],
+      ['Sufi', 'Chicken Seekh Kabab, Nuggets & Wings'],
+      ['Big Bird', 'Crispy Tender Pops & Meat Specialties'],
+      ['MonSalwa', 'Frozen Parathas, Rolls & Samosas']
+    ];
+    for (const [bName, bDesc] of defaultBrands) {
+      insertBrand.run(bName, bDesc);
+    }
+  }
+
   seedInitialData();
 }
 

@@ -11,8 +11,11 @@ export default function Inventory() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState('');
+  const [selectedBrand, setSelectedBrand] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +43,7 @@ export default function Inventory() {
     barcode: '',
     category_id: '',
     brand: '',
+    supplier_id: '',
     unit: 'pkt',
     purchase_price: '',
     sale_price: '',
@@ -57,6 +61,8 @@ export default function Inventory() {
   const [newCatDesc, setNewCatDesc] = useState('');
   const [newUnitName, setNewUnitName] = useState('');
   const [newUnitCode, setNewUnitCode] = useState('');
+  const [newBrandName, setNewBrandName] = useState('');
+  const [newBrandDesc, setNewBrandDesc] = useState('');
 
   const loadData = async () => {
     try {
@@ -64,17 +70,22 @@ export default function Inventory() {
       let query = `/products?`;
       if (search) query += `search=${encodeURIComponent(search)}&`;
       if (selectedCat) query += `category_id=${selectedCat}&`;
+      if (selectedBrand) query += `brand=${encodeURIComponent(selectedBrand)}&`;
       if (lowStockOnly) query += `low_stock=true&`;
 
-      const [pRes, cRes, uRes] = await Promise.all([
+      const [pRes, cRes, uRes, bRes, sRes] = await Promise.all([
         api.get(query),
         api.get('/products/meta/categories'),
-        api.get('/products/meta/units')
+        api.get('/products/meta/units'),
+        api.get('/products/meta/brands'),
+        api.get('/parties/suppliers')
       ]);
 
       if (pRes.success) setProducts(pRes.products);
       if (cRes.success) setCategories(cRes.categories);
       if (uRes.success) setUnits(uRes.units);
+      if (bRes.success) setBrands(bRes.brands);
+      if (sRes.success) setSuppliers(sRes.suppliers);
     } catch (err) {
       console.error('Inventory fetch error:', err);
     } finally {
@@ -84,7 +95,7 @@ export default function Inventory() {
 
   useEffect(() => {
     loadData();
-  }, [selectedCat, lowStockOnly]);
+  }, [selectedCat, selectedBrand, lowStockOnly]);
 
   const viewProductDetail = async (id) => {
     try {
@@ -112,6 +123,7 @@ export default function Inventory() {
       { label: 'Barcode', key: 'barcode' },
       { label: 'Category', key: 'category_name' },
       { label: 'Brand', key: 'brand' },
+      { label: 'Supplier / Vendor', key: 'supplier_name' },
       { label: 'Current Stock', key: 'current_stock' },
       { label: 'Unit', key: 'unit' },
       { label: 'Purchase Price (PKR)', key: 'purchase_price' },
@@ -133,6 +145,7 @@ export default function Inventory() {
           barcode: '',
           category_id: '',
           brand: '',
+          supplier_id: '',
           unit: 'pkt',
           purchase_price: '',
           sale_price: '',
@@ -158,6 +171,7 @@ export default function Inventory() {
       barcode: p.barcode || '',
       category_id: p.category_id || '',
       brand: p.brand || '',
+      supplier_id: p.supplier_id || '',
       unit: p.unit || 'pkt',
       purchase_price: p.purchase_price || 0,
       sale_price: p.sale_price || 0,
@@ -179,6 +193,25 @@ export default function Inventory() {
       }
     } catch (err) {
       alert(err.message || 'Failed to update product');
+    }
+  };
+
+  const handleCreateBrand = async (e) => {
+    e.preventDefault();
+    if (!newBrandName.trim()) return;
+    try {
+      const res = await api.post('/products/meta/brands', {
+        name: newBrandName.trim(),
+        description: newBrandDesc.trim()
+      });
+      if (res.success) {
+        setNewBrandName('');
+        setNewBrandDesc('');
+        const bRes = await api.get('/products/meta/brands');
+        if (bRes.success) setBrands(bRes.brands);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to add brand');
     }
   };
 
@@ -251,6 +284,18 @@ export default function Inventory() {
               ))}
             </select>
 
+            <select
+              className="form-control"
+              style={{ width: '135px', height: '32px', fontSize: '0.8rem' }}
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+            >
+              <option value="">All Brands</option>
+              {brands.map(b => (
+                <option key={b.id || b.name} value={b.name}>{b.name}</option>
+              ))}
+            </select>
+
             <button
               onClick={() => setLowStockOnly(!lowStockOnly)}
               className={`btn btn-sm ${lowStockOnly ? 'btn-danger' : 'btn-secondary'}`}
@@ -268,9 +313,9 @@ export default function Inventory() {
             </button>
 
             {canManageInventory && (
-              <button onClick={() => setShowMetaModal(true)} className="btn btn-secondary btn-sm" style={{ height: '32px', padding: '0 8px', fontSize: '0.75rem' }} title="Manage Categories & Units">
+              <button onClick={() => setShowMetaModal(true)} className="btn btn-secondary btn-sm" style={{ height: '32px', padding: '0 8px', fontSize: '0.75rem' }} title="Manage Brands, Categories & Units">
                 <Layers size={13} />
-                <span>Categories & Units</span>
+                <span>Brands & Categories</span>
               </button>
             )}
 
@@ -319,7 +364,10 @@ export default function Inventory() {
                     <tr key={p.id}>
                       <td style={{ fontWeight: 600, maxWidth: '200px' }}>
                         <div style={{ wordBreak: 'break-word', lineHeight: 1.25, fontSize: '0.8125rem' }}>{p.name}</div>
-                        {p.brand && <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>{p.brand}</div>}
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
+                          {p.brand && <span style={{ fontSize: '0.675rem', color: '#0284c7', background: '#f0f9ff', padding: '0 4px', borderRadius: '3px', border: '1px solid #bae6fd' }}>{p.brand}</span>}
+                          {p.supplier_name && <span style={{ fontSize: '0.675rem', color: '#475569', background: '#f8fafc', padding: '0 4px', borderRadius: '3px', border: '1px solid #e2e8f0' }} title="Default Supplier">Vendor: {p.supplier_name}</span>}
+                        </div>
                       </td>
                       <td className="mono" style={{ fontSize: '0.725rem', whiteSpace: 'nowrap' }}>
                         <div style={{ fontWeight: 600 }}>{p.sku}</div>
@@ -508,17 +556,23 @@ export default function Inventory() {
                     <label className="form-label">Brand / Company</label>
                     <input
                       type="text"
+                      list="brand-list-add"
                       className="form-control"
-                      placeholder="e.g. Dawn / K&N's"
+                      placeholder="Select or enter brand"
                       value={formData.brand}
                       onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                     />
+                    <datalist id="brand-list-add">
+                      {brands.map(b => (
+                        <option key={b.id || b.name} value={b.name} />
+                      ))}
+                    </datalist>
                   </div>
                 </div>
 
-                <div className="form-grid-3">
+                <div className="form-grid-4">
                   <div className="form-group">
-                    <label className="form-label">SKU / Item Code *</label>
+                    <label className="form-label">SKU / Code *</label>
                     <input
                       type="text"
                       className="form-control"
@@ -529,7 +583,7 @@ export default function Inventory() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Barcode (Scan USB)</label>
+                    <label className="form-label">Barcode (Scan)</label>
                     <input
                       type="text"
                       className="form-control"
@@ -548,6 +602,20 @@ export default function Inventory() {
                       <option value="">Select Category</option>
                       {categories.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Default Supplier</label>
+                    <select
+                      className="form-control"
+                      value={formData.supplier_id}
+                      onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
+                      title="Kis supplier se saman liya hai"
+                    >
+                      <option value="">-- Supplier (Optional) --</option>
+                      {suppliers.map(s => (
+                        <option key={s.id} value={s.id}>{s.name} {s.company_name ? `(${s.company_name})` : ''}</option>
                       ))}
                     </select>
                   </div>
@@ -677,20 +745,21 @@ export default function Inventory() {
             <div className="modal-header">
               <div>
                 <h3>{selectedProduct.name}</h3>
-                <div style={{ fontSize: '0.775rem', color: '#64748b' }}>
-                  SKU: {selectedProduct.sku} • Location: {selectedProduct.storage_location || 'Freezer'}
+                <div style={{ fontSize: '0.775rem', color: '#64748b', marginTop: '2px' }}>
+                  SKU: {selectedProduct.sku} • Brand: <strong>{selectedProduct.brand || 'Frozen'}</strong> • Supplier: <strong>{selectedProduct.supplier_name || 'N/A'}</strong> • Location: {selectedProduct.storage_location || 'Freezer'}
                 </div>
               </div>
               <button onClick={() => setShowDetailModal(false)}>✕</button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.4rem', color: '#0f172a' }}>Active Batches (FEFO Tracking)</h4>
+                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.4rem', color: '#0f172a' }}>Active Batches (FIFO Lot Tracking)</h4>
                 <div className="table-responsive">
                   <table className="table">
                     <thead>
                       <tr>
                         <th>Batch #</th>
+                        <th>Supplier / Vendor</th>
                         <th>Expiry Date</th>
                         <th style={{ textAlign: 'center' }}>Quantity</th>
                         <th style={{ textAlign: 'right' }}>Cost Rate</th>
@@ -699,11 +768,12 @@ export default function Inventory() {
                     </thead>
                     <tbody>
                       {batches.length === 0 ? (
-                        <tr><td colSpan="5" style={{ textAlign: 'center' }}>No active batches found.</td></tr>
+                        <tr><td colSpan="6" style={{ textAlign: 'center' }}>No active batches found.</td></tr>
                       ) : (
                         batches.map(b => (
                           <tr key={b.id}>
                             <td className="mono" style={{ fontWeight: 600 }}>{b.batch_no}</td>
+                            <td style={{ fontSize: '0.75rem', color: '#0369a1', fontWeight: 600 }}>{b.supplier_name || 'Opening/Direct'}</td>
                             <td>{formatDate(b.expiry_date)}</td>
                             <td style={{ textAlign: 'center', fontWeight: 700 }}>{b.quantity} {selectedProduct.unit}</td>
                             <td style={{ textAlign: 'right' }}>{formatPKR(b.purchase_price)}</td>
@@ -786,7 +856,7 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div className="form-grid-3">
+                <div className="form-grid-4">
                   <div className="form-group">
                     <label className="form-label">Barcode</label>
                     <input
@@ -818,6 +888,7 @@ export default function Inventory() {
                     </label>
                     <input
                       type="text"
+                      list="brand-list-edit"
                       className="form-control"
                       value={editFormData.brand || ''}
                       onChange={(e) => setEditFormData({ ...editFormData, brand: e.target.value })}
@@ -826,6 +897,25 @@ export default function Inventory() {
                       title={!isAdmin ? 'Brand name can only be edited by an Administrator' : ''}
                       placeholder="e.g. Big Bird / Dawn"
                     />
+                    <datalist id="brand-list-edit">
+                      {brands.map(b => (
+                        <option key={b.id || b.name} value={b.name} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Default Supplier</label>
+                    <select
+                      className="form-control"
+                      value={editFormData.supplier_id || ''}
+                      onChange={(e) => setEditFormData({ ...editFormData, supplier_id: e.target.value })}
+                      title="Kis supplier se saman liya hai"
+                    >
+                      <option value="">-- None --</option>
+                      {suppliers.map(s => (
+                        <option key={s.id} value={s.id}>{s.name} {s.company_name ? `(${s.company_name})` : ''}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -925,7 +1015,7 @@ export default function Inventory() {
             <div className="modal-header">
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <Layers size={18} color="var(--primary)" />
-                <h3 style={{ margin: 0 }}>Categories & Units Manager</h3>
+                <h3 style={{ margin: 0 }}>Brands, Categories & Units Manager</h3>
               </div>
               <button onClick={() => setShowMetaModal(false)}>✕</button>
             </div>
@@ -933,21 +1023,69 @@ export default function Inventory() {
               <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
                 <button
                   type="button"
+                  onClick={() => setMetaTab('brands')}
+                  className={`btn btn-sm ${metaTab === 'brands' ? 'btn-primary' : 'btn-secondary'}`}
+                >
+                  Frozen Brands ({brands.length})
+                </button>
+                <button
+                  type="button"
                   onClick={() => setMetaTab('categories')}
                   className={`btn btn-sm ${metaTab === 'categories' ? 'btn-primary' : 'btn-secondary'}`}
                 >
-                  Product Categories ({categories.length})
+                  Categories ({categories.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setMetaTab('units')}
                   className={`btn btn-sm ${metaTab === 'units' ? 'btn-primary' : 'btn-secondary'}`}
                 >
-                  Measurement Units ({units.length})
+                  Units ({units.length})
                 </button>
               </div>
 
-              {metaTab === 'categories' ? (
+              {metaTab === 'brands' ? (
+                <div>
+                  <form onSubmit={handleCreateBrand} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      style={{ flex: 1, minWidth: '150px' }}
+                      placeholder="Brand Name (e.g., Sabroso, K&N's)"
+                      value={newBrandName}
+                      onChange={(e) => setNewBrandName(e.target.value)}
+                      required
+                    />
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      style={{ flex: 1.5, minWidth: '180px' }}
+                      placeholder="Brand description / notes"
+                      value={newBrandDesc}
+                      onChange={(e) => setNewBrandDesc(e.target.value)}
+                    />
+                    <button type="submit" className="btn btn-primary btn-sm">Add Brand</button>
+                  </form>
+                  <div className="table-responsive" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Brand Name</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {brands.map(b => (
+                          <tr key={b.id || b.name}>
+                            <td style={{ fontWeight: 600, color: '#0284c7' }}>{b.name}</td>
+                            <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{b.description || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : metaTab === 'categories' ? (
                 <div>
                   <form onSubmit={handleCreateCategory} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                     <input

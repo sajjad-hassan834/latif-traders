@@ -459,16 +459,131 @@ exports.getPurchasesReport = (req, res) => {
 
     const purchases = db.prepare(query).all(...params);
 
+    const totalQty = db.prepare(`
+      SELECT COALESCE(SUM(pi.quantity), 0) as total_qty
+      FROM purchase_items pi
+      JOIN purchases p ON pi.purchase_id = p.id
+      WHERE p.purchase_date >= ? AND p.purchase_date <= ?
+      ${supplier_id ? 'AND p.supplier_id = ?' : ''}
+    `).get(...params).total_qty;
+
     const summary = {
       total_purchases: purchases.reduce((sum, p) => sum + p.grand_total, 0),
       total_paid: purchases.reduce((sum, p) => sum + p.paid_amount, 0),
       total_balance_due: purchases.reduce((sum, p) => sum + p.balance_due, 0),
+      total_quantity: totalQty,
       invoice_count: purchases.length
     };
 
     return res.json({ success: true, purchases, summary });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Failed to generate purchase report.' });
+  }
+};
+
+// Supplier-wise Purchase Report (Grouped by supplier with products breakdown)
+exports.getSupplierWisePurchaseReport = (req, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+    const sDate = start_date || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    const eDate = end_date || new Date().toISOString().split('T')[0];
+
+    const suppliers = db.prepare(`
+      SELECT s.id, s.name as supplier_name, s.phone, s.contact_person, s.current_balance as outstanding_balance,
+        COUNT(DISTINCT p.id) as invoice_count,
+        COALESCE(SUM(p.grand_total), 0) as total_purchase_amount,
+        COALESCE(SUM(p.paid_amount), 0) as total_paid,
+        COALESCE(SUM(p.balance_due), 0) as total_credit_due,
+        COALESCE(SUM(pi.quantity), 0) as total_quantity
+      FROM suppliers s
+      JOIN purchases p ON s.id = p.supplier_id AND p.purchase_date >= ? AND p.purchase_date <= ?
+      LEFT JOIN purchase_items pi ON p.id = pi.purchase_id
+      GROUP BY s.id
+      ORDER BY total_purchase_amount DESC
+    `).all(sDate, eDate);
+
+    // Also get product breakdown for each supplier
+    for (const sup of suppliers) {
+      sup.products = db.prepare(`
+        SELECT pr.name as product_name, COALESCE(pi.brand, pr.brand, '-') as brand,
+          pi.unit,
+          SUM(pi.quantity) as quantity,
+          AVG(pi.unit_price) as avg_rate,
+          SUM(pi.total_price) as total_amount
+        FROM purchase_items pi
+        JOIN purchases p ON pi.purchase_id = p.id
+        JOIN products pr ON pi.product_id = pr.id
+        WHERE p.supplier_id = ? AND p.purchase_date >= ? AND p.purchase_date <= ?
+        GROUP BY pr.id, pi.unit
+        ORDER BY total_amount DESC
+      `).all(sup.id, sDate, eDate);
+    }
+
+    const summary = {
+      total_purchases: suppliers.reduce((sum, s) => sum + s.total_purchase_amount, 0),
+      total_paid: suppliers.reduce((sum, s) => sum + s.total_paid, 0),
+      total_balance_due: suppliers.reduce((sum, s) => sum + s.total_credit_due, 0),
+      total_quantity: suppliers.reduce((sum, s) => sum + s.total_quantity, 0),
+      supplier_count: suppliers.length
+    };
+
+    return res.json({ success: true, report: suppliers, summary });
+  } catch (err) {
+    console.error('getSupplierWisePurchaseReport error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to generate supplier-wise purchase report.' });
+  }
+};
+
+// Product-wise Purchase Report (Grouped by product with supplier history and purchase rates)
+exports.getProductWisePurchaseReport = (req, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+    const sDate = start_date || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    const eDate = end_date || new Date().toISOString().split('T')[0];
+
+    const products = db.prepare(`
+      SELECT pr.id as product_id, pr.name as product_name, pr.sku, COALESCE(pi.brand, pr.brand, '-') as brand, pi.unit,
+        SUM(pi.quantity) as total_quantity,
+        AVG(pi.unit_price) as avg_purchase_rate,
+        MIN(pi.unit_price) as min_purchase_rate,
+        MAX(pi.unit_price) as max_purchase_rate,
+        SUM(pi.total_price) as total_purchase_amount,
+        COUNT(DISTINCT p.supplier_id) as supplier_count
+      FROM purchase_items pi
+      JOIN purchases p ON pi.purchase_id = p.id
+      JOIN products pr ON pi.product_id = pr.id
+      WHERE p.purchase_date >= ? AND p.purchase_date <= ?
+      GROUP BY pr.id, pi.unit
+      ORDER BY total_purchase_amount DESC
+    `).all(sDate, eDate);
+
+    for (const prod of products) {
+      prod.suppliers = db.prepare(`
+        SELECT s.name as supplier_name,
+          pi.quantity,
+          pi.unit,
+          pi.unit_price as rate,
+          pi.total_price as total_amount,
+          p.invoice_no,
+          p.purchase_date
+        FROM purchase_items pi
+        JOIN purchases p ON pi.purchase_id = p.id
+        JOIN suppliers s ON p.supplier_id = s.id
+        WHERE pi.product_id = ? AND p.purchase_date >= ? AND p.purchase_date <= ?
+        ORDER BY p.purchase_date DESC
+      `).all(prod.product_id, sDate, eDate);
+    }
+
+    const summary = {
+      total_purchases: products.reduce((sum, p) => sum + p.total_purchase_amount, 0),
+      total_quantity: products.reduce((sum, p) => sum + p.total_quantity, 0),
+      product_count: products.length
+    };
+
+    return res.json({ success: true, report: products, summary });
+  } catch (err) {
+    console.error('getProductWisePurchaseReport error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to generate product-wise purchase report.' });
   }
 };
 
