@@ -147,11 +147,7 @@ function DashboardContent({ setTab }) {
       </div>
 
       {/* 2. HARMONIOUS DAILY PERFORMANCE STRIP (NO BULKY OVERWHELMING BOXES) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-        gap: '0.75rem'
-      }}>
+      <div className="form-grid-4">
         {/* TODAY SALES */}
         <div className="card" style={{ padding: '0.9rem 1.15rem', borderLeft: '4px solid #0284c7' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -230,11 +226,7 @@ function DashboardContent({ setTab }) {
       </div>
 
       {/* 3. WORKING CAPITAL & COLD STORAGE VALUATION (REFINED, ELEGANT PROPORTIONS) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '0.75rem'
-      }}>
+      <div className="form-grid-3">
         {/* COLD STORAGE STOCK VALUATION */}
         <div className="card" style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
@@ -344,11 +336,7 @@ function DashboardContent({ setTab }) {
       </div>
 
       {/* 4. THE COMMAND CENTER (TWO INTERACTIVE BALANCED MODULES INSTEAD OF 4 RAW TABLES) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
-        gap: '0.75rem'
-      }}>
+      <div className="form-grid-2">
         {/* MODULE A: OPERATIONAL ALERTS CENTER (LOW STOCK vs EXPIRY) */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* TAB HEADER */}
@@ -356,11 +344,13 @@ function DashboardContent({ setTab }) {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.4rem',
             background: '#f8fafc',
             borderBottom: '1px solid #e2e8f0',
             padding: '0.35rem 0.65rem'
           }}>
-            <div style={{ display: 'flex', gap: '0.35rem' }}>
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
               <button
                 onClick={() => setAlertTab('low_stock')}
                 style={{
@@ -449,6 +439,8 @@ function DashboardContent({ setTab }) {
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '0.4rem',
                         padding: '0.5rem 0.65rem',
                         background: '#fffbeb',
                         border: '1px solid #fde68a',
@@ -512,6 +504,8 @@ function DashboardContent({ setTab }) {
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '0.4rem',
                         padding: '0.5rem 0.65rem',
                         background: '#fef2f2',
                         border: '1px solid #fecaca',
@@ -558,11 +552,13 @@ function DashboardContent({ setTab }) {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.4rem',
             background: '#f8fafc',
             borderBottom: '1px solid #e2e8f0',
             padding: '0.35rem 0.65rem'
           }}>
-            <div style={{ display: 'flex', gap: '0.35rem' }}>
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
               <button
                 onClick={() => setActivityTab('sales')}
                 style={{
@@ -631,6 +627,8 @@ function DashboardContent({ setTab }) {
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '0.4rem',
                         padding: '0.45rem 0.65rem',
                         background: '#f8fafc',
                         border: '1px solid #e2e8f0',

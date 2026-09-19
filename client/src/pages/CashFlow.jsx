@@ -56,24 +56,24 @@ export default function CashFlow() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* DATE RANGE & PRINT CONTROLS (Hidden in Print) */}
-      <div className="card no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', padding: '0.85rem 1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+      <div className="card no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', padding: '0.85rem 1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.85rem', color: '#64748b' }}>From:</span>
             <input
               type="date"
               className="form-control"
-              style={{ height: '34px', fontSize: '0.85rem' }}
+              style={{ height: '34px', fontSize: '0.85rem', minWidth: '130px' }}
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.85rem', color: '#64748b' }}>To:</span>
             <input
               type="date"
               className="form-control"
-              style={{ height: '34px', fontSize: '0.85rem' }}
+              style={{ height: '34px', fontSize: '0.85rem', minWidth: '130px' }}
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
             />
@@ -161,7 +161,7 @@ export default function CashFlow() {
 
           {/* CASHBOOK LEDGER TABLE */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div>
                 <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>Cashbook Transaction Details</h3>
                 <p style={{ fontSize: '0.75rem', color: '#64748b' }}>
@@ -174,7 +174,7 @@ export default function CashFlow() {
             </div>
 
             <div className="table-responsive">
-              <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <table className="table" style={{ width: '100%', minWidth: '720px', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
                     <th style={{ width: '100px' }}>Date</th>

@@ -325,6 +325,9 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-width: 0;
+  max-width: 100vw;
+  overflow-x: hidden;
   background: var(--bg-app);
   transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -342,6 +345,8 @@ h1, h2, h3, h4, h5, h6 {
   top: 0;
   z-index: 90;
   box-shadow: var(--shadow-xs);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .page-title {
@@ -361,12 +366,17 @@ h1, h2, h3, h4, h5, h6 {
   flex: 1;
   max-width: 1600px;
   width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* Grid & Cards */
 .grid {
   display: grid;
   gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .grid-cols-4 {
@@ -437,6 +447,9 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
   padding: 1rem;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Stat Card */
@@ -589,6 +602,9 @@ h1, h2, h3, h4, h5, h6 {
 /* Tables */
 .table-responsive {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: block;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
@@ -1626,6 +1642,49 @@ h1, h2, h3, h4, h5, h6 {
   .modal-footer {
     flex-wrap: wrap !important;
     gap: 0.5rem !important;
+  }
+
+  /* Mobile Report & Cashbook Document Adaptations */
+  .report-print-container {
+    padding: 0.75rem !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .report-brand-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  .report-brand-right {
+    align-items: flex-start !important;
+    text-align: left !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    border-top: 1px dashed #e2e8f0;
+    padding-top: 0.5rem;
+    width: 100%;
+  }
+
+  .report-title-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.5rem !important;
+  }
+
+  .cashbook-print-summary {
+    grid-template-columns: 1fr !important;
+    gap: 0.65rem !important;
+  }
+
+  .cashbook-summary-card {
+    padding: 0.75rem !important;
+  }
+
+  .report-signatures-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
   }
 
   .pos-layout {

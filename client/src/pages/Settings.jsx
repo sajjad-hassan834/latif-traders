@@ -389,8 +389,8 @@ export default function Settings() {
       </div>
 
       {/* DATABASE BACKUP & RESTORE */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+      <div className="card" style={{ overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Database size={22} color="#10b981" />
             <div>
@@ -407,7 +407,7 @@ export default function Settings() {
         </div>
 
         <div className="table-responsive">
-          <table className="table">
+          <table className="table" style={{ width: '100%', minWidth: '600px' }}>
             <thead>
               <tr>
                 <th>Backup Filename</th>
@@ -625,8 +625,8 @@ export default function Settings() {
             </div>
 
             {/* Visual Data Grid */}
-            <div className="table-responsive" style={{ maxHeight: '460px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.03)' }}>
-              <table className="table" style={{ fontSize: '0.775rem', borderCollapse: 'separate', borderSpacing: 0 }}>
+            <div className="table-responsive" style={{ maxHeight: '460px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.03)', width: '100%', maxWidth: '100%' }}>
+              <table className="table" style={{ fontSize: '0.775rem', borderCollapse: 'separate', borderSpacing: 0, minWidth: '600px' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr style={{ background: '#0f172a', color: '#ffffff' }}>
                     <th style={{ background: '#0f172a', color: '#94a3b8', width: '45px', textAlign: 'center', fontSize: '0.65rem' }}>#</th>

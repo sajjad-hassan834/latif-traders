@@ -74,8 +74,8 @@ export default function Users() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* TABS & ADD BUTTON */}
-      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button
             onClick={() => setActiveTab('users')}
             className={`btn btn-sm ${activeTab === 'users' ? 'btn-primary' : 'btn-secondary'}`}
@@ -102,9 +102,9 @@ export default function Users() {
 
       {/* USERS LIST */}
       {activeTab === 'users' && (
-        <div className="card" style={{ padding: 0 }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div className="table-responsive">
-            <table className="table">
+            <table className="table" style={{ width: '100%', minWidth: '650px' }}>
               <thead>
                 <tr>
                   <th>Username</th>
@@ -160,9 +160,9 @@ export default function Users() {
 
       {/* AUDIT LOGS */}
       {activeTab === 'logs' && (
-        <div className="card" style={{ padding: 0 }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div className="table-responsive">
-            <table className="table">
+            <table className="table" style={{ width: '100%', minWidth: '700px' }}>
               <thead>
                 <tr>
                   <th>Timestamp</th>

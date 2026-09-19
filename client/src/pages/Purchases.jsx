@@ -227,22 +227,22 @@ export default function Purchases() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
           <h3 style={{ fontSize: '1.2rem' }}>Purchases & Supplier Invoices</h3>
           <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
             Record cold-chain supplier shipments, batch expiration dates, and payable balances.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={handleExportPurchases} className="btn btn-secondary" title="Export Purchases to CSV">
-            <Download size={16} />
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button onClick={handleExportPurchases} className="btn btn-secondary btn-sm" title="Export Purchases to CSV">
+            <Download size={14} />
             <span>Export CSV</span>
           </button>
           {canManageInventory && (
-            <button onClick={() => setShowNewModal(true)} className="btn btn-primary">
-              <Plus size={16} />
+            <button onClick={() => setShowNewModal(true)} className="btn btn-primary btn-sm">
+              <Plus size={14} />
               <span>New Purchase Bill</span>
             </button>
           )}
@@ -250,9 +250,9 @@ export default function Purchases() {
       </div>
 
       {/* PURCHASES LIST */}
-      <div className="card" style={{ padding: 0 }}>
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="table-responsive">
-          <table className="table">
+          <table className="table" style={{ minWidth: '720px' }}>
             <thead>
               <tr>
                 <th>Internal Inv #</th>

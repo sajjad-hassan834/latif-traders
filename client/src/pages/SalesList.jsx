@@ -113,8 +113,8 @@ export default function SalesList() {
       )}
 
       {/* FILTERS BAR */}
-      <div className="card" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+      <div className="card" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '160px' }}>
           <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: '#94a3b8' }} />
           <input
             type="text"
@@ -127,40 +127,44 @@ export default function SalesList() {
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>From:</span>
           <input
             type="date"
             className="form-control"
+            style={{ minWidth: '130px' }}
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>To:</span>
           <input
             type="date"
             className="form-control"
+            style={{ minWidth: '130px' }}
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
         </div>
 
-        <button onClick={loadSales} className="btn btn-secondary">
-          Filter
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button onClick={loadSales} className="btn btn-secondary">
+            Filter
+          </button>
 
-        <button onClick={handleExportCSV} className="btn btn-secondary" title="Export to CSV / Excel">
-          <Download size={14} />
-          <span>Export CSV</span>
-        </button>
+          <button onClick={handleExportCSV} className="btn btn-secondary" title="Export to CSV / Excel">
+            <Download size={14} />
+            <span>Export CSV</span>
+          </button>
+        </div>
       </div>
 
       {/* SALES TABLE */}
-      <div className="card" style={{ padding: '0' }}>
+      <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
         <div className="table-responsive">
-          <table className="table">
+          <table className="table" style={{ width: '100%', minWidth: '780px' }}>
             <thead>
               <tr>
                 <th>Invoice #</th>

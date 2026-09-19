@@ -218,8 +218,8 @@ export default function StockAdjustment() {
       </div>
 
       {/* STOCK ADJUSTMENT AUDIT HISTORY */}
-      <div className="card" style={{ padding: 0 }}>
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <History size={18} color="var(--primary)" />
             <h3 style={{ fontSize: '1.05rem', margin: 0 }}>Adjustment History & Waste Audit Log</h3>
@@ -228,7 +228,7 @@ export default function StockAdjustment() {
         </div>
 
         <div className="table-responsive">
-          <table className="table">
+          <table className="table" style={{ width: '100%', minWidth: '700px' }}>
             <thead>
               <tr>
                 <th>Date & Time</th>

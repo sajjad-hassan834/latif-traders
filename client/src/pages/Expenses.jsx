@@ -367,7 +367,7 @@ function ExpensesContent() {
         {/* ROW 1: SEARCH & ACTION BUTTONS */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
           {/* SEARCH INPUT */}
-          <div style={{ position: 'relative', width: '320px', maxWidth: '100%' }}>
+          <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '160px', width: '100%' }}>
             <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: '#94a3b8' }} />
             <input
               type="text"
@@ -475,7 +475,9 @@ function ExpensesContent() {
               background: '#f8fafc',
               border: '1px solid #e2e8f0',
               borderRadius: '6px',
-              padding: '2px 6px'
+              padding: '2px 6px',
+              maxWidth: '100%',
+              flexWrap: 'wrap'
             }}>
               <Calendar size={13} color="#64748b" />
               <input
@@ -591,7 +593,7 @@ function ExpensesContent() {
         </div>
 
         <div className="table-responsive">
-          <table className="table">
+          <table className="table" style={{ minWidth: '720px' }}>
             <thead>
               <tr>
                 <th style={{ width: '110px' }}>Date</th>

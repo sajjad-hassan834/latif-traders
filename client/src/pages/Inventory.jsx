@@ -285,9 +285,9 @@ export default function Inventory() {
       </div>
 
       {/* PRODUCTS TABLE */}
-      <div className="card" style={{ padding: 0 }}>
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="table-responsive">
-          <table className="table">
+          <table className="table" style={{ width: '100%', minWidth: '780px' }}>
             <thead>
               <tr>
                 <th style={{ minWidth: '140px', maxWidth: '200px' }}>Product Name</th>

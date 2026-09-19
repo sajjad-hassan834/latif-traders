@@ -148,8 +148,8 @@ export default function Suppliers() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '160px' }}>
           <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: '#94a3b8' }} />
           <input
             type="text"
@@ -168,9 +168,9 @@ export default function Suppliers() {
       </div>
 
       {/* SUPPLIERS TABLE */}
-      <div className="card" style={{ padding: 0 }}>
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="table-responsive">
-          <table className="table">
+          <table className="table" style={{ width: '100%', minWidth: '700px' }}>
             <thead>
               <tr>
                 <th>Supplier / Company</th>
@@ -468,7 +468,7 @@ export default function Suppliers() {
                 )}
               </div>
               <div className="table-responsive">
-                <table className="table">
+                <table className="table" style={{ width: '100%', minWidth: '600px' }}>
                   <thead>
                     <tr>
                       <th>Date</th>
@@ -501,7 +501,7 @@ export default function Suppliers() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
-                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', minWidth: '280px' }}>
+                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', width: '100%', maxWidth: '350px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
                     <span>Total Purchases (Credit):</span>
                     <strong>{formatPKR(ledgerData.summary.total_credit)}</strong>

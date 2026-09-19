@@ -624,14 +624,14 @@ function ReportsContent() {
 
         {/* 2. DAILY SALES SUMMARY */}
         {activeReport === 'daily' && (
-          <div className="card" style={{ padding: 0 }}>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: '1rem' }}>Daily Sales Ledger</h3>
               <span style={{ fontSize: '0.775rem', color: '#64748b' }}>{dailySales.length} Days Recorded</span>
             </div>
 
             <div className="table-responsive">
-              <table className="table">
+              <table className="table" style={{ width: '100%', minWidth: '650px' }}>
                 <thead>
                   <tr>
                     <th>Date</th>
@@ -787,13 +787,13 @@ function ReportsContent() {
 
         {/* 4. STOCK VALUATION REPORT */}
         {activeReport === 'stock' && (
-          <div className="card" style={{ padding: 0 }}>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div>
                 <h3 style={{ fontSize: '1rem' }}>Inventory Stock & Valuation</h3>
                 <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Current physical stock valuation across all active frozen items</p>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', flexWrap: 'wrap' }}>
                 <div>Total Cost: <strong>{formatPKR(stockTotals.total_cost_value || 0)}</strong></div>
                 <div>Retail Value: <strong style={{ color: '#0284c7' }}>{formatPKR(stockTotals.total_retail_value || 0)}</strong></div>
                 <div>Potential Profit: <strong style={{ color: '#10b981' }}>{formatPKR(stockTotals.total_potential_profit || 0)}</strong></div>
@@ -801,7 +801,7 @@ function ReportsContent() {
             </div>
 
             <div className="table-responsive">
-              <table className="table">
+              <table className="table" style={{ width: '100%', minWidth: '760px' }}>
                 <thead>
                   <tr>
                     <th>Product</th>
@@ -843,7 +843,7 @@ function ReportsContent() {
 
         {/* 5. EXPIRY ALERT REPORT */}
         {activeReport === 'expiry' && (
-          <div className="card" style={{ padding: 0 }}>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
               <h3 style={{ fontSize: '1rem' }}>Batch Expiration & Quality Control</h3>
               <p style={{ fontSize: '0.75rem', color: '#64748b' }}>
@@ -852,7 +852,7 @@ function ReportsContent() {
             </div>
 
             <div className="table-responsive">
-              <table className="table">
+              <table className="table" style={{ width: '100%', minWidth: '650px' }}>
                 <thead>
                   <tr>
                     <th>Product</th>
@@ -928,13 +928,13 @@ function ReportsContent() {
               </div>
             </div>
 
-            <div className="card" style={{ padding: 0 }}>
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
                 <h3 style={{ fontSize: '1rem' }}>Supplier Restocking Ledger</h3>
                 <p style={{ fontSize: '0.75rem', color: '#64748b' }}>All purchase bills recorded from {startDate} to {endDate}.</p>
               </div>
               <div className="table-responsive">
-                <table className="table">
+                <table className="table" style={{ width: '100%', minWidth: '760px' }}>
                   <thead>
                     <tr>
                       <th>Internal Inv #</th>
@@ -1003,13 +1003,13 @@ function ReportsContent() {
               </div>
             </div>
 
-            <div className="card" style={{ padding: 0 }}>
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
                 <h3 style={{ fontSize: '1rem' }}>Product-Wise Sales & Margin Breakdown</h3>
                 <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Ranking of sold items by gross revenue contribution.</p>
               </div>
               <div className="table-responsive">
-                <table className="table">
+                <table className="table" style={{ width: '100%', minWidth: '760px' }}>
                   <thead>
                     <tr>
                       <th>Product Name</th>
@@ -1049,13 +1049,13 @@ function ReportsContent() {
 
         {/* 8. STOCK MOVEMENTS AUDIT LEDGER */}
         {activeReport === 'movements' && (
-          <div className="card" style={{ padding: 0 }}>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
               <h3 style={{ fontSize: '1rem' }}>Master Stock Movement Audit Trail</h3>
               <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Traceable history of all restocks, sales deductions, returns, and damage adjustments.</p>
             </div>
             <div className="table-responsive">
-              <table className="table">
+              <table className="table" style={{ width: '100%', minWidth: '780px' }}>
                 <thead>
                   <tr>
                     <th>Date & Time</th>

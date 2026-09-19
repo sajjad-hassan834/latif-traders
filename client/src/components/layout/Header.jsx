@@ -60,7 +60,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
   return (
     <>
       <header className="top-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
           {/* Mobile hamburger */}
           <button
             onClick={toggleSidebar}
@@ -85,7 +85,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
           </h1>
         </div>
 
-        <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
           {/* Notification Center (Houses Low Stock, Expiry QC, and System Alerts) */}
           <NotificationCenter alerts={alerts} setTab={setTab} />
 
