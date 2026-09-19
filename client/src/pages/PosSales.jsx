@@ -726,7 +726,25 @@ export default function PosSales() {
                   <div className="pos-card-footer">
                     <div>
                       <div className="pos-item-price">{formatPKR(displayPrice)}</div>
-                      <div className="pos-item-unit">per {p.unit}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', marginTop: '1px' }}>
+                        <span className="pos-item-unit">per {p.unit}</span>
+                        {p.purchase_price > 0 && (
+                          <span
+                            style={{
+                              fontSize: '0.62rem',
+                              fontWeight: 700,
+                              color: '#0284c7',
+                              background: '#f0f9ff',
+                              border: '1px solid #bae6fd',
+                              padding: '0 4px',
+                              borderRadius: '3px'
+                            }}
+                            title="Actual Kharid / Cost Price (For shop reference only)"
+                          >
+                            Cost: ₨{p.purchase_price}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -960,15 +978,6 @@ export default function PosSales() {
                         />
                         <span style={{ fontSize: '0.62rem', color: '#64748b' }}>/{item.unit || 'unit'}</span>
                       </div>
-                      {/* Actual standard catalog price */}
-                      {item.original_price && Number(item.original_price) !== Number(item.unit_price) && (
-                        <span
-                          style={{ fontSize: '0.62rem', color: '#94a3b8', textDecoration: 'line-through', background: '#f8fafc', padding: '1px 3px', borderRadius: '3px', border: '1px solid #e2e8f0' }}
-                          title="Actual standard catalog price"
-                        >
-                          ₨{item.original_price}
-                        </span>
-                      )}
                       <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>•</span>
                       <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0f172a' }}>
                         {formatPKR(((Number(item.quantity) || 0) * Number(item.unit_price)) - (item.discount || 0))}
@@ -984,6 +993,57 @@ export default function PosSales() {
                       >
                         <Edit2 size={10} />
                       </button>
+                    </div>
+
+                    {/* ACTUAL PURCHASE / COST PRICE (FOR SHOP US ONLY - NEVER ON CUSTOMER BILL) */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '3px', flexWrap: 'wrap' }}>
+                      <span
+                        style={{
+                          fontSize: '0.64rem',
+                          fontWeight: 700,
+                          color: '#0369a1',
+                          background: '#e0f2fe',
+                          padding: '1px 5px',
+                          borderRadius: '3px',
+                          border: '1px solid #bae6fd',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}
+                        title="Actual Kharid / Purchase Cost Price (For shop reference only - not printed on customer bill)"
+                      >
+                        <span>Actual Cost:</span>
+                        <strong style={{ color: '#0284c7' }}>₨{item.purchase_price || 0}</strong>
+                        {Number(item.unit_price) > Number(item.purchase_price || 0) ? (
+                          <span style={{ color: '#16a34a', fontWeight: 700, marginLeft: '2px' }}>
+                            (+₨{Number(item.unit_price) - Number(item.purchase_price || 0)} profit)
+                          </span>
+                        ) : Number(item.unit_price) < Number(item.purchase_price || 0) ? (
+                          <span style={{ color: '#dc2626', fontWeight: 700, marginLeft: '2px' }}>
+                            (⚠️ Below Cost -₨{Number(item.purchase_price || 0) - Number(item.unit_price)})
+                          </span>
+                        ) : (
+                          <span style={{ color: '#64748b', fontWeight: 600, marginLeft: '2px' }}>
+                            (= cost)
+                          </span>
+                        )}
+                      </span>
+
+                      {item.original_price && Number(item.original_price) !== Number(item.unit_price) && (
+                        <span
+                          style={{
+                            fontSize: '0.62rem',
+                            color: '#64748b',
+                            background: '#f8fafc',
+                            padding: '1px 4px',
+                            borderRadius: '3px',
+                            border: '1px solid #e2e8f0'
+                          }}
+                          title="Original Catalog Retail Price"
+                        >
+                          Catalog: <span style={{ textDecoration: 'line-through' }}>₨{item.original_price}</span>
+                        </span>
+                      )}
                     </div>
 
                     {editingItemIndex === idx && (
