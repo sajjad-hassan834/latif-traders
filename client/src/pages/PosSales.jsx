@@ -23,7 +23,9 @@ import {
   UserPlus,
   TrendingUp,
   Edit2,
-  FileText
+  FileText,
+  PackageOpen,
+  Package
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR } from '../utils/formatters';
@@ -677,40 +679,70 @@ export default function PosSales() {
             </button>
           </div>
 
-          {/* CATEGORIES HORIZONTAL PILLS */}
-          <div className="pos-categories-bar horizontal-scroll-tabs">
-            <button
-              onClick={() => setSelectedCategory('ALL')}
-              className={`pos-cat-pill ${selectedCategory === 'ALL' ? 'active' : ''}`}
-            >
-              <span>❄️</span>
-              <span>All Products</span>
-            </button>
-            {categories.map(c => (
+          {/* CATEGORIES HORIZONTAL PILLS (Shown only when products exist) */}
+          {products.length > 0 && categories.length > 0 && (
+            <div className="pos-categories-bar horizontal-scroll-tabs">
               <button
-                key={c.id}
-                onClick={() => setSelectedCategory(c.id)}
-                className={`pos-cat-pill ${selectedCategory === c.id ? 'active' : ''}`}
+                onClick={() => setSelectedCategory('ALL')}
+                className={`pos-cat-pill ${selectedCategory === 'ALL' ? 'active' : ''}`}
               >
-                <span>{getCategoryIcon(c.name)}</span>
-                <span>{c.name}</span>
+                <span>❄️</span>
+                <span>All Products</span>
               </button>
-            ))}
-          </div>
+              {categories.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedCategory(c.id)}
+                  className={`pos-cat-pill ${selectedCategory === c.id ? 'active' : ''}`}
+                >
+                  <span>{getCategoryIcon(c.name)}</span>
+                  <span>{c.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* COMPACT PRODUCT TILES GRID */}
           <div className="pos-products-grid">
-            {filteredProducts.map(p => {
-              const inStock = p.current_stock > 0;
-              const isLow = p.current_stock <= p.min_stock_level;
-              const displayPrice = saleType === 'Wholesale' && p.wholesale_price > 0 ? p.wholesale_price : p.sale_price;
+            {products.length === 0 ? (
+              <div style={{
+                gridColumn: '1 / -1',
+                textAlign: 'center',
+                padding: '3.5rem 1.5rem',
+                background: '#f8fafc',
+                border: '2px dashed #cbd5e1',
+                borderRadius: '12px',
+                margin: '1rem 0'
+              }}>
+                <PackageOpen size={48} style={{ color: '#0284c7', margin: '0 auto 0.75rem', display: 'block' }} />
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.35rem' }}>
+                  No Products in Stock
+                </h3>
+                <p style={{ fontSize: '0.825rem', color: '#64748b', maxWidth: '380px', margin: '0 auto 1.25rem', lineHeight: 1.4 }}>
+                  All dummy products have been removed. Your catalog is clean and ready. Add products from the Inventory menu or click below.
+                </p>
+                <button onClick={() => setShowQuickAdd(true)} className="btn btn-primary btn-sm">
+                  <PlusCircle size={15} />
+                  <span>+ Add First Product Item</span>
+                </button>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                <Search size={32} style={{ color: '#94a3b8', margin: '0 auto 0.5rem', display: 'block' }} />
+                <p>No products match your search or filter.</p>
+              </div>
+            ) : (
+              filteredProducts.map(p => {
+                const inStock = p.current_stock > 0;
+                const isLow = p.current_stock <= p.min_stock_level;
+                const displayPrice = saleType === 'Wholesale' && p.wholesale_price > 0 ? p.wholesale_price : p.sale_price;
 
-              return (
-                <div
-                  key={p.id}
-                  className={`pos-product-card ${!inStock ? 'out-of-stock' : ''}`}
-                  onClick={() => inStock && addToCart(p)}
-                >
+                return (
+                  <div
+                    key={p.id}
+                    className={`pos-product-card ${!inStock ? 'out-of-stock' : ''}`}
+                    onClick={() => inStock && addToCart(p)}
+                  >
                   <div>
                     <div className="pos-card-header">
                       <div className="pos-item-icon">
@@ -766,7 +798,8 @@ export default function PosSales() {
                   </div>
                 </div>
               );
-            })}
+            })
+          )}
           </div>
 
           {/* BOTTOM SHORTCUTS HELPER */}
