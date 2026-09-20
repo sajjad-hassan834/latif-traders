@@ -1,5 +1,6 @@
 // Dynamic API URL: points to Railway backend in production or uses Vite local proxy in dev
-const rawBase = import.meta.env.VITE_API_URL || '';
+const DEFAULT_PROD_API = 'https://latif-traders-production.up.railway.app';
+const rawBase = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? DEFAULT_PROD_API : '');
 const API_BASE = rawBase ? `${rawBase.replace(/\/$/, '')}/api` : '/api';
 
 export async function request(endpoint, options = {}) {
