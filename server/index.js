@@ -105,7 +105,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`\n======================================================`);
   console.log(`  LATIF TRADERS - Frozen Food Management Server`);
   console.log(`  Local:   http://localhost:${PORT}`);

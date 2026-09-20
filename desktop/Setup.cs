@@ -141,7 +141,7 @@ namespace LatifTradersSetup
                     string exePath = Path.Combine(installDir, "LatifTraders.exe");
                     if (File.Exists(exePath))
                     {
-                        Process.Start(new ProcessStartInfo(exePath) { WorkingDirectory = installDir });
+                        Process.Start(new ProcessStartInfo(exePath) { WorkingDirectory = installDir, UseShellExecute = true });
                     }
                 }
                 this.Close();
