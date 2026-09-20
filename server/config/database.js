@@ -68,6 +68,8 @@ function initializeDatabase() {
       expiry_date TEXT NOT NULL,
       quantity REAL NOT NULL DEFAULT 0,
       purchase_price REAL NOT NULL DEFAULT 0,
+      sale_price REAL NOT NULL DEFAULT 0,
+      wholesale_price REAL NOT NULL DEFAULT 0,
       storage_location TEXT,
       status TEXT NOT NULL DEFAULT 'active',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -277,6 +279,23 @@ function initializeDatabase() {
   // Safe schema migrations for existing databases
   try {
     db.prepare("ALTER TABLE batches ADD COLUMN supplier_id INTEGER REFERENCES suppliers(id)").run();
+  } catch (_) {}
+
+  try {
+    db.prepare("ALTER TABLE batches ADD COLUMN sale_price REAL DEFAULT 0").run();
+  } catch (_) {}
+
+  try {
+    db.prepare("ALTER TABLE batches ADD COLUMN wholesale_price REAL DEFAULT 0").run();
+  } catch (_) {}
+
+  try {
+    db.prepare(`
+      UPDATE batches SET
+        sale_price = (SELECT sale_price FROM products WHERE products.id = batches.product_id),
+        wholesale_price = (SELECT wholesale_price FROM products WHERE products.id = batches.product_id)
+      WHERE sale_price IS NULL OR sale_price = 0
+    `).run();
   } catch (_) {}
 
   try {

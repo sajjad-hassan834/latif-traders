@@ -244,6 +244,8 @@ export default function PosSales() {
         unit_price: price,
         original_price: product.sale_price,
         purchase_price: product.purchase_price || 0,
+        fifo_batch_no: product.fifo_batch_no,
+        fifo_batch_qty: product.fifo_batch_qty,
         quantity: 1,
         discount: 0,
         current_stock: product.current_stock
@@ -1028,6 +1030,24 @@ export default function PosSales() {
                           </span>
                         )}
                       </span>
+
+                      {/* FIFO LOT TRACKING BADGE */}
+                      {item.fifo_batch_no && (
+                        <span
+                          style={{
+                            fontSize: '0.62rem',
+                            fontWeight: 700,
+                            color: '#065f46',
+                            background: '#d1fae5',
+                            padding: '1px 5px',
+                            borderRadius: '3px',
+                            border: '1px solid #a7f3d0'
+                          }}
+                          title={`Active FIFO Lot: ${item.fifo_batch_no} (${item.fifo_batch_qty} left in this batch before moving to next batch)`}
+                        >
+                          FIFO Lot: {item.fifo_batch_no}
+                        </span>
+                      )}
 
                       {item.original_price && Number(item.original_price) !== Number(item.unit_price) && (
                         <span

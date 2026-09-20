@@ -9,11 +9,23 @@ exports.getProducts = (req, res) => {
     let query = `
       SELECT p.*, c.name as category_name, s.name as supplier_name,
         COALESCE(SUM(b.quantity), 0) as current_stock,
-        COUNT(b.id) as batch_count
+        COUNT(DISTINCT b.id) as batch_count,
+        fifo_b.purchase_price as fifo_purchase_price,
+        fifo_b.sale_price as fifo_sale_price,
+        fifo_b.wholesale_price as fifo_wholesale_price,
+        fifo_b.id as fifo_batch_id,
+        fifo_b.batch_no as fifo_batch_no,
+        fifo_b.quantity as fifo_batch_qty
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN suppliers s ON p.supplier_id = s.id
       LEFT JOIN batches b ON p.id = b.product_id AND b.status = 'active'
+      LEFT JOIN batches fifo_b ON fifo_b.id = (
+        SELECT b2.id FROM batches b2
+        WHERE b2.product_id = p.id AND b2.status = 'active' AND b2.quantity > 0
+        ORDER BY b2.id ASC
+        LIMIT 1
+      )
       WHERE 1=1
     `;
     const params = [];
@@ -46,7 +58,35 @@ exports.getProducts = (req, res) => {
 
     query += ` GROUP BY p.id ORDER BY p.name ASC`;
 
-    const products = db.prepare(query).all(...params);
+    const products = db.prepare(query).all(...params).map(p => {
+      // Dynamic FIFO Active Batch Pricing:
+      // As long as the older batch has remaining stock (quantity > 0),
+      // its sale_price, purchase_price, and wholesale_price are actively served!
+      const activeSale = (p.fifo_sale_price !== null && p.fifo_sale_price !== undefined && Number(p.fifo_sale_price) > 0)
+        ? Number(p.fifo_sale_price)
+        : Number(p.sale_price);
+
+      const activeCost = (p.fifo_purchase_price !== null && p.fifo_purchase_price !== undefined && Number(p.fifo_purchase_price) > 0)
+        ? Number(p.fifo_purchase_price)
+        : Number(p.purchase_price);
+
+      const activeWholesale = (p.fifo_wholesale_price !== null && p.fifo_wholesale_price !== undefined && Number(p.fifo_wholesale_price) > 0)
+        ? Number(p.fifo_wholesale_price)
+        : Number(p.wholesale_price);
+
+      return {
+        ...p,
+        sale_price: activeSale,
+        purchase_price: activeCost,
+        wholesale_price: activeWholesale,
+        catalog_sale_price: p.sale_price,
+        catalog_purchase_price: p.purchase_price,
+        catalog_wholesale_price: p.wholesale_price,
+        fifo_batch_id: p.fifo_batch_id,
+        fifo_batch_no: p.fifo_batch_no,
+        fifo_batch_qty: p.fifo_batch_qty
+      };
+    });
 
     // Filter low stock if requested
     const result = low_stock === 'true'
@@ -156,10 +196,17 @@ exports.createProduct = (req, res) => {
       const expDate = expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
 
       const insertBatch = db.prepare(`
-        INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, storage_location, supplier_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      const bRes = insertBatch.run(productId, bNo, expDate, qty, Number(purchase_price) || 0, storage_location || null, supplier_id ? Number(supplier_id) : null);
+      const bRes = insertBatch.run(
+        productId, bNo, expDate, qty,
+        Number(purchase_price) || 0,
+        Number(sale_price) || 0,
+        Number(wholesale_price) || Number(sale_price) || 0,
+        storage_location || null,
+        supplier_id ? Number(supplier_id) : null
+      );
 
       db.prepare(`
         INSERT INTO inventory_movements (product_id, batch_id, type, quantity_delta, unit_price, balance_after, reference_type, reason, user_id)
@@ -345,11 +392,11 @@ exports.restockProduct = (req, res) => {
     const batchCode = batch_no ? batch_no.trim() : `INW-${Date.now().toString().slice(-6)}`;
     const exp = expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
 
-    // Create new FIFO batch
+    // Create new FIFO batch with its own cost and selling prices
     const bRes = db.prepare(`
-      INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, storage_location, supplier_id, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
-    `).run(id, batchCode, exp, qty, pPrice, storage_location || product.storage_location, supplier_id || product.supplier_id);
+      INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+    `).run(id, batchCode, exp, qty, pPrice, sPrice, wPrice, storage_location || product.storage_location, supplier_id ? Number(supplier_id) : (product.supplier_id || null));
 
     // Update product latest purchase price and optional new sale_price
     db.prepare(`

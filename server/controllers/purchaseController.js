@@ -167,6 +167,15 @@ exports.createPurchase = (req, res) => {
         lineTotal
       );
 
+      // Retrieve product to obtain current selling prices if not provided on invoice
+      const prod = db.prepare('SELECT * FROM products WHERE id = ?').get(item.product_id);
+      const batchSalePrice = item.sale_price !== undefined && item.sale_price !== '' && Number(item.sale_price) > 0
+        ? Number(item.sale_price)
+        : (prod?.sale_price || 0);
+      const batchWholesalePrice = item.wholesale_price !== undefined && item.wholesale_price !== '' && Number(item.wholesale_price) > 0
+        ? Number(item.wholesale_price)
+        : (prod?.wholesale_price || batchSalePrice);
+
       // Create distinct batch with explicit supplier_id for true FIFO tracking
       let batchId = null;
       if (item.batch_no) {
@@ -182,9 +191,9 @@ exports.createPurchase = (req, res) => {
         } else {
           const exp = item.expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
           const bRes = db.prepare(`
-            INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, storage_location, supplier_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `).run(item.product_id, item.batch_no, exp, qty, rate, item.storage_location || null, supplier_id);
+            INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(item.product_id, item.batch_no, exp, qty, rate, batchSalePrice, batchWholesalePrice, item.storage_location || null, supplier_id);
           batchId = bRes.lastInsertRowid;
         }
       } else {
@@ -192,9 +201,9 @@ exports.createPurchase = (req, res) => {
         const autoBatchNo = `PUR-${dateStr}-B${idx + 1}-${item.product_id}`;
         const exp = item.expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
         const bRes = db.prepare(`
-          INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, storage_location, supplier_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(item.product_id, autoBatchNo, exp, qty, rate, null, supplier_id);
+          INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(item.product_id, autoBatchNo, exp, qty, rate, batchSalePrice, batchWholesalePrice, null, supplier_id);
         batchId = bRes.lastInsertRowid;
       }
 
@@ -357,7 +366,7 @@ exports.getProductStockPreview = (req, res) => {
     }
 
     const batches = db.prepare(`
-      SELECT b.id, b.batch_no, b.quantity, b.purchase_price, b.expiry_date, b.created_at,
+      SELECT b.id, b.batch_no, b.quantity, b.purchase_price, b.sale_price, b.wholesale_price, b.expiry_date, b.created_at,
         COALESCE(s.name, 'Initial Opening') as supplier_name
       FROM batches b
       LEFT JOIN suppliers s ON b.supplier_id = s.id
