@@ -38,3 +38,10 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Desktop App Build Output
+LatifTraders-Setup.exe
+desktop/*.exe
+desktop/*.zip
+desktop/staging/
+
