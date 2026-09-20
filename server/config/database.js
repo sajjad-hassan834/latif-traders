@@ -345,22 +345,16 @@ function initializeDatabase() {
 function seedInitialData() {
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
   if (userCount === 0) {
-    console.log('Seeding initial users and configurations...');
+    console.log('Seeding initial Administrator account...');
     const salt = bcrypt.genSaltSync(10);
     const adminHash = bcrypt.hashSync('admin123', salt);
-    const cashierHash = bcrypt.hashSync('cashier123', salt);
-    const storeHash = bcrypt.hashSync('store123', salt);
-    const accountantHash = bcrypt.hashSync('accountant123', salt);
 
     const insertUser = db.prepare(`
       INSERT INTO users (username, email, password_hash, full_name, role, status)
       VALUES (?, ?, ?, ?, ?, ?)
     `);
 
-    insertUser.run('admin', 'admin@latiftraders.com', adminHash, 'Latif Admin (Owner)', 'admin', 'active');
-    insertUser.run('cashier', 'cashier@latiftraders.com', cashierHash, 'Tariq Cashier', 'sales', 'active');
-    insertUser.run('store', 'store@latiftraders.com', storeHash, 'Bilal Inventory Staff', 'inventory', 'active');
-    insertUser.run('accountant', 'accountant@latiftraders.com', accountantHash, 'Zubair Accountant', 'accountant', 'active');
+    insertUser.run('admin', 'admin@latiftraders.com', adminHash, 'Mudassir Arif', 'admin', 'active');
   }
 
   const unitCount = db.prepare('SELECT COUNT(*) as count FROM units').get().count;
@@ -417,17 +411,6 @@ function seedInitialData() {
     insertSetting.run('print_default_format', 'thermal');
   }
 
-  const supplierCount = db.prepare('SELECT COUNT(*) as count FROM suppliers').get().count;
-  if (supplierCount === 0) {
-    const insertSup = db.prepare(`
-      INSERT INTO suppliers (name, phone, address, contact_person, opening_balance, current_balance, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    insertSup.run("K&N's Foods Distribution", '042-111567567', 'Gulberg III, Industrial Area, Lahore', 'Rashid Mehmood (Area Manager)', 0, 0, 'Authorized K&N distributor');
-    insertSup.run('Dawn Bread & Frozen Foods', '042-35889901', 'Quaid-e-Azam Industrial Estate, Kot Lakhpat', 'Asim Butt', 0, 0, 'Parathas, nuggets and frozen bakery');
-    insertSup.run('Sufi Group Frozen Division', '042-111117834', '1-A Garden Town, Lahore', 'Khurram Shahzad', 0, 0, 'Sufi chicken products');
-  }
-
   const customerCount = db.prepare('SELECT COUNT(*) as count FROM customers').get().count;
   if (customerCount === 0) {
     const insertCust = db.prepare(`
@@ -435,45 +418,6 @@ function seedInitialData() {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     insertCust.run('Counter Walk-in Customer', '', 'Retail Counter', 'Retail', 0, 0, 0, 'Default retail counter sales');
-    insertCust.run('Al-Madina Fast Food & Cafe', '0322-4455667', 'Main Boulevard, Allama Iqbal Town, Lahore', 'Wholesale', 0, 50000, 0, 'Wholesale cafe buyer - weekly credit settlement');
-    insertCust.run('Royal Bakers & Mart', '0300-8899112', 'Ferozepur Road, Lahore', 'Wholesale', 0, 100000, 0, 'Supermart branch - 15 days credit');
-  }
-
-  const prodCount = db.prepare('SELECT COUNT(*) as count FROM products').get().count;
-  if (prodCount === 0) {
-    const insertProd = db.prepare(`
-      INSERT INTO products (name, sku, barcode, category_id, brand, unit, purchase_price, sale_price, wholesale_price, min_stock_level, storage_location)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    const insertBatch = db.prepare(`
-      INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, storage_location)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    const insertMovement = db.prepare(`
-      INSERT INTO inventory_movements (product_id, batch_id, type, quantity_delta, unit_price, balance_after, reference_type, reason, user_id)
-      VALUES (?, ?, 'PURCHASE', ?, ?, ?, 'OPENING', 'Initial opening stock', 1)
-    `);
-
-    const today = new Date();
-    const expiryFar = new Date(today.getTime() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const expirySoon = new Date(today.getTime() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-    const sampleProducts = [
-      { name: "K&N's Chicken Nuggets 1kg", sku: 'KN-NUG-1000', barcode: '89640001001', catId: 1, brand: "K&N's", unit: 'pkt', pPrice: 1350, sPrice: 1550, wPrice: 1450, min: 10, loc: 'Freezer #1 - Shelf A', qty: 25, exp: expiryFar, batch: 'KN-2608-A' },
-      { name: 'Menu Plain Crispy Fries 1.5kg', sku: 'MN-FRS-1500', barcode: '89640001002', catId: 2, brand: 'Menu', unit: 'pkt', pPrice: 880, sPrice: 1050, wPrice: 980, min: 8, loc: 'Freezer #2 - Shelf B', qty: 30, exp: expiryFar, batch: 'MN-2609-01' },
-      { name: 'Dawn Plain Paratha 10s Pack', sku: 'DW-PRT-010', barcode: '89640001003', catId: 3, brand: 'Dawn', unit: 'pkt', pPrice: 420, sPrice: 500, wPrice: 460, min: 15, loc: 'Freezer #3 - Shelf A', qty: 40, exp: expiryFar, batch: 'DW-2608-P1' },
-      { name: 'Sufi Chicken Seekh Kabab 800g', sku: 'SF-SKB-800', barcode: '89640001004', catId: 5, brand: 'Sufi', unit: 'pkt', pPrice: 1100, sPrice: 1300, wPrice: 1200, min: 6, loc: 'Freezer #1 - Shelf C', qty: 18, exp: expiryFar, batch: 'SF-2607-K9' },
-      { name: 'Seasons Chicken Cheese Samosa 12s', sku: 'SN-SAM-012', barcode: '89640001005', catId: 4, brand: 'Seasons', unit: 'box', pPrice: 620, sPrice: 750, wPrice: 690, min: 12, loc: 'Freezer #2 - Shelf C', qty: 5, exp: expirySoon, batch: 'SN-2603-EXP' },
-      { name: 'Big Bird Crispy Tender Pops 500g', sku: 'BB-POP-500', barcode: '89640001006', catId: 1, brand: 'Big Bird', unit: 'pkt', pPrice: 750, sPrice: 900, wPrice: 820, min: 10, loc: 'Freezer #1 - Shelf B', qty: 15, exp: expiryFar, batch: 'BB-2609-04' }
-    ];
-
-    for (const p of sampleProducts) {
-      const pRes = insertProd.run(p.name, p.sku, p.barcode, p.catId, p.brand, p.unit, p.pPrice, p.sPrice, p.wPrice, p.min, p.loc);
-      const prodId = pRes.lastInsertRowid;
-      const bRes = insertBatch.run(prodId, p.batch, p.exp, p.qty, p.pPrice, p.loc);
-      const batchId = bRes.lastInsertRowid;
-      insertMovement.run(prodId, batchId, p.qty, p.pPrice, p.qty);
-    }
   }
 }
 
