@@ -431,7 +431,7 @@ export default function Inventory() {
                 type="text"
                 className="form-control"
                 style={{ paddingLeft: '2rem', height: '32px', fontSize: '0.8rem' }}
-                placeholder="Search product, SKU, barcode..."
+                placeholder="Search product name or item code..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && loadData()}
@@ -440,7 +440,7 @@ export default function Inventory() {
 
             <select
               className="form-control"
-              style={{ width: '135px', height: '32px', fontSize: '0.8rem' }}
+              style={{ minWidth: '145px', width: 'auto', height: '32px', fontSize: '0.8rem' }}
               value={selectedCat}
               onChange={(e) => setSelectedCat(e.target.value)}
             >
@@ -452,7 +452,7 @@ export default function Inventory() {
 
             <select
               className="form-control"
-              style={{ width: '135px', height: '32px', fontSize: '0.8rem' }}
+              style={{ minWidth: '135px', width: 'auto', height: '32px', fontSize: '0.8rem' }}
               value={selectedBrand}
               onChange={(e) => setSelectedBrand(e.target.value)}
             >
@@ -503,78 +503,79 @@ export default function Inventory() {
       </div>
 
       {/* PRODUCTS TABLE */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="table-responsive" style={{ paddingBottom: '60px' }}>
-          <table className="table" style={{ width: '100%', minWidth: '720px' }}>
+      <div className="card" style={{ padding: 0, overflow: 'visible' }}>
+        <div className="table-responsive" style={{ minHeight: '320px', paddingBottom: '110px', overflowX: 'auto' }}>
+          <table className="table" style={{ width: '100%', minWidth: '760px' }}>
             <thead>
               <tr>
-                <th style={{ minWidth: '150px', maxWidth: '220px' }}>Product Name</th>
-                <th style={{ width: '100px' }}>Item Code</th>
-                <th style={{ width: '110px' }}>Category</th>
-                <th style={{ textAlign: 'center', width: '65px' }}>Stock</th>
-                <th style={{ textAlign: 'center', width: '45px' }}>Unit</th>
-                <th style={{ textAlign: 'right', width: '70px' }}>Cost</th>
-                <th style={{ textAlign: 'right', width: '70px' }}>Sale</th>
-                <th style={{ textAlign: 'right', width: '70px' }}>Wholesale</th>
-                <th style={{ textAlign: 'center', width: '120px' }}>Actions</th>
+                <th style={{ minWidth: '160px', maxWidth: '230px' }}>Product Name</th>
+                <th style={{ width: '110px' }}>Item Code</th>
+                <th style={{ width: '115px' }}>Category</th>
+                <th style={{ textAlign: 'center', width: '70px' }}>Stock</th>
+                <th style={{ textAlign: 'center', width: '50px' }}>Unit</th>
+                <th style={{ textAlign: 'right', width: '80px' }}>Cost</th>
+                <th style={{ textAlign: 'right', width: '80px' }}>Sale</th>
+                <th style={{ textAlign: 'right', width: '80px' }}>Wholesale</th>
+                <th style={{ textAlign: 'center', width: '140px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>Loading inventory records...</td>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '2.5rem' }}>Loading inventory records...</td>
                 </tr>
               ) : products.length === 0 ? (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No products found.</td>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>No products found.</td>
                 </tr>
               ) : (
-                products.map(p => {
+                products.map((p) => {
                   const isLow = p.current_stock <= p.min_stock_level;
                   const isOut = p.current_stock === 0;
+
                   return (
                     <tr key={p.id}>
-                      <td style={{ fontWeight: 600, maxWidth: '220px' }}>
-                        <div style={{ wordBreak: 'break-word', lineHeight: 1.25, fontSize: '0.8125rem' }}>{p.name}</div>
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
-                          {p.brand && <span style={{ fontSize: '0.675rem', color: '#0284c7', background: '#f0f9ff', padding: '0 4px', borderRadius: '3px', border: '1px solid #bae6fd' }}>{p.brand}</span>}
+                      <td style={{ fontWeight: 600, maxWidth: '230px' }}>
+                        <div style={{ wordBreak: 'break-word', lineHeight: 1.25, fontSize: '0.8125rem', color: '#0f172a' }}>{p.name}</div>
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '3px' }}>
+                          {p.brand && <span style={{ fontSize: '0.675rem', fontWeight: 600, color: '#0284c7', background: '#f0f9ff', padding: '0 5px', borderRadius: '3px', border: '1px solid #bae6fd' }}>{p.brand}</span>}
                         </div>
                       </td>
                       <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', fontWeight: 600 }}>
-                        {p.sku}
+                        <span style={{ background: '#f8fafc', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', color: '#334155' }}>
+                          {p.sku}
+                        </span>
                       </td>
-                      <td style={{ maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.category_name}>
+                      <td style={{ maxWidth: '115px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#475569', fontSize: '0.8rem' }} title={p.category_name}>
                         {p.category_name || '-'}
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        <span className={`badge ${isOut ? 'badge-danger' : isLow ? 'badge-warning' : 'badge-success'}`} style={{ padding: '0.15rem 0.4rem' }}>
+                        <span className={`badge ${isOut ? 'badge-danger' : isLow ? 'badge-warning' : 'badge-success'}`} style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem' }}>
                           {p.current_stock}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'center', color: '#64748b', fontSize: '0.75rem' }}>{p.unit}</td>
-                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{formatPKR(p.purchase_price)}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#0284c7', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{formatPKR(p.sale_price)}</td>
-                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{formatPKR(p.wholesale_price)}</td>
+                      <td style={{ textAlign: 'center', color: '#64748b', fontSize: '0.75rem', fontWeight: 500 }}>{p.unit}</td>
+                      <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '0.8rem', color: '#64748b' }}>{formatPKR(p.purchase_price)}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#0284c7', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{formatPKR(p.sale_price)}</td>
+                      <td style={{ textAlign: 'right', color: '#475569', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{formatPKR(p.wholesale_price)}</td>
                       <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                           {canManageInventory && (
                             <button
                               type="button"
                               onClick={() => openEditProduct(p)}
-                              className="btn btn-sm"
+                              className="btn btn-secondary btn-sm"
                               style={{
                                 padding: '3px 7px',
                                 fontSize: '0.72rem',
                                 fontWeight: 600,
-                                background: '#f0f9ff',
-                                color: '#0284c7',
-                                border: '1px solid #bae6fd',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '3px',
-                                borderRadius: '4px'
+                                borderRadius: '4px',
+                                color: '#0284c7'
                               }}
-                              title="Edit Product (Update)"
+                              title="Edit Product Details"
                             >
                               <Edit size={12} />
                               <span>Edit</span>
@@ -614,7 +615,7 @@ export default function Inventory() {
                               }}
                               className="btn btn-secondary btn-sm"
                               style={{
-                                padding: '3px 6px',
+                                padding: '3px 7px',
                                 fontSize: '0.72rem',
                                 fontWeight: 600,
                                 display: 'inline-flex',
@@ -633,15 +634,14 @@ export default function Inventory() {
                                 style={{
                                   position: 'absolute',
                                   right: 0,
-                                  bottom: '100%',
-                                  top: 'auto',
-                                  marginBottom: '6px',
+                                  top: '100%',
+                                  marginTop: '4px',
                                   background: '#ffffff',
                                   border: '1px solid #cbd5e1',
                                   borderRadius: '6px',
-                                  boxShadow: '0 10px 25px -3px rgba(0,0,0,0.2), 0 4px 10px -2px rgba(0,0,0,0.1)',
+                                  boxShadow: '0 10px 25px -3px rgba(0,0,0,0.18), 0 4px 10px -2px rgba(0,0,0,0.08)',
                                   zIndex: 9999,
-                                  minWidth: '160px',
+                                  minWidth: '165px',
                                   padding: '4px 0',
                                   textAlign: 'left'
                                 }}
@@ -655,7 +655,7 @@ export default function Inventory() {
                                     }}
                                     style={{
                                       width: '100%',
-                                      padding: '7px 12px',
+                                      padding: '8px 12px',
                                       fontSize: '0.75rem',
                                       fontWeight: 600,
                                       background: 'none',
@@ -670,36 +670,10 @@ export default function Inventory() {
                                     onMouseEnter={(e) => e.currentTarget.style.background = '#ecfdf5'}
                                     onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                                   >
-                                    <PlusCircle size={13} color="#10b981" />
+                                    <PlusCircle size={14} color="#10b981" />
                                     <span>+ Add Stock (Inward)</span>
                                   </button>
                                 )}
-
-                                <button
-                                  onClick={() => {
-                                    setActionMenuId(null);
-                                    openBarcode(p);
-                                  }}
-                                  style={{
-                                    width: '100%',
-                                    padding: '7px 12px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    background: 'none',
-                                    border: 'none',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    color: '#1e293b',
-                                    cursor: 'pointer',
-                                    textAlign: 'left'
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                                >
-                                  <Barcode size={13} color="#6366f1" />
-                                  <span>Barcode Sticker</span>
-                                </button>
 
                                 <button
                                   onClick={() => {
@@ -708,7 +682,7 @@ export default function Inventory() {
                                   }}
                                   style={{
                                     width: '100%',
-                                    padding: '7px 12px',
+                                    padding: '8px 12px',
                                     fontSize: '0.75rem',
                                     fontWeight: 600,
                                     background: 'none',
@@ -723,40 +697,9 @@ export default function Inventory() {
                                   onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
                                   onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                                 >
-                                  <Eye size={13} color="#10b981" />
+                                  <Eye size={14} color="#0284c7" />
                                   <span>Batches & History</span>
                                 </button>
-
-                                {canManageInventory && (
-                                  <>
-                                    <div style={{ borderTop: '1px solid #f1f5f9', margin: '4px 0' }} />
-                                    <button
-                                      onClick={() => {
-                                        setActionMenuId(null);
-                                        confirmDeleteProduct(p);
-                                      }}
-                                      style={{
-                                        width: '100%',
-                                        padding: '7px 12px',
-                                        fontSize: '0.75rem',
-                                        fontWeight: 600,
-                                        background: 'none',
-                                        border: 'none',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px',
-                                        color: '#dc2626',
-                                        cursor: 'pointer',
-                                        textAlign: 'left'
-                                      }}
-                                      onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-                                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                                    >
-                                      <Trash2 size={13} color="#dc2626" />
-                                      <span>Delete Product</span>
-                                    </button>
-                                  </>
-                                )}
                               </div>
                             )}
                           </div>

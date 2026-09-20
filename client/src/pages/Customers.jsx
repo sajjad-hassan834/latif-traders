@@ -190,8 +190,8 @@ export default function Customers() {
       </div>
 
       {/* CUSTOMERS TABLE */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="table-responsive">
+      <div className="card" style={{ padding: 0, overflow: 'visible' }}>
+        <div className="table-responsive" style={{ minHeight: '300px', paddingBottom: '90px', overflowX: 'auto' }}>
           <table className="table" style={{ width: '100%', minWidth: '700px' }}>
             <thead>
               <tr>
@@ -262,8 +262,8 @@ export default function Customers() {
                               background: '#ffffff',
                               border: '1px solid #cbd5e1',
                               borderRadius: '6px',
-                              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.15), 0 4px 6px -2px rgba(0,0,0,0.08)',
-                              zIndex: 100,
+                              boxShadow: '0 10px 25px -3px rgba(0,0,0,0.18), 0 4px 6px -2px rgba(0,0,0,0.08)',
+                              zIndex: 9999,
                               minWidth: '150px',
                               padding: '4px 0',
                               textAlign: 'left'
