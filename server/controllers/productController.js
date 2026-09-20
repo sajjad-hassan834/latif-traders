@@ -58,21 +58,53 @@ exports.getProducts = (req, res) => {
 
     query += ` GROUP BY p.id ORDER BY p.name ASC`;
 
+    // Fetch all active batches in strict FIFO order (id ASC)
+    const activeBatchesList = db.prepare(`
+      SELECT id, product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location
+      FROM batches
+      WHERE status = 'active' AND quantity > 0
+      ORDER BY id ASC
+    `).all();
+
+    const batchesByProduct = {};
+    for (const b of activeBatchesList) {
+      if (!batchesByProduct[b.product_id]) batchesByProduct[b.product_id] = [];
+      batchesByProduct[b.product_id].push({
+        id: b.id,
+        batch_no: b.batch_no,
+        expiry_date: b.expiry_date,
+        quantity: Number(b.quantity) || 0,
+        purchase_price: Number(b.purchase_price) || 0,
+        sale_price: Number(b.sale_price) || 0,
+        wholesale_price: Number(b.wholesale_price) || 0,
+        storage_location: b.storage_location
+      });
+    }
+
     const products = db.prepare(query).all(...params).map(p => {
+      const prodBatches = batchesByProduct[p.id] || [];
+
       // Dynamic FIFO Active Batch Pricing:
-      // As long as the older batch has remaining stock (quantity > 0),
-      // its sale_price, purchase_price, and wholesale_price are actively served!
-      const activeSale = (p.fifo_sale_price !== null && p.fifo_sale_price !== undefined && Number(p.fifo_sale_price) > 0)
-        ? Number(p.fifo_sale_price)
-        : Number(p.sale_price);
+      // First active batch or fallback to catalog price
+      const firstBatch = prodBatches.length > 0 ? prodBatches[0] : null;
 
-      const activeCost = (p.fifo_purchase_price !== null && p.fifo_purchase_price !== undefined && Number(p.fifo_purchase_price) > 0)
-        ? Number(p.fifo_purchase_price)
-        : Number(p.purchase_price);
+      const activeSale = (firstBatch && firstBatch.sale_price > 0)
+        ? firstBatch.sale_price
+        : ((p.fifo_sale_price !== null && p.fifo_sale_price !== undefined && Number(p.fifo_sale_price) > 0)
+            ? Number(p.fifo_sale_price)
+            : Number(p.sale_price));
 
-      const activeWholesale = (p.fifo_wholesale_price !== null && p.fifo_wholesale_price !== undefined && Number(p.fifo_wholesale_price) > 0)
-        ? Number(p.fifo_wholesale_price)
-        : Number(p.wholesale_price);
+      const activeCost = (firstBatch && firstBatch.purchase_price > 0)
+        ? firstBatch.purchase_price
+        : ((p.fifo_purchase_price !== null && p.fifo_purchase_price !== undefined && Number(p.fifo_purchase_price) > 0)
+            ? Number(p.fifo_purchase_price)
+            : Number(p.purchase_price));
+
+      const activeWholesale = (firstBatch && firstBatch.wholesale_price > 0)
+        ? firstBatch.wholesale_price
+        : ((p.fifo_wholesale_price !== null && p.fifo_wholesale_price !== undefined && Number(p.fifo_wholesale_price) > 0)
+            ? Number(p.fifo_wholesale_price)
+            : Number(p.wholesale_price));
 
       return {
         ...p,
@@ -82,9 +114,10 @@ exports.getProducts = (req, res) => {
         catalog_sale_price: p.sale_price,
         catalog_purchase_price: p.purchase_price,
         catalog_wholesale_price: p.wholesale_price,
-        fifo_batch_id: p.fifo_batch_id,
-        fifo_batch_no: p.fifo_batch_no,
-        fifo_batch_qty: p.fifo_batch_qty
+        fifo_batch_id: firstBatch ? firstBatch.id : p.fifo_batch_id,
+        fifo_batch_no: firstBatch ? firstBatch.batch_no : p.fifo_batch_no,
+        fifo_batch_qty: firstBatch ? firstBatch.quantity : p.fifo_batch_qty,
+        batches: prodBatches
       };
     });
 

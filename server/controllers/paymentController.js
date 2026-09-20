@@ -138,39 +138,61 @@ exports.getCashbook = (req, res) => {
     const eDate = end_date || today;
 
     // 1. Cash In:
-    // - Customer Receipts in Cash
+    // - Customer Receipts in Cash (Ledger payments)
     const receipts = db.prepare(`
       SELECT p.id, p.payment_date as date, p.reference_no as ref_no, 'Customer Receipt' as title,
-        c.name as party_name, p.amount, 'IN' as flow, p.notes
+        c.name as party_name, p.amount, 'IN' as flow, p.notes, 'CUSTOMER_RECEIPT' as source_type
       FROM payments p
       JOIN customers c ON p.party_id = c.id
       WHERE p.type = 'CUSTOMER_RECEIPT' AND p.payment_method = 'Cash'
         AND p.payment_date >= ? AND p.payment_date <= ?
     `).all(sDate, eDate);
 
+    // - Direct Cash Sales (POS Counter / Invoices)
+    const cashSales = db.prepare(`
+      SELECT s.id, s.sale_date as date, s.invoice_no as ref_no, 'Cash Sale (POS)' as title,
+        COALESCE(c.name, 'Walk-in Customer') as party_name, s.paid_amount as amount, 'IN' as flow,
+        ('Sale Invoice: ' || s.invoice_no) as notes, 'SALE' as source_type
+      FROM sales s
+      LEFT JOIN customers c ON s.customer_id = c.id
+      WHERE s.payment_method = 'Cash' AND s.paid_amount > 0
+        AND s.sale_date >= ? AND s.sale_date <= ?
+    `).all(sDate, eDate);
+
     // 2. Cash Out:
-    // - Supplier Payments in Cash
+    // - Supplier Payments in Cash (Ledger disbursements)
     const disbursements = db.prepare(`
       SELECT p.id, p.payment_date as date, p.reference_no as ref_no, 'Supplier Payment' as title,
-        s.name as party_name, p.amount, 'OUT' as flow, p.notes
+        s.name as party_name, p.amount, 'OUT' as flow, p.notes, 'SUPPLIER_PAYMENT' as source_type
       FROM payments p
       JOIN suppliers s ON p.party_id = s.id
       WHERE p.type = 'SUPPLIER_PAYMENT' AND p.payment_method = 'Cash'
         AND p.payment_date >= ? AND p.payment_date <= ?
     `).all(sDate, eDate);
 
+    // - Direct Cash Purchases / Restock
+    const cashPurchases = db.prepare(`
+      SELECT pu.id, pu.purchase_date as date, pu.invoice_no as ref_no, 'Cash Purchase' as title,
+        s.name as party_name, pu.paid_amount as amount, 'OUT' as flow,
+        ('Supplier Bill: ' || pu.invoice_no) as notes, 'PURCHASE' as source_type
+      FROM purchases pu
+      JOIN suppliers s ON pu.supplier_id = s.id
+      WHERE pu.payment_method = 'Cash' AND pu.paid_amount > 0
+        AND pu.purchase_date >= ? AND pu.purchase_date <= ?
+    `).all(sDate, eDate);
+
     // - Expenses in Cash
     const cashExpenses = db.prepare(`
       SELECT e.id, e.expense_date as date, ('EXP-' || e.id) as ref_no, e.title,
-        ec.name as party_name, e.amount, 'OUT' as flow, e.description as notes
+        ec.name as party_name, e.amount, 'OUT' as flow, e.description as notes, 'EXPENSE' as source_type
       FROM expenses e
       LEFT JOIN expense_categories ec ON e.category_id = ec.id
       WHERE e.payment_method = 'Cash'
         AND e.expense_date >= ? AND e.expense_date <= ?
     `).all(sDate, eDate);
 
-    const entries = [...receipts, ...disbursements, ...cashExpenses];
-    entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+    const entries = [...receipts, ...cashSales, ...disbursements, ...cashPurchases, ...cashExpenses];
+    entries.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     let totalIn = 0;
     let totalOut = 0;

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown } from 'lucide-react';
+import { Users, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown, Trash2 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
+import { useAuth } from '../context/AuthContext';
 
 export default function Customers() {
+  const { isAdmin } = useAuth();
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -13,6 +15,8 @@ export default function Customers() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState(null);
   const [selectedCust, setSelectedCust] = useState(null);
   const [ledgerData, setLedgerData] = useState(null);
   const [actionMenuId, setActionMenuId] = useState(null);
@@ -105,6 +109,20 @@ export default function Customers() {
       }
     } catch (err) {
       alert(err.message || 'Failed to update customer');
+    }
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return;
+    try {
+      const res = await api.delete(`/parties/customers/${customerToDelete.id}`);
+      if (res.success) {
+        setShowDeleteModal(false);
+        setCustomerToDelete(null);
+        loadCustomers();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete customer');
     }
   };
 
@@ -329,6 +347,36 @@ export default function Customers() {
                               >
                                 <DollarSign size={13} color="#15803d" />
                                 <span>Receive Payment</span>
+                              </button>
+                            )}
+
+                            {isAdmin && c.id !== 1 && (
+                              <button
+                                onClick={() => {
+                                  setActionMenuId(null);
+                                  setCustomerToDelete(c);
+                                  setShowDeleteModal(true);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  background: 'none',
+                                  border: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#dc2626',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  borderTop: '1px solid #f1f5f9'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                              >
+                                <Trash2 size={13} color="#dc2626" />
+                                <span>Delete Customer</span>
                               </button>
                             )}
                           </div>
@@ -693,11 +741,70 @@ export default function Customers() {
                   />
                 </div>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Update Customer</button>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  {isAdmin && selectedCust?.id !== 1 && (
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}
+                      onClick={() => {
+                        setShowEditModal(false);
+                        setCustomerToDelete(selectedCust);
+                        setShowDeleteModal(true);
+                      }}
+                    >
+                      <Trash2 size={13} />
+                      <span>Delete Customer</span>
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Update Customer</button>
+                </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE CUSTOMER MODAL */}
+      {showDeleteModal && customerToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '440px' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #fee2e2', background: '#fef2f2' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Trash2 size={18} color="#dc2626" />
+                <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1rem', fontWeight: 700 }}>Confirm Delete Customer</h3>
+              </div>
+              <button onClick={() => setShowDeleteModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>✕</button>
+            </div>
+            <div className="modal-body" style={{ padding: '1.25rem', fontSize: '0.875rem', color: '#334155', lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete customer <strong>"{customerToDelete.name}"</strong>?
+              {customerToDelete.current_balance > 0 ? (
+                <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#b91c1c', fontWeight: 600, fontSize: '0.8rem' }}>
+                  ⚠️ This customer has an active outstanding balance of {formatPKR(customerToDelete.current_balance)}. Please settle this balance before deleting.
+                </div>
+              ) : (
+                <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#64748b' }}>
+                  This action will remove the customer profile from your customer directory. Past sales records will be preserved for financial auditing.
+                </div>
+              )}
+            </div>
+            <div className="modal-footer" style={{ padding: '0.75rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                onClick={handleDeleteCustomer}
+                disabled={customerToDelete.current_balance > 0}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              >
+                <Trash2 size={13} />
+                <span>Permanently Delete</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

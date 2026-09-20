@@ -28,7 +28,7 @@ import {
   Package
 } from 'lucide-react';
 import { api } from '../utils/api';
-import { formatPKR } from '../utils/formatters';
+import { formatPKR, formatDate } from '../utils/formatters';
 import { playBeep, isAudioMuted, toggleAudioMute } from '../utils/audio';
 import { useAuth } from '../context/AuthContext';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
@@ -216,12 +216,101 @@ export default function PosSales() {
     }
   };
 
+  // Dynamic FIFO Tiered Multi-Batch Pricing Calculator
+  const calculateFifoTieredPricing = (product, requestedQty, currentSaleType = saleType) => {
+    const qty = Number(requestedQty) || 0;
+    if (qty <= 0) {
+      const baseSale = currentSaleType === 'Wholesale' && Number(product.wholesale_price) > 0 ? Number(product.wholesale_price) : Number(product.sale_price);
+      return {
+        totalSale: 0,
+        totalCost: 0,
+        effectiveRate: baseSale,
+        effectiveCost: Number(product.purchase_price) || 0,
+        breakdownText: ''
+      };
+    }
+
+    const activeBatches = (product.batches && product.batches.length > 0)
+      ? product.batches
+      : [{
+          id: product.fifo_batch_id || 0,
+          batch_no: product.fifo_batch_no || 'Standard',
+          quantity: product.current_stock || 999999,
+          sale_price: product.sale_price,
+          wholesale_price: product.wholesale_price,
+          purchase_price: product.purchase_price
+        }];
+
+    let remaining = qty;
+    let totalSale = 0;
+    let totalCost = 0;
+    const breakdown = [];
+
+    for (const b of activeBatches) {
+      if (remaining <= 0) break;
+      const bQty = Number(b.quantity) || 0;
+      if (bQty <= 0) continue;
+      const take = Math.min(bQty, remaining);
+
+      const bRate = currentSaleType === 'Wholesale' && Number(b.wholesale_price) > 0 ? Number(b.wholesale_price) : Number(b.sale_price);
+      const bCost = Number(b.purchase_price) || 0;
+
+      totalSale += (take * bRate);
+      totalCost += (take * bCost);
+      breakdown.push({
+        batch_id: b.id,
+        batch_no: b.batch_no,
+        qty: take,
+        rate: bRate,
+        cost: bCost
+      });
+
+      remaining -= take;
+    }
+
+    // If requested quantity exceeds active batches (e.g. negative stock allowed or extra qty)
+    if (remaining > 0) {
+      const lastBatch = activeBatches[activeBatches.length - 1];
+      const fallbackRate = currentSaleType === 'Wholesale' && Number(lastBatch?.wholesale_price || product.wholesale_price) > 0
+        ? Number(lastBatch?.wholesale_price || product.wholesale_price)
+        : Number(lastBatch?.sale_price || product.sale_price);
+      const fallbackCost = Number(lastBatch?.purchase_price || product.purchase_price) || 0;
+
+      totalSale += (remaining * fallbackRate);
+      totalCost += (remaining * fallbackCost);
+      breakdown.push({
+        batch_id: lastBatch?.id || 0,
+        batch_no: lastBatch?.batch_no || 'Additional',
+        qty: remaining,
+        rate: fallbackRate,
+        cost: fallbackCost
+      });
+    }
+
+    const effectiveRate = qty > 0 ? Math.round((totalSale / qty) * 100) / 100 : 0;
+    const effectiveCost = qty > 0 ? Math.round((totalCost / qty) * 100) / 100 : 0;
+
+    let breakdownText = '';
+    if (breakdown.length > 1) {
+      breakdownText = breakdown.map(b => `${b.qty} @ ₨${b.rate}`).join(' + ');
+    }
+
+    return {
+      totalSale,
+      totalCost,
+      effectiveRate,
+      effectiveCost,
+      breakdownText
+    };
+  };
+
   const addToCart = (product) => {
     setErrorMsg('');
     const existingIndex = cart.findIndex(item => item.product_id === product.id);
-    const currentQtyInCart = existingIndex >= 0 ? cart[existingIndex].quantity : 0;
+    const currentQtyInCart = existingIndex >= 0 ? (Number(cart[existingIndex].quantity) || 0) : 0;
+    const newQty = currentQtyInCart + 1;
 
-    if (currentQtyInCart + 1 > product.current_stock) {
+    if (newQty > product.current_stock) {
       playBeep('error');
       setErrorMsg(`Only ${product.current_stock} ${product.unit} available in stock.`);
       return;
@@ -229,28 +318,40 @@ export default function PosSales() {
 
     playBeep('add');
 
-    const price = saleType === 'Wholesale' && product.wholesale_price > 0
-      ? product.wholesale_price
-      : product.sale_price;
-
     if (existingIndex >= 0) {
       const updated = [...cart];
-      updated[existingIndex].quantity = (Number(updated[existingIndex].quantity) || 0) + 1;
+      const item = updated[existingIndex];
+      item.quantity = newQty;
+
+      if (!item.is_manual_rate) {
+        const fifo = calculateFifoTieredPricing(product, newQty, saleType);
+        item.unit_price = fifo.effectiveRate;
+        item.total_price = fifo.totalSale;
+        item.purchase_price = fifo.effectiveCost;
+        item.fifo_breakdown = fifo.breakdownText;
+      } else {
+        item.total_price = newQty * item.unit_price;
+      }
+
       setCart(updated);
     } else {
+      const fifo = calculateFifoTieredPricing(product, 1, saleType);
       setCart([...cart, {
         product_id: product.id,
         name: product.name,
         sku: product.sku,
         unit: product.unit,
-        unit_price: price,
+        unit_price: fifo.effectiveRate,
+        total_price: fifo.totalSale,
         original_price: product.sale_price,
-        purchase_price: product.purchase_price || 0,
+        purchase_price: fifo.effectiveCost,
         fifo_batch_no: product.fifo_batch_no,
         fifo_batch_qty: product.fifo_batch_qty,
+        fifo_breakdown: fifo.breakdownText,
         quantity: 1,
         discount: 0,
-        current_stock: product.current_stock
+        current_stock: product.current_stock,
+        is_manual_rate: false
       }]);
     }
   };
@@ -271,8 +372,21 @@ export default function PosSales() {
       playBeep('error');
       setErrorMsg(`Stock limit reached for ${item.name} (${item.current_stock} available).`);
     }
+
+    const prod = products.find(p => p.id === item.product_id) || item;
     const updated = [...cart];
     updated[index].quantity = qty;
+
+    if (!item.is_manual_rate) {
+      const fifo = calculateFifoTieredPricing(prod, qty, saleType);
+      updated[index].unit_price = fifo.effectiveRate;
+      updated[index].total_price = fifo.totalSale;
+      updated[index].purchase_price = fifo.effectiveCost;
+      updated[index].fifo_breakdown = fifo.breakdownText;
+    } else {
+      updated[index].total_price = qty * item.unit_price;
+    }
+
     setCart(updated);
   };
 
@@ -294,8 +408,20 @@ export default function PosSales() {
     }
 
     playBeep('add');
+    const prod = products.find(p => p.id === item.product_id) || item;
     const updated = [...cart];
     updated[index].quantity = newQty;
+
+    if (!item.is_manual_rate) {
+      const fifo = calculateFifoTieredPricing(prod, newQty, saleType);
+      updated[index].unit_price = fifo.effectiveRate;
+      updated[index].total_price = fifo.totalSale;
+      updated[index].purchase_price = fifo.effectiveCost;
+      updated[index].fifo_breakdown = fifo.breakdownText;
+    } else {
+      updated[index].total_price = newQty * item.unit_price;
+    }
+
     setCart(updated);
   };
 
@@ -371,7 +497,11 @@ export default function PosSales() {
 
   const handleSaveItemEdit = (idx) => {
     const updated = [...cart];
-    updated[idx].unit_price = Math.max(0, Number(tempItemPrice) || 0);
+    const newPrice = Math.max(0, Number(tempItemPrice) || 0);
+    updated[idx].unit_price = newPrice;
+    updated[idx].is_manual_rate = true;
+    updated[idx].fifo_breakdown = '';
+    updated[idx].total_price = (Number(updated[idx].quantity) || 0) * newPrice;
     updated[idx].discount = Math.max(0, Number(tempItemDiscount) || 0);
     setCart(updated);
     setEditingItemIndex(null);
@@ -379,12 +509,25 @@ export default function PosSales() {
 
   const handleUpdateCartRate = (idx, newRate) => {
     const updated = [...cart];
-    updated[idx].unit_price = Math.max(0, Number(newRate) || 0);
+    const rate = Math.max(0, Number(newRate) || 0);
+    updated[idx].unit_price = rate;
+    updated[idx].is_manual_rate = true;
+    updated[idx].fifo_breakdown = '';
+    updated[idx].total_price = (Number(updated[idx].quantity) || 0) * rate;
     setCart(updated);
   };
 
-  const subtotal = cart.reduce((acc, item) => acc + ((Number(item.quantity) || 0) * Number(item.unit_price)) - (item.discount || 0), 0);
-  const totalCost = cart.reduce((acc, item) => acc + ((Number(item.quantity) || 0) * (item.purchase_price || 0)), 0);
+  const subtotal = cart.reduce((acc, item) => {
+    const rawTotal = (item.total_price !== undefined && item.total_price !== null)
+      ? Number(item.total_price)
+      : ((Number(item.quantity) || 0) * Number(item.unit_price));
+    return acc + rawTotal - (item.discount || 0);
+  }, 0);
+
+  const totalCost = cart.reduce((acc, item) => {
+    return acc + ((Number(item.quantity) || 0) * (item.purchase_price || 0));
+  }, 0);
+
   const totalDiscount = Number(discount) || 0;
   const grandTotal = Math.max(0, subtotal - totalDiscount);
   const estimatedProfit = Math.max(0, grandTotal - totalCost);
@@ -398,25 +541,20 @@ export default function PosSales() {
   const handleCustomerChange = (custId) => {
     setSelectedCustomer(custId);
     const cust = customers.find(c => c.id === Number(custId));
-    if (cust && cust.customer_type === 'Wholesale') {
-      setSaleType('Wholesale');
-      setCart(cart.map(item => {
-        const prod = products.find(p => p.id === item.product_id);
-        return {
-          ...item,
-          unit_price: (prod?.wholesale_price > 0 ? prod.wholesale_price : prod?.sale_price) || item.unit_price
-        };
-      }));
-    } else {
-      setSaleType('Retail');
-      setCart(cart.map(item => {
-        const prod = products.find(p => p.id === item.product_id);
-        return {
-          ...item,
-          unit_price: prod?.sale_price || item.unit_price
-        };
-      }));
-    }
+    const newSaleType = (cust && cust.customer_type === 'Wholesale') ? 'Wholesale' : 'Retail';
+    setSaleType(newSaleType);
+    setCart(cart.map(item => {
+      if (item.is_manual_rate) return item;
+      const prod = products.find(p => p.id === item.product_id) || item;
+      const fifo = calculateFifoTieredPricing(prod, Number(item.quantity) || 1, newSaleType);
+      return {
+        ...item,
+        unit_price: fifo.effectiveRate,
+        total_price: fifo.totalSale,
+        purchase_price: fifo.effectiveCost,
+        fifo_breakdown: fifo.breakdownText
+      };
+    }));
   };
 
   const setQuickCash = (amt) => {
@@ -447,13 +585,20 @@ export default function PosSales() {
         customer_id: Number(selectedCustomer) === 1 ? null : Number(selectedCustomer),
         sale_type: saleType,
         sale_date: new Date().toISOString().split('T')[0],
-        items: cart.map(i => ({
-          product_id: i.product_id,
-          quantity: Number(i.quantity) || 1,
-          unit: i.unit,
-          unit_price: Number(i.unit_price) || 0,
-          discount: i.discount || 0
-        })),
+        items: cart.map(i => {
+          const qty = Number(i.quantity) || 1;
+          const rawTotal = (i.total_price !== undefined && i.total_price !== null)
+            ? Number(i.total_price)
+            : (qty * Number(i.unit_price));
+          return {
+            product_id: i.product_id,
+            quantity: qty,
+            unit: i.unit,
+            unit_price: Number(i.unit_price) || 0,
+            total_price: rawTotal,
+            discount: i.discount || 0
+          };
+        }),
         discount: totalDiscount,
         tax: 0,
         paid_amount: enteredPaid,
@@ -1015,7 +1160,7 @@ export default function PosSales() {
                       </div>
                       <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>•</span>
                       <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0f172a' }}>
-                        {formatPKR(((Number(item.quantity) || 0) * Number(item.unit_price)) - (item.discount || 0))}
+                        {formatPKR(((item.total_price !== undefined && item.total_price !== null) ? Number(item.total_price) : ((Number(item.quantity) || 0) * Number(item.unit_price))) - (item.discount || 0))}
                       </span>
                       {item.discount > 0 && (
                         <span style={{ fontSize: '0.62rem', color: '#16a34a' }}>(-₨{item.discount})</span>
@@ -1051,11 +1196,11 @@ export default function PosSales() {
                         <strong style={{ color: '#0284c7' }}>₨{item.purchase_price || 0}</strong>
                         {Number(item.unit_price) > Number(item.purchase_price || 0) ? (
                           <span style={{ color: '#16a34a', fontWeight: 700, marginLeft: '2px' }}>
-                            (+₨{Number(item.unit_price) - Number(item.purchase_price || 0)} profit)
+                            (+₨{Math.round((Number(item.unit_price) - Number(item.purchase_price || 0)) * 100) / 100} profit)
                           </span>
                         ) : Number(item.unit_price) < Number(item.purchase_price || 0) ? (
                           <span style={{ color: '#dc2626', fontWeight: 700, marginLeft: '2px' }}>
-                            (⚠️ Below Cost -₨{Number(item.purchase_price || 0) - Number(item.unit_price)})
+                            (⚠️ Below Cost -₨{Math.round((Number(item.purchase_price || 0) - Number(item.unit_price)) * 100) / 100})
                           </span>
                         ) : (
                           <span style={{ color: '#64748b', fontWeight: 600, marginLeft: '2px' }}>
@@ -1098,6 +1243,29 @@ export default function PosSales() {
                         </span>
                       )}
                     </div>
+
+                    {/* DYNAMIC MULTI-BATCH FIFO TIER BADGE */}
+                    {item.fifo_breakdown && (
+                      <div
+                        style={{
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          color: '#92400e',
+                          background: '#fef3c7',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          border: '1px solid #fde68a',
+                          marginTop: '3px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                        title="Automatic Multi-Batch FIFO Pricing Breakdown"
+                      >
+                        <span>⚡ FIFO Lots:</span>
+                        <span>{item.fifo_breakdown}</span>
+                      </div>
+                    )}
 
                     {editingItemIndex === idx && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '3px', background: '#f1f5f9', padding: '2px 4px', borderRadius: '4px' }}>

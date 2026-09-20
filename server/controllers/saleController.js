@@ -58,8 +58,8 @@ exports.getSaleById = (req, res) => {
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.id
       LEFT JOIN users u ON s.user_id = u.id
-      WHERE s.id = ?
-    `).get(id);
+      WHERE s.id = ? OR s.invoice_no = ?
+    `).get(id, id);
 
     if (!sale) {
       return res.status(404).json({ success: false, message: 'Sale invoice not found.' });
@@ -70,7 +70,7 @@ exports.getSaleById = (req, res) => {
       FROM sale_items si
       JOIN products pr ON si.product_id = pr.id
       WHERE si.sale_id = ?
-    `).all(id);
+    `).all(sale.id);
 
     // Fetch business profile settings for invoice header
     const settingsList = db.prepare('SELECT key, value FROM settings').all();
@@ -117,8 +117,11 @@ exports.createSale = (req, res) => {
         throw new Error(`Insufficient stock for "${prod.name}". Available: ${totalAvailable}, Requested: ${qty}. Sale blocked by negative-stock policy.`);
       }
 
-      const rate = Number(item.unit_price) ?? (sale_type === 'Wholesale' ? prod.wholesale_price : prod.sale_price);
-      const lineTotal = (qty * rate) - (Number(item.discount) || 0);
+      const fallbackRate = Number(item.unit_price) ?? (sale_type === 'Wholesale' ? prod.wholesale_price : prod.sale_price);
+      const rawLineTotal = (item.total_price !== undefined && item.total_price !== null && !isNaN(Number(item.total_price)) && Number(item.total_price) > 0)
+        ? Number(item.total_price)
+        : (qty * fallbackRate);
+      const lineTotal = Math.max(0, rawLineTotal - (Number(item.discount) || 0));
       subtotal += lineTotal;
     }
 
@@ -189,9 +192,13 @@ exports.createSale = (req, res) => {
 
     for (const item of items) {
       let remainingQtyToDeduct = Number(item.quantity);
-      const rate = Number(item.unit_price);
+      const totalItemQty = remainingQtyToDeduct;
       const itemDisc = Number(item.discount) || 0;
-      const lineTotal = (remainingQtyToDeduct * rate) - itemDisc;
+      const rawLineTotal = (item.total_price !== undefined && item.total_price !== null && !isNaN(Number(item.total_price)) && Number(item.total_price) > 0)
+        ? Number(item.total_price)
+        : (remainingQtyToDeduct * Number(item.unit_price));
+      const lineTotal = Math.max(0, rawLineTotal - itemDisc);
+      const effectiveRate = totalItemQty > 0 ? (rawLineTotal / totalItemQty) : Number(item.unit_price);
 
       // Find active batches ordered by id ASC (Strict FIFO: First-In, First-Out)
       const batches = db.prepare(`
@@ -228,25 +235,25 @@ exports.createSale = (req, res) => {
       // If quantity still remains (allowed in negative stock mode or zero batch fallback)
       if (remainingQtyToDeduct > 0) {
         const fallbackBatch = db.prepare('SELECT * FROM batches WHERE product_id = ? ORDER BY id DESC LIMIT 1').get(item.product_id);
-        const fallbackRate = fallbackBatch ? Number(fallbackBatch.purchase_price) : 0;
+        const fallbackUnitCost = fallbackBatch ? (Number(fallbackBatch.purchase_price) || 0) : 0;
+        totalCostForLine += (remainingQtyToDeduct * fallbackUnitCost);
 
         if (fallbackBatch) {
           db.prepare('UPDATE batches SET quantity = quantity - ? WHERE id = ?').run(remainingQtyToDeduct, fallbackBatch.id);
-          consumedBatches.push({
-            batchId: fallbackBatch.id,
-            batchNo: fallbackBatch.batch_no,
-            deduct: remainingQtyToDeduct,
-            unitCost: fallbackRate,
-            supplierId: fallbackBatch.supplier_id
-          });
         }
-        totalCostForLine += (remainingQtyToDeduct * fallbackRate);
+
+        consumedBatches.push({
+          batchId: fallbackBatch ? fallbackBatch.id : null,
+          batchNo: fallbackBatch ? fallbackBatch.batch_no : 'NEGATIVE_STOCK',
+          deduct: remainingQtyToDeduct,
+          unitCost: fallbackUnitCost,
+          supplierId: fallbackBatch ? fallbackBatch.supplier_id : null
+        });
       }
 
-      const totalItemQty = Number(item.quantity);
-      // Exact weighted cost per unit from FIFO batches (No arbitrary averaging across unrelated stock)
-      const costPrice = totalItemQty > 0 ? (totalCostForLine / totalItemQty) : 0;
+      // Insert into sale_items
       const primaryBatchId = consumedBatches[0]?.batchId || null;
+      const costPrice = totalItemQty > 0 ? (totalCostForLine / totalItemQty) : 0;
       const batchNotes = consumedBatches.length > 1
         ? consumedBatches.map(c => `${c.batchNo || 'Lot'}: ${c.deduct}@${c.unitCost}`).join(', ')
         : (consumedBatches[0]?.batchNo || null);
@@ -258,7 +265,7 @@ exports.createSale = (req, res) => {
         batchNotes,
         totalItemQty,
         item.unit || 'pkt',
-        rate,
+        effectiveRate,
         costPrice,
         itemDisc,
         lineTotal

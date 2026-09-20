@@ -84,6 +84,44 @@ exports.updateCustomer = (req, res) => {
   }
 };
 
+exports.deleteCustomer = (req, res) => {
+  try {
+    const { id } = req.params;
+    if (Number(id) === 1) {
+      return res.status(400).json({ success: false, message: 'Cannot delete the default Walk-in / Counter customer.' });
+    }
+
+    const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(id);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found.' });
+    }
+
+    if (Math.abs(Number(customer.current_balance) || 0) > 0.01) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete customer "${customer.name}" with an active balance of ₨ ${customer.current_balance}. Please settle the balance first.`
+      });
+    }
+
+    const deleteTransaction = db.transaction(() => {
+      // Nullify customer reference in historical sales so sale invoices remain valid
+      db.prepare('UPDATE sales SET customer_id = NULL WHERE customer_id = ?').run(id);
+      // Delete party payment ledger records
+      db.prepare("DELETE FROM payments WHERE party_type = 'CUSTOMER' AND party_id = ?").run(id);
+      // Delete customer record
+      db.prepare('DELETE FROM customers WHERE id = ?').run(id);
+    });
+
+    deleteTransaction();
+
+    logAudit(req.user.id, req.user.full_name, 'DELETE', 'CUSTOMER', id, `Deleted customer ${customer.name}`, req);
+    return res.json({ success: true, message: `Customer "${customer.name}" deleted successfully.` });
+  } catch (err) {
+    console.error('Error deleting customer:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to delete customer.' });
+  }
+};
+
 // Customer Ledger (Date-wise statement)
 exports.getCustomerLedger = (req, res) => {
   try {

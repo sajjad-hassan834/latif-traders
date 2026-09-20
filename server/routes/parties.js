@@ -9,6 +9,7 @@ router.use(authenticate);
 router.get('/customers', partyController.getCustomers);
 router.post('/customers', requireRoles('sales', 'accountant'), partyController.createCustomer);
 router.put('/customers/:id', requireRoles('sales', 'accountant'), partyController.updateCustomer);
+router.delete('/customers/:id', requireRoles('admin'), partyController.deleteCustomer);
 router.get('/customers/:id/ledger', partyController.getCustomerLedger);
 
 // Suppliers
