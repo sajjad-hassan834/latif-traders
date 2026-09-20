@@ -268,122 +268,157 @@ export default function Settings() {
       )}
 
       {/* SHOP PROFILE & BUSINESS RULES */}
-      <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
-          <Sliders size={22} color="var(--primary)" />
-          <div>
-            <h3 style={{ fontSize: '1.2rem' }}>Business Profile & Invoice Details</h3>
-            <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
-              Information printed on retail invoices and thermal receipts.
-            </p>
+      <div className="card" style={{ padding: '1.1rem 1.35rem', borderRadius: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '6px', background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #bae6fd' }}>
+              <Sliders size={17} color="#0284c7" />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '1rem', margin: 0, fontWeight: 700, color: '#0f172a' }}>Business Profile & Invoice Details</h3>
+              <p style={{ fontSize: '0.725rem', color: '#64748b', margin: 0 }}>
+                Information printed on invoices, thermal receipts, and system inventory policies.
+              </p>
+            </div>
           </div>
+
+          <button type="submit" form="settings-form" disabled={saving} className="btn btn-primary btn-sm" style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', fontWeight: 600 }}>
+            <Save size={14} />
+            <span>{saving ? 'Saving...' : 'Save Settings'}</span>
+          </button>
         </div>
 
-        <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div className="form-grid-2">
-            <div className="form-group">
-              <label className="form-label">Shop Name *</label>
+        <form id="settings-form" onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {/* Row 1: Shop Identity & Contact (3 Columns) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.73rem', fontWeight: 600, color: '#334155', marginBottom: '2px' }}>
+                Shop Name *
+              </label>
               <input
                 type="text"
                 className="form-control"
+                style={{ height: '32px', fontSize: '0.8rem', padding: '0 8px' }}
                 required
                 value={settings.shop_name}
                 onChange={(e) => setSettings({ ...settings, shop_name: e.target.value })}
               />
             </div>
-            <div className="form-group">
-              <label className="form-label">Tagline / Subtitle</label>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.73rem', fontWeight: 600, color: '#334155', marginBottom: '2px' }}>
+                Tagline / Subtitle
+              </label>
               <input
                 type="text"
                 className="form-control"
+                style={{ height: '32px', fontSize: '0.8rem', padding: '0 8px' }}
                 value={settings.tagline}
                 onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
               />
             </div>
-          </div>
 
-          <div className="form-grid-2">
-            <div className="form-group">
-              <label className="form-label">Phone Numbers</label>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.73rem', fontWeight: 600, color: '#334155', marginBottom: '2px' }}>
+                Phone Numbers
+              </label>
               <input
                 type="text"
                 className="form-control"
+                style={{ height: '32px', fontSize: '0.8rem', padding: '0 8px' }}
+                placeholder="+92 300 1234567"
                 value={settings.phone}
                 onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
               />
             </div>
-            <div className="form-group">
-              <label className="form-label">Email</label>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.73rem', fontWeight: 600, color: '#334155', marginBottom: '2px' }}>
+                Email Address
+              </label>
               <input
                 type="email"
                 className="form-control"
+                style={{ height: '32px', fontSize: '0.8rem', padding: '0 8px' }}
+                placeholder="sales@latiftraders.com"
                 value={settings.email}
                 onChange={(e) => setSettings({ ...settings, email: e.target.value })}
               />
             </div>
-          </div>
 
-          <div className="form-group">
-            <label className="form-label">Shop Address</label>
-            <input
-              type="text"
-              className="form-control"
-              value={settings.address}
-              onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-            />
-          </div>
-
-          {/* BUSINESS RULES */}
-          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
-            <h4 style={{ fontSize: '1rem', marginBottom: '1rem', color: '#0f172a' }}>Inventory Policies & Warnings</h4>
-            <div className="form-grid-2">
-              <div className="form-group">
-                <label className="form-label">Near-Expiry Warning Threshold (Days)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  min="1"
-                  max="90"
-                  value={settings.near_expiry_days}
-                  onChange={(e) => setSettings({ ...settings, near_expiry_days: e.target.value })}
-                />
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                  Batches expiring within this number of days appear on alert badges.
-                </span>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Negative Stock Policy</label>
-                <select
-                  className="form-control"
-                  value={settings.allow_negative_stock}
-                  onChange={(e) => setSettings({ ...settings, allow_negative_stock: e.target.value })}
-                >
-                  <option value="false">Blocked (Recommended - Prevents selling non-existent stock)</option>
-                  <option value="true">Allowed (Permits sales even if stock count is zero)</option>
-                </select>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                  Current setting: <strong>{settings.allow_negative_stock === 'true' ? 'Allowed' : 'Strictly Blocked'}</strong>
-                </span>
-              </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <label style={{ display: 'block', fontSize: '0.73rem', fontWeight: 600, color: '#334155', marginBottom: '2px' }}>
+                Shop Physical Address
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                style={{ height: '32px', fontSize: '0.8rem', padding: '0 8px' }}
+                placeholder="Shop #, Market, City"
+                value={settings.address}
+                onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+              />
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Invoice / Receipt Footer Disclaimer</label>
-            <textarea
-              className="form-control"
-              rows="2"
-              value={settings.invoice_footer}
-              onChange={(e) => setSettings({ ...settings, invoice_footer: e.target.value })}
-            />
-          </div>
+          {/* Row 2: Inventory Policies & Receipt Footer Note (Side-by-Side) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.2rem' }}>
+            {/* Inventory Policies Box */}
+            <div style={{ background: '#f8fafc', padding: '0.65rem 0.8rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.775rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.45rem' }}>
+                📦 Inventory Policies & Alerts
+              </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" disabled={saving} className="btn btn-primary">
-              <Save size={16} />
-              <span>{saving ? 'Saving...' : 'Save System Settings'}</span>
-            </button>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: '0.55rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.71rem', fontWeight: 600, color: '#475569', marginBottom: '2px' }}>
+                    Near-Expiry (Days)
+                  </label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    style={{ height: '30px', fontSize: '0.8rem', padding: '0 6px' }}
+                    min="1"
+                    max="90"
+                    value={settings.near_expiry_days}
+                    onChange={(e) => setSettings({ ...settings, near_expiry_days: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.71rem', fontWeight: 600, color: '#475569', marginBottom: '2px' }}>
+                    Negative Stock Policy
+                  </label>
+                  <select
+                    className="form-control"
+                    style={{ height: '30px', fontSize: '0.75rem', padding: '0 6px' }}
+                    value={settings.allow_negative_stock}
+                    onChange={(e) => setSettings({ ...settings, allow_negative_stock: e.target.value })}
+                  >
+                    <option value="false">Strictly Blocked (Recommended)</option>
+                    <option value="true">Allowed (Allow ≤ 0)</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ fontSize: '0.66rem', color: '#64748b', marginTop: '3px' }}>
+                Batches expiring within {settings.near_expiry_days || 15} days show warning badge.
+              </div>
+            </div>
+
+            {/* Receipt Footer Disclaimer Box */}
+            <div style={{ background: '#f8fafc', padding: '0.65rem 0.8rem', borderRadius: '6px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+              <label style={{ display: 'block', fontSize: '0.775rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.35rem' }}>
+                🧾 Receipt / Invoice Footer Disclaimer
+              </label>
+              <textarea
+                className="form-control"
+                rows="2"
+                style={{ fontSize: '0.75rem', padding: '4px 6px', resize: 'vertical', flex: 1, minHeight: '48px' }}
+                placeholder="Thank you message or return policy printed at the bottom of bills..."
+                value={settings.invoice_footer}
+                onChange={(e) => setSettings({ ...settings, invoice_footer: e.target.value })}
+              />
+            </div>
           </div>
         </form>
       </div>
