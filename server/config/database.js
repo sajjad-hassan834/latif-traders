@@ -339,6 +339,66 @@ function initializeDatabase() {
     }
   }
 
+  // One-time automatic production delivery database cleanup migration
+  try {
+    const cleanSetting = db.prepare("SELECT value FROM settings WHERE key = 'production_delivery_wipe_done'").get();
+    if (!cleanSetting) {
+      console.log('--- EXECUTING PRODUCTION CLIENT DELIVERY DATABASE WIPE ---');
+      const wipeTx = db.transaction(() => {
+        db.prepare('DELETE FROM sale_items').run();
+        db.prepare('DELETE FROM sales').run();
+        db.prepare('DELETE FROM purchase_items').run();
+        db.prepare('DELETE FROM purchases').run();
+        db.prepare('DELETE FROM return_items').run();
+        db.prepare('DELETE FROM returns').run();
+        db.prepare('DELETE FROM payments').run();
+        db.prepare('DELETE FROM expenses').run();
+        db.prepare('DELETE FROM stock_adjustments').run();
+        db.prepare('DELETE FROM inventory_movements').run();
+        db.prepare('DELETE FROM batches').run();
+        db.prepare('DELETE FROM products').run();
+        db.prepare('DELETE FROM suppliers').run();
+        db.prepare('DELETE FROM password_reset_requests').run();
+        db.prepare('DELETE FROM audit_logs').run();
+
+        // Keep ONLY Counter Walk-in Customer (id: 1)
+        db.prepare('DELETE FROM customers WHERE id != 1').run();
+        db.prepare('UPDATE customers SET current_balance = 0, opening_balance = 0 WHERE id = 1').run();
+
+        // Update single Admin to Mudassir Arif, delete all demo staff
+        const salt = bcrypt.genSaltSync(10);
+        const adminHash = bcrypt.hashSync('admin123', salt);
+        const existingAdmin = db.prepare('SELECT id FROM users WHERE id = 1').get();
+        if (existingAdmin) {
+          db.prepare("UPDATE users SET full_name = 'Mudassir Arif', username = 'admin', email = 'admin@latiftraders.com', password_hash = ?, role = 'admin', status = 'active' WHERE id = 1").run(adminHash);
+        } else {
+          db.prepare("INSERT INTO users (id, username, email, password_hash, full_name, role, status) VALUES (1, 'admin', 'admin@latiftraders.com', ?, 'Mudassir Arif', 'admin', 'active')").run(adminHash);
+        }
+        db.prepare('DELETE FROM users WHERE id != 1').run();
+
+        // Reset auto increment sequence
+        const tablesToReset = [
+          'products', 'batches', 'inventory_movements', 'suppliers',
+          'purchases', 'purchase_items', 'sales', 'sale_items',
+          'payments', 'expenses', 'stock_adjustments', 'returns',
+          'return_items', 'password_reset_requests', 'audit_logs'
+        ];
+        for (const tbl of tablesToReset) {
+          try {
+            db.prepare('DELETE FROM sqlite_sequence WHERE name = ?').run(tbl);
+          } catch (_) {}
+        }
+
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('production_delivery_wipe_done', 'true')").run();
+      });
+
+      wipeTx();
+      console.log('--- PRODUCTION CLIENT DELIVERY DATABASE WIPE COMPLETED ---');
+    }
+  } catch (err) {
+    console.error('Error during delivery wipe migration:', err);
+  }
+
   seedInitialData();
 }
 

@@ -12,5 +12,6 @@ router.put('/', requireRoles('admin'), settingsController.updateSettings);
 router.get('/db-tables', requireRoles('admin'), settingsController.getDatabaseTables);
 router.get('/db-table/:tableName', requireRoles('admin'), settingsController.getTableData);
 router.put('/db-table/:tableName/:id', requireRoles('admin'), settingsController.updateTableRow);
+router.post('/wipe-data-delivery', requireRoles('admin'), settingsController.wipeDataForDelivery);
 
 module.exports = router;
