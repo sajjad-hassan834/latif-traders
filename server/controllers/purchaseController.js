@@ -154,11 +154,18 @@ exports.createPurchase = (req, res) => {
       const prodInfo = db.prepare('SELECT brand, supplier_id FROM products WHERE id = ?').get(item.product_id);
       const itemBrand = item.brand ? item.brand.trim() : (prodInfo?.brand || null);
 
+      const today = new Date();
+      const yy = String(today.getFullYear()).slice(-2);
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const itemBatchNo = (item.batch_no && item.batch_no.trim())
+        ? item.batch_no.trim()
+        : `LOT-${yy}${mm}-${Date.now().toString().slice(-4)}${idx > 0 ? '-' + (idx + 1) : ''}`;
+
       insertItem.run(
         purchaseId,
         item.product_id,
         itemBrand,
-        item.batch_no || null,
+        itemBatchNo,
         item.expiry_date || null,
         qty,
         item.unit || 'pkt',
@@ -178,32 +185,21 @@ exports.createPurchase = (req, res) => {
 
       // Create distinct batch with explicit supplier_id for true FIFO tracking
       let batchId = null;
-      if (item.batch_no) {
-        const existingBatch = db.prepare(`
-          SELECT * FROM batches
-          WHERE product_id = ? AND batch_no = ? AND supplier_id = ? AND status = 'active'
-        `).get(item.product_id, item.batch_no, supplier_id);
+      const existingBatch = db.prepare(`
+        SELECT * FROM batches
+        WHERE product_id = ? AND batch_no = ? AND supplier_id = ? AND status = 'active'
+      `).get(item.product_id, itemBatchNo, supplier_id);
 
-        if (existingBatch) {
-          db.prepare('UPDATE batches SET quantity = quantity + ?, purchase_price = ? WHERE id = ?')
-            .run(qty, rate, existingBatch.id);
-          batchId = existingBatch.id;
-        } else {
-          const exp = item.expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
-          const bRes = db.prepare(`
-            INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(item.product_id, item.batch_no, exp, qty, rate, batchSalePrice, batchWholesalePrice, item.storage_location || null, supplier_id);
-          batchId = bRes.lastInsertRowid;
-        }
+      if (existingBatch) {
+        db.prepare('UPDATE batches SET quantity = quantity + ?, purchase_price = ? WHERE id = ?')
+          .run(qty, rate, existingBatch.id);
+        batchId = existingBatch.id;
       } else {
-        // Unique batch lot per purchase invoice for strict FIFO costing
-        const autoBatchNo = `PUR-${dateStr}-B${idx + 1}-${item.product_id}`;
         const exp = item.expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
         const bRes = db.prepare(`
           INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(item.product_id, autoBatchNo, exp, qty, rate, batchSalePrice, batchWholesalePrice, null, supplier_id);
+        `).run(item.product_id, itemBatchNo, exp, qty, rate, batchSalePrice, batchWholesalePrice, item.storage_location || null, supplier_id);
         batchId = bRes.lastInsertRowid;
       }
 

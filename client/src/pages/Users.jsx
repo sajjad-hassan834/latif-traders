@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Plus, History, UserCheck, Lock, Edit } from 'lucide-react';
+import { ShieldCheck, Plus, History, UserCheck, Lock, Edit, KeyRound, Check, XCircle, Clock, Sparkles, RefreshCw } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
 
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
-  const [activeTab, setActiveTab] = useState('users'); // 'users' or 'logs'
+  const [resetRequests, setResetRequests] = useState([]);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [activeTab, setActiveTab] = useState('users'); // 'users', 'requests', 'logs'
   const [loading, setLoading] = useState(true);
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showResolveModal, setShowResolveModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [resolveAction, setResolveAction] = useState('approve');
+  const [newPassword, setNewPassword] = useState('');
+  const [adminNote, setAdminNote] = useState('');
+  const [resolving, setResolving] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -26,10 +34,19 @@ export default function Users() {
   const loadData = async () => {
     try {
       setLoading(true);
+      // Always fetch reset requests summary for pending badge
+      try {
+        const reqRes = await api.get('/users/reset-requests');
+        if (reqRes.success) {
+          setResetRequests(reqRes.requests || []);
+          setPendingCount(reqRes.pending_count || 0);
+        }
+      } catch (_) {}
+
       if (activeTab === 'users') {
         const res = await api.get('/users');
         if (res.success) setUsers(res.users);
-      } else {
+      } else if (activeTab === 'logs') {
         const res = await api.get('/users/audit-logs');
         if (res.success) setAuditLogs(res.logs);
       }
@@ -71,6 +88,47 @@ export default function Users() {
     }
   };
 
+  const handleResolveSubmit = async (e) => {
+    e.preventDefault();
+    if (resolveAction === 'approve' && (!newPassword || newPassword.trim().length < 6)) {
+      alert('Please provide a new password of at least 6 characters.');
+      return;
+    }
+
+    try {
+      setResolving(true);
+      const res = await api.post(`/users/reset-requests/${selectedRequest.id}/resolve`, {
+        action: resolveAction,
+        new_password: newPassword.trim(),
+        admin_note: adminNote.trim()
+      });
+
+      if (res.success) {
+        alert(res.message || 'Request successfully processed.');
+        setShowResolveModal(false);
+        setSelectedRequest(null);
+        setNewPassword('');
+        setAdminNote('');
+        loadData();
+      } else {
+        alert(res.message || 'Failed to process request.');
+      }
+    } catch (err) {
+      alert(err.message || 'Error processing reset request.');
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  const generateQuickPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let p = 'LT@';
+    for (let i = 0; i < 5; i++) {
+      p += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewPassword(p);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* TABS & ADD BUTTON */}
@@ -83,6 +141,29 @@ export default function Users() {
             <UserCheck size={16} />
             <span>Staff Users & Roles</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('requests')}
+            className={`btn btn-sm ${activeTab === 'requests' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ position: 'relative' }}
+          >
+            <KeyRound size={16} />
+            <span>Password Reset Requests</span>
+            {pendingCount > 0 && (
+              <span style={{
+                background: '#ef4444',
+                color: '#fff',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                padding: '2px 6px',
+                borderRadius: '10px',
+                marginLeft: '4px'
+              }}>
+                {pendingCount} Pending
+              </span>
+            )}
+          </button>
+
           <button
             onClick={() => setActiveTab('logs')}
             className={`btn btn-sm ${activeTab === 'logs' ? 'btn-primary' : 'btn-secondary'}`}
@@ -152,6 +233,131 @@ export default function Users() {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* PASSWORD RESET REQUESTS */}
+      {activeTab === 'requests' && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '0.85rem 1.25rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: '0.85rem', color: '#475569' }}>
+              <strong>Staff Password Reset Requests</strong> &bull; Review, approve, and assign new passwords to staff members.
+            </div>
+            <button onClick={loadData} className="btn btn-secondary btn-sm" title="Refresh">
+              <RefreshCw size={14} />
+              <span>Refresh</span>
+            </button>
+          </div>
+
+          <div className="table-responsive">
+            <table className="table" style={{ width: '100%', minWidth: '750px' }}>
+              <thead>
+                <tr>
+                  <th>Requested At</th>
+                  <th>Username</th>
+                  <th>Staff Member</th>
+                  <th>Role</th>
+                  <th>User Note / Contact</th>
+                  <th>Status</th>
+                  <th>Resolution / Password</th>
+                  <th style={{ textAlign: 'center' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resetRequests.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#64748b' }}>
+                      <Check size={28} style={{ color: '#10b981', margin: '0 auto 0.5rem', display: 'block' }} />
+                      <strong>No password reset requests pending.</strong>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem' }}>When a staff member submits a request from the login screen, it will appear here.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  resetRequests.map(r => (
+                    <tr key={r.id} style={{ background: r.status === 'pending' ? '#fffdf7' : 'transparent' }}>
+                      <td style={{ fontSize: '0.785rem', color: '#64748b' }}>{formatDateTime(r.created_at)}</td>
+                      <td className="mono" style={{ fontWeight: 700, color: '#0284c7' }}>{r.username}</td>
+                      <td style={{ fontWeight: 600 }}>{r.full_name || '-'}</td>
+                      <td>
+                        <span className={`badge ${
+                          r.user_role === 'admin' ? 'badge-danger' :
+                          r.user_role === 'sales' ? 'badge-success' :
+                          r.user_role === 'inventory' ? 'badge-info' : 'badge-warning'
+                        }`}>
+                          {(r.user_role || 'STAFF').toUpperCase()}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '0.825rem', maxWidth: '220px' }}>
+                        {r.request_note || '-'}
+                      </td>
+                      <td>
+                        <span className={`badge ${
+                          r.status === 'approved' ? 'badge-success' :
+                          r.status === 'pending' ? 'badge-warning' : 'badge-danger'
+                        }`}>
+                          {r.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '0.8rem' }}>
+                        {r.status === 'approved' ? (
+                          <div>
+                            {r.temporary_password && (
+                              <span style={{ fontWeight: 700, color: '#0f172a', background: '#dcfce7', padding: '2px 6px', borderRadius: '4px' }}>
+                                {r.temporary_password}
+                              </span>
+                            )}
+                            <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: '2px' }}>
+                              By {r.resolved_by_name || 'Admin'}
+                            </div>
+                          </div>
+                        ) : r.status === 'rejected' ? (
+                          <span style={{ color: '#b91c1c' }}>{r.admin_note || 'Rejected by Admin'}</span>
+                        ) : (
+                          <span style={{ color: '#d97706', fontStyle: 'italic' }}>Awaiting Action</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {r.status === 'pending' ? (
+                          <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
+                            <button
+                              onClick={() => {
+                                setSelectedRequest(r);
+                                setResolveAction('approve');
+                                generateQuickPassword();
+                                setAdminNote('Approved by Admin. New password set.');
+                                setShowResolveModal(true);
+                              }}
+                              className="btn btn-primary btn-sm"
+                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+                            >
+                              <Check size={13} />
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedRequest(r);
+                                setResolveAction('reject');
+                                setNewPassword('');
+                                setAdminNote('Request rejected. Please visit admin desk.');
+                                setShowResolveModal(true);
+                              }}
+                              className="btn btn-danger btn-sm"
+                              style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+                            >
+                              <XCircle size={13} />
+                              <span>Reject</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Resolved</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -319,6 +525,130 @@ export default function Users() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* RESOLVE PASSWORD RESET MODAL */}
+      {showResolveModal && selectedRequest && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '500px' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <KeyRound size={18} style={{ color: resolveAction === 'approve' ? '#10b981' : '#ef4444' }} />
+                <h3>{resolveAction === 'approve' ? 'Approve & Assign Password' : 'Reject Reset Request'}</h3>
+              </div>
+              <button onClick={() => setShowResolveModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleResolveSubmit}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <span style={{ color: '#64748b' }}>Staff Username:</span>
+                    <strong className="mono" style={{ color: '#0284c7' }}>{selectedRequest.username}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                    <span style={{ color: '#64748b' }}>Full Name:</span>
+                    <strong>{selectedRequest.full_name || '-'}</strong>
+                  </div>
+                  {selectedRequest.request_note && (
+                    <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px dashed #cbd5e1', color: '#475569', fontSize: '0.785rem' }}>
+                      <strong>User Message:</strong> {selectedRequest.request_note}
+                    </div>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Action</label>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                      <input
+                        type="radio"
+                        name="resolveAction"
+                        value="approve"
+                        checked={resolveAction === 'approve'}
+                        onChange={() => {
+                          setResolveAction('approve');
+                          if (!newPassword) generateQuickPassword();
+                        }}
+                      />
+                      <span style={{ color: '#15803d', fontWeight: 600 }}>Approve & Reset Password</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                      <input
+                        type="radio"
+                        name="resolveAction"
+                        value="reject"
+                        checked={resolveAction === 'reject'}
+                        onChange={() => setResolveAction('reject')}
+                      />
+                      <span style={{ color: '#b91c1c', fontWeight: 600 }}>Reject Request</span>
+                    </label>
+                  </div>
+                </div>
+
+                {resolveAction === 'approve' && (
+                  <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                      <label className="form-label" style={{ margin: 0 }}>New Password for Staff *</label>
+                      <button
+                        type="button"
+                        onClick={generateQuickPassword}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#0284c7',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}
+                      >
+                        <Sparkles size={12} />
+                        <span>Generate Random</span>
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      className="form-control mono"
+                      required
+                      placeholder="Enter new password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                    <small style={{ color: '#64748b', fontSize: '0.72rem' }}>
+                      Staff can view this new password on the login screen's "Check Status" tab.
+                    </small>
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label className="form-label">Note for Staff (Optional)</label>
+                  <textarea
+                    className="form-control"
+                    rows={2}
+                    placeholder={resolveAction === 'approve' ? 'e.g. Password has been reset. Please keep it secure.' : 'e.g. Invalid request. Contact administrator.'}
+                    value={adminNote}
+                    onChange={(e) => setAdminNote(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowResolveModal(false)}>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resolving}
+                  className={`btn ${resolveAction === 'approve' ? 'btn-primary' : 'btn-danger'}`}
+                >
+                  {resolving ? 'Processing...' : (resolveAction === 'approve' ? 'Approve & Reset Password' : 'Reject Request')}
+                </button>
               </div>
             </form>
           </div>

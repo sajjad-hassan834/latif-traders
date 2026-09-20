@@ -707,11 +707,11 @@ export default function Inventory() {
 
                 <div className="form-grid-3">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Batch / Lot #</label>
+                    <label className="form-label">Batch / Lot # (Auto-Generated)</label>
                     <input
                       type="text"
                       className="form-control mono"
-                      placeholder="e.g. LOT-2609"
+                      placeholder="Leave blank for Auto: LOT-YYMM-XXXX"
                       value={restockForm.batch_no}
                       onChange={(e) => setRestockForm({ ...restockForm, batch_no: e.target.value })}
                     />
@@ -864,22 +864,27 @@ export default function Inventory() {
                 {/* Row 3: SKU, Barcode, Unit */}
                 <div className="form-grid-3">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">SKU / Item Code *</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label className="form-label" style={{ margin: 0 }}>SKU / Item Code</label>
+                      <span style={{ fontSize: '0.68rem', color: '#0284c7', fontWeight: 600 }}>⚡ Auto-Generated</span>
+                    </div>
                     <input
                       type="text"
                       className="form-control mono"
-                      required
-                      placeholder="e.g. DW-PRT-010"
+                      placeholder="Auto: LT-0001 (or type custom)"
                       value={formData.sku}
                       onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Barcode (Scan USB)</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label className="form-label" style={{ margin: 0 }}>Barcode</label>
+                      <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Scan or Auto</span>
+                    </div>
                     <input
                       type="text"
                       className="form-control mono"
-                      placeholder="Scan or leave blank"
+                      placeholder="Auto: Matches SKU or scan USB"
                       value={formData.barcode}
                       onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
                     />

@@ -125,3 +125,81 @@ exports.updateProfile = (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to update profile.' });
   }
 };
+
+// Staff submits a password reset request to Admin
+exports.requestPasswordReset = (req, res) => {
+  try {
+    const { username, request_note, contact_info } = req.body;
+    if (!username || !username.trim()) {
+      return res.status(400).json({ success: false, message: 'Please enter your Username or Staff ID.' });
+    }
+
+    const cleanUsername = username.trim().toLowerCase();
+    const user = db.prepare('SELECT id, username, full_name, status FROM users WHERE LOWER(username) = ?').get(cleanUsername);
+    if (!user) {
+      return res.status(404).json({ success: false, message: `Staff username "${username}" not found. Please contact Administrator.` });
+    }
+
+    if (user.status !== 'active') {
+      return res.status(403).json({ success: false, message: 'Your account is deactivated. Please contact Administrator directly.' });
+    }
+
+    // Check if there is already a pending request
+    const existing = db.prepare("SELECT id, created_at FROM password_reset_requests WHERE LOWER(username) = ? AND status = 'pending'").get(cleanUsername);
+    if (existing) {
+      return res.json({
+        success: true,
+        alreadyPending: true,
+        message: 'A password reset request is already pending Admin review. Admin has been notified.'
+      });
+    }
+
+    const note = request_note && request_note.trim()
+      ? `${request_note.trim()}${contact_info ? ' (Contact: ' + contact_info.trim() + ')' : ''}`
+      : (contact_info ? `Contact: ${contact_info.trim()}` : 'Password reset requested via login terminal');
+
+    const result = db.prepare(`
+      INSERT INTO password_reset_requests (user_id, username, full_name, request_note, status)
+      VALUES (?, ?, ?, ?, 'pending')
+    `).run(user.id, user.username, user.full_name, note);
+
+    logAudit(user.id, user.full_name, 'FORGOT_PASSWORD_REQUEST', 'USER', user.id, `Password reset requested by ${user.username}`, req);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Password reset request submitted successfully! Your administrator has been notified to approve and set your new password.',
+      requestId: result.lastInsertRowid
+    });
+  } catch (err) {
+    console.error('Password reset request error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to submit password reset request.' });
+  }
+};
+
+// Staff checks the status of their reset request
+exports.getResetRequestStatus = (req, res) => {
+  try {
+    const { username } = req.params;
+    if (!username || !username.trim()) {
+      return res.status(400).json({ success: false, message: 'Username is required.' });
+    }
+
+    const cleanUsername = username.trim().toLowerCase();
+    const latest = db.prepare(`
+      SELECT id, username, full_name, status, admin_note, temporary_password, created_at, resolved_at
+      FROM password_reset_requests
+      WHERE LOWER(username) = ?
+      ORDER BY id DESC
+      LIMIT 1
+    `).get(cleanUsername);
+
+    return res.json({
+      success: true,
+      request: latest || null
+    });
+  } catch (err) {
+    console.error('Fetch reset status error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to check reset status.' });
+  }
+};
+

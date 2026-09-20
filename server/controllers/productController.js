@@ -154,15 +154,33 @@ exports.createProduct = (req, res) => {
       opening_stock, batch_no, expiry_date
     } = req.body;
 
-    if (!name || !sku) {
-      throw new Error('Product name and SKU are required.');
+    if (!name || !name.trim()) {
+      throw new Error('Product name is required.');
     }
 
-    // Check unique SKU
-    const existing = db.prepare('SELECT id FROM products WHERE sku = ?').get(sku);
-    if (existing) {
-      throw new Error(`SKU "${sku}" is already assigned to another product.`);
+    // Auto-generate clean unique SKU if not manually specified
+    let finalSku = sku ? sku.trim().toUpperCase() : '';
+    if (!finalSku) {
+      const brandClean = brand ? brand.replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase() : 'LT';
+      const maxIdRes = db.prepare('SELECT MAX(id) as maxId, COUNT(*) as count FROM products').get();
+      let seq = (maxIdRes?.maxId || maxIdRes?.count || 0) + 1;
+      finalSku = `${brandClean || 'LT'}-${String(seq).padStart(4, '0')}`;
+      while (db.prepare('SELECT id FROM products WHERE sku = ?').get(finalSku)) {
+        seq++;
+        finalSku = `${brandClean || 'LT'}-${String(seq).padStart(4, '0')}`;
+      }
+    } else {
+      // Check unique SKU if manually specified
+      const existing = db.prepare('SELECT id FROM products WHERE sku = ?').get(finalSku);
+      if (existing) {
+        throw new Error(`SKU "${finalSku}" is already assigned to another product.`);
+      }
     }
+
+    // Auto-generate barcode matching SKU if empty
+    const finalBarcode = barcode && barcode.trim()
+      ? barcode.trim()
+      : finalSku.replace(/[^a-zA-Z0-9]/g, '');
 
     const insertProd = db.prepare(`
       INSERT INTO products (
@@ -174,8 +192,8 @@ exports.createProduct = (req, res) => {
 
     const result = insertProd.run(
       name.trim(),
-      sku.trim(),
-      barcode ? barcode.trim() : null,
+      finalSku,
+      finalBarcode,
       category_id || null,
       brand ? brand.trim() : null,
       unit || 'pkt',
@@ -192,7 +210,12 @@ exports.createProduct = (req, res) => {
     // If opening stock provided, create batch & movement
     const qty = Number(opening_stock) || 0;
     if (qty > 0) {
-      const bNo = batch_no ? batch_no.trim() : `INIT-${Date.now().toString().slice(-6)}`;
+      const today = new Date();
+      const yy = String(today.getFullYear()).slice(-2);
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const bNo = (batch_no && batch_no.trim())
+        ? batch_no.trim()
+        : `LOT-${yy}${mm}-${Date.now().toString().slice(-4)}`;
       const expDate = expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
 
       const insertBatch = db.prepare(`
@@ -389,7 +412,12 @@ exports.restockProduct = (req, res) => {
     const pPrice = purchase_price !== undefined && purchase_price !== '' ? Number(purchase_price) : product.purchase_price;
     const sPrice = sale_price !== undefined && sale_price !== '' ? Number(sale_price) : product.sale_price;
     const wPrice = wholesale_price !== undefined && wholesale_price !== '' ? Number(wholesale_price) : product.wholesale_price;
-    const batchCode = batch_no ? batch_no.trim() : `INW-${Date.now().toString().slice(-6)}`;
+    const today = new Date();
+    const yy = String(today.getFullYear()).slice(-2);
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const batchCode = (batch_no && batch_no.trim())
+      ? batch_no.trim()
+      : `LOT-${yy}${mm}-${Date.now().toString().slice(-4)}`;
     const exp = expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
 
     // Create new FIFO batch with its own cost and selling prices
