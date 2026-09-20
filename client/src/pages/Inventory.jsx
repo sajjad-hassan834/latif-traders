@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Eye, Edit, AlertTriangle, Layers, Clock, Download, Barcode, ChevronDown, MoreVertical, PlusCircle } from 'lucide-react';
+import { Search, Plus, Eye, Edit, AlertTriangle, Layers, Clock, Download, Barcode, ChevronDown, MoreVertical, PlusCircle, Trash2, AlertCircle, Check, X, Archive } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
@@ -22,6 +22,11 @@ export default function Inventory() {
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [deleteWarning, setDeleteWarning] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [editingMetaItem, setEditingMetaItem] = useState(null);
   const [showMetaModal, setShowMetaModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
@@ -298,6 +303,122 @@ export default function Inventory() {
     }
   };
 
+  const confirmDeleteProduct = (prod) => {
+    setProductToDelete(prod);
+    setDeleteWarning(null);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteProduct = async (force = false, archive = false) => {
+    if (!productToDelete) return;
+    try {
+      setDeleting(true);
+      let url = `/products/${productToDelete.id}?`;
+      if (force) url += 'force=true&';
+      if (archive) url += 'archive=true&';
+
+      const res = await api.delete(url);
+      if (res.success) {
+        setShowDeleteModal(false);
+        setProductToDelete(null);
+        setDeleteWarning(null);
+        loadData();
+      } else {
+        if (res.hasHistory) {
+          setDeleteWarning(res);
+        } else {
+          alert(res.message || 'Failed to delete product');
+        }
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete product');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm('Delete this category? Associated products will become unassigned.')) return;
+    try {
+      const res = await api.delete(`/products/meta/categories/${id}`);
+      if (res.success) {
+        const cRes = await api.get('/products/meta/categories');
+        if (cRes.success) setCategories(cRes.categories);
+        loadData();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete category');
+    }
+  };
+
+  const handleUpdateCategory = async (id, name, desc) => {
+    try {
+      const res = await api.put(`/products/meta/categories/${id}`, { name, description: desc });
+      if (res.success) {
+        setEditingMetaItem(null);
+        const cRes = await api.get('/products/meta/categories');
+        if (cRes.success) setCategories(cRes.categories);
+        loadData();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to update category');
+    }
+  };
+
+  const handleDeleteBrand = async (id) => {
+    if (!window.confirm('Delete this brand?')) return;
+    try {
+      const res = await api.delete(`/products/meta/brands/${id}`);
+      if (res.success) {
+        const bRes = await api.get('/products/meta/brands');
+        if (bRes.success) setBrands(bRes.brands);
+        loadData();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete brand');
+    }
+  };
+
+  const handleUpdateBrand = async (id, name, desc) => {
+    try {
+      const res = await api.put(`/products/meta/brands/${id}`, { name, description: desc });
+      if (res.success) {
+        setEditingMetaItem(null);
+        const bRes = await api.get('/products/meta/brands');
+        if (bRes.success) setBrands(bRes.brands);
+        loadData();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to update brand');
+    }
+  };
+
+  const handleDeleteUnit = async (id) => {
+    if (!window.confirm('Delete this unit?')) return;
+    try {
+      const res = await api.delete(`/products/meta/units/${id}`);
+      if (res.success) {
+        const uRes = await api.get('/products/meta/units');
+        if (uRes.success) setUnits(uRes.units);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete unit');
+    }
+  };
+
+  const handleUpdateUnit = async (id, name, code) => {
+    try {
+      const res = await api.put(`/products/meta/units/${id}`, { name, short_code: code });
+      if (res.success) {
+        setEditingMetaItem(null);
+        const uRes = await api.get('/products/meta/units');
+        if (uRes.success) setUnits(uRes.units);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to update unit');
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* TOOLBAR */}
@@ -440,53 +561,129 @@ export default function Inventory() {
                       <td style={{ maxWidth: '85px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.storage_location || 'Freezer'}>
                         <span style={{ fontSize: '0.725rem', color: '#64748b' }}>{p.storage_location || 'Freezer'}</span>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ position: 'relative', display: 'inline-block' }}>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActionMenuId(actionMenuId === p.id ? null : p.id);
-                            }}
-                            className="btn btn-secondary btn-sm"
-                            style={{
-                              padding: '3px 8px',
-                              fontSize: '0.725rem',
-                              fontWeight: 600,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              borderRadius: '5px'
-                            }}
-                            title="Product Actions"
-                          >
-                            <span>Action</span>
-                            <ChevronDown size={12} />
-                          </button>
-
-                          {actionMenuId === p.id && (
-                            <div
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          {canManageInventory && (
+                            <button
+                              type="button"
+                              onClick={() => openEditProduct(p)}
+                              className="btn btn-sm"
                               style={{
-                                position: 'absolute',
-                                right: 0,
-                                top: '100%',
-                                marginTop: '4px',
-                                background: '#ffffff',
-                                border: '1px solid #cbd5e1',
-                                borderRadius: '6px',
-                                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.15), 0 4px 6px -2px rgba(0,0,0,0.08)',
-                                zIndex: 100,
-                                minWidth: '155px',
-                                padding: '4px 0',
-                                textAlign: 'left'
+                                padding: '3px 7px',
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                background: '#f0f9ff',
+                                color: '#0284c7',
+                                border: '1px solid #bae6fd',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                borderRadius: '4px'
                               }}
-                              onClick={(e) => e.stopPropagation()}
+                              title="Edit Product (Update)"
                             >
-                              {canManageInventory && (
+                              <Edit size={12} />
+                              <span>Edit</span>
+                            </button>
+                          )}
+
+                          {canManageInventory && (
+                            <button
+                              type="button"
+                              onClick={() => confirmDeleteProduct(p)}
+                              className="btn btn-sm"
+                              style={{
+                                padding: '3px 7px',
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                background: '#fef2f2',
+                                color: '#dc2626',
+                                border: '1px solid #fecaca',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                borderRadius: '4px'
+                              }}
+                              title="Delete Product (Remove)"
+                            >
+                              <Trash2 size={12} />
+                              <span>Delete</span>
+                            </button>
+                          )}
+
+                          <div style={{ position: 'relative', display: 'inline-block' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActionMenuId(actionMenuId === p.id ? null : p.id);
+                              }}
+                              className="btn btn-secondary btn-sm"
+                              style={{
+                                padding: '3px 6px',
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '2px',
+                                borderRadius: '4px'
+                              }}
+                              title="More Options"
+                            >
+                              <span>More</span>
+                              <ChevronDown size={11} />
+                            </button>
+
+                            {actionMenuId === p.id && (
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  right: 0,
+                                  top: '100%',
+                                  marginTop: '4px',
+                                  background: '#ffffff',
+                                  border: '1px solid #cbd5e1',
+                                  borderRadius: '6px',
+                                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.15), 0 4px 6px -2px rgba(0,0,0,0.08)',
+                                  zIndex: 100,
+                                  minWidth: '160px',
+                                  padding: '4px 0',
+                                  textAlign: 'left'
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {canManageInventory && (
+                                  <button
+                                    onClick={() => {
+                                      setActionMenuId(null);
+                                      openRestock(p);
+                                    }}
+                                    style={{
+                                      width: '100%',
+                                      padding: '7px 12px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 600,
+                                      background: 'none',
+                                      border: 'none',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '8px',
+                                      color: '#059669',
+                                      cursor: 'pointer',
+                                      textAlign: 'left'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#ecfdf5'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                  >
+                                    <PlusCircle size={13} color="#10b981" />
+                                    <span>+ Add Stock (Inward)</span>
+                                  </button>
+                                )}
+
                                 <button
                                   onClick={() => {
                                     setActionMenuId(null);
-                                    openEditProduct(p);
+                                    openBarcode(p);
                                   }}
                                   style={{
                                     width: '100%',
@@ -505,16 +702,14 @@ export default function Inventory() {
                                   onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
                                   onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                                 >
-                                  <Edit size={13} color="#0284c7" />
-                                  <span>Edit Details</span>
+                                  <Barcode size={13} color="#6366f1" />
+                                  <span>Barcode Sticker</span>
                                 </button>
-                              )}
 
-                              {canManageInventory && (
                                 <button
                                   onClick={() => {
                                     setActionMenuId(null);
-                                    openRestock(p);
+                                    viewProductDetail(p.id);
                                   }}
                                   style={{
                                     width: '100%',
@@ -526,71 +721,50 @@ export default function Inventory() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px',
-                                    color: '#059669',
+                                    color: '#1e293b',
                                     cursor: 'pointer',
                                     textAlign: 'left'
                                   }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = '#ecfdf5'}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
                                   onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                                 >
-                                  <PlusCircle size={13} color="#10b981" />
-                                  <span>+ Add Stock (Inward)</span>
+                                  <Eye size={13} color="#10b981" />
+                                  <span>Batches & History</span>
                                 </button>
-                              )}
 
-                              <button
-                                onClick={() => {
-                                  setActionMenuId(null);
-                                  openBarcode(p);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '7px 12px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  background: 'none',
-                                  border: 'none',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  color: '#1e293b',
-                                  cursor: 'pointer',
-                                  textAlign: 'left'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                              >
-                                <Barcode size={13} color="#6366f1" />
-                                <span>Barcode Sticker</span>
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  setActionMenuId(null);
-                                  viewProductDetail(p.id);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '7px 12px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  background: 'none',
-                                  border: 'none',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  color: '#1e293b',
-                                  cursor: 'pointer',
-                                  textAlign: 'left'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                              >
-                                <Eye size={13} color="#10b981" />
-                                <span>Batches & History</span>
-                              </button>
-                            </div>
-                          )}
+                                {canManageInventory && (
+                                  <>
+                                    <div style={{ borderTop: '1px solid #f1f5f9', margin: '4px 0' }} />
+                                    <button
+                                      onClick={() => {
+                                        setActionMenuId(null);
+                                        confirmDeleteProduct(p);
+                                      }}
+                                      style={{
+                                        width: '100%',
+                                        padding: '7px 12px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        background: 'none',
+                                        border: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        color: '#dc2626',
+                                        cursor: 'pointer',
+                                        textAlign: 'left'
+                                      }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                    >
+                                      <Trash2 size={13} color="#dc2626" />
+                                      <span>Delete Product</span>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -1329,9 +1503,28 @@ export default function Inventory() {
                   </div>
                 </div>
               </div>
-              <div className="modal-footer" style={{ padding: '0.75rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '0.4rem 1.25rem' }}>Update Product</button>
+              <div className="modal-footer" style={{ padding: '0.75rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  {canManageInventory && (
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}
+                      onClick={() => {
+                        const targetProd = products.find(p => p.id === editFormData.id) || editFormData;
+                        setShowEditModal(false);
+                        confirmDeleteProduct(targetProd);
+                      }}
+                    >
+                      <Trash2 size={13} />
+                      <span>Delete Product</span>
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '0.4rem 1.25rem' }}>Update Product</button>
+                </div>
               </div>
             </form>
           </div>
@@ -1396,12 +1589,13 @@ export default function Inventory() {
                     />
                     <button type="submit" className="btn btn-primary btn-sm">Add Brand</button>
                   </form>
-                  <div className="table-responsive" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                    <div className="table-responsive" style={{ maxHeight: '240px', overflowY: 'auto' }}>
                     <table className="table">
                       <thead>
                         <tr>
                           <th>Brand Name</th>
                           <th>Description</th>
+                          <th style={{ textAlign: 'center', width: '100px' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1409,6 +1603,34 @@ export default function Inventory() {
                           <tr key={b.id || b.name}>
                             <td style={{ fontWeight: 600, color: '#0284c7' }}>{b.name}</td>
                             <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{b.description || '-'}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              <div style={{ display: 'inline-flex', gap: '4px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newN = window.prompt('Edit Brand Name:', b.name);
+                                    if (newN && newN.trim()) {
+                                      const newD = window.prompt('Edit Brand Description:', b.description || '');
+                                      handleUpdateBrand(b.id, newN.trim(), newD !== null ? newD.trim() : b.description);
+                                    }
+                                  }}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ padding: '2px 5px', fontSize: '0.7rem' }}
+                                  title="Edit Brand"
+                                >
+                                  <Edit size={11} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteBrand(b.id)}
+                                  className="btn btn-sm"
+                                  style={{ padding: '2px 5px', fontSize: '0.7rem', color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca' }}
+                                  title="Delete Brand"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1444,6 +1666,7 @@ export default function Inventory() {
                           <th>Category Name</th>
                           <th>Description</th>
                           <th style={{ textAlign: 'center' }}>Products</th>
+                          <th style={{ textAlign: 'center', width: '100px' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1452,6 +1675,34 @@ export default function Inventory() {
                             <td style={{ fontWeight: 600 }}>{c.name}</td>
                             <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{c.description || '-'}</td>
                             <td style={{ textAlign: 'center' }}><span className="badge badge-info">{c.product_count || 0}</span></td>
+                            <td style={{ textAlign: 'center' }}>
+                              <div style={{ display: 'inline-flex', gap: '4px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newN = window.prompt('Edit Category Name:', c.name);
+                                    if (newN && newN.trim()) {
+                                      const newD = window.prompt('Edit Category Description:', c.description || '');
+                                      handleUpdateCategory(c.id, newN.trim(), newD !== null ? newD.trim() : c.description);
+                                    }
+                                  }}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ padding: '2px 5px', fontSize: '0.7rem' }}
+                                  title="Edit Category"
+                                >
+                                  <Edit size={11} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteCategory(c.id)}
+                                  className="btn btn-sm"
+                                  style={{ padding: '2px 5px', fontSize: '0.7rem', color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca' }}
+                                  title="Delete Category"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1487,6 +1738,7 @@ export default function Inventory() {
                         <tr>
                           <th>Unit Name</th>
                           <th style={{ textAlign: 'center' }}>Short Code</th>
+                          <th style={{ textAlign: 'center', width: '100px' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1494,6 +1746,36 @@ export default function Inventory() {
                           <tr key={u.id}>
                             <td style={{ fontWeight: 600 }}>{u.name}</td>
                             <td style={{ textAlign: 'center' }}><span className="badge badge-secondary mono">{u.short_code}</span></td>
+                            <td style={{ textAlign: 'center' }}>
+                              <div style={{ display: 'inline-flex', gap: '4px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newN = window.prompt('Edit Unit Name:', u.name);
+                                    if (newN && newN.trim()) {
+                                      const newC = window.prompt('Edit Short Code:', u.short_code);
+                                      if (newC && newC.trim()) {
+                                        handleUpdateUnit(u.id, newN.trim(), newC.trim());
+                                      }
+                                    }
+                                  }}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ padding: '2px 5px', fontSize: '0.7rem' }}
+                                  title="Edit Unit"
+                                >
+                                  <Edit size={11} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteUnit(u.id)}
+                                  className="btn btn-sm"
+                                  style={{ padding: '2px 5px', fontSize: '0.7rem', color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca' }}
+                                  title="Delete Unit"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1504,6 +1786,108 @@ export default function Inventory() {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowMetaModal(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE PRODUCT CONFIRMATION MODAL */}
+      {showDeleteModal && productToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '480px', width: '95%' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #fee2e2', background: '#fff5f5' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#dc2626' }}>
+                <Trash2 size={20} />
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#991b1b' }}>Delete Product</h3>
+              </div>
+              <button
+                onClick={() => { setShowDeleteModal(false); setProductToDelete(null); setDeleteWarning(null); }}
+                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>{productToDelete.name}</div>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '0.775rem', color: '#64748b', flexWrap: 'wrap' }}>
+                  <span><strong>SKU:</strong> {productToDelete.sku}</span>
+                  {productToDelete.brand && <span><strong>Brand:</strong> {productToDelete.brand}</span>}
+                  <span><strong>Current Stock:</strong> {productToDelete.current_stock ?? 0} {productToDelete.unit}</span>
+                </div>
+              </div>
+
+              {deleteWarning ? (
+                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '0.85rem', color: '#92400e', fontSize: '0.825rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, marginBottom: '4px' }}>
+                    <AlertTriangle size={16} color="#d97706" />
+                    <span>Transaction History Detected</span>
+                  </div>
+                  <p style={{ margin: 0, lineHeight: 1.4 }}>
+                    {deleteWarning.message}
+                  </p>
+                  <p style={{ margin: '6px 0 0', fontSize: '0.775rem', color: '#b45309' }}>
+                    Recommendation: Mark this product as Inactive instead of deleting so that previous sales invoices and accounting records remain intact.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569', lineHeight: 1.45 }}>
+                    Are you sure you want to delete this product? All corresponding batches and movements will be removed.
+                  </p>
+                  {productToDelete.current_stock > 0 && (
+                    <div style={{ marginTop: '0.5rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.5rem 0.75rem', color: '#b91c1c', fontSize: '0.775rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <AlertCircle size={14} />
+                      <span>Warning: This item still has <strong>{productToDelete.current_stock} {productToDelete.unit}</strong> remaining in inventory!</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer" style={{ padding: '0.85rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => { setShowDeleteModal(false); setProductToDelete(null); setDeleteWarning(null); }}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+
+              {deleteWarning ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 600 }}
+                    onClick={() => handleDeleteProduct(false, true)}
+                    disabled={deleting}
+                  >
+                    Archive (Make Inactive)
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm"
+                    onClick={() => handleDeleteProduct(true, false)}
+                    disabled={deleting}
+                  >
+                    {deleting ? 'Deleting...' : 'Force Delete Permanently'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm"
+                  onClick={() => handleDeleteProduct(false, false)}
+                  disabled={deleting}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                >
+                  <Trash2 size={13} />
+                  <span>{deleting ? 'Deleting...' : 'Confirm Delete'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

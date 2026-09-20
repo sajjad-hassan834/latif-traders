@@ -274,6 +274,22 @@ exports.updateProduct = (req, res) => {
     const isAdmin = req.user && req.user.role === 'admin';
     const updatedBrand = isAdmin && brand !== undefined ? (brand ? brand.trim() : null) : existing.brand;
 
+    const finalPurchasePrice = (purchase_price !== undefined && purchase_price !== null && purchase_price !== '' && !isNaN(Number(purchase_price)))
+      ? Number(purchase_price)
+      : existing.purchase_price;
+
+    const finalSalePrice = (sale_price !== undefined && sale_price !== null && sale_price !== '' && !isNaN(Number(sale_price)))
+      ? Number(sale_price)
+      : existing.sale_price;
+
+    const finalWholesalePrice = (wholesale_price !== undefined && wholesale_price !== null && wholesale_price !== '' && !isNaN(Number(wholesale_price)))
+      ? Number(wholesale_price)
+      : existing.wholesale_price;
+
+    const finalMinStock = (min_stock_level !== undefined && min_stock_level !== null && min_stock_level !== '' && !isNaN(Number(min_stock_level)))
+      ? Number(min_stock_level)
+      : existing.min_stock_level;
+
     db.prepare(`
       UPDATE products SET
         name = ?, sku = ?, barcode = ?, category_id = ?, brand = ?, unit = ?, supplier_id = ?,
@@ -285,14 +301,14 @@ exports.updateProduct = (req, res) => {
       name ? name.trim() : existing.name,
       sku ? sku.trim() : existing.sku,
       barcode !== undefined ? barcode : existing.barcode,
-      category_id !== undefined ? category_id : existing.category_id,
+      category_id !== undefined ? (category_id ? Number(category_id) : null) : existing.category_id,
       updatedBrand,
       unit || existing.unit,
       supplier_id !== undefined ? (supplier_id ? Number(supplier_id) : null) : existing.supplier_id,
-      Number(purchase_price) ?? existing.purchase_price,
-      Number(sale_price) ?? existing.sale_price,
-      Number(wholesale_price) ?? existing.wholesale_price,
-      Number(min_stock_level) ?? existing.min_stock_level,
+      finalPurchasePrice,
+      finalSalePrice,
+      finalWholesalePrice,
+      finalMinStock,
       storage_location !== undefined ? storage_location : existing.storage_location,
       status || existing.status,
       id
@@ -304,6 +320,71 @@ exports.updateProduct = (req, res) => {
   } catch (err) {
     console.error('Error updating product:', err);
     return res.status(500).json({ success: false, message: 'Failed to update product.' });
+  }
+};
+
+// Delete product
+exports.deleteProduct = (req, res) => {
+  try {
+    const { id } = req.params;
+    const { force, archive } = req.query;
+
+    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found.' });
+    }
+
+    // If archiving requested
+    if (archive === 'true') {
+      db.prepare("UPDATE products SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(id);
+      logAudit(req.user.id, req.user.full_name, 'ARCHIVE', 'PRODUCT', id, `Archived product #${id}: ${product.name}`, req);
+      return res.json({ success: true, message: `Product "${product.name}" has been marked as Inactive.` });
+    }
+
+    // Check if product is referenced in transactions
+    const salesCount = db.prepare('SELECT COUNT(*) as c FROM sale_items WHERE product_id = ?').get(id)?.c || 0;
+    const purchasesCount = db.prepare('SELECT COUNT(*) as c FROM purchase_items WHERE product_id = ?').get(id)?.c || 0;
+    const adjustmentsCount = db.prepare('SELECT COUNT(*) as c FROM stock_adjustments WHERE product_id = ?').get(id)?.c || 0;
+    const returnsCount = db.prepare('SELECT COUNT(*) as c FROM return_items WHERE product_id = ?').get(id)?.c || 0;
+
+    const totalReferences = salesCount + purchasesCount + adjustmentsCount + returnsCount;
+
+    if (totalReferences > 0 && force !== 'true') {
+      return res.json({
+        success: false,
+        hasHistory: true,
+        salesCount,
+        purchasesCount,
+        adjustmentsCount,
+        returnsCount,
+        message: `Product "${product.name}" has ${totalReferences} transaction records (${salesCount} sales, ${purchasesCount} purchases).`
+      });
+    }
+
+    const transaction = db.transaction(() => {
+      if (totalReferences > 0 && force === 'true') {
+        db.prepare('DELETE FROM return_items WHERE product_id = ?').run(id);
+        db.prepare('DELETE FROM stock_adjustments WHERE product_id = ?').run(id);
+        db.prepare('DELETE FROM sale_items WHERE product_id = ?').run(id);
+        db.prepare('DELETE FROM purchase_items WHERE product_id = ?').run(id);
+      }
+
+      db.prepare('DELETE FROM inventory_movements WHERE product_id = ?').run(id);
+      db.prepare('DELETE FROM batches WHERE product_id = ?').run(id);
+      db.prepare('DELETE FROM products WHERE id = ?').run(id);
+
+      logAudit(req.user.id, req.user.full_name, 'DELETE', 'PRODUCT', id, `Deleted product #${id}: ${product.name} (${product.sku})`, req);
+    });
+
+    transaction();
+
+    return res.json({
+      success: true,
+      message: `Product "${product.name}" was successfully deleted.`
+    });
+  } catch (err) {
+    console.error('Error deleting product:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to delete product.' });
   }
 };
 
@@ -554,5 +635,80 @@ exports.createBrand = (req, res) => {
     return res.status(201).json({ success: true, id: result.lastInsertRowid, message: 'Brand added successfully.' });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message.includes('UNIQUE') ? 'Brand already exists.' : err.message });
+  }
+};
+
+exports.updateCategory = (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Category name is required.' });
+    db.prepare('UPDATE categories SET name = ?, description = ? WHERE id = ?').run(name.trim(), description ? description.trim() : null, id);
+    return res.json({ success: true, message: 'Category updated successfully.' });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+exports.deleteCategory = (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare('UPDATE products SET category_id = NULL WHERE category_id = ?').run(id);
+    db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+    return res.json({ success: true, message: 'Category deleted successfully.' });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+exports.updateUnit = (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, short_code } = req.body;
+    if (!name || !short_code) return res.status(400).json({ success: false, message: 'Name and short code required.' });
+    db.prepare('UPDATE units SET name = ?, short_code = ? WHERE id = ?').run(name.trim(), short_code.trim().toLowerCase(), id);
+    return res.json({ success: true, message: 'Unit updated successfully.' });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+exports.deleteUnit = (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare('DELETE FROM units WHERE id = ?').run(id);
+    return res.json({ success: true, message: 'Unit deleted successfully.' });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+exports.updateBrand = (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Brand name is required.' });
+    const existing = db.prepare('SELECT name FROM brands WHERE id = ?').get(id);
+    if (existing && existing.name !== name.trim()) {
+      db.prepare('UPDATE products SET brand = ? WHERE brand = ?').run(name.trim(), existing.name);
+    }
+    db.prepare('UPDATE brands SET name = ?, description = ? WHERE id = ?').run(name.trim(), description ? description.trim() : null, id);
+    return res.json({ success: true, message: 'Brand updated successfully.' });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+exports.deleteBrand = (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = db.prepare('SELECT name FROM brands WHERE id = ?').get(id);
+    if (existing) {
+      db.prepare('UPDATE products SET brand = NULL WHERE brand = ?').run(existing.name);
+    }
+    db.prepare('DELETE FROM brands WHERE id = ?').run(id);
+    return res.json({ success: true, message: 'Brand deleted successfully.' });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
   }
 };
