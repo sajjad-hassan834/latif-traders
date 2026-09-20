@@ -5,7 +5,8 @@ import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
 
 export default function Customers() {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin: authIsAdmin } = useAuth();
+  const isAdmin = authIsAdmin || user?.role === 'admin';
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -192,16 +193,16 @@ export default function Customers() {
       {/* CUSTOMERS TABLE */}
       <div className="card" style={{ padding: 0, overflow: 'visible' }}>
         <div className="table-responsive" style={{ minHeight: '300px', paddingBottom: '90px', overflowX: 'auto' }}>
-          <table className="table" style={{ width: '100%', minWidth: '700px' }}>
+          <table className="table" style={{ width: '100%', minWidth: '720px' }}>
             <thead>
               <tr>
-                <th>Customer Name</th>
-                <th>Type</th>
-                <th style={{ minWidth: '130px' }}>Phone</th>
-                <th style={{ minWidth: '150px' }}>Address</th>
-                <th style={{ textAlign: 'right', minWidth: '100px' }}>Credit Limit</th>
-                <th style={{ textAlign: 'right', minWidth: '110px' }}>Current Balance</th>
-                <th style={{ textAlign: 'center', width: '85px' }}>Actions</th>
+                <th style={{ minWidth: '160px', textAlign: 'left' }}>Customer Name</th>
+                <th style={{ width: '90px', minWidth: '90px', textAlign: 'center' }}>Type</th>
+                <th style={{ width: '130px', minWidth: '130px', textAlign: 'left' }}>Phone</th>
+                <th style={{ minWidth: '150px', textAlign: 'left' }}>Address</th>
+                <th style={{ textAlign: 'right', width: '110px', minWidth: '110px' }}>Credit Limit</th>
+                <th style={{ textAlign: 'right', width: '125px', minWidth: '125px' }}>Current Balance</th>
+                <th style={{ textAlign: 'center', width: '100px', minWidth: '100px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -213,7 +214,7 @@ export default function Customers() {
                 customers.map(c => (
                   <tr key={c.id}>
                     <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{c.name}</td>
-                    <td>
+                    <td style={{ textAlign: 'center' }}>
                       <span className={`badge ${c.customer_type === 'Wholesale' ? 'badge-info' : 'badge-success'}`}>
                         {c.customer_type}
                       </span>
@@ -350,34 +351,54 @@ export default function Customers() {
                               </button>
                             )}
 
-                            {isAdmin && c.id !== 1 && (
-                              <button
-                                onClick={() => {
-                                  setActionMenuId(null);
-                                  setCustomerToDelete(c);
-                                  setShowDeleteModal(true);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '7px 12px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  background: 'none',
-                                  border: 'none',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  color: '#dc2626',
-                                  cursor: 'pointer',
-                                  textAlign: 'left',
-                                  borderTop: '1px solid #f1f5f9'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                              >
-                                <Trash2 size={13} color="#dc2626" />
-                                <span>Delete Customer</span>
-                              </button>
+                            {isAdmin && (
+                              c.id === 1 ? (
+                                <div
+                                  style={{
+                                    padding: '7px 12px',
+                                    fontSize: '0.725rem',
+                                    color: '#94a3b8',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    borderTop: '1px solid #f1f5f9',
+                                    fontStyle: 'italic'
+                                  }}
+                                  title="System Walk-in Counter customer is protected and cannot be deleted"
+                                >
+                                  <Trash2 size={13} color="#cbd5e1" />
+                                  <span>Walk-in (Protected)</span>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionMenuId(null);
+                                    setCustomerToDelete(c);
+                                    setShowDeleteModal(true);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '7px 12px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    background: 'none',
+                                    border: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    color: '#dc2626',
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                    borderTop: '1px solid #f1f5f9'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                >
+                                  <Trash2 size={13} color="#dc2626" />
+                                  <span>Delete Customer</span>
+                                </button>
+                              )
                             )}
                           </div>
                         )}

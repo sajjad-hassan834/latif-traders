@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, ArrowUpRight, ArrowDownLeft, Printer, FileText, Eye, CheckCircle } from 'lucide-react';
+import { DollarSign, ArrowUpRight, ArrowDownLeft, Printer, FileText, Eye, CheckCircle, Filter } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
@@ -83,31 +83,40 @@ export default function CashFlow() {
       <div className="card no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', padding: '0.85rem 1.25rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', color: '#64748b' }}>From:</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>From:</span>
             <input
               type="date"
               className="form-control"
-              style={{ height: '34px', fontSize: '0.85rem', minWidth: '130px' }}
+              style={{ height: '34px', fontSize: '0.85rem', minWidth: '135px' }}
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', color: '#64748b' }}>To:</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>To:</span>
             <input
               type="date"
               className="form-control"
-              style={{ height: '34px', fontSize: '0.85rem', minWidth: '130px' }}
+              style={{ height: '34px', fontSize: '0.85rem', minWidth: '135px' }}
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
             />
           </div>
-          <button onClick={loadCashbook} className="btn btn-secondary btn-sm" style={{ padding: '0.45rem 1rem' }}>
-            Filter
+          <button
+            onClick={loadCashbook}
+            className="btn btn-primary btn-sm"
+            style={{ height: '34px', padding: '0 1rem', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem', fontWeight: 600 }}
+          >
+            <Filter size={14} />
+            <span>Filter</span>
           </button>
         </div>
 
-        <button onClick={() => window.print()} className="btn btn-secondary btn-sm" style={{ padding: '0.45rem 1rem' }}>
+        <button
+          onClick={() => window.print()}
+          className="btn btn-secondary btn-sm"
+          style={{ height: '34px', padding: '0 1rem', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}
+        >
           <Printer size={15} />
           <span>Print Daily Cashbook</span>
         </button>
@@ -197,18 +206,18 @@ export default function CashFlow() {
               </div>
             </div>
 
-            <div className="table-responsive">
-              <table className="table" style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse' }}>
+            <div className="table-responsive" style={{ overflowX: 'auto' }}>
+              <table className="table" style={{ width: '100%', minWidth: '880px', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={{ width: '95px' }}>Date</th>
-                    <th style={{ width: '160px' }}>Ref / Invoice #</th>
-                    <th>Transaction Type</th>
-                    <th>Party / Account</th>
-                    <th>Notes</th>
-                    <th style={{ textAlign: 'right', width: '135px' }}>Cash In (Receipt)</th>
-                    <th style={{ textAlign: 'right', width: '135px' }}>Cash Out (Payment)</th>
-                    <th className="no-print" style={{ textAlign: 'center', width: '85px' }}>Action</th>
+                    <th style={{ width: '95px', minWidth: '95px', textAlign: 'left' }}>Date</th>
+                    <th style={{ width: '150px', minWidth: '150px', textAlign: 'left' }}>Ref / Invoice #</th>
+                    <th style={{ width: '140px', minWidth: '140px', textAlign: 'left' }}>Transaction Type</th>
+                    <th style={{ width: '140px', minWidth: '140px', textAlign: 'left' }}>Party / Account</th>
+                    <th style={{ minWidth: '120px', textAlign: 'left' }}>Notes</th>
+                    <th style={{ textAlign: 'right', width: '130px', minWidth: '130px' }}>Cash In (Receipt)</th>
+                    <th style={{ textAlign: 'right', width: '130px', minWidth: '130px' }}>Cash Out (Payment)</th>
+                    <th className="no-print" style={{ textAlign: 'center', width: '85px', minWidth: '85px' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -219,8 +228,8 @@ export default function CashFlow() {
                   ) : (
                     cashbook?.entries?.map((entry, idx) => (
                       <tr key={idx}>
-                        <td style={{ whiteSpace: 'nowrap' }}>{formatDate(entry.date)}</td>
-                        <td>
+                        <td style={{ width: '95px', whiteSpace: 'nowrap', textAlign: 'left' }}>{formatDate(entry.date)}</td>
+                        <td style={{ width: '150px', textAlign: 'left' }}>
                           <button
                             type="button"
                             onClick={() => handleViewReceipt(entry)}
@@ -245,16 +254,16 @@ export default function CashFlow() {
                             <span>{entry.ref_no}</span>
                           </button>
                         </td>
-                        <td style={{ fontWeight: 600 }}>{entry.title}</td>
-                        <td>{entry.party_name || '-'}</td>
-                        <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{entry.notes || '-'}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#10b981' }}>
+                        <td style={{ width: '140px', fontWeight: 600, textAlign: 'left' }}>{entry.title}</td>
+                        <td style={{ width: '140px', textAlign: 'left' }}>{entry.party_name || '-'}</td>
+                        <td style={{ minWidth: '120px', fontSize: '0.8rem', color: '#64748b', textAlign: 'left' }}>{entry.notes || '-'}</td>
+                        <td style={{ textAlign: 'right', width: '130px', fontWeight: 700, color: '#10b981', whiteSpace: 'nowrap' }}>
                           {entry.flow === 'IN' ? formatPKR(entry.amount) : '-'}
                         </td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#ef4444' }}>
+                        <td style={{ textAlign: 'right', width: '130px', fontWeight: 700, color: '#ef4444', whiteSpace: 'nowrap' }}>
                           {entry.flow === 'OUT' ? formatPKR(entry.amount) : '-'}
                         </td>
-                        <td className="no-print" style={{ textAlign: 'center' }}>
+                        <td className="no-print" style={{ textAlign: 'center', width: '85px', whiteSpace: 'nowrap' }}>
                           <button
                             type="button"
                             className="btn btn-secondary btn-sm"
@@ -274,13 +283,13 @@ export default function CashFlow() {
                   <tfoot>
                     <tr style={{ background: '#f8fafc', fontWeight: 800, borderTop: '2px solid #cbd5e1' }}>
                       <td colSpan="5" style={{ textAlign: 'right', padding: '0.65rem 0.75rem', fontSize: '0.85rem' }}>TOTALS:</td>
-                      <td style={{ textAlign: 'right', color: '#10b981', padding: '0.65rem 0.75rem', fontSize: '0.875rem' }}>
+                      <td style={{ textAlign: 'right', width: '130px', color: '#10b981', padding: '0.65rem 0.75rem', fontSize: '0.875rem' }}>
                         {formatPKR(cashbook?.total_in || 0)}
                       </td>
-                      <td style={{ textAlign: 'right', color: '#ef4444', padding: '0.65rem 0.75rem', fontSize: '0.875rem' }}>
+                      <td style={{ textAlign: 'right', width: '130px', color: '#ef4444', padding: '0.65rem 0.75rem', fontSize: '0.875rem' }}>
                         {formatPKR(cashbook?.total_out || 0)}
                       </td>
-                      <td className="no-print"></td>
+                      <td className="no-print" style={{ width: '85px' }}></td>
                     </tr>
                     <tr style={{ background: '#f1f5f9', fontWeight: 900 }}>
                       <td colSpan="5" style={{ textAlign: 'right', padding: '0.65rem 0.75rem', fontSize: '0.85rem', color: '#0f172a' }}>
@@ -294,7 +303,7 @@ export default function CashFlow() {
                       }}>
                         {formatPKR(cashbook?.net_cash_flow || 0)}
                       </td>
-                      <td className="no-print"></td>
+                      <td className="no-print" style={{ width: '85px' }}></td>
                     </tr>
                   </tfoot>
                 )}
