@@ -317,6 +317,41 @@ exports.updateSupplier = (req, res) => {
   }
 };
 
+exports.deleteSupplier = (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(id);
+    if (!supplier) {
+      return res.status(404).json({ success: false, message: 'Supplier not found.' });
+    }
+
+    if (Math.abs(Number(supplier.current_balance) || 0) > 0.01) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete supplier "${supplier.name}" with an active payable balance of ₨ ${supplier.current_balance}. Please settle the balance first.`
+      });
+    }
+
+    const deleteTransaction = db.transaction(() => {
+      // Nullify supplier reference in historical purchases so purchase records remain valid
+      db.prepare('UPDATE purchases SET supplier_id = NULL WHERE supplier_id = ?').run(id);
+      // Delete party payment ledger records
+      db.prepare("DELETE FROM payments WHERE party_type = 'SUPPLIER' AND party_id = ?").run(id);
+      // Delete supplier record
+      db.prepare('DELETE FROM suppliers WHERE id = ?').run(id);
+    });
+
+    deleteTransaction();
+
+    logAudit(req.user.id, req.user.full_name, 'DELETE', 'SUPPLIER', id, `Deleted supplier ${supplier.name}`, req);
+    return res.json({ success: true, message: `Supplier "${supplier.name}" deleted successfully.` });
+  } catch (err) {
+    console.error('Error deleting supplier:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to delete supplier.' });
+  }
+};
+
 // Supplier Ledger (Date-wise statement)
 exports.getSupplierLedger = (req, res) => {
   try {

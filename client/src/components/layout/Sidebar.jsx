@@ -80,8 +80,8 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
   const userRole = role || 'sales';
 
   const [brandInfo, setBrandInfo] = React.useState({
-    name: localStorage.getItem('lt_shop_name') || 'Sajjad Traders',
-    tagline: localStorage.getItem('lt_shop_tagline') || 'Frozen Food Wholesalers'
+    name: localStorage.getItem('lt_shop_name') || 'Latif Traders',
+    tagline: localStorage.getItem('lt_shop_tagline') || 'CHICKEN SUPPLIER'
   });
 
   React.useEffect(() => {
@@ -91,16 +91,17 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
         if (res.settings.shop_name) localStorage.setItem('lt_shop_name', res.settings.shop_name);
         if (res.settings.tagline) localStorage.setItem('lt_shop_tagline', res.settings.tagline);
         setBrandInfo({
-          name: res.settings.shop_name || 'Sajjad Traders',
-          tagline: res.settings.tagline || 'Frozen Food Wholesalers'
+          name: res.settings.shop_name || 'Latif Traders',
+          tagline: res.settings.tagline || 'CHICKEN SUPPLIER'
         });
       }
     }).catch(() => {});
 
-    const handleSettingsUpdate = () => {
+    const handleSettingsUpdate = (e) => {
+      const detail = e?.detail;
       setBrandInfo({
-        name: localStorage.getItem('lt_shop_name') || 'Sajjad Traders',
-        tagline: localStorage.getItem('lt_shop_tagline') || 'Frozen Food Wholesalers'
+        name: detail?.shop_name || localStorage.getItem('lt_shop_name') || 'Latif Traders',
+        tagline: detail?.tagline || localStorage.getItem('lt_shop_tagline') || 'CHICKEN SUPPLIER'
       });
     };
     window.addEventListener('settings_updated', handleSettingsUpdate);

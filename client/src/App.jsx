@@ -53,12 +53,13 @@ function MainApp() {
         if (res && res.success && res.settings) {
           if (res.settings.shop_name) {
             localStorage.setItem('lt_shop_name', res.settings.shop_name);
-            document.title = `${res.settings.shop_name} - Frozen Food System`;
+            document.title = `${res.settings.shop_name} - POS & Inventory System`;
           }
-          if (res.settings.tagline) {
-            localStorage.setItem('lt_shop_tagline', res.settings.tagline);
-          }
-          window.dispatchEvent(new Event('settings_updated'));
+          if (res.settings.tagline) localStorage.setItem('lt_shop_tagline', res.settings.tagline);
+          if (res.settings.phone) localStorage.setItem('lt_phone', res.settings.phone);
+          if (res.settings.email) localStorage.setItem('lt_email', res.settings.email);
+          if (res.settings.address) localStorage.setItem('lt_address', res.settings.address);
+          window.dispatchEvent(new CustomEvent('settings_updated', { detail: res.settings }));
         }
       }).catch(() => {});
     };

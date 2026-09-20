@@ -20,11 +20,11 @@ export default function CashFlow() {
   const [receiptLoading, setReceiptLoading] = useState(false);
 
   const [settings, setSettings] = useState(() => ({
-    shop_name: localStorage.getItem('lt_shop_name') || 'Sajjad Traders',
-    tagline: localStorage.getItem('lt_shop_tagline') || 'Premium Frozen Food Wholesalers & Cold Chain Logistics',
-    phone: '+92 300 1234567',
-    address: 'Commercial Market, Lahore, Pakistan',
-    email: ''
+    shop_name: localStorage.getItem('lt_shop_name') || 'Latif Traders',
+    tagline: localStorage.getItem('lt_shop_tagline') || 'CHICKEN SUPPLIER',
+    phone: localStorage.getItem('lt_phone') || '',
+    address: localStorage.getItem('lt_address') || '',
+    email: localStorage.getItem('lt_email') || ''
   }));
 
   useEffect(() => {
@@ -126,7 +126,7 @@ export default function CashFlow() {
       <div className="printable-area">
         {/* Subtle diagonal background watermark */}
         <div className="report-watermark">
-          {settings.shop_name || 'Sajjad Traders'}™ • OFFICIAL BUSINESS RECORD
+          {settings.shop_name || 'Latif Traders'}™ • OFFICIAL BUSINESS RECORD
         </div>
 
         <div className="report-print-container">
@@ -311,7 +311,7 @@ export default function CashFlow() {
             </div>
           </div>
 
-          <ReportPrintFooter shopName={settings.shop_name || 'Sajjad Traders'} />
+          <ReportPrintFooter shopName={settings.shop_name || 'Latif Traders'} />
         </div>
       </div>
 

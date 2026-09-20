@@ -8,11 +8,11 @@ export default function ReportPrintHeader({
   docRef,
   user
 }) {
-  const shopName = settings.shop_name || localStorage.getItem('lt_shop_name') || 'Sajjad Traders';
-  const tagline = settings.tagline || localStorage.getItem('lt_shop_tagline') || 'Premium Frozen Food Wholesalers & Cold Chain Logistics';
-  const phone = settings.phone || '+92 300 1234567';
-  const email = settings.email || '';
-  const address = settings.address || 'Commercial Market, Lahore, Pakistan';
+  const shopName = settings.shop_name || localStorage.getItem('lt_shop_name') || 'Latif Traders';
+  const tagline = settings.tagline || localStorage.getItem('lt_shop_tagline') || 'CHICKEN SUPPLIER';
+  const phone = settings.phone || localStorage.getItem('lt_phone') || '';
+  const email = settings.email || localStorage.getItem('lt_email') || '';
+  const address = settings.address || localStorage.getItem('lt_address') || '';
   const generatedAt = new Date().toLocaleString('en-GB', {
     day: '2-digit',
     month: 'short',

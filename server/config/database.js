@@ -341,7 +341,7 @@ function initializeDatabase() {
 
   // One-time automatic production delivery database cleanup migration
   try {
-    const cleanSetting = db.prepare("SELECT value FROM settings WHERE key = 'production_delivery_wipe_done'").get();
+    const cleanSetting = db.prepare("SELECT value FROM settings WHERE key = 'production_fresh_start_sept2026'").get();
     if (!cleanSetting) {
       console.log('--- EXECUTING PRODUCTION CLIENT DELIVERY DATABASE WIPE ---');
       const wipeTx = db.transaction(() => {
@@ -389,7 +389,7 @@ function initializeDatabase() {
           } catch (_) {}
         }
 
-        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('production_delivery_wipe_done', 'true')").run();
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('production_fresh_start_sept2026', 'true')").run();
       });
 
       wipeTx();

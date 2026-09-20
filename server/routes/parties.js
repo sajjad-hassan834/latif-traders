@@ -16,6 +16,7 @@ router.get('/customers/:id/ledger', partyController.getCustomerLedger);
 router.get('/suppliers', requireRoles('inventory', 'accountant'), partyController.getSuppliers);
 router.post('/suppliers', requireRoles('inventory', 'accountant'), partyController.createSupplier);
 router.put('/suppliers/:id', requireRoles('inventory', 'accountant'), partyController.updateSupplier);
+router.delete('/suppliers/:id', requireRoles('admin'), partyController.deleteSupplier);
 router.get('/suppliers/:id/ledger', requireRoles('inventory', 'accountant'), partyController.getSupplierLedger);
 
 module.exports = router;

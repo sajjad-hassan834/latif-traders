@@ -3,6 +3,7 @@ const { logAudit } = require('../middleware/audit');
 
 exports.getSettings = (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     const rows = db.prepare('SELECT key, value FROM settings').all();
     const settings = {};
     for (const r of rows) {

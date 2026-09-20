@@ -13,7 +13,9 @@ import {
   Edit2,
   Search,
   X,
-  Check
+  Check,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
@@ -51,6 +53,11 @@ export default function Settings() {
   const [editRowData, setEditRowData] = useState({});
   const [savingRow, setSavingRow] = useState(false);
 
+  // Fresh Start / Wipe Data for Delivery States
+  const [showWipeModal, setShowWipeModal] = useState(false);
+  const [wiping, setWiping] = useState(false);
+  const [wipeConfirmText, setWipeConfirmText] = useState('');
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -63,6 +70,9 @@ export default function Settings() {
         setSettings(prev => ({ ...prev, ...sRes.settings }));
         if (sRes.settings.shop_name) localStorage.setItem('lt_shop_name', sRes.settings.shop_name);
         if (sRes.settings.tagline) localStorage.setItem('lt_shop_tagline', sRes.settings.tagline);
+        if (sRes.settings.phone) localStorage.setItem('lt_phone', sRes.settings.phone);
+        if (sRes.settings.email) localStorage.setItem('lt_email', sRes.settings.email);
+        if (sRes.settings.address) localStorage.setItem('lt_address', sRes.settings.address);
       }
       if (bRes.success) setBackups(bRes.backups);
     } catch (err) {
@@ -167,12 +177,13 @@ export default function Settings() {
         setSaveSuccess('Settings saved successfully!');
         if (settings.shop_name) {
           localStorage.setItem('lt_shop_name', settings.shop_name);
-          document.title = `${settings.shop_name} - Frozen Food System`;
+          document.title = `${settings.shop_name} - POS & Inventory System`;
         }
-        if (settings.tagline) {
-          localStorage.setItem('lt_shop_tagline', settings.tagline);
-        }
-        window.dispatchEvent(new Event('settings_updated'));
+        if (settings.tagline) localStorage.setItem('lt_shop_tagline', settings.tagline);
+        if (settings.phone) localStorage.setItem('lt_phone', settings.phone);
+        if (settings.email) localStorage.setItem('lt_email', settings.email);
+        if (settings.address) localStorage.setItem('lt_address', settings.address);
+        window.dispatchEvent(new CustomEvent('settings_updated', { detail: settings }));
         loadDbTables();
         if (selectedTable === 'settings') {
           loadTableData('settings');
@@ -183,6 +194,23 @@ export default function Settings() {
       alert('Failed to save settings: ' + err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleWipeData = async () => {
+    try {
+      setWiping(true);
+      const res = await api.post('/settings/wipe-data-delivery');
+      if (res.success) {
+        setShowWipeModal(false);
+        setWipeConfirmText('');
+        alert(res.message || 'Database successfully wiped for fresh delivery! Sole Admin is Mudassir Arif.');
+        window.location.reload();
+      }
+    } catch (err) {
+      alert('Failed to wipe data: ' + err.message);
+    } finally {
+      setWiping(false);
     }
   };
 
@@ -489,6 +517,44 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* SYSTEM FRESH START / CLIENT DELIVERY DATA WIPE */}
+      <div className="card" style={{ padding: '1.25rem', border: '1px solid #fecaca', background: '#fffafb', borderRadius: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fca5a5', flexShrink: 0, marginTop: '2px' }}>
+              <Trash2 size={20} color="#dc2626" />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '4px' }}>
+                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: '#991b1b' }}>
+                  Client Delivery Fresh Start (Wipe Test Data)
+                </h3>
+                <span className="badge badge-danger" style={{ fontSize: '0.675rem', padding: '2px 8px' }}>
+                  Admin Tool
+                </span>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: '#7f1d1d', margin: 0, maxWidth: '650px', lineHeight: 1.5 }}>
+                Carefully cleans all test transactions, sales, purchases, test products, batches, suppliers, customer balances, and demo staff so your client starts with fresh, pristine records.
+                <strong> Mudassir Arif</strong> will be preserved as the sole Administrator, and default units and categories remain ready for client use.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setWipeConfirmText('');
+              setShowWipeModal(true);
+            }}
+            className="btn btn-danger"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, padding: '0.55rem 1.1rem', boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)' }}
+          >
+            <Trash2 size={15} />
+            <span>Wipe All Test Data (Fresh Start)</span>
+          </button>
+        </div>
+      </div>
+
       {/* 3. LIVE DATABASE EXPLORER (MODERNIZED UI & LIVE EDITOR) */}
       <div className="card" style={{ padding: '1.25rem', border: '1px solid #cbd5e1', boxShadow: '0 4px 15px -3px rgba(0,0,0,0.07)' }}>
         {/* Modern Header Banner */}
@@ -791,6 +857,72 @@ export default function Settings() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* FRESH START WIPE CONFIRMATION MODAL */}
+      {showWipeModal && (
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+          <div className="modal-card card" style={{ maxWidth: '480px', width: '90%', padding: '1.5rem', border: '2px solid #ef4444', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', borderBottom: '1px solid #fee2e2', paddingBottom: '0.75rem' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <AlertTriangle size={20} color="#dc2626" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, color: '#991b1b' }}>
+                  Confirm Fresh Start Wipe
+                </h3>
+                <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>This action is permanent and irreversible.</p>
+              </div>
+            </div>
+
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '0.85rem', marginBottom: '1.25rem', fontSize: '0.825rem', color: '#991b1b', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>The following data will be permanently cleared:</p>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                <li>All sales invoices, POS records & customer debts</li>
+                <li>All purchase receipts, restocks & batches</li>
+                <li>All products, suppliers & supplier ledgers</li>
+                <li>All expense vouchers, return receipts & stock adjustments</li>
+                <li>All demo staff accounts (Keeping <strong>Mudassir Arif</strong> as sole Admin)</li>
+              </ul>
+            </div>
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+                To confirm, please type <strong style={{ color: '#dc2626' }}>WIPE</strong> below:
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Type WIPE to confirm"
+                value={wipeConfirmText}
+                onChange={(e) => setWipeConfirmText(e.target.value)}
+                autoFocus
+                style={{ fontWeight: 700, letterSpacing: '1px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setShowWipeModal(false)}
+                className="btn btn-secondary"
+                disabled={wiping}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleWipeData}
+                disabled={wipeConfirmText !== 'WIPE' || wiping}
+                className="btn btn-danger"
+                style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+              >
+                <Trash2 size={14} />
+                <span>{wiping ? 'Wiping Database...' : 'Permanently Wipe & Start Fresh'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
