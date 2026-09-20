@@ -164,6 +164,31 @@ namespace LatifTradersSetup
                 Directory.CreateDirectory(installDir);
             }
 
+            // Stop any existing running instance of Latif Traders before updating
+            try
+            {
+                foreach (Process proc in Process.GetProcessesByName("LatifTraders"))
+                {
+                    try { proc.Kill(); proc.WaitForExit(1500); } catch { }
+                }
+
+                foreach (Process proc in Process.GetProcessesByName("node"))
+                {
+                    try
+                    {
+                        if (proc.MainModule != null && proc.MainModule.FileName.IndexOf("LatifTraders", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            proc.Kill();
+                            proc.WaitForExit(1500);
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            Thread.Sleep(500);
+
             Assembly asm = Assembly.GetExecutingAssembly();
             using (Stream resourceStream = asm.GetManifestResourceStream("package.zip"))
             {
@@ -184,8 +209,23 @@ namespace LatifTradersSetup
                             continue;
                         }
 
+                        // Never overwrite existing customer & sales database
                         if (entry.FullName.Replace('\\', '/').Contains("data/latif_traders.db") && File.Exists(targetPath))
                         {
+                            continue;
+                        }
+
+                        // If node.exe already exists, don't crash if locked by running process
+                        if (entry.FullName.Replace('\\', '/').EndsWith("bin/node.exe") && File.Exists(targetPath))
+                        {
+                            try
+                            {
+                                entry.ExtractToFile(targetPath, true);
+                            }
+                            catch (IOException)
+                            {
+                                // node.exe is already in place and active, safe to continue
+                            }
                             continue;
                         }
 
@@ -195,7 +235,15 @@ namespace LatifTradersSetup
                             Directory.CreateDirectory(parentDir);
                         }
 
-                        entry.ExtractToFile(targetPath, true);
+                        try
+                        {
+                            entry.ExtractToFile(targetPath, true);
+                        }
+                        catch (IOException)
+                        {
+                            Thread.Sleep(300);
+                            try { entry.ExtractToFile(targetPath, true); } catch { }
+                        }
                     }
                 }
             }
