@@ -205,8 +205,8 @@ export default function Users() {
 
       {/* USERS LIST */}
       {activeTab === 'users' && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="table-responsive">
+        <div className="card" style={{ padding: 0, overflow: 'visible' }}>
+          <div className="table-responsive" style={{ minHeight: '120px', paddingBottom: '60px', overflowX: 'auto' }}>
             <table className="table" style={{ width: '100%', minWidth: '650px' }}>
               <thead>
                 <tr>

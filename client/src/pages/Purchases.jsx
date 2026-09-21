@@ -338,8 +338,8 @@ export default function Purchases() {
       </div>
 
       {/* PURCHASES LIST */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="table-responsive">
+      <div className="card" style={{ padding: 0, overflow: 'visible' }}>
+        <div className="table-responsive" style={{ paddingBottom: '60px', overflowX: 'auto' }}>
           <table className="table" style={{ minWidth: '720px' }}>
             <thead>
               <tr>
