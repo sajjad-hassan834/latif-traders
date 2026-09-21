@@ -20,9 +20,9 @@ exports.getDashboardMetrics = (req, res) => {
     const todayPurchases = db.prepare(`
       SELECT
         COUNT(p.id) as bill_count,
-        COALESCE(SUM(p.grand_total), 0) - COALESCE((
+        MAX(0, COALESCE(SUM(p.grand_total), 0) - COALESCE((
           SELECT SUM(total_amount) FROM returns WHERE type = 'PURCHASE_RETURN' AND date(created_at) = ?
-        ), 0) as total_purchases,
+        ), 0)) as total_purchases,
         COALESCE(SUM(p.paid_amount), 0) as cash_paid
       FROM purchases p
       WHERE p.purchase_date = ?
