@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Plus, History, UserCheck, Lock, Edit, KeyRound, Check, XCircle, Clock, Sparkles, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Plus, History, UserCheck, Lock, Edit, KeyRound, Check, XCircle, Clock, Sparkles, RefreshCw, Trash2 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
 
@@ -14,6 +14,7 @@ export default function Users() {
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -85,6 +86,20 @@ export default function Users() {
       }
     } catch (err) {
       alert(err.message || 'Failed to update user');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    try {
+      const res = await api.delete(`/users/${selectedUser.id}`);
+      if (res.success) {
+        setShowDeleteModal(false);
+        setSelectedUser(null);
+        loadData();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete user');
     }
   };
 
@@ -219,17 +234,32 @@ export default function Users() {
                     </td>
                     <td>{formatDate(u.created_at)}</td>
                     <td style={{ textAlign: 'center' }}>
-                      <button
-                        onClick={() => {
-                          setSelectedUser({ ...u, password: '' });
-                          setShowEditModal(true);
-                        }}
-                        className="btn btn-secondary btn-sm"
-                        title="Edit User / Reset Password"
-                      >
-                        <Edit size={14} />
-                        <span>Edit</span>
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => {
+                            setSelectedUser({ ...u, password: '' });
+                            setShowEditModal(true);
+                          }}
+                          className="btn btn-secondary btn-sm"
+                          title="Edit User / Reset Password"
+                        >
+                          <Edit size={14} />
+                          <span>Edit</span>
+                        </button>
+                        {u.username !== 'admin' && (
+                          <button
+                            onClick={() => {
+                              setSelectedUser(u);
+                              setShowDeleteModal(true);
+                            }}
+                            className="btn btn-sm"
+                            style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}
+                            title="Delete User"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -431,6 +461,17 @@ export default function Users() {
                 </div>
 
                 <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    placeholder="e.g. tariq@latiftraders.com"
+                    value={formData.email || ''}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
                   <label className="form-label">Role Permissions *</label>
                   <select
                     className="form-control"
@@ -486,6 +527,17 @@ export default function Users() {
                 </div>
 
                 <div className="form-group">
+                  <label className="form-label">Email</label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    value={selectedUser.email || ''}
+                    onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
+                    placeholder="e.g. user@latiftraders.com"
+                  />
+                </div>
+
+                <div className="form-group">
                   <label className="form-label">Role</label>
                   <select
                     className="form-control"
@@ -527,6 +579,46 @@ export default function Users() {
                 <button type="submit" className="btn btn-primary">Save Changes</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE USER CONFIRMATION MODAL */}
+      {showDeleteModal && selectedUser && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '440px' }}>
+            <div className="modal-header">
+              <h3 style={{ color: '#dc2626' }}>Delete User</h3>
+              <button onClick={() => { setShowDeleteModal(false); setSelectedUser(null); }}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
+                <p style={{ margin: 0, fontWeight: 600, color: '#991b1b' }}>
+                  Are you sure you want to delete this user account?
+                </p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.9rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Username:</span>
+                  <strong className="mono">{selectedUser.username}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Full Name:</span>
+                  <strong>{selectedUser.full_name}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Role:</span>
+                  <strong>{selectedUser.role}</strong>
+                </div>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '1rem 0 0' }}>
+                This action cannot be undone. All password reset requests for this user will also be removed.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => { setShowDeleteModal(false); setSelectedUser(null); }}>Cancel</button>
+              <button className="btn btn-danger" onClick={handleDeleteUser}>Yes, Delete User</button>
+            </div>
           </div>
         </div>
       )}

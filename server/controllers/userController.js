@@ -209,3 +209,28 @@ exports.resolvePasswordResetRequest = (req, res) => {
   }
 };
 
+exports.deleteUser = (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+
+    if (user.username === 'admin') {
+      return res.status(400).json({ success: false, message: 'Cannot delete the Master Admin account.' });
+    }
+
+    if (req.user.id === user.id) {
+      return res.status(400).json({ success: false, message: 'Cannot delete your own account.' });
+    }
+
+    db.prepare('DELETE FROM password_reset_requests WHERE user_id = ?').run(id);
+    db.prepare('DELETE FROM users WHERE id = ?').run(id);
+
+    logAudit(req.user.id, req.user.full_name, 'DELETE', 'USER', id, `Deleted user account: ${user.username} (${user.role})`, req);
+
+    return res.json({ success: true, message: `User "${user.username}" deleted successfully.` });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Failed to delete user.' });
+  }
+};
+
