@@ -16,15 +16,17 @@ exports.getDashboardMetrics = (req, res) => {
       WHERE sale_date = ?
     `).get(today);
 
-    // Today's Purchases
+    // Today's Purchases (Net of Returns)
     const todayPurchases = db.prepare(`
       SELECT
-        COUNT(*) as bill_count,
-        COALESCE(SUM(grand_total), 0) as total_purchases,
-        COALESCE(SUM(paid_amount), 0) as cash_paid
-      FROM purchases
-      WHERE purchase_date = ?
-    `).get(today);
+        COUNT(p.id) as bill_count,
+        COALESCE(SUM(p.grand_total), 0) - COALESCE((
+          SELECT SUM(total_amount) FROM returns WHERE type = 'PURCHASE_RETURN' AND date(created_at) = ?
+        ), 0) as total_purchases,
+        COALESCE(SUM(p.paid_amount), 0) as cash_paid
+      FROM purchases p
+      WHERE p.purchase_date = ?
+    `).get(today, today);
 
     // Today's Expenses
     const todayExpenses = db.prepare(`

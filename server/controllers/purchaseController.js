@@ -8,7 +8,8 @@ exports.getPurchases = (req, res) => {
 
     let query = `
       SELECT p.*, s.name as supplier_name, s.phone as supplier_phone, u.full_name as user_name,
-        (SELECT COUNT(*) FROM purchase_items pi WHERE pi.purchase_id = p.id) as item_count
+        (SELECT COUNT(*) FROM purchase_items pi WHERE pi.purchase_id = p.id) as item_count,
+        (SELECT COALESCE(SUM(total_amount), 0) FROM returns WHERE original_invoice_id = p.id) as returned_amount
       FROM purchases p
       JOIN suppliers s ON p.supplier_id = s.id
       LEFT JOIN users u ON p.user_id = u.id

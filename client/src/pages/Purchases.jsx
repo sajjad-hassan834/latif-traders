@@ -290,17 +290,39 @@ export default function Purchases() {
               ) : purchases.length === 0 ? (
                 <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No purchases recorded yet.</td></tr>
               ) : (
-                purchases.map(p => (
-                  <tr key={p.id}>
-                    <td className="mono" style={{ fontWeight: 700, color: '#0284c7' }}>{p.invoice_no}</td>
+                purchases.map(p => {
+                  const netTotal = p.grand_total - (p.returned_amount || 0);
+                  const isFullyReturned = netTotal <= 0 && p.returned_amount > 0;
+                  
+                  return (
+                  <tr key={p.id} style={{ opacity: isFullyReturned ? 0.6 : 1 }}>
+                    <td className="mono" style={{ fontWeight: 700, color: '#0284c7' }}>
+                      {p.invoice_no}
+                      {p.returned_amount > 0 && (
+                        <div style={{ fontSize: '0.65rem', color: '#ef4444', marginTop: '2px', fontWeight: 700, background: '#fee2e2', padding: '1px 4px', borderRadius: '4px', display: 'inline-block' }}>
+                          {isFullyReturned ? 'FULLY RETURNED' : 'PARTIAL RETURN'}
+                        </div>
+                      )}
+                    </td>
                     <td className="mono" style={{ color: '#64748b' }}>{p.supplier_invoice_no || '-'}</td>
                     <td>{formatDate(p.purchase_date)}</td>
                     <td style={{ fontWeight: 600 }}>{p.supplier_name}</td>
                     <td>{p.item_count} items</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatPKR(p.grand_total)}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                      {p.returned_amount > 0 ? (
+                        <>
+                          <div style={{ textDecoration: 'line-through', color: '#94a3b8', fontSize: '0.75rem' }}>{formatPKR(p.grand_total)}</div>
+                          <div>{formatPKR(netTotal)}</div>
+                        </>
+                      ) : (
+                        formatPKR(p.grand_total)
+                      )}
+                    </td>
                     <td style={{ textAlign: 'right' }}>{formatPKR(p.paid_amount)}</td>
                     <td style={{ textAlign: 'right' }}>
-                      {p.balance_due > 0 ? (
+                      {isFullyReturned ? (
+                        <span style={{ color: '#64748b', fontWeight: 600 }}>Returned</span>
+                      ) : p.balance_due > 0 ? (
                         <span style={{ color: '#ef4444', fontWeight: 700 }}>{formatPKR(p.balance_due)}</span>
                       ) : (
                         <span style={{ color: '#10b981', fontWeight: 600 }}>Settled</span>
@@ -312,7 +334,7 @@ export default function Purchases() {
                           <Eye size={14} />
                           <span>View</span>
                         </button>
-                        {canManageInventory && (
+                        {canManageInventory && !isFullyReturned && (
                           <button
                             onClick={() => openReturnModal(p.id)}
                             className="btn btn-warning btn-sm"
@@ -325,7 +347,8 @@ export default function Purchases() {
                       </div>
                     </td>
                   </tr>
-                ))
+                );
+                })
               )}
             </tbody>
           </table>
