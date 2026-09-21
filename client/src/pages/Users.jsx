@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Plus, History, UserCheck, Lock, Edit, KeyRound, Check, XCircle, Clock, Sparkles, RefreshCw, Trash2 } from 'lucide-react';
+import { ShieldCheck, Plus, History, UserCheck, Lock, Edit, KeyRound, Check, XCircle, Clock, Sparkles, RefreshCw, Trash2, ChevronDown } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
 
@@ -22,6 +22,13 @@ export default function Users() {
   const [newPassword, setNewPassword] = useState('');
   const [adminNote, setAdminNote] = useState('');
   const [resolving, setResolving] = useState(false);
+  const [actionMenuId, setActionMenuId] = useState(null);
+
+  useEffect(() => {
+    const handleOutsideClick = () => setActionMenuId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -234,30 +241,105 @@ export default function Users() {
                     </td>
                     <td>{formatDate(u.created_at)}</td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
                         <button
-                          onClick={() => {
-                            setSelectedUser({ ...u, password: '' });
-                            setShowEditModal(true);
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActionMenuId(actionMenuId === u.id ? null : u.id);
                           }}
                           className="btn btn-secondary btn-sm"
-                          title="Edit User / Reset Password"
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '0.725rem',
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            borderRadius: '5px'
+                          }}
+                          title="User Actions"
                         >
-                          <Edit size={14} />
-                          <span>Edit</span>
+                          <span>Action</span>
+                          <ChevronDown size={12} />
                         </button>
-                        {u.username !== 'admin' && (
-                          <button
-                            onClick={() => {
-                              setSelectedUser(u);
-                              setShowDeleteModal(true);
+
+                        {actionMenuId === u.id && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              right: 0,
+                              top: '100%',
+                              marginTop: '4px',
+                              background: '#ffffff',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                              boxShadow: '0 10px 25px -3px rgba(0,0,0,0.18), 0 4px 6px -2px rgba(0,0,0,0.08)',
+                              zIndex: 9999,
+                              minWidth: '160px',
+                              padding: '4px 0',
+                              textAlign: 'left'
                             }}
-                            className="btn btn-sm"
-                            style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}
-                            title="Delete User"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Trash2 size={14} />
-                          </button>
+                            <button
+                              onClick={() => {
+                                setActionMenuId(null);
+                                setSelectedUser({ ...u, password: '' });
+                                setShowEditModal(true);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '7px 12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                background: 'none',
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                color: '#1e293b',
+                                cursor: 'pointer',
+                                textAlign: 'left'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                            >
+                              <Edit size={13} color="#0284c7" />
+                              <span>Edit User</span>
+                            </button>
+
+                            {u.username !== 'admin' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActionMenuId(null);
+                                  setSelectedUser(u);
+                                  setShowDeleteModal(true);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  background: 'none',
+                                  border: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#dc2626',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  borderTop: '1px solid #f1f5f9'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                              >
+                                <Trash2 size={13} color="#dc2626" />
+                                <span>Delete User</span>
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </td>
@@ -509,61 +591,93 @@ export default function Users() {
       {/* EDIT USER MODAL */}
       {showEditModal && selectedUser && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '520px' }}>
-            <div className="modal-header">
-              <h3>Edit User: {selectedUser.username}</h3>
-              <button onClick={() => setShowEditModal(false)}>✕</button>
+          <div className="modal-content" style={{ maxWidth: '560px' }}>
+            <div className="modal-header" style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Edit User Account</h3>
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                  Username: <strong className="mono" style={{ color: '#0284c7' }}>{selectedUser.username}</strong>
+                </div>
+              </div>
+              <button onClick={() => setShowEditModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
             </div>
             <form onSubmit={handleUpdateUser}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Full Name</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={selectedUser.full_name}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, full_name: e.target.value })}
-                  />
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', padding: '1.25rem' }}>
+                {/* Identity Card */}
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: selectedUser.role === 'admin' ? '#fee2e2' : selectedUser.role === 'inventory' ? '#dbeafe' : selectedUser.role === 'accountant' ? '#fef3c7' : '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1rem', color: selectedUser.role === 'admin' ? '#dc2626' : selectedUser.role === 'inventory' ? '#2563eb' : selectedUser.role === 'accountant' ? '#d97706' : '#16a34a' }}>
+                      {selectedUser.full_name?.charAt(0) || selectedUser.username?.charAt(0)}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedUser.full_name}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{selectedUser.email || 'No email set'}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    <span className={`badge ${selectedUser.role === 'admin' ? 'badge-danger' : selectedUser.role === 'sales' ? 'badge-success' : selectedUser.role === 'inventory' ? 'badge-info' : 'badge-warning'}`}>
+                      {selectedUser.role?.toUpperCase()}
+                    </span>
+                    <span className={`badge ${selectedUser.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
+                      {selectedUser.status}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Email</label>
-                  <input
-                    type="email"
-                    className="form-control"
-                    value={selectedUser.email || ''}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
-                    placeholder="e.g. user@latiftraders.com"
-                  />
+                {/* Row 1: Full Name & Email */}
+                <div className="form-grid-2">
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Full Name</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedUser.full_name}
+                      onChange={(e) => setSelectedUser({ ...selectedUser, full_name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Email</label>
+                    <input
+                      type="email"
+                      className="form-control"
+                      value={selectedUser.email || ''}
+                      onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
+                      placeholder="user@latiftraders.com"
+                    />
+                  </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Role</label>
-                  <select
-                    className="form-control"
-                    value={selectedUser.role}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value })}
-                  >
-                    <option value="sales">Sales Staff / Cashier</option>
-                    <option value="inventory">Store / Inventory Staff</option>
-                    <option value="accountant">Accountant</option>
-                    <option value="admin">Administrator (Owner)</option>
-                  </select>
+                {/* Row 2: Role & Status */}
+                <div className="form-grid-2">
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Role Permissions</label>
+                    <select
+                      className="form-control"
+                      value={selectedUser.role}
+                      onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value })}
+                    >
+                      <option value="sales">Sales Staff / Cashier (POS & Sales)</option>
+                      <option value="inventory">Store / Inventory Staff (Purchases & Stock)</option>
+                      <option value="accountant">Accountant (Ledgers, Cashbook, Reports)</option>
+                      <option value="admin">Owner / Administrator (Full Access)</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Account Status</label>
+                    <select
+                      className="form-control"
+                      value={selectedUser.status}
+                      onChange={(e) => setSelectedUser({ ...selectedUser, status: e.target.value })}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive / Deactivated</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Account Status</label>
-                  <select
-                    className="form-control"
-                    value={selectedUser.status}
-                    onChange={(e) => setSelectedUser({ ...selectedUser, status: e.target.value })}
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive / Deactivated</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
+                {/* Reset Password */}
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Reset Password (Optional)</label>
                   <input
                     type="password"
@@ -572,11 +686,14 @@ export default function Users() {
                     value={selectedUser.password || ''}
                     onChange={(e) => setSelectedUser({ ...selectedUser, password: e.target.value })}
                   />
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '3px' }}>
+                    Minimum 6 characters. Only set if you want to change the user's password.
+                  </div>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Changes</button>
+              <div className="modal-footer" style={{ padding: '0.75rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary btn-sm">Save Changes</button>
               </div>
             </form>
           </div>
