@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Eye, ArrowDownToLine, Trash2, RotateCcw, Printer, Download, Package } from 'lucide-react';
+import { Search, Plus, Eye, ArrowDownToLine, Trash2, RotateCcw, Printer, Download, Package, Edit } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
@@ -16,11 +16,16 @@ export default function Purchases() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedPurchase, setSelectedPurchase] = useState(null);
   const [returnPurchase, setReturnPurchase] = useState(null);
   const [returnItems, setReturnItems] = useState([]);
   const [returnReason, setReturnReason] = useState('');
   const [returnSubmitting, setReturnSubmitting] = useState(false);
+
+  // Edit Purchase Form
+  const [editForm, setEditForm] = useState(null);
 
   // New Purchase Form
   const [supplierId, setSupplierId] = useState('');
@@ -244,6 +249,64 @@ export default function Purchases() {
     ]);
   };
 
+  const openEditModal = async (id) => {
+    try {
+      const res = await api.get(`/purchases/${id}`);
+      if (res.success) {
+        setEditForm({
+          id: res.purchase.id,
+          invoice_no: res.purchase.invoice_no,
+          supplier_id: res.purchase.supplier_id,
+          supplier_invoice_no: res.purchase.supplier_invoice_no || '',
+          purchase_date: res.purchase.purchase_date,
+          grand_total: res.purchase.grand_total,
+          paid_amount: res.purchase.paid_amount,
+          balance_due: res.purchase.balance_due,
+          payment_method: res.purchase.payment_method || 'Cash',
+          notes: res.purchase.notes || ''
+        });
+        setShowEditModal(true);
+      }
+    } catch (err) {
+      alert('Failed to load purchase for editing');
+    }
+  };
+
+  const handleUpdatePurchase = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api.put(`/purchases/${editForm.id}`, {
+        supplier_id: Number(editForm.supplier_id),
+        supplier_invoice_no: editForm.supplier_invoice_no,
+        purchase_date: editForm.purchase_date,
+        paid_amount: Number(editForm.paid_amount) || 0,
+        payment_method: editForm.payment_method,
+        notes: editForm.notes
+      });
+      if (res.success) {
+        setShowEditModal(false);
+        setEditForm(null);
+        loadData();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to update purchase');
+    }
+  };
+
+  const handleDeletePurchase = async () => {
+    if (!selectedPurchase) return;
+    try {
+      const res = await api.delete(`/purchases/${selectedPurchase.id}`);
+      if (res.success) {
+        setShowDeleteModal(false);
+        setSelectedPurchase(null);
+        loadData();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete purchase');
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -329,9 +392,9 @@ export default function Purchases() {
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                      <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                         <button onClick={() => viewPurchase(p.id)} className="btn btn-secondary btn-sm" title="View & Print Bill">
-                          <Eye size={14} />
+                          <Eye size={13} />
                           <span>View</span>
                         </button>
                         {canManageInventory && !isFullyReturned && (
@@ -340,8 +403,27 @@ export default function Purchases() {
                             className="btn btn-warning btn-sm"
                             title="Return goods to supplier"
                           >
-                            <RotateCcw size={14} />
+                            <RotateCcw size={13} />
                             <span>Return</span>
+                          </button>
+                        )}
+                        {canManageInventory && (
+                          <button
+                            onClick={() => openEditModal(p.id)}
+                            className="btn btn-secondary btn-sm"
+                            title="Edit purchase details"
+                          >
+                            <Edit size={13} />
+                          </button>
+                        )}
+                        {canManageInventory && (
+                          <button
+                            onClick={() => { setSelectedPurchase(p); setShowDeleteModal(true); }}
+                            className="btn btn-sm"
+                            style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}
+                            title="Delete purchase"
+                          >
+                            <Trash2 size={13} />
                           </button>
                         )}
                       </div>
@@ -837,6 +919,152 @@ export default function Purchases() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT PURCHASE MODAL */}
+      {showEditModal && editForm && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3>Edit Purchase: {editForm.invoice_no}</h3>
+              <button onClick={() => { setShowEditModal(false); setEditForm(null); }}>✕</button>
+            </div>
+            <form onSubmit={handleUpdatePurchase}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Supplier *</label>
+                    <select
+                      className="form-control"
+                      value={editForm.supplier_id}
+                      onChange={(e) => setEditForm({ ...editForm, supplier_id: e.target.value })}
+                      required
+                    >
+                      {suppliers.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Supplier Bill #</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editForm.supplier_invoice_no}
+                      onChange={(e) => setEditForm({ ...editForm, supplier_invoice_no: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Purchase Date *</label>
+                    <input
+                      type="date"
+                      className="form-control"
+                      value={editForm.purchase_date}
+                      onChange={(e) => setEditForm({ ...editForm, purchase_date: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Payment Method</label>
+                    <select
+                      className="form-control"
+                      value={editForm.payment_method}
+                      onChange={(e) => setEditForm({ ...editForm, payment_method: e.target.value })}
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="Bank Transfer">Bank Transfer</option>
+                      <option value="Cheque">Cheque</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 600 }}>Grand Total:</span>
+                    <strong style={{ fontSize: '1.1rem', color: '#0284c7' }}>{formatPKR(editForm.grand_total)}</strong>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Paid Amount (PKR)</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      min="0"
+                      max={editForm.grand_total}
+                      value={editForm.paid_amount}
+                      onChange={(e) => setEditForm({ ...editForm, paid_amount: e.target.value })}
+                    />
+                    <div style={{ fontSize: '0.75rem', marginTop: '4px', fontWeight: 600 }}>
+                      {Number(editForm.paid_amount || 0) < editForm.grand_total ? (
+                        <span style={{ color: '#ef4444' }}>
+                          New Payable Due: {formatPKR(editForm.grand_total - Number(editForm.paid_amount || 0))}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#10b981' }}>Full Payment</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Notes</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={editForm.notes}
+                      onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                      placeholder="Optional notes"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => { setShowEditModal(false); setEditForm(null); }}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE PURCHASE CONFIRMATION MODAL */}
+      {showDeleteModal && selectedPurchase && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '480px' }}>
+            <div className="modal-header">
+              <h3 style={{ color: '#dc2626' }}>Delete Purchase</h3>
+              <button onClick={() => { setShowDeleteModal(false); setSelectedPurchase(null); }}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
+                <p style={{ margin: 0, fontWeight: 600, color: '#991b1b' }}>
+                  Are you sure you want to delete this purchase invoice?
+                </p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.9rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Invoice:</span>
+                  <strong>{selectedPurchase.invoice_no}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Supplier:</span>
+                  <strong>{selectedPurchase.supplier_name}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Grand Total:</span>
+                  <strong>{formatPKR(selectedPurchase.grand_total)}</strong>
+                </div>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '1rem', margin: '1rem 0 0' }}>
+                This will reverse all stock batches and inventory movements created by this purchase. This action cannot be undone.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => { setShowDeleteModal(false); setSelectedPurchase(null); }}>Cancel</button>
+              <button className="btn btn-danger" onClick={handleDeletePurchase}>Yes, Delete Purchase</button>
+            </div>
           </div>
         </div>
       )}

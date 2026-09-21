@@ -10,5 +10,7 @@ router.get('/product-stock-preview/:productId', requireRoles('inventory', 'accou
 router.get('/:id', requireRoles('inventory', 'accountant'), purchaseController.getPurchaseById);
 router.post('/', requireRoles('inventory'), purchaseController.createPurchase);
 router.post('/returns', requireRoles('inventory'), purchaseController.createPurchaseReturn);
+router.put('/:id', requireRoles('admin'), purchaseController.updatePurchase);
+router.delete('/:id', requireRoles('admin'), purchaseController.deletePurchase);
 
 module.exports = router;

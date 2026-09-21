@@ -347,6 +347,155 @@ exports.createPurchaseReturn = (req, res) => {
   }
 };
 
+// Delete Purchase (reverses all batch, inventory, and supplier balance effects)
+exports.deletePurchase = (req, res) => {
+  const transaction = db.transaction(() => {
+    const { id } = req.params;
+
+    const purchase = db.prepare('SELECT * FROM purchases WHERE id = ?').get(id);
+    if (!purchase) throw new Error('Purchase invoice not found.');
+
+    const hasReturns = db.prepare('SELECT COUNT(*) as count FROM returns WHERE original_invoice_id = ?').get(id).count;
+    if (hasReturns > 0) {
+      throw new Error('Cannot delete a purchase that has return records. Delete the returns first or contact admin.');
+    }
+
+    const hasSales = db.prepare(`
+      SELECT COUNT(*) as count FROM inventory_movements
+      WHERE reference_type = 'PURCHASE_INVOICE' AND reference_id = ? AND type = 'PURCHASE'
+    `).get(id).count;
+
+    const items = db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?').all(id);
+
+    for (const item of items) {
+      const batch = db.prepare(`
+        SELECT * FROM batches WHERE product_id = ? AND batch_no = ? AND supplier_id = ?
+      `).get(item.product_id, item.batch_no, purchase.supplier_id);
+
+      if (batch) {
+        const newQty = batch.quantity - item.quantity;
+        if (newQty <= 0) {
+          db.prepare("UPDATE batches SET quantity = 0, status = 'expired' WHERE id = ?").run(batch.id);
+        } else {
+          db.prepare('UPDATE batches SET quantity = ? WHERE id = ?').run(newQty, batch.id);
+        }
+      }
+    }
+
+    db.prepare("DELETE FROM inventory_movements WHERE reference_id = ? AND reference_type = 'PURCHASE_INVOICE'").run(id);
+
+    if (purchase.balance_due > 0) {
+      db.prepare('UPDATE suppliers SET current_balance = current_balance - ? WHERE id = ?')
+        .run(purchase.balance_due, purchase.supplier_id);
+    }
+
+    if (purchase.paid_amount > 0) {
+      db.prepare("DELETE FROM payments WHERE reference_id = ? AND party_type = 'SUPPLIER' AND party_id = ?")
+        .run(id, purchase.supplier_id);
+    }
+
+    db.prepare('DELETE FROM purchase_items WHERE purchase_id = ?').run(id);
+    db.prepare('DELETE FROM purchases WHERE id = ?').run(id);
+
+    logAudit(req.user.id, req.user.full_name, 'DELETE', 'PURCHASE', id, `Deleted purchase ${purchase.invoice_no} (₨ ${purchase.grand_total})`, req);
+    return { success: true, message: `Purchase ${purchase.invoice_no} deleted successfully.` };
+  });
+
+  try {
+    const result = transaction();
+    return res.json(result);
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// Update Purchase (edit header fields: supplier, date, paid amount, payment method, notes)
+exports.updatePurchase = (req, res) => {
+  const transaction = db.transaction(() => {
+    const { id } = req.params;
+    const { supplier_id, supplier_invoice_no, purchase_date, paid_amount, payment_method, notes } = req.body;
+
+    const purchase = db.prepare('SELECT * FROM purchases WHERE id = ?').get(id);
+    if (!purchase) throw new Error('Purchase invoice not found.');
+
+    const hasReturns = db.prepare('SELECT COUNT(*) as count FROM returns WHERE original_invoice_id = ?').get(id).count;
+    if (hasReturns > 0) {
+      throw new Error('Cannot edit a purchase that has return records. Delete the returns first.');
+    }
+
+    const newSupplierId = supplier_id ? Number(supplier_id) : purchase.supplier_id;
+    const newPaid = paid_amount !== undefined && paid_amount !== '' ? Math.max(0, Number(paid_amount)) : purchase.paid_amount;
+    const newBalance = Math.max(0, purchase.grand_total - newPaid);
+
+    const oldBalanceDue = purchase.balance_due;
+    const oldSupplierId = purchase.supplier_id;
+
+    if (newSupplierId !== oldSupplierId) {
+      if (oldBalanceDue > 0) {
+        db.prepare('UPDATE suppliers SET current_balance = current_balance - ? WHERE id = ?').run(oldBalanceDue, oldSupplierId);
+      }
+      if (newBalance > 0) {
+        db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ?').run(newBalance, newSupplierId);
+      }
+
+      for (const item of (db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?').all(id))) {
+        db.prepare('UPDATE batches SET supplier_id = ? WHERE product_id = ? AND batch_no = ? AND supplier_id = ?')
+          .run(newSupplierId, item.product_id, item.batch_no, oldSupplierId);
+      }
+    } else {
+      const balanceDiff = newBalance - oldBalanceDue;
+      if (balanceDiff !== 0) {
+        db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ?').run(balanceDiff, newSupplierId);
+      }
+    }
+
+    if (purchase.paid_amount !== newPaid) {
+      db.prepare("DELETE FROM payments WHERE reference_id = ? AND party_type = 'SUPPLIER' AND party_id = ?")
+        .run(id, oldSupplierId);
+
+      if (newPaid > 0) {
+        db.prepare(`
+          INSERT INTO payments (type, party_type, party_id, reference_id, reference_no, amount, payment_method, payment_date, notes, user_id)
+          VALUES ('SUPPLIER_PAYMENT', 'SUPPLIER', ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          newSupplierId, id, purchase.invoice_no, newPaid,
+          payment_method || purchase.payment_method,
+          purchase_date || purchase.purchase_date,
+          'Payment recorded with purchase edit',
+          req.user.id
+        );
+      }
+    }
+
+    db.prepare(`
+      UPDATE purchases SET
+        supplier_id = ?, supplier_invoice_no = ?, purchase_date = ?,
+        paid_amount = ?, balance_due = ?,
+        payment_method = ?, notes = ?
+      WHERE id = ?
+    `).run(
+      newSupplierId,
+      supplier_invoice_no !== undefined ? (supplier_invoice_no || null) : purchase.supplier_invoice_no,
+      purchase_date || purchase.purchase_date,
+      newPaid,
+      newBalance,
+      payment_method || purchase.payment_method,
+      notes !== undefined ? (notes || null) : purchase.notes,
+      id
+    );
+
+    logAudit(req.user.id, req.user.full_name, 'UPDATE', 'PURCHASE', id, `Updated purchase ${purchase.invoice_no}`, req);
+    return { success: true, message: 'Purchase updated successfully.' };
+  });
+
+  try {
+    const result = transaction();
+    return res.json(result);
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
 // Preview existing stock & active batches with vendor history for a product
 exports.getProductStockPreview = (req, res) => {
   try {
