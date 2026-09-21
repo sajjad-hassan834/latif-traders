@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Eye, ArrowDownToLine, Trash2, RotateCcw, Printer, Download, Package, Edit } from 'lucide-react';
+import { Search, Plus, Eye, ArrowDownToLine, Trash2, RotateCcw, Printer, Download, Package, Edit, ChevronDown, FileText } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
@@ -40,6 +40,13 @@ export default function Purchases() {
   const [errorMsg, setErrorMsg] = useState('');
   const [brands, setBrands] = useState([]);
   const [activeStockPreview, setActiveStockPreview] = useState(null);
+  const [actionMenuId, setActionMenuId] = useState(null);
+
+  useEffect(() => {
+    const handleOutsideClick = () => setActionMenuId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   const loadData = async () => {
     try {
@@ -392,39 +399,160 @@ export default function Purchases() {
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                        <button onClick={() => viewPurchase(p.id)} className="btn btn-secondary btn-sm" title="View & Print Bill">
-                          <Eye size={13} />
-                          <span>View</span>
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActionMenuId(actionMenuId === p.id ? null : p.id);
+                          }}
+                          className="btn btn-secondary btn-sm"
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '0.725rem',
+                            fontWeight: 600,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            borderRadius: '5px'
+                          }}
+                          title="Purchase Actions"
+                        >
+                          <span>Action</span>
+                          <ChevronDown size={12} />
                         </button>
-                        {canManageInventory && !isFullyReturned && (
-                          <button
-                            onClick={() => openReturnModal(p.id)}
-                            className="btn btn-warning btn-sm"
-                            title="Return goods to supplier"
+
+                        {actionMenuId === p.id && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              right: 0,
+                              top: '100%',
+                              marginTop: '4px',
+                              background: '#ffffff',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                              boxShadow: '0 10px 25px -3px rgba(0,0,0,0.18), 0 4px 6px -2px rgba(0,0,0,0.08)',
+                              zIndex: 9999,
+                              minWidth: '160px',
+                              padding: '4px 0',
+                              textAlign: 'left'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <RotateCcw size={13} />
-                            <span>Return</span>
-                          </button>
-                        )}
-                        {canManageInventory && (
-                          <button
-                            onClick={() => openEditModal(p.id)}
-                            className="btn btn-secondary btn-sm"
-                            title="Edit purchase details"
-                          >
-                            <Edit size={13} />
-                          </button>
-                        )}
-                        {canManageInventory && (
-                          <button
-                            onClick={() => { setSelectedPurchase(p); setShowDeleteModal(true); }}
-                            className="btn btn-sm"
-                            style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}
-                            title="Delete purchase"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                            <button
+                              onClick={() => {
+                                setActionMenuId(null);
+                                viewPurchase(p.id);
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '7px 12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                background: 'none',
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                color: '#1e293b',
+                                cursor: 'pointer',
+                                textAlign: 'left'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                            >
+                              <Eye size={13} color="#0284c7" />
+                              <span>View Bill</span>
+                            </button>
+
+                            {canManageInventory && !isFullyReturned && (
+                              <button
+                                onClick={() => {
+                                  setActionMenuId(null);
+                                  openReturnModal(p.id);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  background: 'none',
+                                  border: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#1e293b',
+                                  cursor: 'pointer',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                              >
+                                <RotateCcw size={13} color="#f59e0b" />
+                                <span>Return Goods</span>
+                              </button>
+                            )}
+
+                            {canManageInventory && (
+                              <button
+                                onClick={() => {
+                                  setActionMenuId(null);
+                                  openEditModal(p.id);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  background: 'none',
+                                  border: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#1e293b',
+                                  cursor: 'pointer',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                              >
+                                <Edit size={13} color="#0284c7" />
+                                <span>Edit Purchase</span>
+                              </button>
+                            )}
+
+                            {canManageInventory && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActionMenuId(null);
+                                  setSelectedPurchase(p);
+                                  setShowDeleteModal(true);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  background: 'none',
+                                  border: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#dc2626',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  borderTop: '1px solid #f1f5f9'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                              >
+                                <Trash2 size={13} color="#dc2626" />
+                                <span>Delete Purchase</span>
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </td>
