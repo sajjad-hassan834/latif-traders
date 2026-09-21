@@ -415,9 +415,36 @@ exports.createSaleReturn = (req, res) => {
     }
 
     // Adjust customer balance if registered customer
-    if (origSale.customer_id) {
+    if (origSale.customer_id && totalAmount > 0) {
+      // Reduce the customer's outstanding balance by the return amount
       db.prepare('UPDATE customers SET current_balance = MAX(0, current_balance - ?) WHERE id = ?')
         .run(totalAmount, origSale.customer_id);
+    }
+
+    // Update the original sale's financial state
+    const newPaidAmount = Math.max(0, origSale.paid_amount - totalAmount);
+    const newBalanceDue = Math.max(0, origSale.grand_total - newPaidAmount);
+    db.prepare('UPDATE sales SET paid_amount = ?, balance_due = ?, notes = COALESCE(notes || ?, ?) WHERE id = ?')
+      .run(newPaidAmount, newBalanceDue, ' | ', `Return ${retNo} for ₨${totalAmount}`, origSale.id);
+
+    // If payment was made originally, record a reversal payment (refund)
+    if (totalAmount > 0 && origSale.paid_amount > 0) {
+      const refundAmount = Math.min(totalAmount, origSale.paid_amount);
+      db.prepare(`
+        INSERT INTO payments (
+          type, party_type, party_id, reference_id, reference_no,
+          amount, payment_method, payment_date, notes, user_id
+        ) VALUES ('CUSTOMER_REFUND', 'CUSTOMER', ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        origSale.customer_id || 1,
+        origSale.id,
+        retNo,
+        refundAmount,
+        origSale.payment_method || 'Cash',
+        origSale.sale_date,
+        `Refund for return ${retNo} against ${origSale.invoice_no}`,
+        req.user.id
+      );
     }
 
     logAudit(req.user.id, req.user.full_name, 'RETURN', 'SALE', returnId, `Sale return ${retNo} for ₨ ${totalAmount} against invoice ${origSale.invoice_no}`, req);
@@ -428,6 +455,72 @@ exports.createSaleReturn = (req, res) => {
   try {
     const result = transaction();
     return res.status(201).json({ success: true, message: 'Sale return processed successfully.', data: result });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// Delete Sale (Admin only) - Full reversal: stock, payments, customer balance
+exports.deleteSale = (req, res) => {
+  const transaction = db.transaction(() => {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const sale = db.prepare('SELECT * FROM sales WHERE id = ?').get(id);
+    if (!sale) throw new Error('Sale invoice not found.');
+
+    // 1. Reverse stock: Add back quantities to batches (FIFO reversal)
+    const saleItems = db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(sale.id);
+    const insertMovement = db.prepare(`
+      INSERT INTO inventory_movements (
+        product_id, batch_id, type, quantity_delta, unit_price,
+        balance_after, reference_id, reference_type, reason, user_id
+      ) VALUES (?, ?, 'STOCK_REVERSAL', ?, ?, ?, ?, 'SALE_DELETE', ?, ?)
+    `);
+
+    for (const item of saleItems) {
+      if (item.batch_id) {
+        db.prepare('UPDATE batches SET quantity = quantity + ? WHERE id = ?')
+          .run(item.quantity, item.batch_id);
+      } else {
+        const fallbackBatch = db.prepare("SELECT id FROM batches WHERE product_id = ? AND status = 'active' LIMIT 1").get(item.product_id);
+        if (fallbackBatch) {
+          db.prepare('UPDATE batches SET quantity = quantity + ? WHERE id = ?')
+            .run(item.quantity, fallbackBatch.id);
+        }
+      }
+
+      const totalAfter = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active'").get(item.product_id).s;
+      insertMovement.run(
+        item.product_id, item.batch_id, item.quantity, item.cost_price || item.unit_price,
+        totalAfter, sale.id, `Deleted sale ${sale.invoice_no} - ${reason || 'Admin reversal'}`, req.user.id
+      );
+    }
+
+    // 2. Reverse customer balance (if credit sale)
+    if (sale.customer_id && sale.balance_due > 0) {
+      db.prepare('UPDATE customers SET current_balance = MAX(0, current_balance - ?) WHERE id = ?')
+        .run(sale.balance_due, sale.customer_id);
+    }
+
+    // 3. Delete payment records
+    db.prepare("DELETE FROM payments WHERE reference_id = ? AND reference_no = ?").run(sale.id, sale.invoice_no);
+
+    // 4. Delete sale items and sale
+    db.prepare('DELETE FROM sale_items WHERE sale_id = ?').run(sale.id);
+    db.prepare('DELETE FROM sales WHERE id = ?').run(sale.id);
+
+    logAudit(
+      req.user.id, req.user.full_name, 'DELETE', 'SALE', sale.id,
+      `Deleted sale ${sale.invoice_no} for ₨ ${sale.grand_total} - ${reason || 'Admin reversal'}`, req
+    );
+
+    return { success: true, message: `Sale ${sale.invoice_no} deleted and stock reversed.` };
+  });
+
+  try {
+    const result = transaction();
+    return res.json(result);
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }

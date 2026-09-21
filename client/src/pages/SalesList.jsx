@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, Eye, RotateCcw, Calendar, Download } from 'lucide-react';
+import { Search, Printer, Eye, RotateCcw, Calendar, Download, ChevronDown, Trash2 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate, formatDateTime } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
+import { useAuth } from '../context/AuthContext';
 
 export default function SalesList() {
+  const { isAdmin } = useAuth();
   const [sales, setSales] = useState([]);
   const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -17,6 +19,17 @@ export default function SalesList() {
   const [returnItems, setReturnItems] = useState([]);
   const [returnReason, setReturnReason] = useState('');
   const [returnSuccess, setReturnSuccess] = useState('');
+  const [actionMenuId, setActionMenuId] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteSaleId, setDeleteSaleId] = useState(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  useEffect(() => {
+    const handleOutsideClick = () => setActionMenuId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   const handleExportCSV = () => {
     if (!sales.length) return;
@@ -97,10 +110,30 @@ export default function SalesList() {
       if (res.success) {
         setReturnSuccess(`Return ${res.data.return_no} processed! Stock reversed.`);
         setShowReturnModal(false);
+        setSelectedSale(null);
         loadSales();
       }
     } catch (err) {
       alert(err.message || 'Failed to process sales return');
+    }
+  };
+
+  const handleDeleteSale = async () => {
+    if (!deleteSaleId) return;
+    try {
+      setDeleteSubmitting(true);
+      const res = await api.delete(`/sales/${deleteSaleId}`, { reason: deleteReason });
+      if (res.success) {
+        setReturnSuccess(res.message || 'Sale deleted and stock reversed.');
+        setShowDeleteModal(false);
+        setDeleteSaleId(null);
+        setDeleteReason('');
+        loadSales();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete sale');
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -165,7 +198,7 @@ export default function SalesList() {
       </div>
 
       {/* SALES TABLE */}
-      <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+      <div className="card" style={{ padding: '0', overflow: 'visible', paddingBottom: '110px' }}>
         <div className="table-responsive">
           <table className="table" style={{ width: '100%', minWidth: '780px' }}>
             <thead>
@@ -207,24 +240,72 @@ export default function SalesList() {
                         <span style={{ color: '#10b981', fontWeight: 600 }}>Paid</span>
                       )}
                     </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
-                        <button
-                          onClick={() => handleViewInvoice(s.id)}
-                          className="btn btn-secondary btn-sm"
-                          title="Print / View Invoice"
-                        >
-                          <Printer size={15} />
-                        </button>
-                        <button
-                          onClick={() => handleOpenReturn(s.id)}
-                          className="btn btn-secondary btn-sm"
-                          style={{ color: '#f59e0b' }}
-                          title="Sales Return"
-                        >
-                          <RotateCcw size={15} />
-                        </button>
-                      </div>
+                    <td style={{ textAlign: 'center', position: 'relative' }}>
+                      {isAdmin ? (
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setActionMenuId(actionMenuId === s.id ? null : s.id); }}
+                            className="btn btn-secondary btn-sm"
+                            style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.775rem' }}
+                          >
+                            Action <ChevronDown size={13} />
+                          </button>
+                          {actionMenuId === s.id && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                position: 'absolute', right: 0, top: '100%', marginTop: '4px',
+                                background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 50, minWidth: '150px', padding: '4px'
+                              }}
+                            >
+                              <button
+                                onClick={() => { handleViewInvoice(s.id); setActionMenuId(null); }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 12px', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: '4px' }}
+                                onMouseEnter={(e) => e.target.style.background = '#f1f5f9'}
+                                onMouseLeave={(e) => e.target.style.background = 'none'}
+                              >
+                                <Printer size={14} /> View / Print
+                              </button>
+                              <button
+                                onClick={() => { handleOpenReturn(s.id); setActionMenuId(null); }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 12px', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: '4px', color: '#f59e0b' }}
+                                onMouseEnter={(e) => e.target.style.background = '#f1f5f9'}
+                                onMouseLeave={(e) => e.target.style.background = 'none'}
+                              >
+                                <RotateCcw size={14} /> Return
+                              </button>
+                              <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }} />
+                              <button
+                                onClick={() => { setDeleteSaleId(s.id); setShowDeleteModal(true); setActionMenuId(null); }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 12px', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: '4px', color: '#ef4444' }}
+                                onMouseEnter={(e) => e.target.style.background = '#fef2f2'}
+                                onMouseLeave={(e) => e.target.style.background = 'none'}
+                              >
+                                <Trash2 size={14} /> Delete Sale
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                          <button
+                            onClick={() => handleViewInvoice(s.id)}
+                            className="btn btn-secondary btn-sm"
+                            title="Print / View Invoice"
+                          >
+                            <Printer size={15} />
+                          </button>
+                          <button
+                            onClick={() => handleOpenReturn(s.id)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ color: '#f59e0b' }}
+                            title="Sales Return"
+                          >
+                            <RotateCcw size={15} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -310,6 +391,46 @@ export default function SalesList() {
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setShowReturnModal(false)}>Cancel</button>
               <button className="btn btn-danger" onClick={submitReturn}>Confirm Return</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE SALE CONFIRMATION MODAL */}
+      {showDeleteModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '440px' }}>
+            <div className="modal-header">
+              <h3 style={{ color: '#ef4444' }}>Delete Sale Invoice</h3>
+              <button onClick={() => { setShowDeleteModal(false); setDeleteSaleId(null); setDeleteReason(''); }}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '0.85rem', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.85rem', color: '#991b1b', fontWeight: 600, margin: 0 }}>
+                  This will permanently delete this sale and reverse all stock, payments, and customer balances.
+                </p>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Reason for deletion *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g., Wrong bill, customer didn't purchase"
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => { setShowDeleteModal(false); setDeleteSaleId(null); setDeleteReason(''); }}>Cancel</button>
+              <button
+                className="btn btn-danger"
+                disabled={!deleteReason.trim() || deleteSubmitting}
+                onClick={handleDeleteSale}
+              >
+                {deleteSubmitting ? 'Deleting...' : 'Delete & Reverse'}
+              </button>
             </div>
           </div>
         </div>
