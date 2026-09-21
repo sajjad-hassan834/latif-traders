@@ -113,48 +113,51 @@ export default function SalesList() {
       )}
 
       {/* FILTERS BAR */}
-      <div className="card" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '160px' }}>
-          <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: '#94a3b8' }} />
-          <input
-            type="text"
-            className="form-control"
-            style={{ paddingLeft: '2.5rem' }}
-            placeholder="Search by invoice # or customer..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && loadSales()}
-          />
+      <div className="card" style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '180px' }}>
+          <label className="form-label" style={{ marginBottom: '0.25rem', fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Search</label>
+          <div style={{ position: 'relative' }}>
+            <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <input
+              type="text"
+              className="form-control"
+              style={{ paddingLeft: '2.2rem', height: '36px' }}
+              placeholder="Search by invoice # or customer..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && loadSales()}
+            />
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>From:</span>
+        <div>
+          <label className="form-label" style={{ marginBottom: '0.25rem', fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>From</label>
           <input
             type="date"
             className="form-control"
-            style={{ minWidth: '130px' }}
+            style={{ minWidth: '150px', height: '36px' }}
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>To:</span>
+        <div>
+          <label className="form-label" style={{ marginBottom: '0.25rem', fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>To</label>
           <input
             type="date"
             className="form-control"
-            style={{ minWidth: '130px' }}
+            style={{ minWidth: '150px', height: '36px' }}
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button onClick={loadSales} className="btn btn-secondary">
+        <div style={{ display: 'flex', gap: '0.5rem', paddingBottom: '1px' }}>
+          <button onClick={loadSales} className="btn btn-secondary btn-sm" style={{ height: '36px' }}>
             Filter
           </button>
 
-          <button onClick={handleExportCSV} className="btn btn-secondary" title="Export to CSV / Excel">
+          <button onClick={handleExportCSV} className="btn btn-secondary btn-sm" style={{ height: '36px' }} title="Export to CSV / Excel">
             <Download size={14} />
             <span>Export CSV</span>
           </button>
