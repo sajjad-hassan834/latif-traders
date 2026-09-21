@@ -196,7 +196,7 @@ export default function CashFlow() {
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>Cashbook Transaction Details</h3>
+                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>Cashbook Details</h3>
                 <p style={{ fontSize: '0.75rem', color: '#64748b' }}>
                   {cashbook?.entries?.length || 0} Cash entries recorded for {dateRangeText}
                 </p>

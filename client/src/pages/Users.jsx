@@ -161,7 +161,7 @@ export default function Users() {
             className={`btn btn-sm ${activeTab === 'users' ? 'btn-primary' : 'btn-secondary'}`}
           >
             <UserCheck size={16} />
-            <span>Staff Users & Roles</span>
+            <span>Staff</span>
           </button>
 
           <button
@@ -170,7 +170,7 @@ export default function Users() {
             style={{ position: 'relative' }}
           >
             <KeyRound size={16} />
-            <span>Password Reset Requests</span>
+            <span>Password Resets</span>
             {pendingCount > 0 && (
               <span style={{
                 background: '#ef4444',
@@ -356,7 +356,7 @@ export default function Users() {
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '0.85rem 1.25rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: '0.85rem', color: '#475569' }}>
-              <strong>Staff Password Reset Requests</strong> &bull; Review, approve, and assign new passwords to staff members.
+              <strong>Staff Password Resets</strong> &bull; Review, approve, and assign new passwords to staff members.
             </div>
             <button onClick={loadData} className="btn btn-secondary btn-sm" title="Refresh">
               <RefreshCw size={14} />
@@ -562,7 +562,7 @@ export default function Users() {
                   >
                     <option value="sales">Sales Staff / Cashier (POS & Sales)</option>
                     <option value="inventory">Store / Inventory Staff (Purchases & Stock)</option>
-                    <option value="accountant">Accountant (Ledgers, Cashbook, Reports)</option>
+                    <option value="accountant">Accountant</option>
                     <option value="admin">Owner / Administrator (Full Access)</option>
                   </select>
                 </div>
@@ -594,7 +594,7 @@ export default function Users() {
           <div className="modal-content" style={{ maxWidth: '560px' }}>
             <div className="modal-header" style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Edit User Account</h3>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Edit User</h3>
                 <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
                   Username: <strong className="mono" style={{ color: '#0284c7' }}>{selectedUser.username}</strong>
                 </div>
@@ -659,7 +659,7 @@ export default function Users() {
                     >
                       <option value="sales">Sales Staff / Cashier (POS & Sales)</option>
                       <option value="inventory">Store / Inventory Staff (Purchases & Stock)</option>
-                      <option value="accountant">Accountant (Ledgers, Cashbook, Reports)</option>
+                      <option value="accountant">Accountant</option>
                       <option value="admin">Owner / Administrator (Full Access)</option>
                     </select>
                   </div>

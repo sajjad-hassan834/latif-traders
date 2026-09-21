@@ -318,7 +318,7 @@ export default function Purchases() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <h3 style={{ fontSize: '1.2rem' }}>Purchases & Supplier Invoices</h3>
+          <h3 style={{ fontSize: '1.2rem' }}>Purchases</h3>
           <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
             Record cold-chain supplier shipments, batch expiration dates, and payable balances.
           </p>
@@ -570,7 +570,7 @@ export default function Purchases() {
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '900px' }}>
             <div className="modal-header">
-              <h3>Create Supplier Purchase Bill</h3>
+              <h3>Create Purchase</h3>
               <button onClick={() => setShowNewModal(false)}>✕</button>
             </div>
 

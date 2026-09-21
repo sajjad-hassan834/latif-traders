@@ -276,7 +276,7 @@ function ExpensesContent() {
         <div className="card" style={{ background: '#0f172a', color: '#fff', padding: '1rem 1.25rem', position: 'relative', overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '0.725rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Total Operating Expenses
+              Total Expenses
             </span>
             <div style={{ background: 'rgba(56, 189, 248, 0.15)', padding: '6px', borderRadius: '8px' }}>
               <Wallet size={16} color="#38bdf8" />
@@ -582,7 +582,7 @@ function ExpensesContent() {
           background: '#fafafa'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <h3 style={{ fontSize: '0.925rem', fontWeight: 700, color: '#0f172a' }}>Expense Vouchers Ledger</h3>
+            <h3 style={{ fontSize: '0.925rem', fontWeight: 700, color: '#0f172a' }}>Expense Ledger</h3>
             <span className="badge badge-info" style={{ fontSize: '0.7rem' }}>
               {expenses.length} Records
             </span>
@@ -739,7 +739,7 @@ function ExpensesContent() {
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Wallet size={16} color="var(--primary)" />
-                <h3 style={{ fontSize: '1rem' }}>Record Operating Expense</h3>
+                <h3 style={{ fontSize: '1rem' }}>Record Expense</h3>
               </div>
               <button onClick={() => setShowAddModal(false)}>✕</button>
             </div>
@@ -854,7 +854,7 @@ function ExpensesContent() {
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Edit2 size={16} color="var(--primary)" />
-                <h3 style={{ fontSize: '1rem' }}>Edit Expense Record</h3>
+                <h3 style={{ fontSize: '1rem' }}>Edit Expense</h3>
               </div>
               <button onClick={() => setShowEditModal(false)}>✕</button>
             </div>

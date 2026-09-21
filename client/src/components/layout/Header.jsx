@@ -34,19 +34,19 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
   }, []);
 
   const tabTitles = {
-    dashboard: 'Business Overview & Analytics',
-    pos: 'Point of Sale (POS) Counter',
-    sales: 'Sales Transactions & Invoices',
-    inventory: 'All Products Inventory & Batches',
-    'stock-adjust': 'Stock Adjustments & Waste Log',
-    purchases: 'Supplier Purchases & Restocking',
-    customers: 'Customer Accounts & Ledgers',
-    suppliers: 'Supplier Accounts & Ledgers',
-    expenses: 'Operating Expenses & Bills',
-    cashflow: 'Daily Cashbook & Flow',
-    reports: 'Financial & Inventory Reports',
-    users: 'User Management & Staff Accounts',
-    settings: 'System Configuration & Backups'
+    dashboard: 'Dashboard',
+    pos: 'New Sale',
+    sales: 'Sales History',
+    inventory: 'Products',
+    'stock-adjust': 'Adjustments',
+    purchases: 'Purchase',
+    customers: 'Customers',
+    suppliers: 'Suppliers',
+    expenses: 'Expenses',
+    cashflow: 'Cashbook',
+    reports: 'Analytics',
+    users: 'Staff',
+    settings: 'Settings'
   };
 
   const openAccountModal = (tab) => {

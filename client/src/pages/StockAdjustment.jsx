@@ -118,7 +118,7 @@ export default function StockAdjustment() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
           <Sliders size={24} color="var(--primary)" />
           <div>
-            <h3 style={{ fontSize: '1.2rem' }}>Frozen Food Stock Adjustment</h3>
+            <h3 style={{ fontSize: '1.2rem' }}>Stock Adjustment</h3>
             <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
               Record damaged, melted, expired, lost or sample food items with mandatory audit reasons.
             </p>

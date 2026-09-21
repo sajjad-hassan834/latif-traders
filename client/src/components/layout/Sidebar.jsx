@@ -19,11 +19,11 @@ import { api } from '../../utils/api';
 
 const MENU_SECTIONS = [
   {
-    title: 'Point of Sale',
+    title: 'Sales',
     roles: ['admin', 'sales'],
     items: [
-      { id: 'pos', label: 'POS / New Sale', icon: ShoppingCart, roles: ['admin', 'sales'] },
-      { id: 'sales', label: 'Sales History', icon: Receipt, roles: ['admin', 'sales', 'accountant'] }
+      { id: 'pos', label: 'New Sale', icon: ShoppingCart, roles: ['admin', 'sales'] },
+      { id: 'sales', label: 'History', icon: Receipt, roles: ['admin', 'sales', 'accountant'] }
     ]
   },
   {
@@ -34,16 +34,16 @@ const MENU_SECTIONS = [
     ]
   },
   {
-    title: 'Inventory & Stock',
+    title: 'Inventory',
     roles: ['admin', 'inventory', 'sales'],
     items: [
-      { id: 'inventory', label: 'All Products', icon: Package, roles: ['admin', 'inventory', 'sales'] },
-      { id: 'stock-adjust', label: 'Stock Adjustments', icon: Sliders, roles: ['admin', 'inventory'] },
-      { id: 'purchases', label: 'Purchases / Restock', icon: ArrowDownToLine, roles: ['admin', 'inventory', 'accountant'] }
+      { id: 'inventory', label: 'Products', icon: Package, roles: ['admin', 'inventory', 'sales'] },
+      { id: 'stock-adjust', label: 'Adjustments', icon: Sliders, roles: ['admin', 'inventory'] },
+      { id: 'purchases', label: 'Purchase', icon: ArrowDownToLine, roles: ['admin', 'inventory', 'accountant'] }
     ]
   },
   {
-    title: 'Parties & Ledgers',
+    title: 'Parties',
     roles: ['admin', 'sales', 'accountant', 'inventory'],
     items: [
       { id: 'customers', label: 'Customers', icon: Users, roles: ['admin', 'sales', 'accountant'] },
@@ -51,26 +51,26 @@ const MENU_SECTIONS = [
     ]
   },
   {
-    title: 'Finance & Accounts',
+    title: 'Finance',
     roles: ['admin', 'accountant'],
     items: [
-      { id: 'expenses', label: 'Operating Expenses', icon: Wallet, roles: ['admin', 'accountant'] },
+      { id: 'expenses', label: 'Expenses', icon: Wallet, roles: ['admin', 'accountant'] },
       { id: 'cashflow', label: 'Cashbook', icon: DollarSign, roles: ['admin', 'accountant'] }
     ]
   },
   {
-    title: 'Reports & Audits',
+    title: 'Reports',
     roles: ['admin', 'sales', 'inventory', 'accountant'],
     items: [
-      { id: 'reports', label: 'Reports & Analytics', icon: BarChart3, roles: ['admin', 'sales', 'inventory', 'accountant'] }
+      { id: 'reports', label: 'Analytics', icon: BarChart3, roles: ['admin', 'sales', 'inventory', 'accountant'] }
     ]
   },
   {
-    title: 'Administration',
+    title: 'Admin',
     roles: ['admin'],
     items: [
-      { id: 'users', label: 'Users & Staff', icon: Users, roles: ['admin'] },
-      { id: 'settings', label: 'Settings & Backups', icon: Sliders, roles: ['admin'] }
+      { id: 'users', label: 'Staff', icon: Users, roles: ['admin'] },
+      { id: 'settings', label: 'Settings', icon: Sliders, roles: ['admin'] }
     ]
   }
 ];

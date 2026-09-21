@@ -673,7 +673,7 @@ export default function Suppliers() {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3>Edit Supplier Information</h3>
+              <h3>Edit Supplier</h3>
               <button onClick={() => setShowEditModal(false)}>✕</button>
             </div>
             <form onSubmit={handleUpdateSupplier}>
