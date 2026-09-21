@@ -559,131 +559,57 @@ export default function Inventory() {
                       <td style={{ textAlign: 'right', width: '90px', whiteSpace: 'nowrap', fontSize: '0.8rem', color: '#64748b' }}>{formatPKR(p.purchase_price)}</td>
                       <td style={{ textAlign: 'right', width: '90px', fontWeight: 700, color: '#0284c7', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{formatPKR(p.sale_price)}</td>
                       <td style={{ textAlign: 'right', width: '95px', color: '#475569', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{formatPKR(p.wholesale_price)}</td>
-                      <td style={{ textAlign: 'center', width: '200px', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                          {canManageInventory && (
-                            <button
-                              type="button"
-                              onClick={() => openEditProduct(p)}
-                              className="btn btn-secondary btn-sm"
+                      <td style={{ textAlign: 'center', width: '100px', whiteSpace: 'nowrap' }}>
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActionMenuId(actionMenuId === p.id ? null : p.id);
+                            }}
+                            className="btn btn-secondary btn-sm"
+                            style={{
+                              padding: '3px 8px',
+                              fontSize: '0.725rem',
+                              fontWeight: 600,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              borderRadius: '5px'
+                            }}
+                            title="Product Actions"
+                          >
+                            <span>Action</span>
+                            <ChevronDown size={12} />
+                          </button>
+
+                          {actionMenuId === p.id && (
+                            <div
                               style={{
-                                padding: '3px 7px',
-                                fontSize: '0.72rem',
-                                fontWeight: 600,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '3px',
-                                borderRadius: '4px',
-                                color: '#0284c7'
+                                position: 'absolute',
+                                right: 0,
+                                top: '100%',
+                                marginTop: '4px',
+                                background: '#ffffff',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '6px',
+                                boxShadow: '0 10px 25px -3px rgba(0,0,0,0.18), 0 4px 10px -2px rgba(0,0,0,0.08)',
+                                zIndex: 9999,
+                                minWidth: '180px',
+                                padding: '4px 0',
+                                textAlign: 'left'
                               }}
-                              title="Edit Product Details"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              <Edit size={12} />
-                              <span>Edit</span>
-                            </button>
-                          )}
-
-                          {canManageInventory && (
-                            <button
-                              type="button"
-                              onClick={() => confirmDeleteProduct(p)}
-                              className="btn btn-sm"
-                              style={{
-                                padding: '3px 7px',
-                                fontSize: '0.72rem',
-                                fontWeight: 600,
-                                background: '#fef2f2',
-                                color: '#dc2626',
-                                border: '1px solid #fecaca',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '3px',
-                                borderRadius: '4px'
-                              }}
-                              title="Delete Product (Remove)"
-                            >
-                              <Trash2 size={12} />
-                              <span>Delete</span>
-                            </button>
-                          )}
-
-                          <div style={{ position: 'relative', display: 'inline-block' }}>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActionMenuId(actionMenuId === p.id ? null : p.id);
-                              }}
-                              className="btn btn-secondary btn-sm"
-                              style={{
-                                padding: '3px 7px',
-                                fontSize: '0.72rem',
-                                fontWeight: 600,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '2px',
-                                borderRadius: '4px'
-                              }}
-                              title="More Options"
-                            >
-                              <span>More</span>
-                              <ChevronDown size={11} />
-                            </button>
-
-                            {actionMenuId === p.id && (
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  right: 0,
-                                  top: '100%',
-                                  marginTop: '4px',
-                                  background: '#ffffff',
-                                  border: '1px solid #cbd5e1',
-                                  borderRadius: '6px',
-                                  boxShadow: '0 10px 25px -3px rgba(0,0,0,0.18), 0 4px 10px -2px rgba(0,0,0,0.08)',
-                                  zIndex: 9999,
-                                  minWidth: '165px',
-                                  padding: '4px 0',
-                                  textAlign: 'left'
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {canManageInventory && (
-                                  <button
-                                    onClick={() => {
-                                      setActionMenuId(null);
-                                      openRestock(p);
-                                    }}
-                                    style={{
-                                      width: '100%',
-                                      padding: '8px 12px',
-                                      fontSize: '0.75rem',
-                                      fontWeight: 600,
-                                      background: 'none',
-                                      border: 'none',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '8px',
-                                      color: '#059669',
-                                      cursor: 'pointer',
-                                      textAlign: 'left'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = '#ecfdf5'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                                  >
-                                    <PlusCircle size={14} color="#10b981" />
-                                    <span>+ Add Stock (Inward)</span>
-                                  </button>
-                                )}
-
+                              {canManageInventory && (
                                 <button
                                   onClick={() => {
                                     setActionMenuId(null);
-                                    viewProductDetail(p.id);
+                                    openEditProduct(p);
                                   }}
                                   style={{
                                     width: '100%',
-                                    padding: '8px 12px',
+                                    padding: '7px 12px',
                                     fontSize: '0.75rem',
                                     fontWeight: 600,
                                     background: 'none',
@@ -698,12 +624,96 @@ export default function Inventory() {
                                   onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
                                   onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                                 >
-                                  <Eye size={14} color="#0284c7" />
-                                  <span>Batches & History</span>
+                                  <Edit size={13} color="#0284c7" />
+                                  <span>Edit Product</span>
                                 </button>
-                              </div>
-                            )}
-                          </div>
+                              )}
+
+                              {canManageInventory && (
+                                <button
+                                  onClick={() => {
+                                    setActionMenuId(null);
+                                    openRestock(p);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '7px 12px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    background: 'none',
+                                    border: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    color: '#1e293b',
+                                    cursor: 'pointer',
+                                    textAlign: 'left'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                >
+                                  <PlusCircle size={13} color="#10b981" />
+                                  <span>Add Stock (Inward)</span>
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => {
+                                  setActionMenuId(null);
+                                  viewProductDetail(p.id);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 12px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  background: 'none',
+                                  border: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: '#1e293b',
+                                  cursor: 'pointer',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                              >
+                                <Eye size={13} color="#0284c7" />
+                                <span>Batches & History</span>
+                              </button>
+
+                              {canManageInventory && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionMenuId(null);
+                                    confirmDeleteProduct(p);
+                                  }}
+                                  style={{
+                                    width: '100%',
+                                    padding: '7px 12px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    background: 'none',
+                                    border: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    color: '#dc2626',
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                    borderTop: '1px solid #f1f5f9'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                >
+                                  <Trash2 size={13} color="#dc2626" />
+                                  <span>Delete Product</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
