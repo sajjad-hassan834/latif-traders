@@ -126,17 +126,34 @@ export default function PosSales() {
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const [prodRes, catRes, custRes] = await Promise.all([
+      const [prodResult, catResult, custResult] = await Promise.allSettled([
         api.get('/products?status=active'),
         api.get('/products/meta/categories'),
         api.get('/parties/customers')
       ]);
 
-      if (prodRes.success) setProducts(prodRes.products);
-      if (catRes.success) setCategories(catRes.categories);
-      if (custRes.success) setCustomers(custRes.customers);
+      if (prodResult.status === 'fulfilled' && prodResult.value.success) {
+        setProducts(prodResult.value.products);
+      } else {
+        const errMsg = prodResult.status === 'rejected' ? prodResult.reason?.message : 'Failed to load products';
+        setErrorMsg(errMsg);
+        console.error('Products fetch error:', prodResult.reason || prodResult.value);
+      }
+
+      if (catResult.status === 'fulfilled' && catResult.value.success) {
+        setCategories(catResult.value.categories);
+      } else {
+        console.error('Categories fetch error:', catResult.reason || catResult.value);
+      }
+
+      if (custResult.status === 'fulfilled' && custResult.value.success) {
+        setCustomers(custResult.value.customers);
+      } else {
+        console.error('Customers fetch error:', custResult.reason || custResult.value);
+      }
     } catch (err) {
       console.error('POS data loading error:', err);
+      setErrorMsg('Failed to load POS data. Please refresh.');
     } finally {
       setLoading(false);
     }
@@ -849,7 +866,17 @@ export default function PosSales() {
 
           {/* COMPACT PRODUCT TILES GRID */}
           <div className="pos-products-grid">
-            {products.length === 0 ? (
+            {loading ? (
+              <div style={{
+                gridColumn: '1 / -1',
+                textAlign: 'center',
+                padding: '3.5rem 1.5rem',
+                color: '#64748b'
+              }}>
+                <RefreshCw size={32} className="animate-spin" style={{ margin: '0 auto 0.75rem', display: 'block', color: '#0284c7' }} />
+                <p>Loading products...</p>
+              </div>
+            ) : products.length === 0 ? (
               <div style={{
                 gridColumn: '1 / -1',
                 textAlign: 'center',
