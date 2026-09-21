@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Eye, ArrowDownToLine, Trash2, RotateCcw, Printer, Download } from 'lucide-react';
+import { Search, Plus, Eye, ArrowDownToLine, Trash2, RotateCcw, Printer, Download, Package } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
