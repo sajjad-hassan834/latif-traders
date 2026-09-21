@@ -97,6 +97,8 @@ export default function Purchases() {
       expiry_date: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
       quantity: 10,
       unit_price: prod.purchase_price || 0,
+      wholesale_price: prod.wholesale_price || 0,
+      sale_price: prod.sale_price || 0,
       discount: 0
     }]);
 
@@ -329,7 +331,12 @@ export default function Purchases() {
             <span>Export CSV</span>
           </button>
           {canManageInventory && (
-            <button onClick={() => setShowNewModal(true)} className="btn btn-primary btn-sm">
+            <button onClick={() => {
+              const now = new Date();
+              const pad = (n) => String(n).padStart(2, '0');
+              setSupplierInvoiceNo(`INV-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`);
+              setShowNewModal(true);
+            }} className="btn btn-primary btn-sm">
               <Plus size={14} />
               <span>New Purchase Bill</span>
             </button>
@@ -625,7 +632,7 @@ export default function Purchases() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 240px' }}>
-                      <label className="form-label">Add Frozen Product to Shipment *</label>
+                      <label className="form-label">Add Product to Shipment *</label>
                       <select
                         className="form-control"
                         onChange={(e) => {
@@ -634,11 +641,12 @@ export default function Purchases() {
                             e.target.value = '';
                           }
                         }}
+                        defaultValue=""
                       >
-                        <option value="">-- Select Product to Add --</option>
+                        <option value="" disabled>-- Select Product --</option>
                         {products.map(p => (
                           <option key={p.id} value={p.id}>
-                            {p.name} {p.brand ? `[${p.brand}]` : ''} • Prev Rate: ₨{p.purchase_price}/{p.unit}
+                            {p.name} {p.brand ? `[${p.brand}]` : ''}
                           </option>
                         ))}
                       </select>
@@ -699,6 +707,8 @@ export default function Purchases() {
                         <th style={{ minWidth: '85px' }}>Unit</th>
                         <th style={{ width: '85px' }}>Quantity</th>
                         <th style={{ width: '110px' }}>Rate (₨)</th>
+                        <th style={{ width: '110px' }}>Sale Price</th>
+                        <th style={{ width: '110px' }}>Wholesale</th>
                         <th>Batch / Lot #</th>
                         <th>Expiry Date</th>
                         <th style={{ textAlign: 'right' }}>Total (PKR)</th>
@@ -707,7 +717,7 @@ export default function Purchases() {
                     </thead>
                     <tbody>
                       {items.length === 0 ? (
-                        <tr><td colSpan="9" style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem' }}>No products added to bill yet. Select a product above.</td></tr>
+                        <tr><td colSpan="11" style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem' }}>No products added to bill yet. Select a product above.</td></tr>
                       ) : (
                         items.map((it, idx) => (
                           <tr key={idx}>
@@ -770,6 +780,26 @@ export default function Purchases() {
                                 min="0"
                                 value={it.unit_price}
                                 onChange={(e) => updateItem(idx, 'unit_price', e.target.value)}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control"
+                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '95px' }}
+                                min="0"
+                                value={it.sale_price}
+                                onChange={(e) => updateItem(idx, 'sale_price', e.target.value)}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control"
+                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '95px' }}
+                                min="0"
+                                value={it.wholesale_price}
+                                onChange={(e) => updateItem(idx, 'wholesale_price', e.target.value)}
                               />
                             </td>
                             <td>

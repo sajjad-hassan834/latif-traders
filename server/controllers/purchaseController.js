@@ -90,7 +90,12 @@ exports.createPurchase = (req, res) => {
     // Generate unique internal purchase invoice number: PUR-YYYYMMDD-XXXX
     const dateStr = (purchase_date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
     const countToday = db.prepare('SELECT COUNT(*) as count FROM purchases WHERE invoice_no LIKE ?').get(`PUR-${dateStr}-%`).count;
-    const invoice_no = `PUR-${dateStr}-${String(countToday + 1).padStart(4, '0')}`;
+    const seq = String(countToday + 1).padStart(4, '0');
+    const invoice_no = `PUR-${dateStr}-${seq}`;
+
+    // Ensure uniqueness (race condition guard)
+    const exists = db.prepare('SELECT id FROM purchases WHERE invoice_no = ?').get(invoice_no);
+    const finalInvoice = exists ? `${invoice_no}-${Date.now().toString().slice(-3)}` : invoice_no;
 
     let subtotal = 0;
     for (const item of items) {
@@ -113,7 +118,7 @@ exports.createPurchase = (req, res) => {
     `);
 
     const pRes = insertPurchase.run(
-      invoice_no,
+      finalInvoice,
       supplier_invoice_no ? supplier_invoice_no.trim() : null,
       supplier_id,
       purchase_date || new Date().toISOString().split('T')[0],
@@ -204,15 +209,17 @@ exports.createPurchase = (req, res) => {
         batchId = bRes.lastInsertRowid;
       }
 
-      // Update product's latest purchase price and default supplier if empty
+      // Update product's latest purchase price, sale/wholesale prices, and default supplier
       db.prepare(`
         UPDATE products SET
           purchase_price = ?,
+          sale_price = CASE WHEN ? > 0 THEN ? ELSE sale_price END,
+          wholesale_price = CASE WHEN ? > 0 THEN ? ELSE wholesale_price END,
           supplier_id = COALESCE(supplier_id, ?),
           brand = COALESCE(brand, ?),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `).run(rate, supplier_id, itemBrand, item.product_id);
+      `).run(rate, batchSalePrice, batchSalePrice, batchWholesalePrice, batchWholesalePrice, supplier_id, itemBrand, item.product_id);
 
       // Calculate total stock after
       const newTotal = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active'")
@@ -225,7 +232,7 @@ exports.createPurchase = (req, res) => {
         rate,
         newTotal,
         purchaseId,
-        `Purchase Invoice ${invoice_no} (${supplier.name})`,
+        `Purchase Invoice ${finalInvoice} (${supplier.name})`,
         req.user.id
       );
     }
@@ -244,11 +251,11 @@ exports.createPurchase = (req, res) => {
       `).run(
         supplier_id,
         purchaseId,
-        invoice_no,
+        finalInvoice,
         paid,
         payment_method || 'Cash',
         purchase_date || new Date().toISOString().split('T')[0],
-        `Down payment on purchase bill ${invoice_no}`,
+        `Down payment on purchase bill ${finalInvoice}`,
         req.user.id
       );
     }
@@ -259,11 +266,11 @@ exports.createPurchase = (req, res) => {
       'CREATE',
       'PURCHASE',
       purchaseId,
-      `Created purchase ${invoice_no} from supplier ${supplier.name} for ₨ ${grand_total} (Paid: ₨ ${paid})`,
+      `Created purchase ${finalInvoice} from supplier ${supplier.name} for ₨ ${grand_total} (Paid: ₨ ${paid})`,
       req
     );
 
-    return { id: purchaseId, invoice_no, grand_total, balance_due };
+    return { id: purchaseId, invoice_no: finalInvoice, grand_total, balance_due };
   });
 
   try {

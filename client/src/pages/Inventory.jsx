@@ -987,14 +987,11 @@ export default function Inventory() {
                 {/* Row 3: Item Code & Min Stock Alert */}
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <label className="form-label" style={{ margin: 0 }}>Item Code / SKU</label>
-                      <span style={{ fontSize: '0.68rem', color: '#0284c7', fontWeight: 600 }}>⚡ Auto-Generated</span>
-                    </div>
+                    <label className="form-label">Item Code</label>
                     <input
                       type="text"
                       className="form-control mono"
-                      placeholder="Auto: LT-0001 (or type custom)"
+                      placeholder="auto"
                       value={formData.sku}
                       onChange={(e) => setFormData({ ...formData, sku: e.target.value, barcode: e.target.value })}
                     />
@@ -1009,89 +1006,6 @@ export default function Inventory() {
                       value={formData.min_stock_level}
                       onChange={(e) => setFormData({ ...formData, min_stock_level: e.target.value })}
                     />
-                  </div>
-                </div>
-
-                {/* Row 4: Pricing */}
-                <div className="form-grid-3">
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Purchase Price (Cost PKR)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      placeholder="0"
-                      min="0"
-                      step="any"
-                      value={formData.purchase_price}
-                      onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Retail Sale Price * (PKR)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      required
-                      placeholder="0"
-                      min="0"
-                      step="any"
-                      value={formData.sale_price}
-                      onChange={(e) => setFormData({ ...formData, sale_price: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Wholesale Price (PKR)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      placeholder="0"
-                      min="0"
-                      step="any"
-                      value={formData.wholesale_price}
-                      onChange={(e) => setFormData({ ...formData, wholesale_price: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                {/* OPENING STOCK */}
-                <div style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '0.2rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.825rem', color: '#0f172a' }}>
-                      📦 Opening Stock Lot (Optional)
-                    </div>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Creates initial FIFO inventory batch</span>
-                  </div>
-                  <div className="form-grid-3">
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Opening Qty</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        placeholder="0"
-                        min="0"
-                        value={formData.opening_stock}
-                        onChange={(e) => setFormData({ ...formData, opening_stock: e.target.value })}
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Batch / Lot No</label>
-                      <input
-                        type="text"
-                        className="form-control mono"
-                        placeholder="e.g. LOT-2609"
-                        value={formData.batch_no}
-                        onChange={(e) => setFormData({ ...formData, batch_no: e.target.value })}
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Expiry Date</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={formData.expiry_date}
-                        onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
-                      />
-                    </div>
                   </div>
                 </div>
               </div>
