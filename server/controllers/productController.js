@@ -347,6 +347,20 @@ exports.updateProduct = (req, res) => {
       id
     );
 
+    // Admin: Also update all active batch prices for this product so existing stock sells at new rates
+    if (isAdmin) {
+      const priceChanged = finalPurchasePrice !== existing.purchase_price || finalSalePrice !== existing.sale_price || finalWholesalePrice !== existing.wholesale_price;
+      if (priceChanged) {
+        db.prepare(`
+          UPDATE batches SET
+            purchase_price = ?,
+            sale_price = ?,
+            wholesale_price = ?
+          WHERE product_id = ? AND status = 'active'
+        `).run(finalPurchasePrice, finalSalePrice, finalWholesalePrice, id);
+      }
+    }
+
     logAudit(req.user.id, req.user.full_name, 'UPDATE', 'PRODUCT', id, `Updated product #${id}`, req);
 
     return res.json({ success: true, message: 'Product updated successfully.' });

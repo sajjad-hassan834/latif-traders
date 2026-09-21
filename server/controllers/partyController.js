@@ -466,3 +466,44 @@ exports.getSupplierLedger = (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to generate supplier ledger.' });
   }
 };
+
+// Recalculate all supplier current_balance from actual purchase/payment/return data (Admin fix)
+exports.recalculateSupplierBalances = (req, res) => {
+  try {
+    const suppliers = db.prepare('SELECT * FROM suppliers').all();
+    let fixed = 0;
+
+    const recalcTransaction = db.transaction(() => {
+      for (const sup of suppliers) {
+        // Correct balance = opening_balance + SUM(balance_due from purchases) - SUM(payments) - SUM(returns)
+        const purchaseCredit = db.prepare(`
+          SELECT COALESCE(SUM(balance_due), 0) as total FROM purchases WHERE supplier_id = ?
+        `).get(sup.id).total;
+
+        const paymentsMade = db.prepare(`
+          SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE party_type = 'SUPPLIER' AND party_id = ?
+        `).get(sup.id).total;
+
+        const returnsMade = db.prepare(`
+          SELECT COALESCE(SUM(total_amount), 0) as total FROM returns WHERE type = 'PURCHASE_RETURN' AND party_id = ?
+        `).get(sup.id).total;
+
+        const correctBalance = (Number(sup.opening_balance) || 0) + purchaseCredit - paymentsMade - returnsMade;
+        const oldBalance = Number(sup.current_balance) || 0;
+
+        if (Math.abs(correctBalance - oldBalance) > 0.01) {
+          db.prepare('UPDATE suppliers SET current_balance = ? WHERE id = ?').run(correctBalance, sup.id);
+          fixed++;
+        }
+      }
+    });
+
+    recalcTransaction();
+
+    logAudit(req.user.id, req.user.full_name, 'RECALCULATE', 'SUPPLIER', null, `Recalculated all supplier balances. Fixed ${fixed} suppliers.`, req);
+    return res.json({ success: true, message: `Recalculated supplier balances. ${fixed} supplier(s) were corrected.`, fixed });
+  } catch (err) {
+    console.error('Recalculate supplier balances error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to recalculate supplier balances.' });
+  }
+};

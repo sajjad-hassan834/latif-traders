@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown, Trash2 } from 'lucide-react';
+import { Building2, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown, Trash2, RefreshCw } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
@@ -165,6 +165,22 @@ export default function Suppliers() {
     }
   };
 
+  const handleRecalculateBalances = async () => {
+    if (!window.confirm('This will recalculate all supplier balances from actual purchase/payment/return data. Continue?')) return;
+    try {
+      setLoading(true);
+      const res = await api.post('/parties/suppliers/recalculate-balances');
+      if (res.success) {
+        alert(res.message);
+        loadSuppliers();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to recalculate balances');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -180,10 +196,18 @@ export default function Suppliers() {
             onKeyDown={(e) => e.key === 'Enter' && loadSuppliers()}
           />
         </div>
-        <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
-          <Plus size={16} />
-          <span>Add New Supplier</span>
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {isAdmin && (
+            <button onClick={handleRecalculateBalances} className="btn btn-secondary" title="Admin: Recalculate all supplier balances from actual data">
+              <RefreshCw size={14} />
+              <span>Recalculate Balances</span>
+            </button>
+          )}
+          <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
+            <Plus size={16} />
+            <span>Add New Supplier</span>
+          </button>
+        </div>
       </div>
 
       {/* SUPPLIERS TABLE */}

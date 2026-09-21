@@ -18,5 +18,6 @@ router.post('/suppliers', requireRoles('inventory', 'accountant'), partyControll
 router.put('/suppliers/:id', requireRoles('inventory', 'accountant'), partyController.updateSupplier);
 router.delete('/suppliers/:id', requireRoles('admin'), partyController.deleteSupplier);
 router.get('/suppliers/:id/ledger', requireRoles('inventory', 'accountant'), partyController.getSupplierLedger);
+router.post('/suppliers/recalculate-balances', requireRoles('admin'), partyController.recalculateSupplierBalances);
 
 module.exports = router;
