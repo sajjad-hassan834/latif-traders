@@ -97,7 +97,7 @@ export default function Inventory() {
         api.get('/products/meta/categories'),
         api.get('/products/meta/units'),
         api.get('/products/meta/brands'),
-        api.get('/parties/suppliers')
+        api.get('/parties/suppliers').catch(() => ({ success: false, suppliers: [] }))
       ]);
 
       if (pRes.success) setProducts(pRes.products);
