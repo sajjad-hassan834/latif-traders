@@ -11,9 +11,9 @@ import {
   DollarSign,
   BarChart3,
   Sliders,
-  Snowflake,
   X
 } from 'lucide-react';
+import LtLogo from '../common/LtLogo';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../utils/api';
 
@@ -128,8 +128,8 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: 1, minWidth: 0 }}>
-          <div className="brand-icon" style={{ flexShrink: 0 }}>
-            <Snowflake size={18} color="#ffffff" />
+          <div className="brand-icon" style={{ flexShrink: 0, background: 'transparent', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LtLogo size={32} />
           </div>
           <div className="brand-text" style={{ minWidth: 0, overflow: 'hidden' }}>
             <h2 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.95rem' }} title={brandInfo.name}>

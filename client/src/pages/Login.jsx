@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { 
-  Snowflake, 
   Lock, 
   User, 
   LogIn, 
@@ -20,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
+import LtLogo from '../components/common/LtLogo';
 
 export default function Login() {
   const { login } = useAuth();
@@ -124,8 +124,8 @@ export default function Login() {
         <div className="login-hero-pane">
           <div>
             <div className="login-brand-badge">
-              <div className="login-brand-icon">
-                <Snowflake size={22} />
+              <div className="login-brand-icon" style={{ background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <LtLogo size={40} />
               </div>
               <div>
                 <h2 className="login-brand-title">LATIF TRADERS</h2>
