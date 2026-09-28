@@ -146,8 +146,18 @@ exports.createSale = (req, res) => {
 
     // Generate Invoice Number: INV-YYYYMMDD-XXXX
     const dateStr = (sale_date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
-    const countToday = db.prepare('SELECT COUNT(*) as count FROM sales WHERE invoice_no LIKE ?').get(`INV-${dateStr}-%`).count;
-    const invoice_no = `INV-${dateStr}-${String(countToday + 1).padStart(4, '0')}`;
+    const existingInvoices = db.prepare('SELECT invoice_no FROM sales WHERE invoice_no LIKE ?').all(`INV-${dateStr}-%`);
+    let maxSuffix = 0;
+    for (const inv of existingInvoices) {
+      const parts = inv.invoice_no.split('-');
+      if (parts.length === 3) {
+        const suffix = parseInt(parts[2], 10);
+        if (!isNaN(suffix) && suffix > maxSuffix) {
+          maxSuffix = suffix;
+        }
+      }
+    }
+    const invoice_no = `INV-${dateStr}-${String(maxSuffix + 1).padStart(4, '0')}`;
 
     const insertSale = db.prepare(`
       INSERT INTO sales (

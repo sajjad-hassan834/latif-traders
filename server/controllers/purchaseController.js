@@ -89,13 +89,18 @@ exports.createPurchase = (req, res) => {
 
     // Generate unique internal purchase invoice number: PUR-YYYYMMDD-XXXX
     const dateStr = (purchase_date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
-    const countToday = db.prepare('SELECT COUNT(*) as count FROM purchases WHERE invoice_no LIKE ?').get(`PUR-${dateStr}-%`).count;
-    const seq = String(countToday + 1).padStart(4, '0');
-    const invoice_no = `PUR-${dateStr}-${seq}`;
-
-    // Ensure uniqueness (race condition guard)
-    const exists = db.prepare('SELECT id FROM purchases WHERE invoice_no = ?').get(invoice_no);
-    const finalInvoice = exists ? `${invoice_no}-${Date.now().toString().slice(-3)}` : invoice_no;
+    const existingInvoices = db.prepare('SELECT invoice_no FROM purchases WHERE invoice_no LIKE ?').all(`PUR-${dateStr}-%`);
+    let maxSuffix = 0;
+    for (const inv of existingInvoices) {
+      const parts = inv.invoice_no.split('-');
+      if (parts.length === 3) {
+        const suffix = parseInt(parts[2], 10);
+        if (!isNaN(suffix) && suffix > maxSuffix) {
+          maxSuffix = suffix;
+        }
+      }
+    }
+    const finalInvoice = `PUR-${dateStr}-${String(maxSuffix + 1).padStart(4, '0')}`;
 
     let subtotal = 0;
     for (const item of items) {
