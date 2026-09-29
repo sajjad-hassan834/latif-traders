@@ -26,6 +26,7 @@ import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/common/Pagination';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 
 function ExpensesContent() {
@@ -40,6 +41,8 @@ function ExpensesContent() {
   const [selectedMethod, setSelectedMethod] = useState('');
   const [datePreset, setDatePreset] = useState('all'); // 'today', 'this_month', 'last_30', 'all', 'custom'
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -620,7 +623,7 @@ function ExpensesContent() {
                   </td>
                 </tr>
               ) : (
-                expenses.map(e => (
+                expenses.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(e => (
                   <tr key={e.id}>
                     <td style={{ fontWeight: 600, fontSize: '0.775rem', color: '#334155' }}>
                       {formatDate(e.expense_date)}
@@ -730,6 +733,12 @@ function ExpensesContent() {
             )}
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={expenses.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* 4. ADD EXPENSE MODAL */}

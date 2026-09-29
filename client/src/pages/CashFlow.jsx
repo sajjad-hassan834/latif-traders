@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
 import ReportPrintHeader from '../components/common/ReportPrintHeader';
+import Pagination from '../components/common/Pagination';
 import ReportPrintFooter from '../components/common/ReportPrintFooter';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
 
@@ -13,6 +14,8 @@ export default function CashFlow() {
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   // Receipt & Invoice viewing states
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -226,7 +229,7 @@ export default function CashFlow() {
                   ) : cashbook?.entries?.length === 0 ? (
                     <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>No cash transactions recorded for this period.</td></tr>
                   ) : (
-                    cashbook?.entries?.map((entry, idx) => (
+                    (cashbook?.entries || []).slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((entry, idx) => (
                       <tr key={idx}>
                         <td style={{ width: '95px', whiteSpace: 'nowrap', textAlign: 'left' }}>{formatDate(entry.date)}</td>
                         <td style={{ width: '150px', textAlign: 'left' }}>
@@ -308,6 +311,14 @@ export default function CashFlow() {
                   </tfoot>
                 )}
               </table>
+            </div>
+            <div className="no-print">
+              <Pagination
+                currentPage={currentPage}
+                totalItems={cashbook?.entries?.length || 0}
+                itemsPerPage={ITEMS_PER_PAGE}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
 

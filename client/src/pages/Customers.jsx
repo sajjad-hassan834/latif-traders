@@ -3,6 +3,7 @@ import { Users, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown, 
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/common/Pagination';
 
 export default function Customers() {
   const { user, isAdmin: authIsAdmin } = useAuth();
@@ -10,6 +11,8 @@ export default function Customers() {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -211,7 +214,7 @@ export default function Customers() {
               ) : customers.length === 0 ? (
                 <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No customers found.</td></tr>
               ) : (
-                customers.map(c => (
+                customers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(c => (
                   <tr key={c.id}>
                     <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{c.name}</td>
                     <td style={{ textAlign: 'center' }}>
@@ -410,6 +413,12 @@ export default function Customers() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={customers.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* ADD CUSTOMER MODAL */}

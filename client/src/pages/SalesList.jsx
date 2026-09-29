@@ -5,6 +5,7 @@ import { formatPKR, formatDate, formatDateTime } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
 import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/common/Pagination';
 
 export default function SalesList() {
   const { isAdmin } = useAuth();
@@ -13,6 +14,8 @@ export default function SalesList() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   const [selectedSale, setSelectedSale] = useState(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -224,7 +227,7 @@ export default function SalesList() {
                   <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No sales found for the selected period.</td>
                 </tr>
               ) : (
-                sales.map(s => (
+                sales.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(s => (
                   <tr key={s.id}>
                     <td className="mono" style={{ fontWeight: 700, color: '#0284c7' }}>{s.invoice_no}</td>
                     <td>{formatDate(s.sale_date)}</td>
@@ -313,6 +316,12 @@ export default function SalesList() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={sales.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* PRINT INVOICE MODAL */}

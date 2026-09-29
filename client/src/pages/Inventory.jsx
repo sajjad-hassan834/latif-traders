@@ -5,6 +5,7 @@ import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
 import { useAuth } from '../context/AuthContext';
 import BarcodeLabelModal from '../components/common/BarcodeLabelModal';
+import Pagination from '../components/common/Pagination';
 
 export default function Inventory() {
   const { isAdmin, canManageInventory } = useAuth();
@@ -18,6 +19,8 @@ export default function Inventory() {
   const [selectedBrand, setSelectedBrand] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -530,7 +533,7 @@ export default function Inventory() {
                   <td colSpan="9" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>No products found.</td>
                 </tr>
               ) : (
-                products.map((p) => {
+                products.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((p) => {
                   const isLow = p.current_stock <= p.min_stock_level;
                   const isOut = p.current_stock === 0;
 
@@ -723,6 +726,12 @@ export default function Inventory() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={products.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* BARCODE LABELS MODAL */}
