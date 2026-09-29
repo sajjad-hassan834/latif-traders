@@ -4,6 +4,8 @@ import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
 import { useAuth } from '../context/AuthContext';
+import SearchableSelect from '../components/common/SearchableSelect';
+import Pagination from '../components/common/Pagination';
 
 export default function Purchases() {
   const { canManageInventory } = useAuth();
@@ -11,6 +13,8 @@ export default function Purchases() {
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   // Modals
   const [showNewModal, setShowNewModal] = useState(false);
@@ -367,7 +371,7 @@ export default function Purchases() {
               ) : purchases.length === 0 ? (
                 <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No purchases recorded yet.</td></tr>
               ) : (
-                purchases.map(p => {
+                purchases.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(p => {
                   const netTotal = p.grand_total - (p.returned_amount || 0);
                   const isFullyReturned = netTotal <= 0 && p.returned_amount > 0;
                   
@@ -570,6 +574,12 @@ export default function Purchases() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={purchases.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* NEW PURCHASE BILL MODAL */}
@@ -592,17 +602,12 @@ export default function Purchases() {
                 <div className="form-grid-3">
                   <div className="form-group">
                     <label className="form-label">Supplier *</label>
-                    <select
-                      className="form-control"
+                    <SearchableSelect
+                      options={suppliers.map(s => ({ value: s.id, label: `${s.name} (Payable: ₨ ${s.current_balance})` }))}
                       value={supplierId}
-                      onChange={(e) => setSupplierId(e.target.value)}
-                      required
-                    >
-                      <option value="">-- Choose Supplier --</option>
-                      {suppliers.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} (Payable: ₨ {s.current_balance})</option>
-                      ))}
-                    </select>
+                      onChange={(val) => setSupplierId(val)}
+                      placeholder="-- Choose Supplier --"
+                    />
                   </div>
 
                   <div className="form-group">
@@ -633,23 +638,16 @@ export default function Purchases() {
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 240px' }}>
                       <label className="form-label">Add Product to Shipment *</label>
-                      <select
-                        className="form-control"
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            addItemToBill(e.target.value);
-                            e.target.value = '';
-                          }
+                      <SearchableSelect
+                        options={products
+                          .filter(p => !supplierId || String(p.supplier_id) === String(supplierId) || p.supplier_id === null)
+                          .map(p => ({ value: p.id, label: `${p.name} ${p.brand ? `[${p.brand}]` : ''}` }))}
+                        value=""
+                        onChange={(val) => {
+                          if (val) addItemToBill(val);
                         }}
-                        defaultValue=""
-                      >
-                        <option value="" disabled>-- Select Product --</option>
-                        {products.map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} {p.brand ? `[${p.brand}]` : ''}
-                          </option>
-                        ))}
-                      </select>
+                        placeholder="-- Select Product --"
+                      />
                     </div>
                   </div>
 

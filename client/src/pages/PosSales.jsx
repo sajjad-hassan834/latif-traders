@@ -32,6 +32,7 @@ import { formatPKR, formatDate } from '../utils/formatters';
 import { playBeep, isAudioMuted, toggleAudioMute } from '../utils/audio';
 import { useAuth } from '../context/AuthContext';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
+import SearchableSelect from '../components/common/SearchableSelect';
 
 function getCategoryIcon(catName = '') {
   const name = String(catName || '').toLowerCase();
@@ -1081,18 +1082,18 @@ export default function PosSales() {
 
             {/* CUSTOMER SELECT & QUICK ADD CUSTOMER */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.25rem', alignItems: 'center' }}>
-              <select
-                className="form-control"
-                value={selectedCustomer}
-                onChange={(e) => handleCustomerChange(e.target.value)}
-                style={{ fontSize: '0.725rem', height: '28px', padding: '1px 6px', fontWeight: 600 }}
-              >
-                {customers.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.id !== 1 && c.current_balance > 0 ? `— (Bakaya Udhaar: ₨ ${c.current_balance})` : c.id !== 1 ? '— (Bal: ₨ 0)' : ''}
-                  </option>
-                ))}
-              </select>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <SearchableSelect
+                  className="form-control"
+                  value={selectedCustomer}
+                  onChange={(val) => handleCustomerChange(val)}
+                  options={customers.map(c => ({
+                    value: c.id,
+                    label: `${c.name} ${c.id !== 1 && c.current_balance > 0 ? `— (Bakaya Udhaar: ₨ ${c.current_balance})` : c.id !== 1 ? '— (Bal: ₨ 0)' : ''}`
+                  }))}
+                  placeholder="-- Select Customer --"
+                />
+              </div>
 
               <button
                 type="button"
