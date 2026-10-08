@@ -399,6 +399,24 @@ function initializeDatabase() {
     console.error('Error during delivery wipe migration:', err);
   }
 
+  // Cleanup auto-inserted sale & purchase payment records from payments table to ensure 100% clean cashbook & ledger
+  try {
+    const cleanDupSetting = db.prepare("SELECT value FROM settings WHERE key = 'clean_auto_payments_v2'").get();
+    if (!cleanDupSetting) {
+      db.prepare(`
+        DELETE FROM payments
+        WHERE reference_id IS NOT NULL
+           OR reference_no LIKE 'INV-%'
+           OR reference_no LIKE 'PUR-%'
+           OR notes LIKE '%Receipt for Invoice%'
+           OR notes LIKE '%Down payment on purchase bill%'
+      `).run();
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('clean_auto_payments_v2', 'true')").run();
+    }
+  } catch (err) {
+    console.error('Error during payments table cleanup migration:', err);
+  }
+
   seedInitialData();
 }
 

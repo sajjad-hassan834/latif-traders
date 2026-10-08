@@ -321,24 +321,7 @@ exports.createSale = (req, res) => {
       }
     }
 
-    // Record receipt if paid > 0
-    if (paid > 0) {
-      db.prepare(`
-        INSERT INTO payments (
-          type, party_type, party_id, reference_id, reference_no,
-          amount, payment_method, payment_date, notes, user_id
-        ) VALUES ('CUSTOMER_RECEIPT', 'CUSTOMER', ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        customer_id || 1, // 1 is counter walk-in
-        saleId,
-        invoice_no,
-        paid,
-        payment_method || 'Cash',
-        sale_date || new Date().toISOString().split('T')[0],
-        `Receipt for Invoice ${invoice_no}`,
-        req.user.id
-      );
-    }
+
 
     logAudit(
       req.user.id,

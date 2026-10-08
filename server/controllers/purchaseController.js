@@ -246,24 +246,7 @@ exports.createPurchase = (req, res) => {
     db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ?')
       .run(balance_due, supplier_id);
 
-    // If paid amount > 0, record in payments table for cash flow tracking
-    if (paid > 0) {
-      db.prepare(`
-        INSERT INTO payments (
-          type, party_type, party_id, reference_id, reference_no,
-          amount, payment_method, payment_date, notes, user_id
-        ) VALUES ('SUPPLIER_PAYMENT', 'SUPPLIER', ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        supplier_id,
-        purchaseId,
-        finalInvoice,
-        paid,
-        payment_method || 'Cash',
-        purchase_date || new Date().toISOString().split('T')[0],
-        `Down payment on purchase bill ${finalInvoice}`,
-        req.user.id
-      );
-    }
+
 
     logAudit(
       req.user.id,
