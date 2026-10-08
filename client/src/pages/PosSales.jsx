@@ -25,7 +25,9 @@ import {
   Edit2,
   FileText,
   PackageOpen,
-  Package
+  Package,
+  List,
+  LayoutGrid
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
@@ -113,6 +115,9 @@ export default function PosSales() {
   const [editingItemIndex, setEditingItemIndex] = useState(null);
   const [tempItemPrice, setTempItemPrice] = useState('');
   const [tempItemDiscount, setTempItemDiscount] = useState('');
+
+  // Catalog View Mode ('list' compact view or 'grid' card view)
+  const [catalogView, setCatalogView] = useState('list');
 
   // Mobile POS view switcher (catalog vs cart)
   const [mobileTab, setMobileTab] = useState('catalog');
@@ -843,6 +848,52 @@ export default function PosSales() {
             >
               <RefreshCw size={13} />
             </button>
+
+            {/* CATALOG VIEW MODE TOGGLE (LIST / GRID) */}
+            <div style={{ display: 'flex', background: '#f1f5f9', padding: '2px', borderRadius: '6px', border: '1px solid #cbd5e1', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => setCatalogView('list')}
+                style={{
+                  padding: '3px 7px',
+                  fontSize: '0.72rem',
+                  borderRadius: '4px',
+                  border: 'none',
+                  background: catalogView === 'list' ? '#0284c7' : 'transparent',
+                  color: catalogView === 'list' ? '#ffffff' : '#64748b',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  fontWeight: 700
+                }}
+                title="Compact List View"
+              >
+                <List size={13} />
+                <span>List</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCatalogView('grid')}
+                style={{
+                  padding: '3px 7px',
+                  fontSize: '0.72rem',
+                  borderRadius: '4px',
+                  border: 'none',
+                  background: catalogView === 'grid' ? '#0284c7' : 'transparent',
+                  color: catalogView === 'grid' ? '#ffffff' : '#64748b',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  fontWeight: 700
+                }}
+                title="Grid Card View"
+              >
+                <LayoutGrid size={13} />
+                <span>Grid</span>
+              </button>
+            </div>
           </div>
 
           {/* CATEGORIES HORIZONTAL PILLS (Shown only when products exist) */}
@@ -868,8 +919,8 @@ export default function PosSales() {
             </div>
           )}
 
-          {/* COMPACT PRODUCT TILES GRID */}
-          <div className="pos-products-grid">
+          {/* PRODUCT ITEMS LIST OR GRID */}
+          <div className={catalogView === 'list' ? 'pos-products-list' : 'pos-products-grid'}>
             {loading ? (
               <div style={{
                 gridColumn: '1 / -1',
@@ -912,6 +963,52 @@ export default function PosSales() {
                 const inStock = p.current_stock > 0;
                 const isLow = p.current_stock <= p.min_stock_level;
                 const displayPrice = saleType === 'Wholesale' && p.wholesale_price > 0 ? p.wholesale_price : p.sale_price;
+
+                if (catalogView === 'list') {
+                  return (
+                    <div
+                      key={p.id}
+                      className={`pos-product-list-item ${!inStock ? 'out-of-stock' : ''}`}
+                      onClick={() => inStock && addToCart(p)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: 1, minWidth: 0 }}>
+                        <div className="pos-item-icon" style={{ flexShrink: 0 }}>
+                          {getCategoryIcon(p.category_name)}
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: '0.64rem', fontWeight: 700, color: '#0284c7', lineHeight: 1.1, textTransform: 'uppercase' }}>
+                            {p.brand || 'Frozen'}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>
+                            {p.name}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '0.825rem', fontWeight: 800, color: '#0f172a' }}>
+                            {formatPKR(displayPrice)}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end' }}>
+                            <span className={`badge ${!inStock ? 'badge-danger' : isLow ? 'badge-warning' : 'badge-success'}`} style={{ fontSize: '0.6rem', padding: '0 4px' }}>
+                              {p.current_stock} {p.unit}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={!inStock}
+                          className="btn btn-primary btn-sm"
+                          style={{ padding: '2px 7px', fontSize: '0.72rem', height: '25px', borderRadius: '4px' }}
+                        >
+                          + Add
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <div
