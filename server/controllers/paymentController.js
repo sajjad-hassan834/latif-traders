@@ -147,6 +147,7 @@ exports.getCashbook = (req, res) => {
       WHERE p.type = 'CUSTOMER_RECEIPT' AND p.payment_method = 'Cash'
         AND (p.reference_no IS NULL OR p.reference_no NOT LIKE 'INV-%')
         AND p.reference_id IS NULL
+        AND (p.notes IS NULL OR (p.notes NOT LIKE '%Receipt for Invoice%' AND p.notes NOT LIKE '%INV-%'))
         AND p.payment_date >= ? AND p.payment_date <= ?
     `).all(sDate, eDate);
 
@@ -162,13 +163,16 @@ exports.getCashbook = (req, res) => {
     `).all(sDate, eDate);
 
     // 2. Cash Out:
-    // - Supplier Payments in Cash (Ledger disbursements)
+    // - Supplier Payments in Cash (Ledger disbursements not tied to purchase bills)
     const disbursements = db.prepare(`
       SELECT p.id, p.payment_date as date, p.reference_no as ref_no, 'Supplier Payment' as title,
         s.name as party_name, p.amount, 'OUT' as flow, p.notes, 'SUPPLIER_PAYMENT' as source_type
       FROM payments p
       JOIN suppliers s ON p.party_id = s.id
       WHERE p.type = 'SUPPLIER_PAYMENT' AND p.payment_method = 'Cash'
+        AND (p.reference_no IS NULL OR p.reference_no NOT LIKE 'PUR-%')
+        AND p.reference_id IS NULL
+        AND (p.notes IS NULL OR (p.notes NOT LIKE '%purchase bill%' AND p.notes NOT LIKE '%PUR-%'))
         AND p.payment_date >= ? AND p.payment_date <= ?
     `).all(sDate, eDate);
 

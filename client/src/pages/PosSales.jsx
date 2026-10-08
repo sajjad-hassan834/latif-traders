@@ -1467,62 +1467,78 @@ export default function PosSales() {
             </div>
 
             {/* CHANGE RETURN & CUSTOMER UDHAAR BREAKDOWN */}
-            <div style={{
-              background: changeDue > 0 ? '#ecfdf5' : balanceDue > 0 ? '#fef2f2' : '#f8fafc',
-              border: `1px solid ${changeDue > 0 ? '#a7f3d0' : balanceDue > 0 ? '#fecaca' : '#e2e8f0'}`,
-              borderRadius: '6px',
-              padding: '6px 8px',
-              marginBottom: '0.4rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '3px',
-              fontSize: '0.725rem'
-            }}>
-              {/* Cash Return / Wapis */}
-              {changeDue > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#065f46', fontWeight: 800, fontSize: '0.85rem' }}>
-                  <span>💵 Change Return (Wapis):</span>
-                  <span style={{ fontSize: '0.95rem' }}>{formatPKR(changeDue)}</span>
-                </div>
-              )}
+            {(() => {
+              const custPrevBalance = (activeCustomer && activeCustomer.id !== 1) ? (Number(activeCustomer.current_balance) || 0) : 0;
+              const extraPaid = Math.max(0, enteredPaid - grandTotal);
+              const amountAppliedToUdhaar = (custPrevBalance > 0) ? Math.min(extraPaid, custPrevBalance) : 0;
+              const actualChangeReturn = extraPaid - amountAppliedToUdhaar;
+              const netRemainingUdhaar = custPrevBalance + balanceDue - amountAppliedToUdhaar;
 
-              {/* Unpaid on this bill */}
-              {balanceDue > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#b91c1c', fontWeight: 700 }}>
-                  <span>⚠️ Unpaid on this bill:</span>
-                  <span>{formatPKR(balanceDue)}</span>
-                </div>
-              )}
-
-              {balanceDue === 0 && changeDue === 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: 600 }}>
-                  <span>Status:</span>
-                  <span>✔ Exact Payment Settled</span>
-                </div>
-              )}
-
-              {/* Registered Customer Udhaar Ledger Details */}
-              {activeCustomer && activeCustomer.id !== 1 && (
-                <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '4px', marginTop: '3px', display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.675rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
-                    <span>Previous Udhaar:</span>
-                    <strong>{formatPKR(activeCustomer.current_balance || 0)}</strong>
-                  </div>
-                  {balanceDue > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c' }}>
-                      <span>Added to Udhaar (This Bill):</span>
-                      <strong>+{formatPKR(balanceDue)}</strong>
+              return (
+                <div style={{
+                  background: actualChangeReturn > 0 || amountAppliedToUdhaar > 0 ? '#ecfdf5' : balanceDue > 0 ? '#fef2f2' : '#f8fafc',
+                  border: `1px solid ${actualChangeReturn > 0 || amountAppliedToUdhaar > 0 ? '#a7f3d0' : balanceDue > 0 ? '#fecaca' : '#e2e8f0'}`,
+                  borderRadius: '6px',
+                  padding: '6px 8px',
+                  marginBottom: '0.4rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '3px',
+                  fontSize: '0.725rem'
+                }}>
+                  {/* Cash Return / Wapis */}
+                  {actualChangeReturn > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#065f46', fontWeight: 800, fontSize: '0.85rem' }}>
+                      <span>💵 Change Return (Wapis):</span>
+                      <span style={{ fontSize: '0.95rem' }}>{formatPKR(actualChangeReturn)}</span>
                     </div>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0369a1', fontWeight: 700 }}>
-                    <span>Total Remaining Udhaar:</span>
-                    <span style={{ color: ((activeCustomer.current_balance || 0) + balanceDue) > 0 ? '#dc2626' : '#16a34a' }}>
-                      {formatPKR((activeCustomer.current_balance || 0) + balanceDue)}
-                    </span>
-                  </div>
+
+                  {/* Unpaid on this bill */}
+                  {balanceDue > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#b91c1c', fontWeight: 700 }}>
+                      <span>⚠️ Unpaid on this bill:</span>
+                      <span>{formatPKR(balanceDue)}</span>
+                    </div>
+                  )}
+
+                  {balanceDue === 0 && actualChangeReturn === 0 && amountAppliedToUdhaar === 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: 600 }}>
+                      <span>Status:</span>
+                      <span>✔ Exact Payment Settled</span>
+                    </div>
+                  )}
+
+                  {/* Registered Customer Udhaar Ledger Details */}
+                  {activeCustomer && activeCustomer.id !== 1 && (
+                    <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '4px', marginTop: '3px', display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.675rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                        <span>Previous Udhaar:</span>
+                        <strong>{formatPKR(custPrevBalance)}</strong>
+                      </div>
+                      {balanceDue > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c' }}>
+                          <span>Added to Udhaar (This Bill):</span>
+                          <strong>+{formatPKR(balanceDue)}</strong>
+                        </div>
+                      )}
+                      {amountAppliedToUdhaar > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontWeight: 700 }}>
+                          <span>Deducted from Udhaar (Extra Cash):</span>
+                          <strong>-{formatPKR(amountAppliedToUdhaar)}</strong>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0369a1', fontWeight: 700 }}>
+                        <span>Total Remaining Udhaar:</span>
+                        <span style={{ color: netRemainingUdhaar > 0 ? '#dc2626' : '#16a34a' }}>
+                          {formatPKR(netRemainingUdhaar)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             <button
               onClick={handleCompleteSale}
