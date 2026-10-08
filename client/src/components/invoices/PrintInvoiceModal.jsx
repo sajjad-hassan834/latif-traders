@@ -20,11 +20,13 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
 
   const hasCustomerBalance = Boolean(sale.customer_id && sale.customer_id > 1);
   const currentCustomerBalance = Number(sale.customer_current_balance) || 0;
-  const previousBalance = Math.max(0, currentCustomerBalance - Number(sale.balance_due || 0));
-  const netRemainingBalance = currentCustomerBalance;
   const paid = Number(sale.paid_amount || 0);
   const grandTotal = Number(sale.grand_total || 0);
-  const changeReturn = Math.max(0, paid - grandTotal);
+  const excessPaid = Math.max(0, paid - grandTotal);
+  const previousBalance = Math.max(0, currentCustomerBalance - Number(sale.balance_due || 0) + excessPaid);
+  const netRemainingBalance = currentCustomerBalance;
+  const changeReturn = (!hasCustomerBalance || previousBalance <= 0) ? excessPaid : 0;
+  const udhaarDeduction = (hasCustomerBalance && excessPaid > 0) ? Math.min(excessPaid, previousBalance) : 0;
 
   // WhatsApp Message Generator
   const generateWhatsAppMessage = () => {
@@ -153,7 +155,7 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                       <tr key={idx}>
                         <td style={{ padding: '2px 0' }}>
                           <div>{it.product_name}</div>
-                          {it.batch_no && <div style={{ fontSize: '8px', color: '#555' }}>Lot: {it.batch_no}</div>}
+                          <div style={{ fontSize: '8px', color: '#555' }}>Company: {it.brand_name || it.supplier_name || it.company_name || 'Latif Traders'}</div>
                         </td>
                         <td style={{ textAlign: 'center', verticalAlign: 'top' }}>{it.quantity}</td>
                         <td style={{ textAlign: 'right', verticalAlign: 'top' }}>{it.unit_price}</td>
@@ -209,6 +211,12 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                         <span>+{formatPKR(sale.balance_due)}</span>
                       </div>
                     )}
+                    {udhaarDeduction > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#16a34a', fontWeight: 'bold' }}>
+                        <span>Deducted from Udhaar:</span>
+                        <span>-{formatPKR(udhaarDeduction)}</span>
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', color: netRemainingBalance > 0 ? '#b91c1c' : '#16a34a' }}>
                       <span>Total Remaining Udhaar:</span>
                       <span>{formatPKR(netRemainingBalance)}</span>
@@ -261,7 +269,7 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                     <tr style={{ background: '#0f172a', color: '#fff', textAlign: 'left', fontSize: '0.775rem' }}>
                       <th style={{ padding: '0.5rem 0.75rem' }}>#</th>
                       <th style={{ padding: '0.5rem 0.75rem' }}>Item Description</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>Batch</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>Company</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>Qty</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Rate</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Total (PKR)</th>
@@ -272,7 +280,7 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                       <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', fontSize: '0.825rem' }}>
                         <td style={{ padding: '0.5rem 0.75rem' }}>{idx + 1}</td>
                         <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600 }}>{it.product_name}</td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', color: '#64748b' }}>{it.batch_no || '-'}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', color: '#64748b' }}>{it.brand_name || it.supplier_name || it.company_name || '-'}</td>
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600 }}>{it.quantity} {it.unit}</td>
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatPKR(it.unit_price)}</td>
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 700 }}>{formatPKR(it.total_price)}</td>
@@ -323,6 +331,12 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                           <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontSize: '0.8rem' }}>
                             <span>Added This Bill:</span>
                             <span>+{formatPKR(sale.balance_due)}</span>
+                          </div>
+                        )}
+                        {udhaarDeduction > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontSize: '0.85rem', fontWeight: 700 }}>
+                            <span>Deducted from Udhaar:</span>
+                            <span>-{formatPKR(udhaarDeduction)}</span>
                           </div>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', color: netRemainingBalance > 0 ? '#b91c1c' : '#16a34a', fontWeight: 800, fontSize: '0.95rem' }}>

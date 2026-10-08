@@ -216,6 +216,7 @@ function MainApp() {
                 {currentTab === 'expenses' && <Expenses />}
                 {currentTab === 'cashflow' && <CashFlow />}
                 {currentTab === 'reports' && <Reports />}
+                {currentTab === 'stock-valuation' && <Reports initialReport="stock" />}
                 {currentTab === 'users' && <Users />}
                 {currentTab === 'settings' && <Settings />}
               </>

@@ -707,7 +707,7 @@ select.form-control option {
 
 .pos-layout {
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(460px, 500px);
   gap: 1rem;
   height: calc(100vh - var(--header-height) - 2rem);
   align-items: stretch;

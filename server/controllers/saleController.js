@@ -66,9 +66,10 @@ exports.getSaleById = (req, res) => {
     }
 
     const items = db.prepare(`
-      SELECT si.*, pr.name as product_name, pr.sku
+      SELECT si.*, pr.name as product_name, pr.sku, pr.brand as brand_name, sup.name as supplier_name
       FROM sale_items si
       JOIN products pr ON si.product_id = pr.id
+      LEFT JOIN suppliers sup ON pr.supplier_id = sup.id
       WHERE si.sale_id = ?
     `).all(sale.id);
 
@@ -311,10 +312,13 @@ exports.createSale = (req, res) => {
       }
     }
 
-    // Update Customer Balance if credit remains
-    if (customer_id && balance_due > 0) {
-      db.prepare('UPDATE customers SET current_balance = current_balance + ? WHERE id = ?')
-        .run(balance_due, customer_id);
+    // Update Customer Balance (unpaid bill increases debt, excess payment reduces previous debt)
+    if (customer_id && Number(customer_id) > 1) {
+      const netBalanceDelta = grand_total - paid;
+      if (Math.abs(netBalanceDelta) > 0.001) {
+        db.prepare('UPDATE customers SET current_balance = current_balance + ? WHERE id = ?')
+          .run(netBalanceDelta, customer_id);
+      }
     }
 
     // Record receipt if paid > 0

@@ -16,6 +16,7 @@ export const ROLE_PERMISSIONS = {
     'expenses',
     'cashflow',
     'reports',
+    'stock-valuation',
     'users',
     'settings'
   ],
@@ -24,7 +25,8 @@ export const ROLE_PERMISSIONS = {
     'sales',
     'inventory',
     'customers',
-    'reports' // for Daily Sales and Day-End Register
+    'reports',
+    'stock-valuation'
   ],
   inventory: [
     'dashboard',
@@ -32,7 +34,8 @@ export const ROLE_PERMISSIONS = {
     'stock-adjust',
     'purchases',
     'suppliers',
-    'reports' // for Stock Valuation and Batch Expiry
+    'reports',
+    'stock-valuation'
   ],
   accountant: [
     'dashboard',
@@ -42,7 +45,8 @@ export const ROLE_PERMISSIONS = {
     'suppliers',
     'expenses',
     'cashflow',
-    'reports'
+    'reports',
+    'stock-valuation'
   ]
 };
 

@@ -62,7 +62,8 @@ const MENU_SECTIONS = [
     title: 'Reports',
     roles: ['admin', 'sales', 'inventory', 'accountant'],
     items: [
-      { id: 'reports', label: 'Analytics', icon: BarChart3, roles: ['admin', 'sales', 'inventory', 'accountant'] }
+      { id: 'reports', label: 'Analytics', icon: BarChart3, roles: ['admin', 'sales', 'inventory', 'accountant'] },
+      { id: 'stock-valuation', label: 'Stock Valuation', icon: Package, roles: ['admin', 'inventory', 'accountant'] }
     ]
   },
   {

@@ -138,13 +138,15 @@ exports.getCashbook = (req, res) => {
     const eDate = end_date || today;
 
     // 1. Cash In:
-    // - Customer Receipts in Cash (Ledger payments)
+    // - Customer Receipts in Cash (Ledger payments not tied to sale invoices)
     const receipts = db.prepare(`
       SELECT p.id, p.payment_date as date, p.reference_no as ref_no, 'Customer Receipt' as title,
         c.name as party_name, p.amount, 'IN' as flow, p.notes, 'CUSTOMER_RECEIPT' as source_type
       FROM payments p
       JOIN customers c ON p.party_id = c.id
       WHERE p.type = 'CUSTOMER_RECEIPT' AND p.payment_method = 'Cash'
+        AND (p.reference_no IS NULL OR p.reference_no NOT LIKE 'INV-%')
+        AND p.reference_id IS NULL
         AND p.payment_date >= ? AND p.payment_date <= ?
     `).all(sDate, eDate);
 

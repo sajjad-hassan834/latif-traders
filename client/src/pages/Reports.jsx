@@ -23,14 +23,21 @@ import { useAuth } from '../context/AuthContext';
 import ReportPrintHeader from '../components/common/ReportPrintHeader';
 import ReportPrintFooter from '../components/common/ReportPrintFooter';
 
-function ReportsContent() {
+function ReportsContent({ initialReport }) {
   const { user, isAdmin, canSell, canManageInventory, canViewFinances, role } = useAuth();
 
   const [activeReport, setActiveReport] = useState(() => {
+    if (initialReport) return initialReport;
     if (role === 'sales') return 'register';
     if (role === 'inventory') return 'stock';
     return 'pnl';
   });
+
+  useEffect(() => {
+    if (initialReport) {
+      setActiveReport(initialReport);
+    }
+  }, [initialReport]);
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0]; // 1st of month
@@ -424,15 +431,7 @@ function ReportsContent() {
             </button>
           )}
 
-          {(isAdmin || canManageInventory || canViewFinances) && (
-            <button
-              onClick={() => setActiveReport('stock')}
-              className={`btn btn-sm ${activeReport === 'stock' ? 'btn-primary' : 'btn-secondary'}`}
-            >
-              <Package size={14} />
-              <span>Stock Valuation</span>
-            </button>
-          )}
+
 
           {(isAdmin || canManageInventory || canViewFinances) && (
             <button
@@ -1303,10 +1302,10 @@ function ReportsContent() {
   );
 }
 
-export default function Reports() {
+export default function Reports({ initialReport }) {
   return (
     <ErrorBoundary fallbackTitle="Reports Page Error">
-      <ReportsContent />
+      <ReportsContent initialReport={initialReport} />
     </ErrorBoundary>
   );
 }

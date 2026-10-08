@@ -359,6 +359,9 @@ export default function PosSales() {
         name: product.name,
         sku: product.sku,
         unit: product.unit,
+        brand: product.brand,
+        company_name: product.brand || product.supplier_name || product.company_name,
+        supplier_name: product.supplier_name,
         unit_price: fifo.effectiveRate,
         total_price: fifo.totalSale,
         original_price: product.sale_price,
@@ -1237,23 +1240,21 @@ export default function PosSales() {
                         )}
                       </span>
 
-                      {/* FIFO LOT TRACKING BADGE */}
-                      {item.fifo_batch_no && (
-                        <span
-                          style={{
-                            fontSize: '0.62rem',
-                            fontWeight: 700,
-                            color: '#065f46',
-                            background: '#d1fae5',
-                            padding: '1px 5px',
-                            borderRadius: '3px',
-                            border: '1px solid #a7f3d0'
-                          }}
-                          title={`Active FIFO Lot: ${item.fifo_batch_no} (${item.fifo_batch_qty} left in this batch before moving to next batch)`}
-                        >
-                          FIFO Lot: {item.fifo_batch_no}
-                        </span>
-                      )}
+                      {/* COMPANY NAME BADGE */}
+                      <span
+                        style={{
+                          fontSize: '0.62rem',
+                          fontWeight: 700,
+                          color: '#065f46',
+                          background: '#d1fae5',
+                          padding: '1px 5px',
+                          borderRadius: '3px',
+                          border: '1px solid #a7f3d0'
+                        }}
+                        title={`Company / Brand: ${item.company_name || item.brand || item.supplier_name || 'Latif Traders'}`}
+                      >
+                        Company: {item.company_name || item.brand || item.supplier_name || 'Latif Traders'}
+                      </span>
 
                       {item.original_price && Number(item.original_price) !== Number(item.unit_price) && (
                         <span
