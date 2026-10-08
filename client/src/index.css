@@ -729,30 +729,40 @@ select.form-control option {
 /* Category filter bar */
 .pos-categories-bar {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.35rem;
   overflow-x: auto;
-  padding-bottom: 0.25rem;
-  scrollbar-width: thin;
+  overflow-y: hidden;
+  padding: 0.1rem 0.1rem 0.35rem 0.1rem;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+  -webkit-overflow-scrolling: touch;
+}
+
+.pos-categories-bar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
 .pos-cat-pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.65rem;
+  gap: 0.3rem;
+  padding: 0.28rem 0.6rem;
   border-radius: var(--radius-full);
-  font-size: 0.775rem;
-  font-weight: 600;
+  font-size: 0.725rem;
+  font-weight: 700;
   white-space: nowrap;
-  background: #f1f5f9;
+  flex-shrink: 0;
+  background: #ffffff;
   color: #475569;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   transition: all 0.15s ease;
+  cursor: pointer;
 }
 
 .pos-cat-pill:hover {
-  background: #e2e8f0;
+  background: #f1f5f9;
   color: #0f172a;
+  border-color: #94a3b8;
 }
 
 .pos-cat-pill.active {

@@ -795,111 +795,122 @@ export default function PosSales() {
       <div className="pos-layout">
         {/* LEFT CATALOG PANEL */}
         <div className={`pos-catalog ${mobileTab !== 'catalog' ? 'pos-mobile-hidden' : ''}`}>
-          {/* SEARCH & ACTION BAR */}
-          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <Search size={14} style={{ position: 'absolute', left: '9px', top: '8px', color: '#94a3b8' }} />
-              <input
-                ref={searchInputRef}
-                type="text"
-                className="form-control"
-                style={{ paddingLeft: '1.85rem', height: '30px', fontSize: '0.775rem' }}
-                placeholder="Scan barcode or search name/SKU... [F2 or /]"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleBarcodeSubmit}
-                autoFocus
-              />
-              {searchQuery && (
+          {/* SEARCH & ACTIONS BAR */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.45rem' }}>
+            {/* Top Row: Search Input + Refresh + View Toggle */}
+            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                <Search size={14} style={{ position: 'absolute', left: '9px', top: '8px', color: '#94a3b8' }} />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  className="form-control"
+                  style={{ paddingLeft: '1.85rem', paddingRight: searchQuery ? '1.8rem' : '0.5rem', height: '30px', fontSize: '0.775rem' }}
+                  placeholder="Search name / SKU... [F2]"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleBarcodeSubmit}
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    style={{ position: 'absolute', right: '8px', top: '7px', color: '#94a3b8', background: 'none', border: 'none' }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={loadInitialData}
+                className="btn btn-secondary btn-sm"
+                title="Refresh Products"
+                style={{ padding: '0 0.45rem', height: '30px', flexShrink: 0 }}
+              >
+                <RefreshCw size={13} />
+              </button>
+
+              {/* CATALOG VIEW MODE TOGGLE (LIST / GRID) */}
+              <div style={{ display: 'flex', background: '#f1f5f9', padding: '2px', borderRadius: '6px', border: '1px solid #cbd5e1', flexShrink: 0 }}>
                 <button
-                  onClick={() => setSearchQuery('')}
-                  style={{ position: 'absolute', right: '8px', top: '7px', color: '#94a3b8' }}
+                  type="button"
+                  onClick={() => setCatalogView('list')}
+                  style={{
+                    padding: '3px 6px',
+                    fontSize: '0.7rem',
+                    borderRadius: '4px',
+                    border: 'none',
+                    background: catalogView === 'list' ? '#0284c7' : 'transparent',
+                    color: catalogView === 'list' ? '#ffffff' : '#64748b',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    fontWeight: 700
+                  }}
+                  title="Compact List View"
                 >
-                  <X size={13} />
+                  <List size={13} />
+                  <span>List</span>
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setCatalogView('grid')}
+                  style={{
+                    padding: '3px 6px',
+                    fontSize: '0.7rem',
+                    borderRadius: '4px',
+                    border: 'none',
+                    background: catalogView === 'grid' ? '#0284c7' : 'transparent',
+                    color: catalogView === 'grid' ? '#ffffff' : '#64748b',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                    fontWeight: 700
+                  }}
+                  title="Grid Card View"
+                >
+                  <LayoutGrid size={13} />
+                  <span>Grid</span>
+                </button>
+              </div>
             </div>
 
-            <button
-              onClick={() => setShowQuickAdd(true)}
-              className="btn btn-secondary btn-sm"
-              title="Quick Add New Product to Database"
-              style={{ height: '30px', fontSize: '0.75rem', padding: '0 0.55rem' }}
-            >
-              <PlusCircle size={13} color="#0284c7" />
-              <span>+ Item</span>
-            </button>
-
-            <button
-              onClick={openRecentInvoices}
-              className="btn btn-secondary btn-sm"
-              title="View & Print Specific Receipt"
-              style={{ height: '30px', fontSize: '0.75rem', padding: '0 0.55rem' }}
-            >
-              <FileText size={13} color="#6366f1" />
-              <span>Receipts</span>
-            </button>
-
-            <button
-              onClick={loadInitialData}
-              className="btn btn-secondary btn-sm"
-              title="Refresh Products"
-              style={{ padding: '0 0.45rem', height: '30px' }}
-            >
-              <RefreshCw size={13} />
-            </button>
-
-            {/* CATALOG VIEW MODE TOGGLE (LIST / GRID) */}
-            <div style={{ display: 'flex', background: '#f1f5f9', padding: '2px', borderRadius: '6px', border: '1px solid #cbd5e1', flexShrink: 0 }}>
+            {/* Second Row: Quick Action Buttons */}
+            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
               <button
                 type="button"
-                onClick={() => setCatalogView('list')}
-                style={{
-                  padding: '3px 7px',
-                  fontSize: '0.72rem',
-                  borderRadius: '4px',
-                  border: 'none',
-                  background: catalogView === 'list' ? '#0284c7' : 'transparent',
-                  color: catalogView === 'list' ? '#ffffff' : '#64748b',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  fontWeight: 700
-                }}
-                title="Compact List View"
+                onClick={() => setShowQuickAdd(true)}
+                className="btn btn-secondary btn-sm"
+                title="Quick Add New Product to Database"
+                style={{ flex: 1, height: '26px', fontSize: '0.725rem', padding: '0 0.45rem', justifyContent: 'center' }}
               >
-                <List size={13} />
-                <span>List</span>
+                <PlusCircle size={12} color="#0284c7" />
+                <span>+ Item</span>
               </button>
+
               <button
                 type="button"
-                onClick={() => setCatalogView('grid')}
-                style={{
-                  padding: '3px 7px',
-                  fontSize: '0.72rem',
-                  borderRadius: '4px',
-                  border: 'none',
-                  background: catalogView === 'grid' ? '#0284c7' : 'transparent',
-                  color: catalogView === 'grid' ? '#ffffff' : '#64748b',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  fontWeight: 700
-                }}
-                title="Grid Card View"
+                onClick={openRecentInvoices}
+                className="btn btn-secondary btn-sm"
+                title="View & Print Specific Receipt"
+                style={{ flex: 1, height: '26px', fontSize: '0.725rem', padding: '0 0.45rem', justifyContent: 'center' }}
               >
-                <LayoutGrid size={13} />
-                <span>Grid</span>
+                <FileText size={12} color="#6366f1" />
+                <span>Receipts</span>
               </button>
             </div>
           </div>
 
-          {/* CATEGORIES HORIZONTAL PILLS (Shown only when products exist) */}
+          {/* CATEGORIES HORIZONTAL SCROLL PILLS */}
           {products.length > 0 && categories.length > 0 && (
             <div className="pos-categories-bar horizontal-scroll-tabs">
               <button
+                type="button"
                 onClick={() => setSelectedCategory('ALL')}
                 className={`pos-cat-pill ${selectedCategory === 'ALL' ? 'active' : ''}`}
               >
@@ -908,6 +919,7 @@ export default function PosSales() {
               </button>
               {categories.map(c => (
                 <button
+                  type="button"
                   key={c.id}
                   onClick={() => setSelectedCategory(c.id)}
                   className={`pos-cat-pill ${selectedCategory === c.id ? 'active' : ''}`}
@@ -979,7 +991,19 @@ export default function PosSales() {
                           <div style={{ fontSize: '0.64rem', fontWeight: 700, color: '#0284c7', lineHeight: 1.1, textTransform: 'uppercase' }}>
                             {p.brand || 'Frozen'}
                           </div>
-                          <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>
+                          <div
+                            style={{
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              color: '#0f172a',
+                              lineHeight: 1.2,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            }}
+                            title={p.name}
+                          >
                             {p.name}
                           </div>
                         </div>
