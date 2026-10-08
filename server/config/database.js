@@ -417,6 +417,38 @@ function initializeDatabase() {
     console.error('Error during payments table cleanup migration:', err);
   }
 
+  // Cleanup accidental double-clicked payments for same party, date, and amount
+  try {
+    const cleanDupReceipts = db.prepare("SELECT value FROM settings WHERE key = 'clean_duplicate_receipts_v2'").get();
+    if (!cleanDupReceipts) {
+      const duplicates = db.prepare(`
+        SELECT p1.id, p1.party_type, p1.party_id, p1.amount
+        FROM payments p1
+        JOIN payments p2 ON p1.party_type = p2.party_type
+                        AND p1.party_id = p2.party_id
+                        AND p1.amount = p2.amount
+                        AND p1.payment_date = p2.payment_date
+                        AND p1.id > p2.id
+      `).all();
+
+      const dupTx = db.transaction(() => {
+        for (const d of duplicates) {
+          if (d.party_type === 'CUSTOMER' && d.party_id) {
+            db.prepare('UPDATE customers SET current_balance = current_balance + ? WHERE id = ?').run(d.amount, d.party_id);
+          } else if (d.party_type === 'SUPPLIER' && d.party_id) {
+            db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ?').run(d.amount, d.party_id);
+          }
+          db.prepare('DELETE FROM payments WHERE id = ?').run(d.id);
+        }
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('clean_duplicate_receipts_v2', 'true')").run();
+      });
+
+      dupTx();
+    }
+  } catch (err) {
+    console.error('Error cleaning duplicate payments:', err);
+  }
+
   seedInitialData();
 }
 

@@ -221,3 +221,46 @@ exports.getCashbook = (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to generate cashbook.' });
   }
 };
+
+// Delete payment record (Admin / Accountant) - Reverses customer/supplier balance adjustment
+exports.deletePayment = (req, res) => {
+  const transaction = db.transaction(() => {
+    const { id } = req.params;
+    const payment = db.prepare('SELECT * FROM payments WHERE id = ?').get(id);
+    if (!payment) {
+      throw new Error('Payment record not found.');
+    }
+
+    // Revert balance adjustments
+    if (payment.party_type === 'CUSTOMER' && payment.party_id) {
+      // Revert customer receipt by adding amount back to customer balance
+      db.prepare('UPDATE customers SET current_balance = current_balance + ? WHERE id = ?')
+        .run(payment.amount, payment.party_id);
+    } else if (payment.party_type === 'SUPPLIER' && payment.party_id) {
+      // Revert supplier payment by adding amount back to supplier payable balance
+      db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ?')
+        .run(payment.amount, payment.party_id);
+    }
+
+    db.prepare('DELETE FROM payments WHERE id = ?').run(id);
+
+    logAudit(
+      req.user.id,
+      req.user.full_name,
+      'DELETE',
+      'PAYMENT',
+      payment.id,
+      `Deleted payment record ${payment.reference_no || ('#' + payment.id)} for ₨ ${payment.amount}`,
+      req
+    );
+
+    return { success: true, message: `Payment ${payment.reference_no || ('#' + payment.id)} deleted and balance reverted.` };
+  });
+
+  try {
+    const result = transaction();
+    return res.json(result);
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};

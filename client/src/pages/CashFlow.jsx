@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, ArrowUpRight, ArrowDownLeft, Printer, FileText, Eye, CheckCircle, Filter } from 'lucide-react';
+import { DollarSign, ArrowUpRight, ArrowDownLeft, Printer, FileText, Eye, CheckCircle, Filter, Trash2 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
@@ -9,7 +9,7 @@ import ReportPrintFooter from '../components/common/ReportPrintFooter';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
 
 export default function CashFlow() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [cashbook, setCashbook] = useState(null);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
@@ -71,6 +71,22 @@ export default function CashFlow() {
       setGenericReceipt(entry);
     } finally {
       setReceiptLoading(false);
+    }
+  };
+
+  const handleDeletePayment = async (entryId, refNo) => {
+    if (!window.confirm(`Are you sure you want to delete payment record "${refNo || entryId}"? This will automatically revert the customer/supplier balance adjustment.`)) {
+      return;
+    }
+    try {
+      const res = await api.delete(`/payments/${entryId}`);
+      if (res.success) {
+        loadCashbook();
+      } else {
+        alert(res.message || 'Failed to delete payment');
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete payment');
     }
   };
 
@@ -266,17 +282,31 @@ export default function CashFlow() {
                         <td style={{ textAlign: 'right', width: '130px', fontWeight: 700, color: '#ef4444', whiteSpace: 'nowrap' }}>
                           {entry.flow === 'OUT' ? formatPKR(entry.amount) : '-'}
                         </td>
-                        <td className="no-print" style={{ textAlign: 'center', width: '85px', whiteSpace: 'nowrap' }}>
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => handleViewReceipt(entry)}
-                            style={{ padding: '2px 8px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                            title="View Voucher / Receipt"
-                          >
-                            <Printer size={11} />
-                            <span>View</span>
-                          </button>
+                        <td className="no-print" style={{ textAlign: 'center', width: '130px', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', gap: '4px' }}>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => handleViewReceipt(entry)}
+                              style={{ padding: '2px 8px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                              title="View Voucher / Receipt"
+                            >
+                              <Printer size={11} />
+                              <span>View</span>
+                            </button>
+                            {isAdmin && entry.id && entry.source_type !== 'SALE' && entry.source_type !== 'PURCHASE' && entry.source_type !== 'EXPENSE' && (
+                              <button
+                                type="button"
+                                className="btn btn-danger btn-sm"
+                                onClick={() => handleDeletePayment(entry.id, entry.ref_no)}
+                                style={{ padding: '2px 6px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '3px', background: '#ef4444', color: '#fff', border: 'none' }}
+                                title="Delete Duplicate Payment Record"
+                              >
+                                <Trash2 size={11} />
+                                <span>Delete</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
