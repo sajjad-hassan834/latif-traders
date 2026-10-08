@@ -1480,61 +1480,48 @@ export default function PosSales() {
             )}
           </div>
 
-          {/* CART SUMMARY & CHECKOUT */}
-          <div className="pos-cart-footer">
+          {/* CART SUMMARY & CHECKOUT (ULTRA-COMPACT HIGH-DENSITY FOOTER) */}
+          <div className="pos-cart-footer" style={{ padding: '0.4rem 0.5rem', background: '#f8fafc', borderTop: '1.5px solid #e2e8f0' }}>
             {/* Quick Cash Presets */}
-            <div className="quick-cash-chips">
-              <button type="button" className="cash-chip" onClick={() => setQuickCash('exact')}>Exact</button>
-              <button type="button" className="cash-chip" onClick={() => setQuickCash(500)}>₨ 500</button>
-              <button type="button" className="cash-chip" onClick={() => setQuickCash(1000)}>₨ 1,000</button>
-              <button type="button" className="cash-chip" onClick={() => setQuickCash(2000)}>₨ 2,000</button>
-              <button type="button" className="cash-chip" onClick={() => setQuickCash(5000)}>₨ 5,000</button>
+            <div className="quick-cash-chips" style={{ display: 'flex', gap: '3px', marginBottom: '0.3rem' }}>
+              <button type="button" className="cash-chip" style={{ padding: '1px 6px', fontSize: '0.65rem', height: '20px' }} onClick={() => setQuickCash('exact')}>Exact</button>
+              <button type="button" className="cash-chip" style={{ padding: '1px 6px', fontSize: '0.65rem', height: '20px' }} onClick={() => setQuickCash(500)}>₨ 500</button>
+              <button type="button" className="cash-chip" style={{ padding: '1px 6px', fontSize: '0.65rem', height: '20px' }} onClick={() => setQuickCash(1000)}>₨ 1,000</button>
+              <button type="button" className="cash-chip" style={{ padding: '1px 6px', fontSize: '0.65rem', height: '20px' }} onClick={() => setQuickCash(2000)}>₨ 2,000</button>
+              <button type="button" className="cash-chip" style={{ padding: '1px 6px', fontSize: '0.65rem', height: '20px' }} onClick={() => setQuickCash(5000)}>₨ 5,000</button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginBottom: '0.35rem', fontSize: '0.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
-                <span>Subtotal:</span>
-                <span>{formatPKR(subtotal)}</span>
+            {/* Compact Totals & Input Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.7rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '2px 5px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+                <span style={{ color: '#64748b', fontSize: '0.675rem' }}>Subtotal:</span>
+                <strong style={{ color: '#0f172a' }}>{formatPKR(subtotal)}</strong>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#64748b' }}>Discount (PKR):</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '2px 5px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+                <span style={{ color: '#64748b', fontSize: '0.675rem' }}>Discount:</span>
                 <input
                   type="number"
                   className="form-control"
-                  style={{ width: '65px', height: '22px', padding: '1px 4px', fontSize: '0.7rem', textAlign: 'right' }}
+                  style={{ width: '55px', height: '19px', padding: '0 3px', fontSize: '0.675rem', textAlign: 'right', fontWeight: 700 }}
                   value={discount}
                   onChange={(e) => setDiscount(e.target.value)}
                   min="0"
                 />
               </div>
-
-              {/* ESTIMATED PROFIT FOR ADMIN / MANAGER */}
-              {(isAdmin || canViewFinances) && cart.length > 0 && totalCost > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontSize: '0.675rem', fontWeight: 600 }}>
-                  <span>Est. Margin:</span>
-                  <span>+{formatPKR(estimatedProfit)} ({profitMarginPct}%)</span>
-                </div>
-              )}
-
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '1rem',
-                fontWeight: 800,
-                borderTop: '1px solid #e2e8f0',
-                paddingTop: '0.25rem',
-                marginTop: '0.1rem'
-              }}>
-                <span>Grand Total:</span>
-                <span style={{ color: '#0284c7' }}>{formatPKR(grandTotal)}</span>
-              </div>
             </div>
 
-            {/* PAID & METHOD */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem', marginBottom: '0.4rem', marginTop: '0.25rem' }}>
+            {/* Grand Total & Paid / Method Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 1fr', gap: '0.3rem', alignItems: 'center', marginBottom: '0.3rem' }}>
+              {/* Grand Total */}
+              <div style={{ background: '#e0f2fe', padding: '3px 6px', borderRadius: '5px', border: '1px solid #bae6fd', display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' }}>Grand Total</span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0284c7', lineHeight: 1.1 }}>{formatPKR(grandTotal)}</span>
+              </div>
+
+              {/* Paid Input */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.675rem', fontWeight: 700, color: '#475569', marginBottom: '3px' }}>
+                <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, color: '#475569', marginBottom: '1px' }}>
                   Paid (PKR)
                 </label>
                 <input
@@ -1543,27 +1530,37 @@ export default function PosSales() {
                   placeholder={String(grandTotal)}
                   value={paidAmount}
                   onChange={(e) => setPaidAmount(e.target.value)}
-                  style={{ width: '100%', height: '28px', fontWeight: 700, fontSize: '0.8rem', padding: '0 6px', borderRadius: '5px' }}
+                  style={{ width: '100%', height: '24px', fontWeight: 800, fontSize: '0.75rem', padding: '0 4px', borderRadius: '4px' }}
                 />
               </div>
+
+              {/* Payment Method */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.675rem', fontWeight: 700, color: '#475569', marginBottom: '3px' }}>
+                <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, color: '#475569', marginBottom: '1px' }}>
                   Method
                 </label>
                 <select
                   className="form-control"
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
-                  style={{ width: '100%', height: '28px', fontSize: '0.75rem', fontWeight: 600, padding: '0 6px', borderRadius: '5px' }}
+                  style={{ width: '100%', height: '24px', fontSize: '0.7rem', fontWeight: 600, padding: '0 3px', borderRadius: '4px' }}
                 >
                   <option value="Cash">Cash</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Bank Transfer">Bank</option>
                   <option value="Card">Card</option>
                 </select>
               </div>
             </div>
 
-            {/* CHANGE RETURN & CUSTOMER UDHAAR BREAKDOWN */}
+            {/* Margin indicator for Admin/Manager */}
+            {(isAdmin || canViewFinances) && cart.length > 0 && totalCost > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontSize: '0.625rem', fontWeight: 600, marginBottom: '0.25rem', padding: '0 2px' }}>
+                <span>Est. Margin:</span>
+                <span>+{formatPKR(estimatedProfit)} ({profitMarginPct}%)</span>
+              </div>
+            )}
+
+            {/* CHANGE RETURN & CUSTOMER UDHAAR BREAKDOWN BADGE */}
             {(() => {
               const custPrevBalance = (activeCustomer && activeCustomer.id !== 1) ? (Number(activeCustomer.current_balance) || 0) : 0;
               const extraPaid = Math.max(0, enteredPaid - grandTotal);
@@ -1571,66 +1568,47 @@ export default function PosSales() {
               const actualChangeReturn = extraPaid - amountAppliedToUdhaar;
               const netRemainingUdhaar = custPrevBalance + balanceDue - amountAppliedToUdhaar;
 
+              if (!actualChangeReturn && !balanceDue && !amountAppliedToUdhaar && custPrevBalance === 0) {
+                return (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '2px 6px', marginBottom: '0.3rem', fontSize: '0.65rem', color: '#16a34a', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Status:</span>
+                    <span>✓ Exact Payment Settled</span>
+                  </div>
+                );
+              }
+
               return (
                 <div style={{
                   background: actualChangeReturn > 0 || amountAppliedToUdhaar > 0 ? '#ecfdf5' : balanceDue > 0 ? '#fef2f2' : '#f8fafc',
                   border: `1px solid ${actualChangeReturn > 0 || amountAppliedToUdhaar > 0 ? '#a7f3d0' : balanceDue > 0 ? '#fecaca' : '#e2e8f0'}`,
-                  borderRadius: '6px',
-                  padding: '6px 8px',
-                  marginBottom: '0.4rem',
+                  borderRadius: '4px',
+                  padding: '3px 6px',
+                  marginBottom: '0.3rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '3px',
-                  fontSize: '0.725rem'
+                  gap: '1px',
+                  fontSize: '0.65rem'
                 }}>
-                  {/* Cash Return / Wapis */}
                   {actualChangeReturn > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#065f46', fontWeight: 800, fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#065f46', fontWeight: 800, fontSize: '0.75rem' }}>
                       <span>💵 Change Return (Wapis):</span>
-                      <span style={{ fontSize: '0.95rem' }}>{formatPKR(actualChangeReturn)}</span>
+                      <span>{formatPKR(actualChangeReturn)}</span>
                     </div>
                   )}
 
-                  {/* Unpaid on this bill */}
                   {balanceDue > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#b91c1c', fontWeight: 700 }}>
-                      <span>⚠️ Unpaid on this bill:</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c', fontWeight: 700 }}>
+                      <span>⚠️ Unpaid on bill:</span>
                       <span>{formatPKR(balanceDue)}</span>
                     </div>
                   )}
 
-                  {balanceDue === 0 && actualChangeReturn === 0 && amountAppliedToUdhaar === 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: 600 }}>
-                      <span>Status:</span>
-                      <span>✔ Exact Payment Settled</span>
-                    </div>
-                  )}
-
-                  {/* Registered Customer Udhaar Ledger Details */}
                   {activeCustomer && activeCustomer.id !== 1 && (
-                    <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '4px', marginTop: '3px', display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.675rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
-                        <span>Previous Udhaar:</span>
-                        <strong>{formatPKR(custPrevBalance)}</strong>
-                      </div>
-                      {balanceDue > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c' }}>
-                          <span>Added to Udhaar (This Bill):</span>
-                          <strong>+{formatPKR(balanceDue)}</strong>
-                        </div>
-                      )}
-                      {amountAppliedToUdhaar > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontWeight: 700 }}>
-                          <span>Deducted from Udhaar (Extra Cash):</span>
-                          <strong>-{formatPKR(amountAppliedToUdhaar)}</strong>
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0369a1', fontWeight: 700 }}>
-                        <span>Total Remaining Udhaar:</span>
-                        <span style={{ color: netRemainingUdhaar > 0 ? '#dc2626' : '#16a34a' }}>
-                          {formatPKR(netRemainingUdhaar)}
-                        </span>
-                      </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0369a1', fontWeight: 700, paddingTop: '1px', borderTop: '1px dashed #cbd5e1', marginTop: '1px' }}>
+                      <span>Total Remaining Udhaar:</span>
+                      <span style={{ color: netRemainingUdhaar > 0 ? '#dc2626' : '#16a34a' }}>
+                        {formatPKR(netRemainingUdhaar)}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1641,7 +1619,7 @@ export default function PosSales() {
               onClick={handleCompleteSale}
               disabled={submitting || cart.length === 0}
               className="btn btn-primary"
-              style={{ width: '100%', height: '32px', fontSize: '0.8rem' }}
+              style={{ width: '100%', height: '30px', fontSize: '0.775rem', fontWeight: 800 }}
             >
               {submitting ? 'Processing...' : `Complete Sale • ${formatPKR(grandTotal)}`}
             </button>
