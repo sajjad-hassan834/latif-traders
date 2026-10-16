@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
 import Pagination from '../components/common/Pagination';
+import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
 
 export default function Customers() {
   const { user, isAdmin: authIsAdmin } = useAuth();
@@ -23,7 +24,19 @@ export default function Customers() {
   const [customerToDelete, setCustomerToDelete] = useState(null);
   const [selectedCust, setSelectedCust] = useState(null);
   const [ledgerData, setLedgerData] = useState(null);
+  const [viewingSale, setViewingSale] = useState(null);
   const [actionMenuId, setActionMenuId] = useState(null);
+
+  const handleViewInvoiceDetails = async (invoiceNo) => {
+    try {
+      const res = await api.get(`/sales/${invoiceNo}`);
+      if (res.success) {
+        setViewingSale(res);
+      }
+    } catch (err) {
+      alert('Failed to load bill details: ' + (err.message || ''));
+    }
+  };
 
   useEffect(() => {
     const handleOutsideClick = () => setActionMenuId(null);
@@ -513,12 +526,12 @@ export default function Customers() {
       {/* CUSTOMER LEDGER / STATEMENT MODAL */}
       {showLedgerModal && ledgerData && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '850px' }}>
+          <div className="modal-content" style={{ maxWidth: '900px', width: '95%' }}>
             <div className="modal-header">
               <div>
-                <h3>Customer Ledger: {ledgerData.customer.name}</h3>
-                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                  Type: {ledgerData.customer.customer_type} • Phone: {ledgerData.customer.phone || '-'}
+                <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Customer Account Record: {ledgerData.customer.name}</h3>
+                <div style={{ fontSize: '0.825rem', color: '#64748b', marginTop: '2px' }}>
+                  Customer Type: <strong>{ledgerData.customer.customer_type}</strong> • Phone: <strong>{ledgerData.customer.phone || 'None'}</strong>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -529,7 +542,43 @@ export default function Customers() {
                 <button onClick={() => setShowLedgerModal(false)}>✕</button>
               </div>
             </div>
-            <div className="modal-body">
+            <div className="modal-body" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
+              {/* 3 HIGHLIGHT CARDS: PURCHASES, PAYMENTS, DEBT LEFT */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem', marginBottom: '1.25rem' }}>
+                <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '0.85rem 1rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' }}>Total Bought (Kul Kharidari)</div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0284c7', marginTop: '3px' }}>
+                    {formatPKR(ledgerData.summary.total_purchased || ledgerData.summary.total_debit)}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>Total cost of all products bought</div>
+                </div>
+
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.85rem 1rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase' }}>Total Cash Paid (Kul Adaigi)</div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#16a34a', marginTop: '3px' }}>
+                    {formatPKR(ledgerData.summary.total_paid || ledgerData.summary.total_credit)}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>Total payments received to date</div>
+                </div>
+
+                <div style={{
+                  background: ledgerData.summary.closing_balance > 0 ? '#fef2f2' : '#f0fdf4',
+                  border: `1px solid ${ledgerData.summary.closing_balance > 0 ? '#fecaca' : '#bbf7d0'}`,
+                  borderRadius: '8px', padding: '0.85rem 1rem'
+                }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: ledgerData.summary.closing_balance > 0 ? '#b91c1c' : '#15803d', textTransform: 'uppercase' }}>
+                    Debt Left (Baqaya Udhaar)
+                  </div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: ledgerData.summary.closing_balance > 0 ? '#dc2626' : '#16a34a', marginTop: '3px' }}>
+                    {formatPKR(ledgerData.summary.closing_balance)}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                    {ledgerData.summary.closing_balance > 0 ? 'Pending amount to collect' : 'All cleared (No balance left)'}
+                  </div>
+                </div>
+              </div>
+
+              {/* DATE FILTERS */}
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', background: '#f8fafc', padding: '0.6rem 0.75rem', borderRadius: '6px', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                   <span style={{ fontSize: '0.8rem', color: '#64748b' }}>From:</span>
@@ -568,51 +617,82 @@ export default function Customers() {
                   </button>
                 )}
               </div>
+
+              {/* STATEMENT TABLE WITH CLEAR EASY WORDING */}
               <div className="table-responsive">
-                <table className="table" style={{ width: '100%', minWidth: '600px' }}>
+                <table className="table" style={{ width: '100%', minWidth: '650px', fontSize: '0.85rem' }}>
                   <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Ref #</th>
-                      <th>Description</th>
-                      <th style={{ textAlign: 'right' }}>Debit (Invoice)</th>
-                      <th style={{ textAlign: 'right' }}>Credit (Paid)</th>
-                      <th style={{ textAlign: 'right' }}>Running Balance</th>
+                    <tr style={{ background: '#0f172a', color: '#fff' }}>
+                      <th style={{ padding: '8px 10px' }}>Date</th>
+                      <th style={{ padding: '8px 10px' }}>Bill / Ref #</th>
+                      <th style={{ padding: '8px 10px' }}>Transaction Details</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Bill Amount (Kharidari)</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Cash Paid (Wusooli)</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Debt Left (Baqaya Udhaar)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {ledgerData.ledger.map((row, idx) => (
-                      <tr key={idx}>
-                        <td>{formatDate(row.date)}</td>
-                        <td className="mono">{row.ref_no}</td>
-                        <td style={{ fontSize: '0.85rem' }}>{row.notes}</td>
-                        <td style={{ textAlign: 'right', color: row.debit > 0 ? '#ef4444' : '#64748b' }}>
-                          {row.debit > 0 ? formatPKR(row.debit) : '-'}
-                        </td>
-                        <td style={{ textAlign: 'right', color: row.credit > 0 ? '#10b981' : '#64748b' }}>
-                          {row.credit > 0 ? formatPKR(row.credit) : '-'}
-                        </td>
-                        <td style={{ textAlign: 'right', fontWeight: 700 }}>
-                          {formatPKR(row.balance)}
-                        </td>
-                      </tr>
-                    ))}
+                    {ledgerData.ledger.map((row, idx) => {
+                      const isSale = row.ref_no && row.ref_no.startsWith('INV-');
+
+                      return (
+                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{formatDate(row.date)}</td>
+                          <td className="mono" style={{ padding: '8px 10px' }}>
+                            {isSale ? (
+                              <button
+                                type="button"
+                                onClick={() => handleViewInvoiceDetails(row.ref_no)}
+                                style={{
+                                  background: 'none', border: 'none', color: '#0284c7',
+                                  fontWeight: 700, cursor: 'pointer', padding: 0,
+                                  textDecoration: 'underline', fontSize: '0.85rem'
+                                }}
+                                title="Click to view full bill slip"
+                              >
+                                {row.ref_no}
+                              </button>
+                            ) : (
+                              <span>{row.ref_no}</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <div style={{ fontWeight: 600 }}>{row.notes}</div>
+                            {isSale && (
+                              <div style={{ fontSize: '0.72rem', color: '#0284c7' }}>
+                                📄 Click bill # to view itemized slip
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: row.bill_amount > 0 ? '#0f172a' : '#94a3b8' }}>
+                            {row.bill_amount > 0 ? formatPKR(row.bill_amount) : '-'}
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: row.paid_amount > 0 ? '#16a34a' : '#94a3b8' }}>
+                            {row.paid_amount > 0 ? formatPKR(row.paid_amount) : '-'}
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: row.balance > 0 ? '#dc2626' : '#16a34a' }}>
+                            {formatPKR(row.balance)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
 
+              {/* CLOSING TOTALS SUMMARY */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
-                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', width: '100%', maxWidth: '350px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                    <span>Total Billed (Debit):</span>
-                    <strong>{formatPKR(ledgerData.summary.total_debit)}</strong>
+                <div style={{ background: '#f8fafc', padding: '1rem 1.25rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%', maxWidth: '380px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                    <span>Total Products Bought:</span>
+                    <strong>{formatPKR(ledgerData.summary.total_purchased || ledgerData.summary.total_debit)}</strong>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                    <span>Total Received (Credit):</span>
-                    <strong style={{ color: '#10b981' }}>{formatPKR(ledgerData.summary.total_credit)}</strong>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
+                    <span>Total Cash Paid:</span>
+                    <strong style={{ color: '#16a34a' }}>{formatPKR(ledgerData.summary.total_paid || ledgerData.summary.total_credit)}</strong>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 800, marginTop: '0.5rem', borderTop: '1px solid #cbd5e1', paddingTop: '0.5rem', color: '#ef4444' }}>
-                    <span>Closing Receivable:</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 800, borderTop: '1px solid #cbd5e1', paddingTop: '6px', color: ledgerData.summary.closing_balance > 0 ? '#dc2626' : '#16a34a' }}>
+                    <span>Remaining Debt Left:</span>
                     <span>{formatPKR(ledgerData.summary.closing_balance)}</span>
                   </div>
                 </div>
@@ -837,6 +917,16 @@ export default function Customers() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* VIEW BILL / INVOICE MODAL FROM CUSTOMER RECORD */}
+      {viewingSale && (
+        <PrintInvoiceModal
+          sale={viewingSale.sale}
+          items={viewingSale.items}
+          settings={viewingSale.settings}
+          onClose={() => setViewingSale(null)}
+        />
       )}
     </div>
   );

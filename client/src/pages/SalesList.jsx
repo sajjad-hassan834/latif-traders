@@ -350,7 +350,7 @@ export default function SalesList() {
       </div>
 
       {/* PRINT INVOICE MODAL */}
-      {selectedSale && !showReturnModal && (
+      {selectedSale && !showEditModal && (
         <PrintInvoiceModal
           sale={selectedSale.sale}
           items={selectedSale.items}

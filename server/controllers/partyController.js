@@ -133,7 +133,7 @@ exports.getCustomerLedger = (req, res) => {
 
     // Collect Sales (Debit to customer), Payments/Receipts (Credit from customer), Returns (Credit to customer)
     let salesQuery = "SELECT id, invoice_no as ref_no, sale_date as date, 'SALE' as type, grand_total as amount, paid_amount, balance_due, notes FROM sales WHERE customer_id = ?";
-    let paymentsQuery = "SELECT id, reference_no as ref_no, payment_date as date, 'RECEIPT' as type, amount, 0 as paid_amount, 0 as balance_due, notes FROM payments WHERE party_type = 'CUSTOMER' AND party_id = ?";
+    let paymentsQuery = "SELECT id, reference_no as ref_no, payment_date as date, 'RECEIPT' as type, amount, 0 as paid_amount, 0 as balance_due, notes, payment_method FROM payments WHERE party_type = 'CUSTOMER' AND party_id = ?";
     let returnsQuery = "SELECT id, return_no as ref_no, created_at as date, 'RETURN' as type, total_amount as amount, 0 as paid_amount, 0 as balance_due, reason as notes FROM returns WHERE type = 'SALE_RETURN' AND party_id = ?";
 
     const sParams = [id];
@@ -166,48 +166,69 @@ exports.getCustomerLedger = (req, res) => {
     const allEntries = [];
 
     // Add opening balance
+    const opnBal = Number(customer.opening_balance) || 0;
     allEntries.push({
       date: customer.created_at ? customer.created_at.split(' ')[0] : '2026-01-01',
       ref_no: 'OPN-BAL',
       type: 'OPENING',
-      debit: customer.opening_balance > 0 ? customer.opening_balance : 0,
-      credit: customer.opening_balance < 0 ? Math.abs(customer.opening_balance) : 0,
-      notes: 'Initial account balance'
+      bill_amount: opnBal > 0 ? opnBal : 0,
+      paid_amount: opnBal < 0 ? Math.abs(opnBal) : 0,
+      balance_due: opnBal > 0 ? opnBal : 0,
+      debit: opnBal > 0 ? opnBal : 0,
+      credit: opnBal < 0 ? Math.abs(opnBal) : 0,
+      notes: 'Initial account starting balance'
     });
 
     for (const s of sales) {
+      const billTotal = Number(s.amount) || 0;
+      const paidOnBill = Number(s.paid_amount) || 0;
+      const unpaidDue = Number(s.balance_due) || 0;
+
       allEntries.push({
         id: s.id,
         date: s.date,
         ref_no: s.ref_no,
         type: 'SALE_INVOICE',
-        debit: s.amount,
-        credit: 0,
-        notes: `Sale Invoice ${s.ref_no} (Paid: ₨ ${s.paid_amount})`
+        bill_amount: billTotal,
+        paid_amount: paidOnBill,
+        balance_due: unpaidDue,
+        debit: billTotal,
+        credit: paidOnBill,
+        notes: unpaidDue > 0
+          ? `Bill: ${s.ref_no} (Paid: ₨ ${paidOnBill}, Debt Left: ₨ ${unpaidDue})`
+          : `Bill: ${s.ref_no} (Paid in Full in Cash)`
       });
     }
 
     for (const p of payments) {
+      const pAmt = Number(p.amount) || 0;
       allEntries.push({
         id: p.id,
         date: p.date,
         ref_no: p.ref_no,
         type: 'PAYMENT_RECEIPT',
+        bill_amount: 0,
+        paid_amount: pAmt,
+        balance_due: 0,
         debit: 0,
-        credit: p.amount,
-        notes: p.notes || 'Payment receipt'
+        credit: pAmt,
+        notes: p.notes || `Direct Payment Received (${p.payment_method || 'Cash'})`
       });
     }
 
     for (const r of returns) {
+      const rAmt = Number(r.amount) || 0;
       allEntries.push({
         id: r.id,
         date: r.date ? r.date.split('T')[0] : '',
         ref_no: r.ref_no,
         type: 'SALE_RETURN',
+        bill_amount: 0,
+        paid_amount: rAmt,
+        balance_due: 0,
         debit: 0,
-        credit: r.amount,
-        notes: r.notes || 'Sale return'
+        credit: rAmt,
+        notes: r.notes || 'Returned Products Credit'
       });
     }
 
@@ -224,13 +245,18 @@ exports.getCustomerLedger = (req, res) => {
       };
     });
 
+    const totalPurchased = ledger.reduce((acc, l) => acc + (l.bill_amount || 0), 0);
+    const totalPaid = ledger.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
+
     return res.json({
       success: true,
       customer,
       ledger,
       summary: {
-        total_debit: ledger.reduce((acc, l) => acc + l.debit, 0),
-        total_credit: ledger.reduce((acc, l) => acc + l.credit, 0),
+        total_purchased: totalPurchased,
+        total_paid: totalPaid,
+        total_debit: totalPurchased,
+        total_credit: totalPaid,
         closing_balance: running
       }
     });
