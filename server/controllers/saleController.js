@@ -522,3 +522,216 @@ exports.deleteSale = (req, res) => {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
+
+// Edit / Update Sale Invoice (Admin only)
+// Handles item quantity modifications/returns, restoring stock to batches, adjusting customer balances and ledger, updating totals
+exports.updateSale = (req, res) => {
+  const transaction = db.transaction(() => {
+    const { id } = req.params;
+    const { items, discount, paid_amount, reason } = req.body;
+
+    const oldSale = db.prepare('SELECT * FROM sales WHERE id = ?').get(id);
+    if (!oldSale) throw new Error('Sale invoice not found.');
+
+    const oldSaleItems = db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(oldSale.id);
+
+    if (!items || !Array.isArray(items)) {
+      throw new Error('Valid items list is required.');
+    }
+
+    const insertMovement = db.prepare(`
+      INSERT INTO inventory_movements (
+        product_id, batch_id, type, quantity_delta, unit_price,
+        balance_after, reference_id, reference_type, reason, user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'SALE_EDIT', ?, ?)
+    `);
+
+    // Process each item in the payload
+    for (const item of items) {
+      const oldItem = oldSaleItems.find(o => o.id === item.id || (item.product_id && o.product_id === item.product_id));
+      const oldQty = oldItem ? Number(oldItem.quantity) : 0;
+      const newQty = Math.max(0, Number(item.quantity) || 0);
+      const qtyDelta = newQty - oldQty; // negative if quantity reduced, positive if increased
+
+      if (qtyDelta < -0.0001) {
+        // Quantity reduced: Restock back into batches!
+        const returnQty = Math.abs(qtyDelta);
+        let batchToUse = oldItem?.batch_id;
+        if (batchToUse) {
+          const bExists = db.prepare('SELECT id FROM batches WHERE id = ?').get(batchToUse);
+          if (!bExists) batchToUse = null;
+        }
+
+        if (batchToUse) {
+          db.prepare('UPDATE batches SET quantity = quantity + ? WHERE id = ?').run(returnQty, batchToUse);
+        } else {
+          const activeBatch = db.prepare("SELECT id FROM batches WHERE product_id = ? AND status = 'active' ORDER BY id ASC LIMIT 1").get(item.product_id)
+            || db.prepare("SELECT id FROM batches WHERE product_id = ? ORDER BY id DESC LIMIT 1").get(item.product_id);
+          if (activeBatch) {
+            batchToUse = activeBatch.id;
+            db.prepare('UPDATE batches SET quantity = quantity + ? WHERE id = ?').run(returnQty, activeBatch.id);
+          }
+        }
+
+        const totalAfter = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active'").get(item.product_id).s;
+        insertMovement.run(
+          item.product_id,
+          batchToUse || null,
+          'RETURN',
+          returnQty,
+          item.unit_price,
+          totalAfter,
+          oldSale.id,
+          `Sale ${oldSale.invoice_no} edited: reduced qty ${oldQty} -> ${newQty}${reason ? ` (${reason})` : ''}`,
+          req.user.id
+        );
+      } else if (qtyDelta > 0.0001) {
+        // Quantity increased: Deduct extra quantity using FIFO
+        let toDeduct = qtyDelta;
+        const batches = db.prepare(`
+          SELECT * FROM batches
+          WHERE product_id = ? AND status = 'active' AND quantity > 0
+          ORDER BY id ASC
+        `).all(item.product_id);
+
+        let consumedBatchId = null;
+        for (const b of batches) {
+          if (toDeduct <= 0) break;
+          const d = Math.min(b.quantity, toDeduct);
+          db.prepare('UPDATE batches SET quantity = quantity - ? WHERE id = ?').run(d, b.id);
+          toDeduct -= d;
+          consumedBatchId = b.id;
+        }
+
+        if (toDeduct > 0) {
+          const fallback = db.prepare('SELECT id FROM batches WHERE product_id = ? ORDER BY id DESC LIMIT 1').get(item.product_id);
+          if (fallback) {
+            db.prepare('UPDATE batches SET quantity = quantity - ? WHERE id = ?').run(toDeduct, fallback.id);
+            consumedBatchId = fallback.id;
+          }
+        }
+
+        const totalAfter = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active'").get(item.product_id).s;
+        insertMovement.run(
+          item.product_id,
+          consumedBatchId,
+          'SALE',
+          -qtyDelta,
+          item.unit_price,
+          totalAfter,
+          oldSale.id,
+          `Sale ${oldSale.invoice_no} edited: increased qty ${oldQty} -> ${newQty}${reason ? ` (${reason})` : ''}`,
+          req.user.id
+        );
+      }
+
+      // Update or insert into sale_items
+      const itemDisc = Number(item.discount) || 0;
+      const rate = Number(item.unit_price) || (oldItem ? oldItem.unit_price : 0);
+      const lineTotal = Math.max(0, (newQty * rate) - itemDisc);
+
+      if (newQty > 0) {
+        if (oldItem) {
+          db.prepare(`
+            UPDATE sale_items
+            SET quantity = ?, unit_price = ?, discount = ?, total_price = ?
+            WHERE id = ?
+          `).run(newQty, rate, itemDisc, lineTotal, oldItem.id);
+        } else {
+          db.prepare(`
+            INSERT INTO sale_items (
+              sale_id, product_id, batch_id, batch_no,
+              quantity, unit, unit_price, cost_price, discount, total_price
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            oldSale.id, item.product_id, item.batch_id || null, item.batch_no || null,
+            newQty, item.unit || 'pkt', rate, oldItem?.cost_price || 0, itemDisc, lineTotal
+          );
+        }
+      } else if (oldItem) {
+        db.prepare('DELETE FROM sale_items WHERE id = ?').run(oldItem.id);
+      }
+    }
+
+    // Check for any oldSaleItems completely missing in new items
+    for (const oldIt of oldSaleItems) {
+      const stillPresent = items.find(i => i.id === oldIt.id || (i.product_id && i.product_id === oldIt.product_id));
+      if (!stillPresent) {
+        // Old item removed completely: restock all oldIt.quantity
+        if (oldIt.batch_id) {
+          db.prepare('UPDATE batches SET quantity = quantity + ? WHERE id = ?').run(oldIt.quantity, oldIt.batch_id);
+        } else {
+          const ab = db.prepare("SELECT id FROM batches WHERE product_id = ? AND status = 'active' ORDER BY id ASC LIMIT 1").get(oldIt.product_id);
+          if (ab) db.prepare('UPDATE batches SET quantity = quantity + ? WHERE id = ?').run(oldIt.quantity, ab.id);
+        }
+        const totalAfter = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active'").get(oldIt.product_id).s;
+        insertMovement.run(
+          oldIt.product_id, oldIt.batch_id, 'RETURN', oldIt.quantity, oldIt.unit_price, totalAfter,
+          oldSale.id, `Sale ${oldSale.invoice_no} edited: item removed from bill (${reason || 'Admin edit'})`, req.user.id
+        );
+        db.prepare('DELETE FROM sale_items WHERE id = ?').run(oldIt.id);
+      }
+    }
+
+    // Recalculate bill financial values
+    const currentItems = db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(oldSale.id);
+    const newSubtotal = currentItems.reduce((acc, it) => acc + Number(it.total_price), 0);
+    const newDiscount = (discount !== undefined && discount !== null && !isNaN(Number(discount)))
+      ? Number(discount)
+      : Number(oldSale.discount || 0);
+    const newGrandTotal = Math.max(0, newSubtotal - newDiscount);
+
+    const newPaidAmount = (paid_amount !== undefined && paid_amount !== null && !isNaN(Number(paid_amount)))
+      ? Number(paid_amount)
+      : Math.min(Number(oldSale.paid_amount), newGrandTotal);
+    const newBalanceDue = Math.max(0, newGrandTotal - newPaidAmount);
+
+    // Update Customer Balance (if registered customer)
+    if (oldSale.customer_id && Number(oldSale.customer_id) > 1) {
+      const oldNet = Number(oldSale.grand_total) - Number(oldSale.paid_amount);
+      const newNet = newGrandTotal - newPaidAmount;
+      const customerBalanceDelta = newNet - oldNet;
+      if (Math.abs(customerBalanceDelta) > 0.001) {
+        db.prepare('UPDATE customers SET current_balance = MAX(0, current_balance + ?) WHERE id = ?')
+          .run(customerBalanceDelta, oldSale.customer_id);
+      }
+    }
+
+    let updatedNotes = oldSale.notes || '';
+    if (reason && reason.trim()) {
+      updatedNotes = updatedNotes ? `${updatedNotes} | Edited: ${reason.trim()}` : `Edited: ${reason.trim()}`;
+    }
+
+    db.prepare(`
+      UPDATE sales
+      SET subtotal = ?, discount = ?, grand_total = ?, paid_amount = ?, balance_due = ?, notes = ?
+      WHERE id = ?
+    `).run(newSubtotal, newDiscount, newGrandTotal, newPaidAmount, newBalanceDue, updatedNotes, oldSale.id);
+
+    logAudit(
+      req.user.id,
+      req.user.full_name,
+      'UPDATE',
+      'SALE',
+      oldSale.id,
+      `Edited sale ${oldSale.invoice_no}: items updated, Grand Total: ₨ ${oldSale.grand_total} -> ₨ ${newGrandTotal}, Paid: ₨ ${oldSale.paid_amount} -> ₨ ${newPaidAmount}${reason ? ` (${reason})` : ''}`,
+      req
+    );
+
+    return {
+      id: oldSale.id,
+      invoice_no: oldSale.invoice_no,
+      grand_total: newGrandTotal,
+      paid_amount: newPaidAmount,
+      balance_due: newBalanceDue
+    };
+  });
+
+  try {
+    const result = transaction();
+    return res.json({ success: true, message: `Sale ${result.invoice_no} updated successfully.`, data: result });
+  } catch (err) {
+    console.error('Error updating sale:', err);
+    return res.status(400).json({ success: false, message: err.message });
+  }
+};

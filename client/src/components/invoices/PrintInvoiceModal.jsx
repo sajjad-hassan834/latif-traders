@@ -35,7 +35,7 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
       `${tagline}`,
       `--------------------------`,
       `📄 *Invoice #:* ${sale.invoice_no}`,
-      `📅 *Date:* ${formatDate(sale.sale_date || sale.created_at)}`,
+      `📅 *Date:* ${formatDateTime(sale.created_at || sale.sale_date)}`,
       `👤 *Customer:* ${sale.customer_name || 'Counter Customer'}`,
       `--------------------------`,
       `*ITEMS:*`
@@ -247,7 +247,7 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>TAX INVOICE</div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0284c7' }}>#{sale.invoice_no}</div>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Date: {formatDate(sale.sale_date || sale.created_at)}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Date: {formatDateTime(sale.created_at || sale.sale_date)}</div>
                   </div>
                 </div>
 

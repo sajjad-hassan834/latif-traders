@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Printer, Eye, RotateCcw, Calendar, Download, ChevronDown, Trash2 } from 'lucide-react';
+import { Search, Printer, Eye, RotateCcw, Calendar, Download, ChevronDown, Trash2, Edit3 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate, formatDateTime } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
@@ -18,15 +18,19 @@ export default function SalesList() {
   const ITEMS_PER_PAGE = 15;
 
   const [selectedSale, setSelectedSale] = useState(null);
-  const [showReturnModal, setShowReturnModal] = useState(false);
-  const [returnItems, setReturnItems] = useState([]);
-  const [returnReason, setReturnReason] = useState('');
-  const [returnSuccess, setReturnSuccess] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editSale, setEditSale] = useState(null);
+  const [editItems, setEditItems] = useState([]);
+  const [editDiscount, setEditDiscount] = useState(0);
+  const [editPaidAmount, setEditPaidAmount] = useState(0);
+  const [editReason, setEditReason] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
   const [actionMenuId, setActionMenuId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteSaleId, setDeleteSaleId] = useState(null);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [returnSuccess, setReturnSuccess] = useState('');
 
   useEffect(() => {
     const handleOutsideClick = () => setActionMenuId(null);
@@ -82,42 +86,63 @@ export default function SalesList() {
     }
   };
 
-  const handleOpenReturn = async (id) => {
+  const handleOpenEdit = async (id) => {
     try {
       const res = await api.get(`/sales/${id}`);
       if (res.success) {
-        setSelectedSale(res);
-        setReturnItems(res.items.map(i => ({
+        setEditSale(res.sale);
+        setEditItems(res.items.map(i => ({
+          id: i.id,
           product_id: i.product_id,
           batch_id: i.batch_id,
           name: i.product_name,
-          quantity: 1,
-          max_quantity: i.quantity,
-          unit_price: i.unit_price,
-          condition: 'RESELLABLE'
+          brand_name: i.brand_name || i.supplier_name,
+          unit: i.unit || 'pkt',
+          unit_price: Number(i.unit_price) || 0,
+          original_quantity: Number(i.quantity),
+          quantity: Number(i.quantity),
+          discount: Number(i.discount) || 0,
+          total_price: Number(i.total_price) || 0
         })));
-        setShowReturnModal(true);
+        setEditDiscount(Number(res.sale.discount) || 0);
+        setEditPaidAmount(Number(res.sale.paid_amount) || 0);
+        setEditReason('');
+        setShowEditModal(true);
       }
     } catch (err) {
-      alert('Failed to load invoice for return');
+      alert('Failed to load invoice for editing');
     }
   };
 
-  const submitReturn = async () => {
+  const submitEditSale = async () => {
+    if (!editSale) return;
     try {
-      const res = await api.post('/sales/returns', {
-        original_sale_id: selectedSale.sale.id,
-        reason: returnReason,
-        items: returnItems.filter(i => i.quantity > 0)
-      });
+      setEditSubmitting(true);
+      const payload = {
+        items: editItems.map(i => ({
+          id: i.id,
+          product_id: i.product_id,
+          batch_id: i.batch_id,
+          quantity: Number(i.quantity) || 0,
+          unit_price: Number(i.unit_price) || 0,
+          discount: Number(i.discount) || 0
+        })),
+        discount: Number(editDiscount) || 0,
+        paid_amount: Number(editPaidAmount) || 0,
+        reason: editReason
+      };
+
+      const res = await api.put(`/sales/${editSale.id}`, payload);
       if (res.success) {
-        setReturnSuccess(`Return ${res.data.return_no} processed! Stock reversed.`);
-        setShowReturnModal(false);
-        setSelectedSale(null);
+        setReturnSuccess(`Bill ${editSale.invoice_no} updated! Stock & customer balance updated successfully.`);
+        setShowEditModal(false);
+        setEditSale(null);
         loadSales();
       }
     } catch (err) {
-      alert(err.message || 'Failed to process sales return');
+      alert(err.message || 'Failed to update sale invoice');
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -230,7 +255,7 @@ export default function SalesList() {
                 sales.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(s => (
                   <tr key={s.id}>
                     <td className="mono" style={{ fontWeight: 700, color: '#0284c7' }}>{s.invoice_no}</td>
-                    <td>{formatDate(s.sale_date)}</td>
+                    <td>{formatDateTime(s.created_at || s.sale_date)}</td>
                     <td style={{ fontWeight: 600 }}>{s.customer_name || 'Walk-in Retail'}</td>
                     <td><span className="badge badge-info">{s.sale_type}</span></td>
                     <td>{s.item_count} items</td>
@@ -271,12 +296,12 @@ export default function SalesList() {
                                 <Printer size={14} /> View / Print
                               </button>
                               <button
-                                onClick={() => { handleOpenReturn(s.id); setActionMenuId(null); }}
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 12px', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: '4px', color: '#f59e0b' }}
+                                onClick={() => { handleOpenEdit(s.id); setActionMenuId(null); }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 12px', fontSize: '0.8rem', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderRadius: '4px', color: '#0284c7' }}
                                 onMouseEnter={(e) => e.target.style.background = '#f1f5f9'}
                                 onMouseLeave={(e) => e.target.style.background = 'none'}
                               >
-                                <RotateCcw size={14} /> Return
+                                <Edit3 size={14} /> Edit Bill
                               </button>
                               <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }} />
                               <button
@@ -300,12 +325,12 @@ export default function SalesList() {
                             <Printer size={15} />
                           </button>
                           <button
-                            onClick={() => handleOpenReturn(s.id)}
+                            onClick={() => handleOpenEdit(s.id)}
                             className="btn btn-secondary btn-sm"
-                            style={{ color: '#f59e0b' }}
-                            title="Sales Return"
+                            style={{ color: '#0284c7' }}
+                            title="Edit Bill"
                           >
-                            <RotateCcw size={15} />
+                            <Edit3 size={15} />
                           </button>
                         </div>
                       )}
@@ -334,76 +359,196 @@ export default function SalesList() {
         />
       )}
 
-      {/* SALES RETURN MODAL */}
-      {showReturnModal && selectedSale && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Process Sales Return ({selectedSale.sale.invoice_no})</h3>
-              <button onClick={() => setShowReturnModal(false)}>✕</button>
-            </div>
-            <div className="modal-body">
-              <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
-                Select quantity and condition of returned products. Resellable items will automatically return to stock.
-              </p>
+      {/* EDIT SALE / INVOICE MODAL */}
+      {showEditModal && editSale && (() => {
+        const calcSubtotal = editItems.reduce((acc, it) => {
+          const qty = Number(it.quantity) || 0;
+          const rate = Number(it.unit_price) || 0;
+          const disc = Number(it.discount) || 0;
+          return acc + Math.max(0, (qty * rate) - disc);
+        }, 0);
+        const calcGrandTotal = Math.max(0, calcSubtotal - Number(editDiscount || 0));
+        const calcPaid = Number(editPaidAmount) || 0;
+        const calcBalanceDue = Math.max(0, calcGrandTotal - calcPaid);
+        const oldDue = Number(editSale.balance_due) || 0;
+        const dueDelta = calcBalanceDue - oldDue;
 
-              {returnItems.map((item, idx) => (
-                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1.5fr', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center' }}>
+        return (
+          <div className="modal-overlay">
+            <div className="modal-content" style={{ maxWidth: '780px', width: '95%' }}>
+              <div className="modal-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Edit3 size={18} color="var(--primary)" />
+                  <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Edit Bill / Invoice ({editSale.invoice_no})</h3>
+                </div>
+                <button onClick={() => setShowEditModal(false)}>✕</button>
+              </div>
+
+              <div className="modal-body" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', background: '#f8fafc', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1rem', fontSize: '0.825rem' }}>
+                  <div><strong>Customer:</strong> {editSale.customer_name || 'Walk-in Retail Customer'}</div>
+                  <div><strong>Date:</strong> {formatDateTime(editSale.created_at || editSale.sale_date)}</div>
+                  <div><strong>Sale Type:</strong> <span className="badge badge-info">{editSale.sale_type}</span></div>
+                  <div><strong>Payment:</strong> {editSale.payment_method || 'Cash'}</div>
+                </div>
+
+                <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px', padding: '0.6rem 0.85rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#065f46' }}>
+                  📦 <strong>Stock & Ledger Reversal:</strong> If you reduce quantities (e.g. from 3 to 1), the reversed items will automatically be restored to your inventory stock and the bill/customer debt will adjust instantly upon saving.
+                </div>
+
+                <div className="table-responsive" style={{ border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
+                  <table className="table" style={{ width: '100%', margin: 0, fontSize: '0.825rem' }}>
+                    <thead>
+                      <tr style={{ background: '#0f172a', color: '#fff' }}>
+                        <th style={{ padding: '8px 10px' }}>Item Description</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right' }}>Rate</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center' }}>Original Qty</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center' }}>New Qty</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right' }}>Total</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center' }}>Stock Impact</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {editItems.map((item, idx) => {
+                        const qty = Number(item.quantity) || 0;
+                        const origQty = Number(item.original_quantity) || 0;
+                        const rate = Number(item.unit_price) || 0;
+                        const lineTotal = Math.max(0, (qty * rate) - (Number(item.discount) || 0));
+                        const diff = qty - origQty;
+
+                        return (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '8px 10px' }}>
+                              <div style={{ fontWeight: 600 }}>{item.name}</div>
+                              <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{item.brand_name || 'Latif Traders'}</div>
+                            </td>
+                            <td style={{ padding: '8px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              {formatPKR(rate)}
+                            </td>
+                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                              <span className="badge badge-secondary" style={{ padding: '3px 8px' }}>
+                                {origQty} {item.unit}
+                              </span>
+                            </td>
+                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                              <input
+                                type="number"
+                                min="0"
+                                step="any"
+                                className="form-control form-control-sm"
+                                style={{ width: '85px', textAlign: 'center', fontWeight: 700, margin: '0 auto' }}
+                                value={item.quantity}
+                                onChange={(e) => {
+                                  const val = Math.max(0, Number(e.target.value));
+                                  const updated = [...editItems];
+                                  updated[idx].quantity = val;
+                                  setEditItems(updated);
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                              {formatPKR(lineTotal)}
+                            </td>
+                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                              {diff < 0 ? (
+                                <span style={{ color: '#16a34a', fontWeight: 600, fontSize: '0.75rem', background: '#dcfce7', padding: '3px 8px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                                  +{Math.abs(diff)} to Stock 📦
+                                </span>
+                              ) : diff > 0 ? (
+                                <span style={{ color: '#ea580c', fontWeight: 600, fontSize: '0.75rem', background: '#ffedd5', padding: '3px 8px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                                  -{diff} from Stock
+                                </span>
+                              ) : (
+                                <span style={{ color: '#64748b', fontSize: '0.75rem' }}>No Change</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.2rem', marginTop: '1.2rem' }}>
                   <div>
-                    <div style={{ fontWeight: 600 }}>{item.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Rate: {formatPKR(item.unit_price)}</div>
+                    <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+                      <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: 600 }}>Reason for Modification *</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="e.g., Customer returned 1 item, corrected quantity"
+                        value={editReason}
+                        onChange={(e) => setEditReason(e.target.value)}
+                      />
+                    </div>
+
+                    {editSale.customer_id && editSale.customer_id > 1 && (
+                      <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', color: '#0369a1' }}>
+                        <div style={{ fontWeight: 700, marginBottom: '4px' }}>Customer Ledger Impact:</div>
+                        <div>Previous Bill Balance Due: <strong>{formatPKR(oldDue)}</strong></div>
+                        <div>New Bill Balance Due: <strong>{formatPKR(calcBalanceDue)}</strong></div>
+                        <div style={{ marginTop: '4px', fontWeight: 700, color: dueDelta < 0 ? '#16a34a' : dueDelta > 0 ? '#ef4444' : '#0369a1' }}>
+                          Customer Debt Net Change: {dueDelta > 0 ? `+${formatPKR(dueDelta)}` : formatPKR(dueDelta)}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <input
-                      type="number"
-                      className="form-control"
-                      min="0"
-                      max={item.max_quantity}
-                      value={item.quantity}
-                      onChange={(e) => {
-                        const val = Math.min(item.max_quantity, Math.max(0, Number(e.target.value)));
-                        const updated = [...returnItems];
-                        updated[idx].quantity = val;
-                        setReturnItems(updated);
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <select
-                      className="form-control"
-                      value={item.condition}
-                      onChange={(e) => {
-                        const updated = [...returnItems];
-                        updated[idx].condition = e.target.value;
-                        setReturnItems(updated);
-                      }}
-                    >
-                      <option value="RESELLABLE">Resellable (Add to Stock)</option>
-                      <option value="DAMAGED">Damaged / Melted</option>
-                      <option value="DISCARDED">Discarded / Expired</option>
-                    </select>
+
+                  <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Subtotal:</span>
+                      <strong>{formatPKR(calcSubtotal)}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Discount (₨):</span>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-control form-control-sm"
+                        style={{ width: '90px', textAlign: 'right' }}
+                        value={editDiscount}
+                        onChange={(e) => setEditDiscount(Math.max(0, Number(e.target.value)))}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '0.5rem' }}>
+                      <strong>New Grand Total:</strong>
+                      <strong style={{ color: '#0284c7' }}>{formatPKR(calcGrandTotal)}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Paid Amount (₨):</span>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-control form-control-sm"
+                        style={{ width: '90px', textAlign: 'right' }}
+                        value={editPaidAmount}
+                        onChange={(e) => setEditPaidAmount(Math.max(0, Number(e.target.value)))}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '0.5rem' }}>
+                      <span>New Balance Due:</span>
+                      <strong style={{ color: calcBalanceDue > 0 ? '#ef4444' : '#10b981' }}>
+                        {calcBalanceDue > 0 ? formatPKR(calcBalanceDue) : 'Paid (Settled)'}
+                      </strong>
+                    </div>
                   </div>
                 </div>
-              ))}
+              </div>
 
-              <div className="form-group" style={{ marginTop: '1rem' }}>
-                <label className="form-label">Return Reason</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Customer reason (e.g., Wrong flavor, defect, thaw issue)"
-                  value={returnReason}
-                  onChange={(e) => setReturnReason(e.target.value)}
-                />
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button
+                  className="btn btn-primary"
+                  disabled={editSubmitting}
+                  onClick={submitEditSale}
+                >
+                  {editSubmitting ? 'Saving & Updating Stock...' : 'Save & Update Bill'}
+                </button>
               </div>
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowReturnModal(false)}>Cancel</button>
-              <button className="btn btn-danger" onClick={submitReturn}>Confirm Return</button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* DELETE SALE CONFIRMATION MODAL */}
       {showDeleteModal && (
