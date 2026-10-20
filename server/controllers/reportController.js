@@ -128,22 +128,23 @@ exports.getDashboardMetrics = (req, res) => {
     const estimatedGrossProfit = todaySales.total_sales - todayCOGS;
     const estimatedNetProfit = estimatedGrossProfit - todayExpenses.total_expenses;
 
-    // 14-day sales & margin trend
+    // 60-day sales & margin trend with robust date normalization
     const salesTrend = db.prepare(`
       SELECT
-        s.sale_date,
+        SUBSTR(s.sale_date, 1, 10) as sale_date,
         COALESCE(SUM(s.grand_total), 0) as total_sales,
         COALESCE(SUM(s.grand_total - COALESCE(cogs.total_cogs, 0)), 0) as gross_margin
       FROM sales s
       LEFT JOIN (
         SELECT sale_id, SUM(quantity * cost_price) as total_cogs
         FROM sale_items
-        WHERE tenant_id = ?
+        WHERE (tenant_id = ? OR tenant_id IS NULL)
         GROUP BY sale_id
       ) cogs ON s.id = cogs.sale_id
-      WHERE s.sale_date >= date('now', '-14 days') AND s.tenant_id = ?
-      GROUP BY s.sale_date
-      ORDER BY s.sale_date ASC
+      WHERE (s.tenant_id = ? OR s.tenant_id IS NULL)
+        AND SUBSTR(s.sale_date, 1, 10) >= date('now', '-60 days')
+      GROUP BY SUBSTR(s.sale_date, 1, 10)
+      ORDER BY SUBSTR(s.sale_date, 1, 10) ASC
     `).all(tenantId, tenantId);
 
     // Top customer accounts with receivables

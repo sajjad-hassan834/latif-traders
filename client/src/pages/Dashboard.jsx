@@ -34,12 +34,18 @@ import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
 import ActionMenu from '../components/common/ActionMenu';
 
 // Helper: Generates a real calendar timeline of N days ending today
-function generateRealTimeline(trendData = [], daysCount = 14) {
+function generateRealTimeline(trendData = [], daysCount = 7, todaySales = 0, todayMargin = 0) {
   const trendMap = {};
   if (Array.isArray(trendData)) {
     trendData.forEach(item => {
-      if (item.sale_date) {
-        trendMap[item.sale_date] = item;
+      if (item && item.sale_date) {
+        // Robust normalization to YYYY-MM-DD
+        const rawDate = String(item.sale_date).trim();
+        const dateKey = rawDate.split('T')[0].split(' ')[0];
+        trendMap[dateKey] = {
+          total_sales: (trendMap[dateKey]?.total_sales || 0) + Number(item.total_sales || 0),
+          gross_margin: (trendMap[dateKey]?.gross_margin || 0) + Number(item.gross_margin || 0)
+        };
       }
     });
   }
@@ -49,7 +55,12 @@ function generateRealTimeline(trendData = [], daysCount = 14) {
   for (let i = daysCount - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(now.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    // Format YYYY-MM-DD in local time
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
     const match = trendMap[dateStr];
     timeline.push({
       sale_date: dateStr,
@@ -57,6 +68,16 @@ function generateRealTimeline(trendData = [], daysCount = 14) {
       gross_margin: match ? Number(match.gross_margin || 0) : 0
     });
   }
+
+  // Ensure today's confirmed KPI metrics are reflected on today's data point if not yet aggregated in trend
+  if (timeline.length > 0 && Number(todaySales) > 0) {
+    const todayIndex = timeline.length - 1;
+    if (timeline[todayIndex].total_sales < Number(todaySales)) {
+      timeline[todayIndex].total_sales = Number(todaySales);
+      timeline[todayIndex].gross_margin = Math.max(timeline[todayIndex].gross_margin, Number(todayMargin || 0));
+    }
+  }
+
   return timeline;
 }
 
@@ -80,11 +101,11 @@ function MiniBarSparkline({ color = '#f97316', heights = [4, 4, 4, 4, 4, 4, 4] }
 }
 
 // Interactive SVG curved trend chart based on real sales data (Kukumo 3rd reference style)
-function SalesPipelineCurveChart({ trendData = [], period = '14days' }) {
+function SalesPipelineCurveChart({ trendData = [], period = 'weekly', todaySales = 0, todayMargin = 0 }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
   const numDays = period === 'weekly' ? 7 : (period === 'monthly' ? 30 : 14);
-  const points = generateRealTimeline(trendData, numDays);
+  const points = generateRealTimeline(trendData, numDays, todaySales, todayMargin);
 
   const width = 640;
   const height = 190;
@@ -119,6 +140,14 @@ function SalesPipelineCurveChart({ trendData = [], period = '14days' }) {
       path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
     }
     return path;
+  };
+
+  const createAreaPath = (linePath, values) => {
+    if (!linePath || values.length === 0) return '';
+    const lastX = getX(values.length - 1);
+    const firstX = getX(0);
+    const baseY = height - paddingY;
+    return `${linePath} L ${lastX.toFixed(1)} ${baseY.toFixed(1)} L ${firstX.toFixed(1)} ${baseY.toFixed(1)} Z`;
   };
 
   const salesPath = createSmoothPath(points.map(p => p.total_sales));
@@ -158,6 +187,20 @@ function SalesPipelineCurveChart({ trendData = [], period = '14days' }) {
             />
           );
         })}
+
+        {/* Subtle Area Gradients under curves */}
+        {hasAnySales && (
+          <>
+            <path
+              d={createAreaPath(salesPath, points.map(p => p.total_sales))}
+              fill="url(#salesGradKukumo)"
+            />
+            <path
+              d={createAreaPath(marginPath, points.map(p => p.gross_margin))}
+              fill="url(#marginGradKukumo)"
+            />
+          </>
+        )}
 
         {/* Sales Curve Line (Teal/Cyan - Kukumo style) */}
         <path
@@ -321,7 +364,7 @@ function DashboardContent({ setTab }) {
   const [contactSearch, setContactSearch] = useState('');
   const [invoiceSearch, setInvoiceSearch] = useState('');
   const [invoiceFilter, setInvoiceFilter] = useState('all'); // 'all' | 'paid' | 'due'
-  const [periodTab, setPeriodTab] = useState('14days'); // 'weekly' | 'monthly' | '14days'
+  const [periodTab, setPeriodTab] = useState('weekly'); // 'weekly' | 'monthly'
 
   // Operational alert tab
   const [alertTab, setAlertTab] = useState('low_stock'); // 'low_stock' | 'expiry'
@@ -409,7 +452,9 @@ function DashboardContent({ setTab }) {
   // Pipeline total sum for the metric display based on real timeline
   const pipelineTimeline = generateRealTimeline(
     metrics?.sales_trend || [],
-    periodTab === 'weekly' ? 7 : (periodTab === 'monthly' ? 30 : 14)
+    periodTab === 'weekly' ? 7 : 30,
+    metrics?.today_sales || 0,
+    metrics?.estimated_gross_profit || 0
   );
   const pipelineTotal = pipelineTimeline.reduce((acc, curr) => acc + Number(curr.total_sales || 0), 0);
 
@@ -638,17 +683,17 @@ function DashboardContent({ setTab }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPeriodTab('14days')}
+                  onClick={() => setPeriodTab('monthly')}
                   style={{
                     border: 'none',
-                    background: periodTab === '14days' ? '#ffffff' : 'transparent',
-                    color: periodTab === '14days' ? '#0f172a' : '#64748b',
-                    fontWeight: periodTab === '14days' ? 700 : 500,
+                    background: periodTab === 'monthly' ? '#ffffff' : 'transparent',
+                    color: periodTab === 'monthly' ? '#0f172a' : '#64748b',
+                    fontWeight: periodTab === 'monthly' ? 700 : 500,
                     padding: '3px 8px',
                     borderRadius: '4px',
                     fontSize: '0.725rem',
                     cursor: 'pointer',
-                    boxShadow: periodTab === '14days' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
+                    boxShadow: periodTab === 'monthly' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
                   }}
                 >
                   Monthly
@@ -718,7 +763,12 @@ function DashboardContent({ setTab }) {
           </div>
 
           {/* REAL DUAL-CURVE CHART */}
-          <SalesPipelineCurveChart trendData={metrics?.sales_trend || []} period={periodTab} />
+          <SalesPipelineCurveChart
+            trendData={metrics?.sales_trend || []}
+            period={periodTab}
+            todaySales={metrics?.today_sales || 0}
+            todayMargin={metrics?.estimated_gross_profit || 0}
+          />
         </div>
 
         {/* RIGHT CARD (~35%): RECENT CUSTOMERS (Issue 5) */}
