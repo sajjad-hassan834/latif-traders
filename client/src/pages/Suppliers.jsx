@@ -25,6 +25,33 @@ export default function Suppliers() {
   const [selectedSup, setSelectedSup] = useState(null);
   const [ledgerData, setLedgerData] = useState(null);
   const [actionMenuId, setActionMenuId] = useState(null);
+  const [viewingPurchase, setViewingPurchase] = useState(null);
+
+  const handleViewPurchaseDetails = async (row) => {
+    try {
+      if (row.id && (row.type === 'PURCHASE' || (row.ref_no && row.ref_no.startsWith('PO-')))) {
+        const res = await api.get(`/purchases/${row.id}`);
+        if (res.success) {
+          setViewingPurchase(res);
+          return;
+        }
+      }
+      setViewingPurchase({
+        purchase: {
+          invoice_no: row.ref_no,
+          purchase_date: row.date,
+          supplier_name: ledgerData?.supplier?.name,
+          grand_total: row.credit || 0,
+          paid_amount: row.debit || 0,
+          balance_due: row.balance || 0,
+          notes: row.notes
+        },
+        items: []
+      });
+    } catch (err) {
+      alert('Failed to load purchase details: ' + (err.message || ''));
+    }
+  };
 
   useEffect(() => {
     const handleOutsideClick = () => setActionMenuId(null);
@@ -403,18 +430,74 @@ export default function Suppliers() {
       {/* SUPPLIER LEDGER MODAL */}
       {showLedgerModal && ledgerData && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '880px', width: '96%' }}>
-            <div className="modal-header">
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
-                  Supplier Statement: {ledgerData.supplier.name}
-                </h3>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                  Contact: {ledgerData.supplier.contact_person || '-'} • Phone: {ledgerData.supplier.phone || '-'}
+          <div className="modal-content" style={{ maxWidth: '960px', width: '96%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+            {/* FIX 1: MODAL HEADER */}
+            <div className="modal-header" style={{ padding: '16px 24px', borderBottom: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  background: '#0F766E',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  flexShrink: 0
+                }}>
+                  {(ledgerData.supplier.name || 'S').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>
+                    {ledgerData.supplier.name}
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
+                    Supplier / Vendor
+                    {ledgerData.supplier.phone && ledgerData.supplier.phone !== 'None' && ledgerData.supplier.phone !== '-' && (
+                      <span> • 📞 {ledgerData.supplier.phone}</span>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+
+              {/* Header Right: Info Chips & Actions */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{ background: '#F3F4F6', color: '#374151', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span>📅</span> Supplier since: {ledgerData.supplier.created_at ? formatDate(ledgerData.supplier.created_at) : 'Active'}
+                </div>
+                <div style={{ background: '#F3F4F6', color: '#374151', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span>📦</span> Total Purchases: {formatPKR(ledgerData.summary.total_credit || 0)}
+                </div>
+                {Number(ledgerData.summary.closing_balance || 0) <= 0 ? (
+                  <div style={{ background: '#D1FAE5', color: '#065F46', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    ✓ Fully Settled
+                  </div>
+                ) : (
+                  <div style={{ background: '#FEE2E2', color: '#991B1B', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    ⚠️ {formatPKR(ledgerData.summary.closing_balance)} Payable
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  style={{
+                    height: '34px',
+                    padding: '0 12px',
+                    background: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    color: '#374151',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
                   <Printer size={14} />
                   <span>Print Statement</span>
                 </button>
@@ -423,102 +506,425 @@ export default function Suppliers() {
                   className="modal-close-btn"
                   onClick={() => setShowLedgerModal(false)}
                   aria-label="Close"
+                  style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6B7280' }}
                 >
                   ✕
                 </button>
               </div>
             </div>
-            <div className="modal-body">
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', background: '#f8fafc', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>From:</span>
-                  <input
-                    type="date"
-                    className="form-control form-control-sm"
-                    value={ledgerStartDate}
-                    onChange={(e) => setLedgerStartDate(e.target.value)}
-                  />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>To:</span>
-                  <input
-                    type="date"
-                    className="form-control form-control-sm"
-                    value={ledgerEndDate}
-                    onChange={(e) => setLedgerEndDate(e.target.value)}
-                  />
-                </div>
+
+            <div className="modal-body" style={{ padding: '20px 24px' }}>
+              {/* FIX 2: DATE FILTER BAR */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>Filter by date:</span>
+                <input
+                  type="date"
+                  style={{
+                    height: '36px',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    padding: '0 12px',
+                    fontSize: '13px',
+                    color: '#111827',
+                    background: '#FFFFFF'
+                  }}
+                  value={ledgerStartDate}
+                  onChange={(e) => setLedgerStartDate(e.target.value)}
+                />
+                <input
+                  type="date"
+                  style={{
+                    height: '36px',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    padding: '0 12px',
+                    fontSize: '13px',
+                    color: '#111827',
+                    background: '#FFFFFF'
+                  }}
+                  value={ledgerEndDate}
+                  onChange={(e) => setLedgerEndDate(e.target.value)}
+                />
                 <button
-                  className="btn btn-primary btn-sm"
+                  type="button"
                   onClick={() => openLedger(selectedSup, ledgerStartDate, ledgerEndDate)}
+                  style={{
+                    height: '36px',
+                    padding: '0 16px',
+                    background: '#0F766E',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
                 >
-                  Filter
+                  Apply Filter →
                 </button>
                 {(ledgerStartDate || ledgerEndDate) && (
                   <button
-                    className="btn btn-secondary btn-sm"
+                    type="button"
                     onClick={() => {
                       setLedgerStartDate('');
                       setLedgerEndDate('');
                       openLedger(selectedSup, '', '');
                     }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#6B7280',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      padding: '0 8px',
+                      textDecoration: 'underline'
+                    }}
                   >
-                    Reset
+                    Clear
                   </button>
                 )}
               </div>
-              <div className="table-responsive">
-                <table className="table" style={{ width: '100%', minWidth: '600px' }}>
+
+              {/* FIX 3 & 4: REDESIGNED TABLE COLUMNS & ROWS */}
+              <div className="table-responsive" style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: '10px' }}>
+                <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Ref #</th>
-                      <th>Description</th>
-                      <th style={{ textAlign: 'right' }}>Credit (Purchase)</th>
-                      <th style={{ textAlign: 'right' }}>Debit (Paid)</th>
-                      <th style={{ textAlign: 'right' }}>Running Payable</th>
+                    <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E5E7EB' }}>
+                      <th style={{ width: '100px', padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Date</th>
+                      <th style={{ width: '140px', padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Bill / Ref #</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Description</th>
+                      <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Amount</th>
+                      <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Paid</th>
+                      <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Balance</th>
+                      <th style={{ width: '80px', padding: '10px 16px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {ledgerData.ledger.map((row, idx) => (
-                      <tr key={idx}>
-                        <td>{formatDate(row.date)}</td>
-                        <td className="mono">{row.ref_no}</td>
-                        <td style={{ fontSize: '0.85rem' }}>{row.notes}</td>
-                        <td style={{ textAlign: 'right', color: row.credit > 0 ? '#ef4444' : '#64748b' }}>
-                          {row.credit > 0 ? formatPKR(row.credit) : '-'}
-                        </td>
-                        <td style={{ textAlign: 'right', color: row.debit > 0 ? '#10b981' : '#64748b' }}>
-                          {row.debit > 0 ? formatPKR(row.debit) : '-'}
-                        </td>
-                        <td style={{ textAlign: 'right', fontWeight: 700 }}>
-                          {formatPKR(row.balance)}
-                        </td>
-                      </tr>
-                    ))}
+                    {ledgerData.ledger.map((row, idx) => {
+                      const isOpening = row.type === 'OPENING' || row.ref_no === 'OPN-BAL';
+                      const isPurchase = row.type === 'PURCHASE' || (row.ref_no && row.ref_no.startsWith('PO-'));
+
+                      let dot = '•';
+                      let descText = row.notes || 'Transaction';
+                      let descColor = '#374151';
+
+                      if (isOpening) {
+                        dot = '⚫';
+                        descText = 'Account Opening Balance';
+                        descColor = '#6B7280';
+                      } else if (row.type === 'PAYMENT' || (!row.credit && row.debit > 0)) {
+                        dot = '🔵';
+                        descText = 'Payment Disbursed';
+                        descColor = '#0F766E';
+                      } else if (row.credit > 0) {
+                        if (row.debit >= row.credit) {
+                          dot = '🟢';
+                          descText = 'Paid in Full';
+                          descColor = '#16A34A';
+                        } else if (row.debit > 0) {
+                          dot = '🟡';
+                          descText = 'Partial Payment';
+                          descColor = '#D97706';
+                        } else {
+                          dot = '🔴';
+                          descText = 'Credit Purchase';
+                          descColor = '#DC2626';
+                        }
+                      }
+
+                      if (isOpening) {
+                        return (
+                          <tr
+                            key={idx}
+                            style={{
+                              height: '52px',
+                              background: '#FFFBEB',
+                              borderBottom: '1px solid #F3F4F6',
+                              verticalAlign: 'middle'
+                            }}
+                          >
+                            <td style={{ padding: '0 16px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                              {formatDate(row.date)}
+                            </td>
+                            <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                              <span style={{
+                                background: '#E5E7EB',
+                                color: '#374151',
+                                borderRadius: '12px',
+                                padding: '2px 8px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                letterSpacing: '0.5px'
+                              }}>
+                                OPENING
+                              </span>
+                            </td>
+                            <td style={{ padding: '0 16px', fontSize: '13px', color: '#6B7280' }}>
+                              <span style={{ marginRight: '6px' }}>⚫</span>
+                              <span>Account Opening Balance</span>
+                            </td>
+                            <td style={{ padding: '0 16px', textAlign: 'right', fontSize: '14px', color: '#9CA3AF' }}>—</td>
+                            <td style={{ padding: '0 16px', textAlign: 'right', fontSize: '14px', color: '#9CA3AF' }}>—</td>
+                            <td style={{ padding: '0 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <span style={{
+                                background: row.balance > 0 ? '#FEE2E2' : '#D1FAE5',
+                                color: row.balance > 0 ? '#991B1B' : '#065F46',
+                                borderRadius: '6px',
+                                padding: '2px 8px',
+                                fontWeight: 700,
+                                fontSize: '12px',
+                                display: 'inline-block'
+                              }}>
+                                {row.balance > 0 ? formatPKR(row.balance) : 'Rs 0 ✓'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '0 16px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>—</td>
+                          </tr>
+                        );
+                      }
+
+                      return (
+                        <tr
+                          key={idx}
+                          style={{
+                            height: '52px',
+                            borderBottom: '1px solid #F3F4F6',
+                            verticalAlign: 'middle',
+                            transition: 'background 0.15s'
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = '#FFFFFF'; }}
+                        >
+                          <td style={{ padding: '0 16px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                            {formatDate(row.date)}
+                          </td>
+                          <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                            {isPurchase ? (
+                              <button
+                                type="button"
+                                onClick={() => handleViewPurchaseDetails(row)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#0F766E',
+                                  fontFamily: 'monospace',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  padding: 0,
+                                  textDecoration: 'none',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                title="Click to view purchase voucher"
+                              >
+                                {row.ref_no}
+                              </button>
+                            ) : (
+                              <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#4B5563', whiteSpace: 'nowrap' }}>
+                                {row.ref_no || '—'}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '0 16px', fontSize: '13px', color: descColor, whiteSpace: 'nowrap' }}>
+                            <span style={{ marginRight: '6px' }}>{dot}</span>
+                            <span style={{ fontWeight: 500 }}>{descText}</span>
+                          </td>
+                          <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 700, fontSize: '14px', color: '#111827', whiteSpace: 'nowrap' }}>
+                            {row.credit > 0 ? formatPKR(row.credit) : <span style={{ color: '#9CA3AF' }}>—</span>}
+                          </td>
+                          <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 600, fontSize: '14px', color: '#16A34A', whiteSpace: 'nowrap' }}>
+                            {row.debit > 0 ? formatPKR(row.debit) : <span style={{ color: '#9CA3AF' }}>—</span>}
+                          </td>
+                          <td style={{ padding: '0 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {row.balance <= 0 ? (
+                              <span style={{
+                                background: '#D1FAE5',
+                                color: '#065F46',
+                                borderRadius: '6px',
+                                padding: '2px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                display: 'inline-block'
+                              }}>
+                                Rs 0 ✓
+                              </span>
+                            ) : (
+                              <span style={{
+                                background: '#FEE2E2',
+                                color: '#991B1B',
+                                borderRadius: '6px',
+                                padding: '2px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                display: 'inline-block'
+                              }}>
+                                {formatPKR(row.balance)}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '0 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleViewPurchaseDetails(row)}
+                              style={{
+                                height: '28px',
+                                padding: '0 12px',
+                                border: '1px solid #E5E7EB',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                color: '#374151',
+                                background: '#FFFFFF',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = '#0F766E';
+                                e.currentTarget.style.color = '#0F766E';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = '#E5E7EB';
+                                e.currentTarget.style.color = '#374151';
+                              }}
+                            >
+                              View →
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
+            </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
-                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%', maxWidth: '350px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                    <span>Total Purchases (Credit):</span>
-                    <strong>{formatPKR(ledgerData.summary.total_credit)}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                    <span>Total Paid (Debit):</span>
-                    <strong style={{ color: '#10b981' }}>{formatPKR(ledgerData.summary.total_debit)}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 800, marginTop: '0.5rem', borderTop: '1px solid #cbd5e1', paddingTop: '0.5rem', color: '#ef4444' }}>
-                    <span>Closing Payable:</span>
-                    <span>{formatPKR(ledgerData.summary.closing_balance)}</span>
+            {/* FIX 6: MODAL FOOTER */}
+            <div style={{
+              borderTop: '1px solid #F3F4F6',
+              padding: '16px 24px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
+              background: '#FFFFFF'
+            }}>
+              <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                {ledgerData.ledger.length} transactions  •  Total Purchases: <strong style={{ color: '#111827' }}>{formatPKR(ledgerData.summary.total_credit || 0)}</strong>  •  Total Paid: <strong style={{ color: '#16A34A' }}>{formatPKR(ledgerData.summary.total_debit || 0)}</strong>  •  Closing Payable: <strong style={{ color: ledgerData.summary.closing_balance > 0 ? '#DC2626' : '#16A34A' }}>{formatPKR(ledgerData.summary.closing_balance)}</strong>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => window.print()}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                >
+                  <Printer size={14} />
+                  <span>Print Statement</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setShowLedgerModal(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW PURCHASE VOUCHER MODAL */}
+      {viewingPurchase && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '640px', width: '96%', borderRadius: '16px', overflow: 'hidden' }}>
+            <div className="modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid #F3F4F6' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#111827' }}>Purchase Voucher</h3>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                  Ref #: <strong style={{ fontFamily: 'monospace' }}>{viewingPurchase.purchase.invoice_no}</strong> • Date: {formatDate(viewingPurchase.purchase.purchase_date)}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => window.print()}>
+                  <Printer size={14} />
+                  <span>Print</span>
+                </button>
+                <button type="button" className="modal-close-btn" onClick={() => setViewingPurchase(null)}>
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="modal-body" style={{ padding: '20px' }}>
+              <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#6B7280', fontWeight: 600 }}>Supplier</div>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: '#111827' }}>{viewingPurchase.purchase.supplier_name || selectedSup?.name}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#6B7280', fontWeight: 600 }}>Status</div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: viewingPurchase.purchase.balance_due > 0 ? '#DC2626' : '#16A34A' }}>
+                    {viewingPurchase.purchase.balance_due > 0 ? `Payable: ${formatPKR(viewingPurchase.purchase.balance_due)}` : 'Fully Settled ✓'}
                   </div>
                 </div>
               </div>
+
+              {viewingPurchase.items && viewingPurchase.items.length > 0 ? (
+                <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E5E7EB' }}>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#4B5563' }}>Item</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600, color: '#4B5563' }}>Qty</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#4B5563' }}>Rate</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#4B5563' }}>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewingPurchase.items.map((it, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid #F3F4F6' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: 600, color: '#111827' }}>{it.product_name}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'center' }}>{it.quantity} {it.unit}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right' }}>{formatPKR(it.unit_price)}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700 }}>{formatPKR(it.total_price)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                viewingPurchase.purchase.notes && (
+                  <div style={{ background: '#F8FAFC', padding: '10px 14px', borderRadius: '6px', fontSize: '13px', color: '#4B5563', marginBottom: '16px' }}>
+                    <strong>Notes:</strong> {viewingPurchase.purchase.notes}
+                  </div>
+                )
+              )}
+
+              <div style={{ background: '#F8FAFC', padding: '12px 16px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{ color: '#6B7280' }}>Total Amount:</span>
+                  <strong>{formatPKR(viewingPurchase.purchase.grand_total)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{ color: '#6B7280' }}>Paid:</span>
+                  <strong style={{ color: '#16A34A' }}>{formatPKR(viewingPurchase.purchase.paid_amount)}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 700, borderTop: '1px solid #E5E7EB', paddingTop: '6px' }}>
+                  <span>Payable Due:</span>
+                  <span style={{ color: viewingPurchase.purchase.balance_due > 0 ? '#DC2626' : '#16A34A' }}>
+                    {formatPKR(viewingPurchase.purchase.balance_due)}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary btn-sm" onClick={() => setShowLedgerModal(false)}>Close</button>
+            <div className="modal-footer" style={{ padding: '12px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setViewingPurchase(null)}>
+                Close
+              </button>
             </div>
           </div>
         </div>

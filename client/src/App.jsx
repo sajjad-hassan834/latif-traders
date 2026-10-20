@@ -23,46 +23,70 @@ import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Sparkles, CheckCircl
 import { api } from './utils/api';
 import { applyTheme as applyThemeHelper } from './utils/theme';
 
+// Map URLs to active workspace tabs
+const ROUTE_TAB_MAP = {
+  '/dashboard': 'dashboard',
+  '/pos': 'pos',
+  '/orders': 'sales',
+  '/sales': 'sales',
+  '/products': 'inventory',
+  '/inventory': 'inventory',
+  '/adjustments': 'stock-adjust',
+  '/stock-adjust': 'stock-adjust',
+  '/purchases': 'purchases',
+  '/customers': 'customers',
+  '/suppliers': 'suppliers',
+  '/expenses': 'expenses',
+  '/cashbook': 'cashflow',
+  '/cashflow': 'cashflow',
+  '/analytics': 'reports',
+  '/reports': 'reports',
+  '/settings': 'settings',
+  '/staff': 'settings'
+};
+
+const TAB_ROUTE_MAP = {
+  dashboard: '/dashboard',
+  pos: '/pos',
+  sales: '/orders',
+  inventory: '/products',
+  'stock-adjust': '/adjustments',
+  purchases: '/purchases',
+  customers: '/customers',
+  suppliers: '/suppliers',
+  expenses: '/expenses',
+  cashflow: '/cashbook',
+  reports: '/analytics',
+  settings: '/settings'
+};
+
+function resolveInitialTab() {
+  const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+  const search = window.location.search;
+  const hash = window.location.hash.toLowerCase();
+
+  if (path === '/settings/billing' || path === '/billing' || hash === '#billing') {
+    return 'settings';
+  }
+  if (path === '/settings/staff' || path === '/staff' || path === '/users' || hash === '#staff' || hash === '#users') {
+    return 'settings';
+  }
+  if (ROUTE_TAB_MAP[path]) {
+    return ROUTE_TAB_MAP[path];
+  }
+  if (path.startsWith('/settings') || search.includes('tab=')) return 'settings';
+  return 'dashboard';
+}
+
 function MainApp() {
   const { user, loading, role, roleLabel, defaultTab, hasTabAccess, tenant, plan, isSuperOwner, activeImpersonatedTenant, exitTenant, enterTenant } = useAuth();
   const [superOwnerView, setSuperOwnerView] = useState(() => {
     return window.location.pathname === '/superowner/dashboard';
   });
-  const [currentTab, setTabState] = useState(() => {
-    const path = window.location.pathname;
-    const hash = window.location.hash;
-    const search = window.location.search;
+  const [currentTab, setTabState] = useState(resolveInitialTab);
 
-    // Normalize legacy /billing, /settings/billing or #billing to /settings?tab=billing
-    if (path === '/settings/billing' || path === '/billing' || hash === '#billing') {
-      try {
-        const url = new URL(window.location.href);
-        url.pathname = '/settings';
-        url.searchParams.set('tab', 'billing');
-        url.hash = '';
-        window.history.replaceState({}, '', url.toString());
-      } catch (_) {}
-      return 'settings';
-    }
-
-    // Normalize legacy /users, /settings/staff or #staff to /settings?tab=staff
-    if (path === '/settings/staff' || path === '/users' || hash === '#staff' || hash === '#users') {
-      try {
-        const url = new URL(window.location.href);
-        url.pathname = '/settings';
-        url.searchParams.set('tab', 'staff');
-        url.hash = '';
-        window.history.replaceState({}, '', url.toString());
-      } catch (_) {}
-      return 'settings';
-    }
-
-    if (path.startsWith('/settings') || search.includes('tab=')) return 'settings';
-    return 'dashboard';
-  });
-
-  // Centralized tab navigator that automatically resolves sub-tabs without duplicate route mounts
-  const setTab = (target) => {
+  // Centralized tab navigator that automatically resolves sub-tabs and synchronizes browser URL
+  const setTab = (target, replace = false) => {
     if (target === 'users' || target === 'staff') {
       try {
         const url = new URL(window.location.href);
@@ -89,7 +113,21 @@ function MainApp() {
 
     if (target === 'stock-valuation') {
       setTabState('reports');
+      try {
+        window.history.pushState({}, '', '/analytics');
+      } catch (_) {}
       return;
+    }
+
+    const routePath = TAB_ROUTE_MAP[target] || `/${target}`;
+    if (window.location.pathname !== routePath) {
+      try {
+        if (replace) {
+          window.history.replaceState({}, '', routePath);
+        } else {
+          window.history.pushState({}, '', routePath);
+        }
+      } catch (_) {}
     }
 
     setTabState(target);
@@ -109,7 +147,7 @@ function MainApp() {
 
   useEffect(() => {
     const handleLocation = () => {
-      const path = window.location.pathname;
+      const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
       if (path === '/superowner/dashboard') {
         setSuperOwnerView(true);
       } else if (path.startsWith('/superowner/tenant/')) {
@@ -121,6 +159,13 @@ function MainApp() {
         }
       } else {
         setSuperOwnerView(false);
+      }
+
+      if (path === '/staff' || path === '/settings/staff') {
+        setTabState('settings');
+        window.dispatchEvent(new CustomEvent('settings_tab_change', { detail: 'staff' }));
+      } else if (ROUTE_TAB_MAP[path]) {
+        setTabState(ROUTE_TAB_MAP[path]);
       }
     };
 

@@ -224,10 +224,11 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
                       key={item.id}
                       onClick={() => handleNavClick(item.id)}
                       className={`nav-item ${isActive ? 'active' : ''}`}
-                      title={item.label}
+                      title={!isCollapsed ? item.label : undefined}
                       aria-label={item.label}
+                      data-tooltip={item.label}
                     >
-                      <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
+                      <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
                       {!isCollapsed && <span>{item.label}</span>}
                     </button>
                   );

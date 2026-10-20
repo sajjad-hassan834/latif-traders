@@ -21,6 +21,7 @@ export default function CashFlow() {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [genericReceipt, setGenericReceipt] = useState(null);
   const [receiptLoading, setReceiptLoading] = useState(false);
+  const [activeDateFilter, setActiveDateFilter] = useState('today');
 
   const [settings, setSettings] = useState(() => ({
     shop_name: localStorage.getItem('lt_shop_name') || 'Latif Traders',
@@ -55,6 +56,40 @@ export default function CashFlow() {
   useEffect(() => {
     loadCashbook();
   }, [startDate, endDate]);
+
+  const setQuickDate = (type) => {
+    setActiveDateFilter(type);
+    const now = new Date();
+    const toDateStr = (d) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    if (type === 'today') {
+      const todayStr = toDateStr(now);
+      setStartDate(todayStr);
+      setEndDate(todayStr);
+    } else if (type === 'yesterday') {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      const yStr = toDateStr(y);
+      setStartDate(yStr);
+      setEndDate(yStr);
+    } else if (type === 'this_week') {
+      const d = new Date();
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(d.setDate(diff));
+      setStartDate(toDateStr(monday));
+      setEndDate(toDateStr(new Date()));
+    } else if (type === 'this_month') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      setStartDate(toDateStr(firstDay));
+      setEndDate(toDateStr(new Date()));
+    }
+  };
 
   const handleViewReceipt = async (entry) => {
     try {
@@ -96,58 +131,68 @@ export default function CashFlow() {
 
   const docRef = `CBK-${startDate.replace(/-/g, '')}-${endDate.replace(/-/g, '')}`;
 
+  const getTypeBadge = (entry) => {
+    const t = (entry.title || entry.type || '').toLowerCase();
+    if (t.includes('sale') || entry.source_type === 'SALE') {
+      return { label: 'Cash Sale (POS)', bg: '#D1FAE5', color: '#065F46' };
+    }
+    if (t.includes('purchase') || entry.source_type === 'PURCHASE') {
+      return { label: 'Cash Purchase', bg: '#FEE2E2', color: '#991B1B' };
+    }
+    if (t.includes('receipt') || t.includes('recovery') || (entry.party_type === 'CUSTOMER' && entry.flow === 'IN')) {
+      return { label: 'Customer Receipt', bg: '#DBEAFE', color: '#1E40AF' };
+    }
+    if (t.includes('supplier') || (entry.party_type === 'SUPPLIER' && entry.flow === 'OUT')) {
+      return { label: 'Supplier Payment', bg: '#FEF3C7', color: '#92400E' };
+    }
+    if (t.includes('expense') || entry.source_type === 'EXPENSE') {
+      return { label: 'Expense', bg: '#EDE9FE', color: '#5B21B6' };
+    }
+    return { label: entry.title || 'Transaction', bg: '#F3F4F6', color: '#374151' };
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      {/* 1. PAGE HEADER & FILTER BAR */}
-      <div className="page-header no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* FIX 7: STATEMENT HEADER BLOCK REPLACED WITH CLEAN MODERN HEADER */}
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Daily Cashbook & Cash Flow</h1>
-          <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0' }}>
-            Daily cash collections, customer recoveries, supplier disbursements, and net cash balance
+          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#111827', margin: 0, letterSpacing: '-0.02em' }}>
+            Daily Cashbook & Cash Flow
+          </h1>
+          <p style={{ fontSize: '13px', color: '#6B7280', margin: '4px 0 10px 0' }}>
+            Daily cash collections, customer recoveries, supplier disbursements and net cash balance
           </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ background: '#F3F4F6', color: '#4B5563', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 500 }}>
+              📅 Date: {startDate === endDate ? formatDate(startDate) : `${formatDate(startDate)} - ${formatDate(endDate)}`}
+            </span>
+            <span style={{ background: '#F3F4F6', color: '#4B5563', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 500 }}>
+              👤 {user?.full_name || 'Staff'}
+            </span>
+            <span style={{ background: '#F3F4F6', color: '#4B5563', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 500 }}>
+              🔖 Ref: {docRef}
+            </span>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: '6px',
-            padding: '2px 8px',
-            height: '34px',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
-          }}>
-            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>From:</span>
-            <input
-              type="date"
-              style={{ border: 'none', background: 'transparent', height: '26px', fontSize: '0.775rem', color: '#0f172a' }}
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>to</span>
-            <input
-              type="date"
-              style={{ border: 'none', background: 'transparent', height: '26px', fontSize: '0.775rem', color: '#0f172a' }}
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-          </div>
-
-          <button
-            onClick={loadCashbook}
-            className="btn btn-primary btn-sm"
-            style={{ height: '34px', padding: '0 0.9rem', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem', fontWeight: 600 }}
-          >
-            <Filter size={14} />
-            <span>Filter</span>
-          </button>
-
+        {/* Top Right Action: Print Cashbook */}
+        <div>
           <button
             onClick={() => window.print()}
-            className="btn btn-secondary btn-sm"
-            style={{ height: '34px', padding: '0 0.9rem', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}
+            style={{
+              height: '38px',
+              padding: '0 16px',
+              background: '#FFFFFF',
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 600,
+              color: '#374151',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
           >
             <Printer size={15} />
             <span>Print Cashbook</span>
@@ -155,219 +200,413 @@ export default function CashFlow() {
         </div>
       </div>
 
-      {/* PRINTABLE CASHBOOK AUDIT DOCUMENT */}
-      <div className="printable-area">
-        {/* Subtle diagonal background watermark */}
-        <div className="report-watermark">
-          {settings.shop_name || 'Latif Traders'}™ • OFFICIAL BUSINESS RECORD
-        </div>
-
-        <div className="report-print-container">
-          <ReportPrintHeader
-            settings={settings}
-            reportTitle="DAILY CASHBOOK & CASH FLOW STATEMENT"
-            reportSubtitle="Certified ledger of cash receipts, customer recoveries, supplier disbursements & shop expenses"
-            dateRangeText={dateRangeText}
-            docRef={docRef}
-            user={user}
-          />
-
-          {/* CASHBOOK SUMMARY METRIC CARDS */}
-          <div className="cashbook-print-summary">
-            <div className="cashbook-summary-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>TOTAL CASH IN</div>
-                  <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#059669', marginTop: '0.35rem', lineHeight: 1.1 }}>
-                    {formatPKR(cashbook?.total_in || 0)}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Sales collections & debt recoveries</div>
-                </div>
-                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <ArrowDownLeft size={20} />
-                </div>
-              </div>
-            </div>
-
-            <div className="cashbook-summary-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>TOTAL CASH OUT</div>
-                  <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#dc2626', marginTop: '0.35rem', lineHeight: 1.1 }}>
-                    {formatPKR(cashbook?.total_out || 0)}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Expenses & supplier payouts</div>
-                </div>
-                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <ArrowUpRight size={20} />
-                </div>
-              </div>
-            </div>
-
-            <div className="cashbook-summary-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>NET CASH FLOW</div>
-                  <div style={{
-                    fontSize: '1.65rem',
-                    fontWeight: 800,
-                    color: (cashbook?.net_cash_flow || 0) >= 0 ? '#0284c7' : '#dc2626',
-                    marginTop: '0.35rem',
-                    lineHeight: 1.1
-                  }}>
-                    {formatPKR(cashbook?.net_cash_flow || 0)}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Cash in minus cash out</div>
-                </div>
-                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#eff6ff', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <DollarSign size={20} />
-                </div>
-              </div>
-            </div>
+      {/* FIX 8: DATE FILTER BAR & QUICK FILTER CHIPS */}
+      <div className="card no-print" style={{ padding: '16px', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>From:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setActiveDateFilter('custom');
+              }}
+              style={{
+                height: '38px',
+                border: '1px solid #E5E7EB',
+                borderRadius: '8px',
+                padding: '0 12px',
+                fontSize: '13px',
+                color: '#111827',
+                background: '#FFFFFF'
+              }}
+            />
           </div>
 
-          {/* CASHBOOK LEDGER TABLE */}
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>Cashbook Details</h3>
-                <p style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                  {cashbook?.entries?.length || 0} Cash entries recorded for {dateRangeText}
-                </p>
-              </div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                Currency: <strong style={{ color: '#0f172a' }}>PKR (₨)</strong>
-              </div>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>To:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setActiveDateFilter('custom');
+              }}
+              style={{
+                height: '38px',
+                border: '1px solid #E5E7EB',
+                borderRadius: '8px',
+                padding: '0 12px',
+                fontSize: '13px',
+                color: '#111827',
+                background: '#FFFFFF'
+              }}
+            />
+          </div>
 
-            <div className="table-responsive" style={{ overflowX: 'auto' }}>
-              <table className="table" style={{ width: '100%', minWidth: '880px', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{ width: '95px', minWidth: '95px', textAlign: 'left' }}>Date</th>
-                    <th style={{ width: '150px', minWidth: '150px', textAlign: 'left' }}>Ref / Invoice #</th>
-                    <th style={{ width: '140px', minWidth: '140px', textAlign: 'left' }}>Transaction Type</th>
-                    <th style={{ width: '140px', minWidth: '140px', textAlign: 'left' }}>Party / Account</th>
-                    <th style={{ minWidth: '120px', textAlign: 'left' }}>Notes</th>
-                    <th style={{ textAlign: 'right', width: '130px', minWidth: '130px' }}>Cash In (Receipt)</th>
-                    <th style={{ textAlign: 'right', width: '130px', minWidth: '130px' }}>Cash Out (Payment)</th>
-                    <th className="no-print" style={{ textAlign: 'center', width: '85px', minWidth: '85px' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>Loading cashbook records...</td></tr>
-                  ) : cashbook?.entries?.length === 0 ? (
-                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>No cash transactions recorded for this period.</td></tr>
-                  ) : (
-                    (cashbook?.entries || []).slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((entry, idx) => (
-                      <tr key={idx}>
-                        <td style={{ width: '95px', whiteSpace: 'nowrap', textAlign: 'left' }}>{formatDate(entry.date)}</td>
-                        <td style={{ width: '150px', textAlign: 'left' }}>
+          <button
+            onClick={loadCashbook}
+            style={{
+              height: '38px',
+              padding: '0 18px',
+              background: '#0F766E',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <Filter size={14} />
+            <span>Filter</span>
+          </button>
+        </div>
+
+        {/* Quick Filter Chips */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+          {[
+            { id: 'today', label: 'Today' },
+            { id: 'yesterday', label: 'Yesterday' },
+            { id: 'this_week', label: 'This Week' },
+            { id: 'this_month', label: 'This Month' },
+            { id: 'custom', label: 'Custom' }
+          ].map(chip => (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => setQuickDate(chip.id)}
+              style={{
+                padding: '4px 14px',
+                borderRadius: '20px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: activeDateFilter === chip.id ? 'none' : '1px solid #E5E7EB',
+                background: activeDateFilter === chip.id ? '#0F766E' : '#FFFFFF',
+                color: activeDateFilter === chip.id ? '#FFFFFF' : '#4B5563',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* FIX 9: STAT CARDS WITH 4PX BORDER ACCENT */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+        {/* TOTAL CASH IN */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '12px',
+          border: '1px solid #E5E7EB',
+          borderLeft: '4px solid #16A34A',
+          padding: '16px 20px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                TOTAL CASH IN
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#16A34A', marginTop: '6px', lineHeight: 1 }}>
+                {formatPKR(cashbook?.total_in || 0)}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '6px' }}>Sales & collections</div>
+            </div>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#ECFDF5', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ArrowDownLeft size={18} />
+            </div>
+          </div>
+        </div>
+
+        {/* TOTAL CASH OUT */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '12px',
+          border: '1px solid #E5E7EB',
+          borderLeft: '4px solid #DC2626',
+          padding: '16px 20px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                TOTAL CASH OUT
+              </div>
+              <div style={{ fontSize: '24px', fontWeight: 800, color: '#DC2626', marginTop: '6px', lineHeight: 1 }}>
+                {formatPKR(cashbook?.total_out || 0)}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '6px' }}>Expenses & purchases</div>
+            </div>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#FEF2F2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ArrowUpRight size={18} />
+            </div>
+          </div>
+        </div>
+
+        {/* NET CASH FLOW */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '12px',
+          border: '1px solid #E5E7EB',
+          borderLeft: '4px solid #2563EB',
+          padding: '16px 20px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                NET CASH FLOW
+              </div>
+              <div style={{
+                fontSize: '24px',
+                fontWeight: 800,
+                color: (cashbook?.net_cash_flow || 0) >= 0 ? '#2563EB' : '#DC2626',
+                marginTop: '6px',
+                lineHeight: 1
+              }}>
+                {(cashbook?.net_cash_flow || 0) < 0 && <span style={{ marginRight: '4px' }}>⚠️</span>}
+                {formatPKR(cashbook?.net_cash_flow || 0)}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '6px' }}>Net balance today</div>
+            </div>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <DollarSign size={18} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* FIX 1, 2, 3, 4, 5, 6, 10, 11: 6-COLUMN TABLE WITHOUT REDUNDANT NOTES */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+        <div className="table-responsive" style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', minWidth: '830px', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E5E7EB' }}>
+                <th style={{ width: '100px', padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Date</th>
+                <th style={{ width: '150px', padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Invoice #</th>
+                <th style={{ width: '130px', padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Type</th>
+                <th style={{ width: '160px', padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Party</th>
+                <th style={{ width: '110px', padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Cash In</th>
+                <th style={{ width: '110px', padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Cash Out</th>
+                <th className="no-print" style={{ width: '70px', padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#6B7280', fontSize: '13px' }}>
+                    Loading cashbook records...
+                  </td>
+                </tr>
+              ) : cashbook?.entries?.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#6B7280', fontSize: '13px' }}>
+                    No cash transactions recorded for this period.
+                  </td>
+                </tr>
+              ) : (
+                (cashbook?.entries || []).slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((entry, idx) => {
+                  const badge = getTypeBadge(entry);
+                  const isPos = entry.source_type === 'SALE' || (entry.ref_no && entry.ref_no.startsWith('INV-'));
+
+                  return (
+                    <tr
+                      key={idx}
+                      style={{
+                        height: '52px',
+                        borderBottom: '1px solid #F3F4F6',
+                        verticalAlign: 'middle',
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#FFFFFF'; }}
+                    >
+                      {/* 1. Date */}
+                      <td style={{ padding: '0 16px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                        {formatDate(entry.date)}
+                      </td>
+
+                      {/* 2. Invoice # (nowrap, monospace, teal link) */}
+                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleViewReceipt(entry)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#0F766E',
+                            fontFamily: 'monospace',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            padding: 0,
+                            textDecoration: 'none',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title="Click to view full receipt voucher"
+                        >
+                          {entry.ref_no}
+                        </button>
+                      </td>
+
+                      {/* 3. Transaction Type (colored pill badge) */}
+                      <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{
+                          background: badge.bg,
+                          color: badge.color,
+                          borderRadius: '20px',
+                          padding: '3px 10px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap',
+                          display: 'inline-block'
+                        }}>
+                          {badge.label}
+                        </span>
+                      </td>
+
+                      {/* 4. Party (truncated with tooltip) */}
+                      <td
+                        style={{
+                          padding: '0 16px',
+                          fontSize: '13px',
+                          color: '#374151',
+                          maxWidth: '160px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title={entry.party_name || 'Counter Customer'}
+                      >
+                        {entry.party_name || 'Walk-in Customer'}
+                      </td>
+
+                      {/* 5. Cash In (empty if zero/out) */}
+                      <td style={{ padding: '0 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        {entry.flow === 'IN' ? (
+                          <span style={{ fontWeight: 600, color: '#16A34A', fontSize: '14px' }}>
+                            {formatPKR(entry.amount)}
+                          </span>
+                        ) : null}
+                      </td>
+
+                      {/* 6. Cash Out (empty if zero/in) */}
+                      <td style={{ padding: '0 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        {entry.flow === 'OUT' ? (
+                          <span style={{ fontWeight: 600, color: '#DC2626', fontSize: '14px' }}>
+                            {formatPKR(entry.amount)}
+                          </span>
+                        ) : null}
+                      </td>
+
+                      {/* 7. Action Button */}
+                      <td className="no-print" style={{ padding: '0 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
                           <button
                             type="button"
                             onClick={() => handleViewReceipt(entry)}
-                            className="mono"
                             style={{
-                              padding: 0,
-                              margin: 0,
-                              background: 'none',
-                              border: 'none',
-                              fontWeight: 700,
-                              color: '#0284c7',
+                              height: '28px',
+                              padding: '0 12px',
+                              border: '1px solid #E5E7EB',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              color: '#374151',
+                              background: '#FFFFFF',
                               cursor: 'pointer',
-                              textDecoration: 'underline',
-                              fontSize: '0.785rem',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
+                              transition: 'all 0.15s'
                             }}
-                            title="Click to view & print full receipt"
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = '#0F766E';
+                              e.currentTarget.style.color = '#0F766E';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = '#E5E7EB';
+                              e.currentTarget.style.color = '#374151';
+                            }}
                           >
-                            <FileText size={12} />
-                            <span>{entry.ref_no}</span>
+                            View →
                           </button>
-                        </td>
-                        <td style={{ textAlign: 'left' }}>
-                          <span className="badge badge-stage">{entry.title}</span>
-                        </td>
-                        <td style={{ width: '140px', textAlign: 'left', fontWeight: 500 }}>{entry.party_name || '-'}</td>
-                        <td style={{ minWidth: '120px', fontSize: '0.8rem', color: '#64748b', textAlign: 'left' }}>{entry.notes || '-'}</td>
-                        <td style={{ textAlign: 'right', width: '130px', fontWeight: 700, color: '#10b981', whiteSpace: 'nowrap' }}>
-                          {entry.flow === 'IN' ? formatPKR(entry.amount) : '-'}
-                        </td>
-                        <td style={{ textAlign: 'right', width: '130px', fontWeight: 700, color: '#ef4444', whiteSpace: 'nowrap' }}>
-                          {entry.flow === 'OUT' ? formatPKR(entry.amount) : '-'}
-                        </td>
-                        <td className="no-print" style={{ textAlign: 'center', width: '110px', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                          {isAdmin && entry.id && entry.source_type !== 'SALE' && entry.source_type !== 'PURCHASE' && entry.source_type !== 'EXPENSE' && (
                             <button
                               type="button"
-                              className="btn-table-action"
-                              onClick={() => handleViewReceipt(entry)}
-                              title="View Voucher / Receipt"
+                              onClick={() => handleDeletePayment(entry.id, entry.ref_no)}
+                              style={{
+                                height: '28px',
+                                padding: '0 6px',
+                                border: '1px solid #FECACA',
+                                borderRadius: '6px',
+                                color: '#EF4444',
+                                background: '#FFFFFF',
+                                cursor: 'pointer'
+                              }}
+                              title="Delete Payment Record"
                             >
-                              <span>Details</span>
-                              <ArrowUpRight size={13} />
+                              <Trash2 size={12} />
                             </button>
-                            {isAdmin && entry.id && entry.source_type !== 'SALE' && entry.source_type !== 'PURCHASE' && entry.source_type !== 'EXPENSE' && (
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                onClick={() => handleDeletePayment(entry.id, entry.ref_no)}
-                                style={{ padding: '0 6px', height: '26px', color: '#ef4444', border: '1px solid #fecaca' }}
-                                title="Delete Duplicate Payment Record"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-                {cashbook?.entries?.length > 0 && (
-                  <tfoot>
-                    <tr style={{ background: '#f8fafc', fontWeight: 800, borderTop: '2px solid #cbd5e1' }}>
-                      <td colSpan="5" style={{ textAlign: 'right', padding: '0.65rem 0.75rem', fontSize: '0.85rem' }}>TOTALS:</td>
-                      <td style={{ textAlign: 'right', width: '130px', color: '#10b981', padding: '0.65rem 0.75rem', fontSize: '0.875rem' }}>
-                        {formatPKR(cashbook?.total_in || 0)}
+                          )}
+                        </div>
                       </td>
-                      <td style={{ textAlign: 'right', width: '130px', color: '#ef4444', padding: '0.65rem 0.75rem', fontSize: '0.875rem' }}>
-                        {formatPKR(cashbook?.total_out || 0)}
-                      </td>
-                      <td className="no-print" style={{ width: '85px' }}></td>
                     </tr>
-                    <tr style={{ background: '#f1f5f9', fontWeight: 900 }}>
-                      <td colSpan="5" style={{ textAlign: 'right', padding: '0.65rem 0.75rem', fontSize: '0.85rem', color: '#0f172a' }}>
-                        NET CASH BALANCE:
-                      </td>
-                      <td colSpan="2" style={{
-                        textAlign: 'right',
-                        padding: '0.65rem 0.75rem',
-                        fontSize: '1.05rem',
-                        color: (cashbook?.net_cash_flow || 0) >= 0 ? '#0284c7' : '#ef4444'
-                      }}>
-                        {formatPKR(cashbook?.net_cash_flow || 0)}
-                      </td>
-                      <td className="no-print" style={{ width: '85px' }}></td>
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            </div>
-            <div className="no-print">
-              <Pagination
-                currentPage={currentPage}
-                totalItems={cashbook?.entries?.length || 0}
-                itemsPerPage={ITEMS_PER_PAGE}
-                onPageChange={setCurrentPage}
-              />
-            </div>
-          </div>
+                  );
+                })
+              )}
+            </tbody>
 
-          <ReportPrintFooter shopName={settings.shop_name || 'Latif Traders'} />
+            {/* FIX 10: PROMINENT TOTALS ROW & NET BALANCE BAR */}
+            {cashbook?.entries?.length > 0 && (
+              <tfoot>
+                <tr style={{ background: '#F8FAFC', borderTop: '2px solid #E5E7EB', height: '48px', fontWeight: 700 }}>
+                  <td colSpan="4" style={{ padding: '0 16px', textAlign: 'right', fontSize: '13px', color: '#111827', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    TOTALS:
+                  </td>
+                  <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 700, color: '#16A34A', fontSize: '14px', whiteSpace: 'nowrap' }}>
+                    {formatPKR(cashbook?.total_in || 0)}
+                  </td>
+                  <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 700, color: '#DC2626', fontSize: '14px', whiteSpace: 'nowrap' }}>
+                    {formatPKR(cashbook?.total_out || 0)}
+                  </td>
+                  <td className="no-print"></td>
+                </tr>
+                <tr style={{ background: '#EFF6FF', height: '52px', fontWeight: 800 }}>
+                  <td colSpan="4" style={{ padding: '0 16px', textAlign: 'right', fontSize: '14px', color: '#1E3A8A' }}>
+                    NET CASH BALANCE:
+                  </td>
+                  <td colSpan="2" style={{
+                    padding: '0 16px',
+                    textAlign: 'right',
+                    fontSize: '18px',
+                    color: (cashbook?.net_cash_flow || 0) >= 0 ? '#2563EB' : '#DC2626',
+                    fontWeight: 800,
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {formatPKR(cashbook?.net_cash_flow || 0)}
+                  </td>
+                  <td className="no-print"></td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+
+        {/* FIX 12: PAGINATION WITH PAGE INFO */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '12px 16px', borderTop: '1px solid #F3F4F6' }} className="no-print">
+          <div style={{ fontSize: '12px', color: '#6B7280' }}>
+            Page {currentPage} of {Math.max(1, Math.ceil((cashbook?.entries?.length || 0) / ITEMS_PER_PAGE))}  •  {cashbook?.entries?.length || 0} entries
+          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalItems={cashbook?.entries?.length || 0}
+            itemsPerPage={ITEMS_PER_PAGE}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 

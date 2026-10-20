@@ -201,11 +201,34 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
           {/* Desktop sidebar toggle button */}
           <button
             onClick={toggleSidebarCollapse}
-            className="btn btn-secondary btn-sm hide-mobile"
+            className="hide-mobile"
             title={sidebarCollapsed ? "Open Sidebar Menu (Alt + B)" : "Close Sidebar Menu (Alt + B)"}
-            style={{ padding: '5px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: 'transparent',
+              border: '1px solid #E5E7EB',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: '#6B7280',
+              padding: 0,
+              transition: 'background 0.15s ease'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#F4F6F9'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
-            {sidebarCollapsed ? <PanelLeftOpen size={16} color="#0284c7" /> : <PanelLeftClose size={16} color="#64748b" />}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: sidebarCollapsed ? 'rotate(180deg)' : 'rotate(0deg)'
+            }}>
+              <PanelLeftClose size={16} />
+            </div>
           </button>
 
           {/* Breadcrumbs */}

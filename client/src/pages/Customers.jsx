@@ -474,18 +474,74 @@ export default function Customers() {
       {/* CUSTOMER LEDGER / STATEMENT MODAL */}
       {showLedgerModal && ledgerData && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '920px', width: '96%' }}>
-            <div className="modal-header">
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
-                  Customer Account Record: {ledgerData.customer.name}
-                </h3>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                  Customer Type: <strong>{ledgerData.customer.customer_type}</strong> • Phone: <strong>{ledgerData.customer.phone || 'None'}</strong>
+          <div className="modal-content" style={{ maxWidth: '960px', width: '96%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+            {/* FIX 1: MODAL HEADER */}
+            <div className="modal-header" style={{ padding: '16px 24px', borderBottom: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  background: '#0F766E',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  flexShrink: 0
+                }}>
+                  {(ledgerData.customer.name || 'C').charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>
+                    {ledgerData.customer.name}
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
+                    {ledgerData.customer.customer_type ? `${ledgerData.customer.customer_type} Customer` : 'Retail Customer'}
+                    {ledgerData.customer.phone && ledgerData.customer.phone !== 'None' && (
+                      <span> • 📞 {ledgerData.customer.phone}</span>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+
+              {/* Header Right: Info Chips & Actions */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{ background: '#F3F4F6', color: '#374151', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span>📅</span> Customer since: {ledgerData.customer.created_at ? formatDate(ledgerData.customer.created_at) : 'Active'}
+                </div>
+                <div style={{ background: '#F3F4F6', color: '#374151', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <span>💰</span> Total Purchases: {formatPKR(ledgerData.summary.total_purchased || ledgerData.summary.total_debit || 0)}
+                </div>
+                {Number(ledgerData.summary.closing_balance || 0) <= 0 ? (
+                  <div style={{ background: '#D1FAE5', color: '#065F46', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    ✓ Fully Settled
+                  </div>
+                ) : (
+                  <div style={{ background: '#FEE2E2', color: '#991B1B', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    ⚠️ {formatPKR(ledgerData.summary.closing_balance)} Pending
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  style={{
+                    height: '34px',
+                    padding: '0 12px',
+                    background: '#FFFFFF',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    color: '#374151',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
                   <Printer size={14} />
                   <span>Print Statement</span>
                 </button>
@@ -494,141 +550,299 @@ export default function Customers() {
                   className="modal-close-btn"
                   onClick={() => setShowLedgerModal(false)}
                   aria-label="Close"
+                  style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6B7280' }}
                 >
                   ✕
                 </button>
               </div>
             </div>
-            <div className="modal-body">
-              {/* 3 HIGHLIGHT CARDS: PURCHASES, PAYMENTS, DEBT LEFT */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem', marginBottom: '1.25rem' }}>
-                <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '0.85rem 1rem' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' }}>Total Bought (Kul Kharidari)</div>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0284c7', marginTop: '3px' }}>
-                    {formatPKR(ledgerData.summary.total_purchased || ledgerData.summary.total_debit)}
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>Total cost of all products bought</div>
-                </div>
 
-                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.85rem 1rem' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase' }}>Total Cash Paid (Kul Adaigi)</div>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#16a34a', marginTop: '3px' }}>
-                    {formatPKR(ledgerData.summary.total_paid || ledgerData.summary.total_credit)}
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>Total payments received to date</div>
-                </div>
-
-                <div style={{
-                  background: ledgerData.summary.closing_balance > 0 ? '#fef2f2' : '#f0fdf4',
-                  border: `1px solid ${ledgerData.summary.closing_balance > 0 ? '#fecaca' : '#bbf7d0'}`,
-                  borderRadius: '8px', padding: '0.85rem 1rem'
-                }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: ledgerData.summary.closing_balance > 0 ? '#b91c1c' : '#15803d', textTransform: 'uppercase' }}>
-                    Debt Left (Baqaya Udhaar)
-                  </div>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: ledgerData.summary.closing_balance > 0 ? '#dc2626' : '#16a34a', marginTop: '3px' }}>
-                    {formatPKR(ledgerData.summary.closing_balance)}
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
-                    {ledgerData.summary.closing_balance > 0 ? 'Pending amount to collect' : 'All cleared (No balance left)'}
-                  </div>
-                </div>
-              </div>
-
-              {/* DATE FILTERS */}
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', background: '#f8fafc', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>From:</span>
-                  <input
-                    type="date"
-                    className="form-control form-control-sm"
-                    value={ledgerStartDate}
-                    onChange={(e) => setLedgerStartDate(e.target.value)}
-                  />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>To:</span>
-                  <input
-                    type="date"
-                    className="form-control form-control-sm"
-                    value={ledgerEndDate}
-                    onChange={(e) => setLedgerEndDate(e.target.value)}
-                  />
-                </div>
+            <div className="modal-body" style={{ padding: '20px 24px' }}>
+              {/* FIX 2: DATE FILTER BAR */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>Filter by date:</span>
+                <input
+                  type="date"
+                  style={{
+                    height: '36px',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    padding: '0 12px',
+                    fontSize: '13px',
+                    color: '#111827',
+                    background: '#FFFFFF'
+                  }}
+                  value={ledgerStartDate}
+                  onChange={(e) => setLedgerStartDate(e.target.value)}
+                />
+                <input
+                  type="date"
+                  style={{
+                    height: '36px',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    padding: '0 12px',
+                    fontSize: '13px',
+                    color: '#111827',
+                    background: '#FFFFFF'
+                  }}
+                  value={ledgerEndDate}
+                  onChange={(e) => setLedgerEndDate(e.target.value)}
+                />
                 <button
-                  className="btn btn-primary btn-sm"
+                  type="button"
                   onClick={() => openLedger(selectedCust, ledgerStartDate, ledgerEndDate)}
+                  style={{
+                    height: '36px',
+                    padding: '0 16px',
+                    background: '#0F766E',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
                 >
-                  Filter
+                  Apply Filter →
                 </button>
                 {(ledgerStartDate || ledgerEndDate) && (
                   <button
-                    className="btn btn-secondary btn-sm"
+                    type="button"
                     onClick={() => {
                       setLedgerStartDate('');
                       setLedgerEndDate('');
                       openLedger(selectedCust, '', '');
                     }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#6B7280',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      padding: '0 8px',
+                      textDecoration: 'underline'
+                    }}
                   >
-                    Reset
+                    Clear
                   </button>
                 )}
               </div>
 
-              {/* STATEMENT TABLE WITH CLEAR EASY WORDING */}
-              <div className="table-responsive">
-                <table className="table" style={{ width: '100%', minWidth: '650px', fontSize: '0.85rem' }}>
+              {/* FIX 3 & 4: REDESIGNED TABLE COLUMNS & ROWS */}
+              <div className="table-responsive" style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: '10px' }}>
+                <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr>
-                      <th style={{ padding: '8px 10px' }}>Date</th>
-                      <th style={{ padding: '8px 10px' }}>Bill / Ref #</th>
-                      <th style={{ padding: '8px 10px' }}>Transaction Details</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Bill Amount (Kharidari)</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Cash Paid (Wusooli)</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Debt Left (Baqaya Udhaar)</th>
+                    <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E5E7EB' }}>
+                      <th style={{ width: '100px', padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Date</th>
+                      <th style={{ width: '140px', padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Invoice #</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Description</th>
+                      <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Amount</th>
+                      <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Paid</th>
+                      <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Balance</th>
+                      <th style={{ width: '80px', padding: '10px 16px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ledgerData.ledger.map((row, idx) => {
+                      const isOpening = row.type === 'OPENING' || row.ref_no === 'OPN-BAL';
                       const isSale = row.ref_no && row.ref_no.startsWith('INV-');
 
+                      // Format clean short description with colored dot
+                      let dot = '•';
+                      let descText = row.notes || 'Transaction';
+                      let descColor = '#374151';
+
+                      if (isOpening) {
+                        dot = '⚫';
+                        descText = 'Account Opening Balance';
+                        descColor = '#6B7280';
+                      } else if (row.type === 'PAYMENT_RECEIPT' || row.type === 'RECEIPT' || (!row.bill_amount && row.paid_amount > 0)) {
+                        dot = '🔵';
+                        const isBank = (row.notes && row.notes.toLowerCase().includes('bank')) || row.payment_method === 'Bank Transfer';
+                        descText = isBank ? 'Payment Received — Bank' : 'Payment Received';
+                        descColor = '#0F766E';
+                      } else if (row.bill_amount > 0) {
+                        if (row.paid_amount >= row.bill_amount) {
+                          const isBank = (row.notes && row.notes.toLowerCase().includes('bank'));
+                          dot = '🟢';
+                          descText = isBank ? 'Paid in Full — Bank' : 'Paid in Full — Cash';
+                          descColor = '#16A34A';
+                        } else if (row.paid_amount > 0) {
+                          dot = '🟡';
+                          descText = 'Partial Payment';
+                          descColor = '#D97706';
+                        } else {
+                          dot = '🔴';
+                          descText = 'Credit Sale';
+                          descColor = '#DC2626';
+                        }
+                      }
+
+                      if (isOpening) {
+                        return (
+                          <tr
+                            key={idx}
+                            style={{
+                              height: '52px',
+                              background: '#FFFBEB',
+                              borderBottom: '1px solid #F3F4F6',
+                              verticalAlign: 'middle'
+                            }}
+                          >
+                            <td style={{ padding: '0 16px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                              {formatDate(row.date)}
+                            </td>
+                            <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                              <span style={{
+                                background: '#E5E7EB',
+                                color: '#374151',
+                                borderRadius: '12px',
+                                padding: '2px 8px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                letterSpacing: '0.5px'
+                              }}>
+                                OPENING
+                              </span>
+                            </td>
+                            <td style={{ padding: '0 16px', fontSize: '13px', color: '#6B7280' }}>
+                              <span style={{ marginRight: '6px' }}>⚫</span>
+                              <span>Account Opening Balance</span>
+                            </td>
+                            <td style={{ padding: '0 16px', textAlign: 'right', fontSize: '14px', color: '#9CA3AF' }}>—</td>
+                            <td style={{ padding: '0 16px', textAlign: 'right', fontSize: '14px', color: '#9CA3AF' }}>—</td>
+                            <td style={{ padding: '0 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <span style={{
+                                background: row.balance > 0 ? '#FEE2E2' : '#D1FAE5',
+                                color: row.balance > 0 ? '#991B1B' : '#065F46',
+                                borderRadius: '6px',
+                                padding: '2px 8px',
+                                fontWeight: 700,
+                                fontSize: '12px',
+                                display: 'inline-block'
+                              }}>
+                                {row.balance > 0 ? formatPKR(row.balance) : 'Rs 0 ✓'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '0 16px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>—</td>
+                          </tr>
+                        );
+                      }
+
                       return (
-                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{formatDate(row.date)}</td>
-                          <td className="mono" style={{ padding: '8px 10px' }}>
+                        <tr
+                          key={idx}
+                          style={{
+                            height: '52px',
+                            borderBottom: '1px solid #F3F4F6',
+                            verticalAlign: 'middle',
+                            transition: 'background 0.15s'
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = '#FFFFFF'; }}
+                        >
+                          <td style={{ padding: '0 16px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                            {formatDate(row.date)}
+                          </td>
+                          <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
                             {isSale ? (
                               <button
                                 type="button"
                                 onClick={() => handleViewInvoiceDetails(row.ref_no)}
                                 style={{
-                                  background: 'none', border: 'none', color: '#0284c7',
-                                  fontWeight: 700, cursor: 'pointer', padding: 0,
-                                  textDecoration: 'underline', fontSize: '0.85rem'
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#0F766E',
+                                  fontFamily: 'monospace',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  padding: 0,
+                                  textDecoration: 'none',
+                                  whiteSpace: 'nowrap'
                                 }}
-                                title="Click to view full bill slip"
+                                title="Click to view itemized invoice slip"
                               >
                                 {row.ref_no}
                               </button>
                             ) : (
-                              <span>{row.ref_no}</span>
+                              <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#4B5563', whiteSpace: 'nowrap' }}>
+                                {row.ref_no || '—'}
+                              </span>
                             )}
                           </td>
-                          <td style={{ padding: '8px 10px' }}>
-                            <div style={{ fontWeight: 600 }}>{row.notes}</div>
-                            {isSale && (
-                              <div style={{ fontSize: '0.72rem', color: '#0284c7' }}>
-                                📄 Click bill # to view itemized slip
-                              </div>
+                          <td style={{ padding: '0 16px', fontSize: '13px', color: descColor, whiteSpace: 'nowrap' }}>
+                            <span style={{ marginRight: '6px' }}>{dot}</span>
+                            <span style={{ fontWeight: 500 }}>{descText}</span>
+                          </td>
+                          <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 700, fontSize: '14px', color: '#111827', whiteSpace: 'nowrap' }}>
+                            {row.bill_amount > 0 ? formatPKR(row.bill_amount) : <span style={{ color: '#9CA3AF' }}>—</span>}
+                          </td>
+                          <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 600, fontSize: '14px', color: '#16A34A', whiteSpace: 'nowrap' }}>
+                            {row.paid_amount > 0 ? formatPKR(row.paid_amount) : <span style={{ color: '#9CA3AF' }}>—</span>}
+                          </td>
+                          <td style={{ padding: '0 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {row.balance <= 0 ? (
+                              <span style={{
+                                background: '#D1FAE5',
+                                color: '#065F46',
+                                borderRadius: '6px',
+                                padding: '2px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                display: 'inline-block'
+                              }}>
+                                Rs 0 ✓
+                              </span>
+                            ) : (
+                              <span style={{
+                                background: '#FEE2E2',
+                                color: '#991B1B',
+                                borderRadius: '6px',
+                                padding: '2px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                display: 'inline-block'
+                              }}>
+                                {formatPKR(row.balance)}
+                              </span>
                             )}
                           </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: row.bill_amount > 0 ? '#0f172a' : '#94a3b8' }}>
-                            {row.bill_amount > 0 ? formatPKR(row.bill_amount) : '-'}
-                          </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: row.paid_amount > 0 ? '#16a34a' : '#94a3b8' }}>
-                            {row.paid_amount > 0 ? formatPKR(row.paid_amount) : '-'}
-                          </td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: row.balance > 0 ? '#dc2626' : '#16a34a' }}>
-                            {formatPKR(row.balance)}
+                          <td style={{ padding: '0 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            {isSale ? (
+                              <button
+                                type="button"
+                                onClick={() => handleViewInvoiceDetails(row.ref_no)}
+                                style={{
+                                  height: '28px',
+                                  padding: '0 12px',
+                                  border: '1px solid #E5E7EB',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: 500,
+                                  color: '#374151',
+                                  background: '#FFFFFF',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.borderColor = '#0F766E';
+                                  e.currentTarget.style.color = '#0F766E';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.borderColor = '#E5E7EB';
+                                  e.currentTarget.style.color = '#374151';
+                                }}
+                              >
+                                View →
+                              </button>
+                            ) : (
+                              <span style={{ color: '#9CA3AF', fontSize: '13px' }}>—</span>
+                            )}
                           </td>
                         </tr>
                       );
@@ -636,27 +850,40 @@ export default function Customers() {
                   </tbody>
                 </table>
               </div>
-
-              {/* CLOSING TOTALS SUMMARY */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
-                <div style={{ background: '#f8fafc', padding: '1rem 1.25rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%', maxWidth: '380px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                    <span>Total Products Bought:</span>
-                    <strong>{formatPKR(ledgerData.summary.total_purchased || ledgerData.summary.total_debit)}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
-                    <span>Total Cash Paid:</span>
-                    <strong style={{ color: '#16a34a' }}>{formatPKR(ledgerData.summary.total_paid || ledgerData.summary.total_credit)}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 800, borderTop: '1px solid #cbd5e1', paddingTop: '6px', color: ledgerData.summary.closing_balance > 0 ? '#dc2626' : '#16a34a' }}>
-                    <span>Remaining Debt Left:</span>
-                    <span>{formatPKR(ledgerData.summary.closing_balance)}</span>
-                  </div>
-                </div>
-              </div>
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary btn-sm" onClick={() => setShowLedgerModal(false)}>Close</button>
+
+            {/* FIX 6: MODAL FOOTER */}
+            <div style={{
+              borderTop: '1px solid #F3F4F6',
+              padding: '16px 24px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
+              background: '#FFFFFF'
+            }}>
+              <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                {ledgerData.ledger.length} transactions  •  Total Billed: <strong style={{ color: '#111827' }}>{formatPKR(ledgerData.summary.total_purchased || ledgerData.summary.total_debit || 0)}</strong>  •  Total Paid: <strong style={{ color: '#16A34A' }}>{formatPKR(ledgerData.summary.total_paid || ledgerData.summary.total_credit || 0)}</strong>  •  Balance: <strong style={{ color: ledgerData.summary.closing_balance > 0 ? '#DC2626' : '#16A34A' }}>{formatPKR(ledgerData.summary.closing_balance)}</strong>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => window.print()}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                >
+                  <Printer size={14} />
+                  <span>Print Statement</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setShowLedgerModal(false)}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

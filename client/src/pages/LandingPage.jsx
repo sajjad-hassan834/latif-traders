@@ -286,18 +286,17 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
           >
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 20px -4px rgba(6, 182, 212, 0.5)'
-            }}>
-              <Store className="w-5 h-5 text-white" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="ShopOS"
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                objectFit: 'contain',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+              }}
+            />
             <div>
               <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.5px', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 Shop<span style={{ color: '#0284c7' }}>OS</span>
@@ -324,10 +323,10 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
             <a href="#testimonials" style={{ color: '#475569', fontSize: '14px', textDecoration: 'none', fontWeight: 500, transition: 'color 0.15s' }}>Testimonials</a>
           </nav>
 
-          {/* FIX 5: Single Navbar CTA Button (#1D4ED8 blue - secondary to hero) */}
+          {/* Top Navbar Action: Login Button */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <button
-              onClick={onNavigateRegister}
+              onClick={onNavigateLogin}
               style={{
                 background: '#1D4ED8',
                 color: '#ffffff',
@@ -352,7 +351,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(29, 78, 216, 0.25)';
               }}
             >
-              Start Free Today
+              Login
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -1294,17 +1293,16 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
             {/* Left side: Brand */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #0F4C75 0%, #0F766E 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Store className="w-5 h-5 text-white" />
-                </div>
+                <img
+                  src="/logo.png"
+                  alt="ShopOS"
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    objectFit: 'contain'
+                  }}
+                />
                 <span style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A' }}>
                   Shop<span style={{ color: '#0F766E' }}>OS</span>
                 </span>
