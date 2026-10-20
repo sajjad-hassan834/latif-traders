@@ -357,7 +357,11 @@ function initializeDatabase() {
       if (!hasTenantId) {
         db.prepare(`ALTER TABLE "${tbl}" ADD COLUMN tenant_id TEXT DEFAULT 'latif_001'`).run();
       }
-      db.prepare(`UPDATE "${tbl}" SET tenant_id = 'latif_001' WHERE tenant_id IS NULL AND role != 'superowner'`).run();
+      if (tbl === 'users') {
+        db.prepare(`UPDATE "${tbl}" SET tenant_id = 'latif_001' WHERE tenant_id IS NULL AND role != 'superowner'`).run();
+      } else {
+        db.prepare(`UPDATE "${tbl}" SET tenant_id = 'latif_001' WHERE tenant_id IS NULL`).run();
+      }
     } catch (_) {}
   }
 

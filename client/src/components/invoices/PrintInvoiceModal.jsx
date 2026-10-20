@@ -87,7 +87,7 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
   };
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay" style={{ zIndex: 1200 }}>
       <div className="modal-content" style={{ maxWidth: printFormat === 'a4' ? '820px' : '440px', width: '96%' }}>
         <div className="modal-header">
           <div>

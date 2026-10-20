@@ -120,9 +120,9 @@ exports.getSaleById = (req, res) => {
       SELECT s.*, c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
         c.current_balance as customer_current_balance, u.full_name as user_name
       FROM sales s
-      LEFT JOIN customers c ON s.customer_id = c.id AND c.tenant_id = s.tenant_id
-      LEFT JOIN users u ON s.user_id = u.id AND u.tenant_id = s.tenant_id
-      WHERE (s.id = ? OR s.invoice_no = ?) AND s.tenant_id = ?
+      LEFT JOIN customers c ON s.customer_id = c.id AND COALESCE(c.tenant_id, 'latif_001') = COALESCE(s.tenant_id, 'latif_001')
+      LEFT JOIN users u ON s.user_id = u.id AND COALESCE(u.tenant_id, 'latif_001') = COALESCE(s.tenant_id, 'latif_001')
+      WHERE (s.id = ? OR s.invoice_no = ?) AND COALESCE(s.tenant_id, 'latif_001') = ?
     `).get(id, id, tenantId);
 
     if (!sale) {
@@ -134,7 +134,7 @@ exports.getSaleById = (req, res) => {
       FROM sale_items si
       JOIN products pr ON si.product_id = pr.id
       LEFT JOIN suppliers sup ON pr.supplier_id = sup.id
-      WHERE si.sale_id = ? AND si.tenant_id = ?
+      WHERE si.sale_id = ? AND COALESCE(si.tenant_id, 'latif_001') = ?
     `).all(sale.id, tenantId);
 
     // Fetch business profile settings for invoice header

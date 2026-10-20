@@ -1140,9 +1140,9 @@ export default function Customers() {
       {/* VIEW BILL / INVOICE MODAL FROM CUSTOMER RECORD */}
       {viewingSale && (
         <PrintInvoiceModal
-          sale={viewingSale.sale}
-          items={viewingSale.items}
-          settings={viewingSale.settings}
+          sale={viewingSale.sale || viewingSale.data || viewingSale}
+          items={viewingSale.items || viewingSale.data?.items || []}
+          settings={viewingSale.settings || viewingSale.data?.settings || {}}
           onClose={() => setViewingSale(null)}
         />
       )}

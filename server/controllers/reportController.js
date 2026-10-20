@@ -147,14 +147,45 @@ exports.getDashboardMetrics = (req, res) => {
       ORDER BY SUBSTR(s.sale_date, 1, 10) ASC
     `).all(tenantId, tenantId);
 
-    // Top customer accounts with receivables
-    const topCustomers = db.prepare(`
-      SELECT id, name, phone, customer_type, current_balance
-      FROM customers
-      WHERE tenant_id = ? AND NOT (name LIKE '%Walk-in%' OR name LIKE '%Counter%')
-      ORDER BY current_balance DESC, id ASC
-      LIMIT 6
-    `).all(tenantId);
+    // Top / Recent customer accounts with receivables or recent activity
+    let topCustomers = [];
+    try {
+      topCustomers = db.prepare(`
+        SELECT c.id, c.name, c.phone, c.customer_type, c.current_balance,
+               MAX(s.created_at) as last_sale_at
+        FROM customers c
+        LEFT JOIN sales s ON s.customer_id = c.id AND COALESCE(s.tenant_id, 'latif_001') = ?
+        WHERE COALESCE(c.tenant_id, 'latif_001') = ?
+          AND NOT (c.name LIKE '%Walk-in%' OR c.name LIKE '%Counter%')
+        GROUP BY c.id
+        ORDER BY
+          CASE WHEN c.current_balance > 0 THEN 1 ELSE 2 END,
+          c.current_balance DESC,
+          last_sale_at DESC,
+          c.id DESC
+        LIMIT 6
+      `).all(tenantId, tenantId);
+
+      // Fallback: if all non-walkin customers are filtered or none exist, fetch any customers for this tenant
+      if (topCustomers.length === 0) {
+        topCustomers = db.prepare(`
+          SELECT id, name, phone, customer_type, current_balance
+          FROM customers
+          WHERE COALESCE(tenant_id, 'latif_001') = ?
+          ORDER BY current_balance DESC, id DESC
+          LIMIT 6
+        `).all(tenantId);
+      }
+    } catch (custErr) {
+      console.warn('top_customers query warning:', custErr.message);
+      topCustomers = db.prepare(`
+        SELECT id, name, phone, customer_type, current_balance
+        FROM customers
+        WHERE COALESCE(tenant_id, 'latif_001') = ?
+        ORDER BY id DESC
+        LIMIT 6
+      `).all(tenantId);
+    }
 
     return res.json({
       success: true,

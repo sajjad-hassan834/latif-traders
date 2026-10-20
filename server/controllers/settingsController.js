@@ -76,6 +76,10 @@ exports.updateSettings = (req, res) => {
         db.prepare('UPDATE tenants SET address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
           .run(String(entries.address).trim(), tenantId);
       }
+      if (entries.business_type) {
+        db.prepare('UPDATE tenants SET business_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+          .run(String(entries.business_type).trim(), tenantId);
+      }
     });
 
     updateTransaction(updates);

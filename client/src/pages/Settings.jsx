@@ -196,7 +196,9 @@ export default function Settings({ initialTab: propInitialTab }) {
         if (settings.shop_name) {
           localStorage.setItem('lt_shop_name', settings.shop_name);
           document.title = `${settings.shop_name} - ShopOS Business Management`;
-          updateTenantInfo({ business_name: settings.shop_name, logo_url: settings.logo_url });
+          updateTenantInfo({ business_name: settings.shop_name, logo_url: settings.logo_url, business_type: settings.business_type });
+        } else if (settings.business_type) {
+          updateTenantInfo({ business_type: settings.business_type });
         }
         if (settings.tagline) localStorage.setItem('lt_shop_tagline', settings.tagline);
         if (settings.phone) localStorage.setItem('lt_phone', settings.phone);
@@ -304,7 +306,8 @@ export default function Settings({ initialTab: propInitialTab }) {
     ? `${(totalBackupSizeKb / 1024).toFixed(1)} MB`
     : `${totalBackupSizeKb.toFixed(0)} KB`;
 
-  const currentBusinessType = BUSINESS_TYPE_LABELS[tenant?.business_type || 'frozen_food'] || { name: 'Retail / General', icon: '🏬' };
+  const bType = settings.business_type || tenant?.business_type || 'frozen_food';
+  const currentBusinessType = BUSINESS_TYPE_LABELS[bType] || { name: 'Retail / General', icon: '🏬' };
 
   // SaaS Tab definitions (REORDERED per user specification)
   const tabList = [
@@ -485,7 +488,7 @@ export default function Settings({ initialTab: propInitialTab }) {
           </div>
 
           <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {/* Business Type Badge (Read-only after signup) */}
+            {/* Business Type & Custom Application Setup */}
             <div style={{
               background: '#f8fafc',
               border: '1px solid #e2e8f0',
@@ -493,7 +496,9 @@ export default function Settings({ initialTab: propInitialTab }) {
               padding: '14px 18px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ fontSize: '26px' }}>{currentBusinessType.icon}</span>
@@ -502,9 +507,21 @@ export default function Settings({ initialTab: propInitialTab }) {
                   <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>{currentBusinessType.name}</div>
                 </div>
               </div>
-              <span style={{ fontSize: '11px', color: '#0284c7', background: '#e0f2fe', padding: '4px 10px', borderRadius: '6px', fontWeight: 600 }}>
-                Pre-configured Seed Categories Active
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <select
+                  className="form-control"
+                  style={{ height: '34px', fontSize: '12px', borderRadius: '6px', padding: '0 8px', background: '#ffffff', minWidth: '170px' }}
+                  value={settings.business_type || tenant?.business_type || 'frozen_food'}
+                  onChange={(e) => setSettings({ ...settings, business_type: e.target.value })}
+                >
+                  {Object.entries(BUSINESS_TYPE_LABELS).map(([key, val]) => (
+                    <option key={key} value={key}>{val.icon} {val.name}</option>
+                  ))}
+                </select>
+                <span style={{ fontSize: '11px', color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '5px 12px', borderRadius: '6px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  ✓ Dedicated Custom Application
+                </span>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>

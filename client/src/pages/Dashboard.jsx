@@ -818,8 +818,30 @@ function DashboardContent({ setTab }) {
           {/* CONTACT LIST WITH OUTSTANDING BALANCE BADGES */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', flex: 1, minHeight: '260px' }}>
             {filteredCustomers.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#94a3b8', fontSize: '0.8rem' }}>
-                No customer contacts match your filter.
+              <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#94a3b8', fontSize: '0.825rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                {contactSearch.trim() ? (
+                  <span>No customer contacts match "{contactSearch}".</span>
+                ) : (
+                  <>
+                    <span>No customer activity or accounts found.</span>
+                    <button
+                      type="button"
+                      onClick={() => setTab('customers')}
+                      style={{
+                        background: '#f0fdf4',
+                        color: '#15803d',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: '6px',
+                        padding: '4px 12px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Open Customer Directory →
+                    </button>
+                  </>
+                )}
               </div>
             ) : (
               filteredCustomers.slice(0, 6).map((c, idx) => {
