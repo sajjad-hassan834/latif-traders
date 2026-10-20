@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Search,
   Plus,
@@ -63,6 +63,26 @@ export default function SalesList({ setTab }) {
     total_revenue: 0,
     total_balance_due: 0
   });
+
+  const displayStats = useMemo(() => {
+    const list = sales || [];
+    let newOrd = 0;
+    let compOrd = 0;
+    let cancOrd = 0;
+    for (const s of list) {
+      const st = String(s.order_status || 'Completed').trim().toLowerCase();
+      if (st === 'new' || st === 'pending') newOrd++;
+      else if (st === 'cancelled' || st === 'void') cancOrd++;
+      else compOrd++;
+    }
+    const hasServerStats = stats && Number(stats.total_orders) > 0;
+    return {
+      total_orders: hasServerStats ? stats.total_orders : list.length,
+      new_orders: hasServerStats ? stats.new_orders : newOrd,
+      completed_orders: hasServerStats ? stats.completed_orders : compOrd,
+      cancelled_orders: hasServerStats ? stats.cancelled_orders : cancOrd
+    };
+  }, [sales, stats]);
 
   // Filters & Search
   const [search, setSearch] = useState('');
@@ -666,27 +686,27 @@ export default function SalesList({ setTab }) {
       <div className="sadax-stat-card-row">
         <StatCard
           label="Total Orders"
-          value={stats.total_orders.toLocaleString()}
+          value={displayStats.total_orders.toLocaleString()}
           trend="up"
-          subtitle="Total Orders last 365 days"
+          subtitle="Orders in view"
         />
         <StatCard
           label="New Orders"
-          value={stats.new_orders.toLocaleString()}
+          value={displayStats.new_orders.toLocaleString()}
           trend="neutral"
-          subtitle="New Orders last 365 days"
+          subtitle="New / Pending"
         />
         <StatCard
           label="Completed Orders"
-          value={stats.completed_orders.toLocaleString()}
+          value={displayStats.completed_orders.toLocaleString()}
           trend="up"
-          subtitle="Completed Orders last 365 days"
+          subtitle="Completed / Settled"
         />
         <StatCard
           label="Cancelled Orders"
-          value={stats.cancelled_orders.toLocaleString()}
+          value={displayStats.cancelled_orders.toLocaleString()}
           trend="down"
-          subtitle="Cancelled Orders last 365 days"
+          subtitle="Cancelled orders"
         />
       </div>
 
@@ -1159,7 +1179,7 @@ export default function SalesList({ setTab }) {
 
                       {/* Column 5: Status Badge */}
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
-                        <StatusBadge status={sale.order_status} />
+                        <StatusBadge status={sale.order_status || 'Completed'} />
                       </td>
 
                       {/* Column 6: Action */}

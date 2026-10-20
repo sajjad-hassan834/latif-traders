@@ -605,7 +605,7 @@ function MainApp() {
             </div>
           )}
 
-          <ErrorBoundary fallbackTitle="Application Error" key={currentTab}>
+          <ErrorBoundary fallbackTitle="Application Error">
             {!isTabAllowed ? (
               <div className="card" style={{
                 maxWidth: '520px',

@@ -5,14 +5,13 @@ import React from 'react';
  * props: { status, label }
  * Automatically selects color & dot based on status
  */
-export default function StatusBadge({ status, label }) {
-  if (!status) return null;
-
-  const raw = String(status).trim().toLowerCase();
+export default function StatusBadge({ status = 'Completed', label }) {
+  const safeStatus = status || 'Completed';
+  const raw = String(safeStatus).trim().toLowerCase();
   const normalized = raw.replace(/[_\s]+/g, '-');
 
   let pillClass = 'sadax-pill-completed';
-  let displayLabel = label || status;
+  let displayLabel = label || safeStatus;
 
   if (['completed', 'published', 'active', 'delivered'].includes(normalized)) {
     pillClass = 'sadax-pill-completed';

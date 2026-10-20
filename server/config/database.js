@@ -365,6 +365,11 @@ function initializeDatabase() {
     } catch (_) {}
   }
 
+  // Ensure order_status is never null in existing sales records
+  try {
+    db.prepare("UPDATE sales SET order_status = 'Completed' WHERE order_status IS NULL OR order_status = ''").run();
+  } catch (_) {}
+
   // Add hidden system flags to users table
   try {
     const userCols = db.prepare('PRAGMA table_info("users")').all();

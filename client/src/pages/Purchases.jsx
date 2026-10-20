@@ -348,8 +348,7 @@ export default function Purchases() {
           <table className="table" style={{ minWidth: '720px' }}>
             <thead>
               <tr>
-                <th>Internal Inv #</th>
-                <th>Supplier Bill #</th>
+                <th>Invoice / Bill #</th>
                 <th>Date</th>
                 <th>Supplier Name</th>
                 <th>Items</th>
@@ -361,9 +360,9 @@ export default function Purchases() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>Loading purchases...</td></tr>
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>Loading purchases...</td></tr>
               ) : purchases.length === 0 ? (
-                <tr><td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No purchases recorded yet.</td></tr>
+                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No purchases recorded yet.</td></tr>
               ) : (
                 purchases.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(p => {
                   const netTotal = p.grand_total - (p.returned_amount || 0);
@@ -371,15 +370,21 @@ export default function Purchases() {
                   
                   return (
                   <tr key={p.id} style={{ opacity: isFullyReturned ? 0.6 : 1 }}>
-                    <td className="mono" style={{ fontWeight: 700, color: '#0284c7' }}>
-                      {p.invoice_no}
+                    <td style={{ verticalAlign: 'middle' }}>
+                      <div className="mono" style={{ fontWeight: 700, color: '#0284c7', fontSize: '13px' }}>
+                        {p.invoice_no}
+                      </div>
+                      {p.supplier_invoice_no && (
+                        <div className="mono" style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                          Bill: {p.supplier_invoice_no}
+                        </div>
+                      )}
                       {p.returned_amount > 0 && (
                         <div style={{ fontSize: '0.65rem', color: '#ef4444', marginTop: '2px', fontWeight: 700, background: '#fee2e2', padding: '1px 4px', borderRadius: '4px', display: 'inline-block' }}>
                           {isFullyReturned ? 'FULLY RETURNED' : 'PARTIAL RETURN'}
                         </div>
                       )}
                     </td>
-                    <td className="mono" style={{ color: '#64748b' }}>{p.supplier_invoice_no || '-'}</td>
                     <td>{formatDate(p.purchase_date)}</td>
                     <td style={{ fontWeight: 600 }}>{p.supplier_name}</td>
                     <td>{p.item_count} items</td>

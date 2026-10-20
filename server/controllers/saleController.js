@@ -11,18 +11,18 @@ exports.getSales = (req, res) => {
       SELECT s.*, 
         COALESCE(s.order_status, 'Completed') as order_status,
         c.name as customer_name, c.phone as customer_phone, u.full_name as user_name,
-        (SELECT COUNT(*) FROM sale_items si WHERE si.sale_id = s.id AND si.tenant_id = s.tenant_id) as item_count,
-        (SELECT COALESCE(SUM(si.quantity), 0) FROM sale_items si WHERE si.sale_id = s.id AND si.tenant_id = s.tenant_id) as total_qty,
-        (SELECT GROUP_CONCAT(pr.name, ', ') FROM (SELECT DISTINCT si.product_id, pr.name FROM sale_items si JOIN products pr ON si.product_id = pr.id WHERE si.sale_id = s.id AND si.tenant_id = s.tenant_id LIMIT 3) pr) as product_summary,
+        (SELECT COUNT(*) FROM sale_items si WHERE si.sale_id = s.id) as item_count,
+        (SELECT COALESCE(SUM(si.quantity), 0) FROM sale_items si WHERE si.sale_id = s.id) as total_qty,
+        (SELECT GROUP_CONCAT(pr.name, ', ') FROM (SELECT DISTINCT pr.name FROM sale_items si JOIN products pr ON si.product_id = pr.id WHERE si.sale_id = s.id LIMIT 4) pr) as product_summary,
         CASE 
           WHEN s.balance_due <= 0 THEN 'Paid' 
           WHEN s.paid_amount > 0 AND s.balance_due > 0 THEN 'Partially Paid' 
           ELSE 'Unpaid' 
         END as calculated_payment_status
       FROM sales s
-      LEFT JOIN customers c ON s.customer_id = c.id AND c.tenant_id = s.tenant_id
-      LEFT JOIN users u ON s.user_id = u.id AND u.tenant_id = s.tenant_id
-      WHERE s.tenant_id = ?
+      LEFT JOIN customers c ON s.customer_id = c.id AND COALESCE(c.tenant_id, 'latif_001') = COALESCE(s.tenant_id, 'latif_001')
+      LEFT JOIN users u ON s.user_id = u.id AND COALESCE(u.tenant_id, 'latif_001') = COALESCE(s.tenant_id, 'latif_001')
+      WHERE COALESCE(s.tenant_id, 'latif_001') = ?
     `;
     const params = [tenantId];
 
@@ -67,7 +67,7 @@ exports.getSales = (req, res) => {
         OR EXISTS (
           SELECT 1 FROM sale_items si 
           JOIN products pr ON si.product_id = pr.id 
-          WHERE si.sale_id = s.id AND si.tenant_id = s.tenant_id AND pr.name LIKE ?
+          WHERE si.sale_id = s.id AND pr.name LIKE ?
         )
       )`;
       const s = `%${search}%`;
@@ -86,10 +86,15 @@ exports.getSales = (req, res) => {
     let totalBalanceDue = 0;
 
     for (const sale of sales) {
-      const st = (sale.order_status || 'Completed').toLowerCase();
-      if (st === 'new') newOrders++;
-      else if (st === 'completed' || st === 'delivered') completedOrders++;
-      else if (st === 'cancelled') cancelledOrders++;
+      sale.order_status = sale.order_status || 'Completed';
+      const st = String(sale.order_status).trim().toLowerCase();
+      if (st === 'new' || st === 'pending') {
+        newOrders++;
+      } else if (st === 'cancelled' || st === 'void') {
+        cancelledOrders++;
+      } else {
+        completedOrders++;
+      }
 
       totalRevenue += Number(sale.grand_total) || 0;
       totalBalanceDue += Number(sale.balance_due) || 0;
