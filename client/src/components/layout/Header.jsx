@@ -9,17 +9,85 @@ import {
   LogOut,
   Users,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Home,
+  ChevronRight,
+  Store,
+  BarChart3,
+  BookOpen,
+  MessageSquare,
+  Bug,
+  Sparkles,
+  ArrowRight,
+  CheckCircle2,
+  X,
+  Send,
+  HelpCircle,
+  ExternalLink,
+  Layers,
+  Sun,
+  Moon,
+  Sliders
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { api } from '../../utils/api';
+import { formatDate } from '../../utils/formatters';
+import { toggleTheme as toggleThemeHelper } from '../../utils/theme';
 import UserProfileModal from '../common/UserProfileModal';
 import NotificationCenter from '../common/NotificationCenter';
+import Modal from '../common/Modal';
+
+const BUSINESS_TYPE_NAMES = {
+  frozen_food: 'Frozen Food',
+  retail_general: 'General Retail',
+  clothing: 'Clothing & Boutique',
+  pharmacy: 'Pharmacy & Medical',
+  restaurant: 'Restaurant & Café',
+  hardware: 'Hardware & Tools',
+  electronics: 'Electronics & Mobiles',
+  wholesale: 'Wholesale & Distribution'
+};
 
 export default function Header({ currentTab, setTab, toggleSidebar, sidebarCollapsed, toggleSidebarCollapse, alerts = {} }) {
-  const { user, logout, role, roleLabel, isAdmin, canSell, hasTabAccess } = useAuth();
+  const { user, logout, role, roleLabel, isAdmin, isSuperOwner, enterTenant, tenant, plan, canSell, hasTabAccess } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [superOwnerDropdownOpen, setSuperOwnerDropdownOpen] = useState(false);
+  const [tenantsList, setTenantsList] = useState([]);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileModalTab, setProfileModalTab] = useState('profile');
+  const [supportModal, setSupportModal] = useState(null); // 'help' | 'contact' | 'bug' | null
+  const [bugCategory, setBugCategory] = useState('Interface / Display');
+  const [bugDescription, setBugDescription] = useState('');
+  const [bugSubmitted, setBugSubmitted] = useState(false);
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [billingUsage, setBillingUsage] = useState({ productsUsed: 1, productsLimit: 50 });
+  const [planExpiresAt, setPlanExpiresAt] = useState(null);
+  const [theme, setTheme] = useState(() => localStorage.getItem('lt_theme') || 'light');
+
+  const superOwnerMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (isSuperOwner) {
+      api.get('/superowner/tenants').then(res => {
+        if (res?.success) setTenantsList(res.tenants);
+      }).catch(() => {});
+    }
+  }, [isSuperOwner]);
+
+  useEffect(() => {
+    const handleThemeSync = (e) => {
+      if (e?.detail) setTheme(e.detail);
+    };
+    window.addEventListener('theme_changed', handleThemeSync);
+    return () => window.removeEventListener('theme_changed', handleThemeSync);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = toggleThemeHelper(theme);
+    setTheme(nextTheme);
+  };
+
   const userMenuRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -28,26 +96,64 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setUserMenuOpen(false);
       }
+      if (superOwnerMenuRef.current && !superOwnerMenuRef.current.contains(event.target)) {
+        setSuperOwnerDropdownOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const tabTitles = {
-    dashboard: 'Dashboard',
-    pos: 'New Sale',
-    sales: 'Sales History',
-    inventory: 'Products',
-    'stock-adjust': 'Adjustments',
-    purchases: 'Purchase',
-    customers: 'Customers',
-    suppliers: 'Suppliers',
-    expenses: 'Expenses',
-    cashflow: 'Cashbook',
-    reports: 'Analytics',
-    users: 'Staff',
-    settings: 'Settings'
+  // Fetch billing usage stats for plan meter
+  useEffect(() => {
+    if (userMenuOpen || plan === 'free') {
+      api.get('/settings/billing').then(res => {
+        if (res && res.success && res.billing) {
+          if (res.billing.usage?.products) {
+            setBillingUsage({
+              productsUsed: res.billing.usage.products.used || 0,
+              productsLimit: res.billing.usage.products.limit || 50
+            });
+          }
+          if (res.billing.planExpiresAt) {
+            setPlanExpiresAt(res.billing.planExpiresAt);
+          }
+        }
+      }).catch(() => {});
+    }
+  }, [userMenuOpen, plan]);
+
+  const tabMetadata = {
+    dashboard: { section: 'Overview', title: 'Dashboard' },
+    pos: { section: 'Sales', title: 'New Sale (POS)' },
+    sales: { section: 'Orders', title: 'Orders Management' },
+    inventory: { section: 'Inventory', title: 'Products & Stock' },
+    'stock-adjust': { section: 'Inventory', title: 'Stock Adjustments' },
+    purchases: { section: 'Inventory', title: 'Purchase Invoices' },
+    customers: { section: 'Parties', title: 'Customers & Udhaar' },
+    suppliers: { section: 'Parties', title: 'Suppliers & Dues' },
+    expenses: { section: 'Finance', title: 'Operating Expenses' },
+    cashflow: { section: 'Finance', title: 'Daily Cashbook' },
+    reports: { section: 'Reports', title: 'Analytics & Profit' },
+    settings: { section: 'System', title: 'Shop Settings' }
   };
+
+  const getSettingsSubTitle = () => {
+    try {
+      const tab = new URLSearchParams(window.location.search).get('tab');
+      if (tab === 'staff' || tab === 'users') return 'Staff & Access';
+      if (tab === 'billing' || tab === 'plan') return 'My Plan & Billing';
+      if (tab === 'business-profile' || tab === 'profile') return 'Business Profile';
+      if (tab === 'invoice') return 'Invoice & Receipts';
+      if (tab === 'inventory') return 'Inventory Policy';
+      if (tab === 'backup') return 'Backup & Recovery';
+    } catch (_) {}
+    return 'Shop Settings';
+  };
+
+  const currentMeta = currentTab === 'settings'
+    ? { section: 'System', title: getSettingsSubTitle() }
+    : (tabMetadata[currentTab] || { section: 'App', title: tenant?.business_name || 'Latif Traders' });
 
   const openAccountModal = (tab) => {
     setProfileModalTab(tab);
@@ -55,12 +161,34 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
     setUserMenuOpen(false);
   };
 
+  const navigateSettingsTab = (tabName) => {
+    try {
+      const url = new URL(window.location.href);
+      url.pathname = '/settings';
+      url.searchParams.set('tab', tabName);
+      window.history.pushState({}, '', url.toString());
+    } catch (_) {}
+    window.dispatchEvent(new CustomEvent('settings_tab_change', { detail: tabName }));
+    setTab('settings');
+    setUserMenuOpen(false);
+  };
+
   const userInitial = user?.full_name?.charAt(0) || user?.username?.charAt(0) || 'U';
+  const userEmail = user?.email || `${user?.username || 'user'}@${(tenant?.business_name || 'shop').toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
+  const businessType = tenant?.business_type || 'frozen_food';
+  const businessTypeLabel = BUSINESS_TYPE_NAMES[businessType] || 'Retail & Trade';
+  const currentPlan = plan || 'free';
+
+  // Calculate product usage percentage for Free plan bar
+  const usagePercent = Math.min(100, Math.round(((billingUsage.productsUsed || 1) / (billingUsage.productsLimit || 50)) * 100));
+
+  // Renewal / Expiry text
+  const renewalText = planExpiresAt ? formatDate(planExpiresAt) : '18 Nov 2026';
 
   return (
     <>
       <header className="top-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
           {/* Mobile hamburger */}
           <button
             onClick={toggleSidebar}
@@ -80,17 +208,57 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
             {sidebarCollapsed ? <PanelLeftOpen size={16} color="#0284c7" /> : <PanelLeftClose size={16} color="#64748b" />}
           </button>
 
-          <h1 className="page-title" title={tabTitles[currentTab] || 'Latif Traders'}>
-            {tabTitles[currentTab] || 'Latif Traders'}
-          </h1>
+          {/* Breadcrumbs */}
+          <nav className="header-breadcrumbs" aria-label="Breadcrumb">
+            <button
+              type="button"
+              onClick={() => setTab('dashboard')}
+              className="breadcrumb-home-btn"
+              title="Go to Dashboard"
+            >
+              <Home size={15} />
+            </button>
+            <span className="breadcrumb-separator">›</span>
+            {currentMeta.section && currentTab !== 'dashboard' && (
+              <>
+                <span className="breadcrumb-section hide-mobile">{currentMeta.section}</span>
+                <span className="breadcrumb-separator hide-mobile">›</span>
+              </>
+            )}
+            <h1 className="breadcrumb-current page-title" style={{ margin: 0, fontSize: '0.925rem' }}>
+              {currentMeta.title}
+            </h1>
+          </nav>
         </div>
 
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
-          {/* Notification Center (Houses Low Stock, Expiry QC, and System Alerts) */}
+          {/* Light Theme Default Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="btn btn-secondary btn-sm"
+            title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+            aria-label="Toggle visual theme"
+            style={{
+              padding: '0 8px',
+              height: '30px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '7px',
+              background: theme === 'dark' ? '#1e293b' : '#ffffff',
+              border: theme === 'dark' ? '1px solid #334155' : '1px solid #e2e8f0',
+              cursor: 'pointer'
+            }}
+          >
+            {theme === 'dark' ? <Sun size={14} color="#f59e0b" /> : <Moon size={14} color="#0284c7" />}
+          </button>
+
+          {/* Notification Center */}
           <NotificationCenter alerts={alerts} setTab={setTab} />
 
           {/* POS Quick Button */}
-          {canSell && currentTab !== 'pos' && (
+          {canSell && currentTab !== 'pos' && currentTab !== 'sales' && currentTab !== 'orders' && (
             <button
               onClick={() => setTab('pos')}
               className="btn btn-primary btn-sm"
@@ -102,10 +270,114 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
             </button>
           )}
 
+          {/* SuperOwner Tenant Switcher */}
+          {isSuperOwner && (
+            <div style={{ position: 'relative' }} ref={superOwnerMenuRef}>
+              <button
+                type="button"
+                onClick={() => setSuperOwnerDropdownOpen(!superOwnerDropdownOpen)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '0 10px',
+                  height: '30px',
+                  borderRadius: '7px',
+                  background: '#FEF3C7',
+                  border: '1px solid #FCD34D',
+                  color: '#92400E',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+                title="SuperOwner Mode: Switch between any business tenant"
+              >
+                <span>🔧 SuperOwner Mode</span>
+                <span style={{ color: '#D97706', fontWeight: 400 }}>|</span>
+                <span>Viewing: <strong>{tenant?.business_name || 'Latif Traders'}</strong></span>
+                <ChevronDown size={13} />
+              </button>
+              {superOwnerDropdownOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 6px)',
+                  right: 0,
+                  width: '260px',
+                  background: '#FFFFFF',
+                  borderRadius: '12px',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+                  zIndex: 1000,
+                  padding: '6px',
+                  maxHeight: '340px',
+                  overflowY: 'auto'
+                }}>
+                  <div style={{ padding: '6px 10px', fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Switch Tenant Workspace
+                  </div>
+                  {tenantsList.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        enterTenant(t);
+                        setSuperOwnerDropdownOpen(false);
+                        window.location.reload();
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        background: tenant?.id === t.id ? '#F0FDFA' : 'transparent',
+                        color: tenant?.id === t.id ? '#0F766E' : '#1E293B',
+                        fontSize: '12px',
+                        fontWeight: tenant?.id === t.id ? 700 : 500,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{t.business_name}</div>
+                        <div style={{ fontSize: '10px', color: '#94A3B8' }}>{t.id} • {t.plan}</div>
+                      </div>
+                      {tenant?.id === t.id && <CheckCircle2 size={14} color="#0F766E" />}
+                    </button>
+                  ))}
+                  <div style={{ borderTop: '1px solid #E2E8F0', margin: '4px 0', padding: '4px 0 0' }}>
+                    <button
+                      onClick={() => {
+                        setSuperOwnerDropdownOpen(false);
+                        window.history.pushState({}, '', '/superowner/dashboard');
+                        window.dispatchEvent(new PopStateEvent('popstate'));
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'center',
+                        padding: '7px 10px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        background: '#0F766E',
+                        color: '#FFFFFF',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Open Control Panel →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Divider */}
           <div style={{ width: '1px', height: '22px', background: '#e2e8f0', margin: '0 2px' }} />
 
-          {/* TOP-RIGHT USER PROFILE MENU */}
+          {/* TOP-RIGHT USER PROFILE TRIGGER */}
           <div style={{ position: 'relative' }} ref={userMenuRef}>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -181,202 +453,1053 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               />
             </button>
 
-            {/* DEDICATED USER ACCOUNT MENU DROPDOWN */}
+            {/* UPGRADED CLEAN USER MENU DROPDOWN */}
             {userMenuOpen && (
-              <div style={{
-                position: 'absolute',
-                top: 'calc(100% + 6px)',
-                right: 0,
-                width: '255px',
-                maxWidth: 'calc(100vw - 20px)',
-                background: '#ffffff',
-                borderRadius: '10px',
-                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12), 0 8px 10px -6px rgba(0,0,0,0.08)',
-                border: '1px solid #e2e8f0',
-                padding: '0.5rem',
-                zIndex: 1000,
-                animation: 'fadeIn 0.15s ease'
-              }}>
-                {/* User Profile Card Header */}
-                <div style={{
-                  padding: '0.75rem',
-                  background: '#f8fafc',
-                  borderRadius: '8px',
-                  border: '1px solid #edf2f7',
-                  marginBottom: '0.5rem'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <div style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '50%',
-                      background: '#0284c7',
-                      color: '#fff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      fontSize: '0.95rem'
-                    }}>
-                      {userInitial}
-                    </div>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{
-                        fontWeight: 700,
-                        fontSize: '0.85rem',
-                        color: '#0f172a',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {user?.full_name}
-                      </div>
-                      <div style={{ fontSize: '0.725rem', color: '#64748b' }}>
-                        @{user?.username}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className={`role-badge-pill role-badge-${role || 'sales'}`}>
-                      {roleLabel}
-                    </span>
-                    <span style={{ fontSize: '0.675rem', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px' }}>
-                      ● Online
-                    </span>
-                  </div>
-                </div>
-
-                {/* USER ACCOUNT ACTIONS (NOT PAGE LINKS!) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                  <button
-                    onClick={() => openAccountModal('profile')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.6rem',
-                      padding: '0.55rem 0.65rem',
-                      borderRadius: '6px',
-                      fontSize: '0.8rem',
-                      color: '#334155',
-                      fontWeight: 500,
-                      width: '100%',
-                      textAlign: 'left'
-                    }}
-                    className="dropdown-hover"
-                  >
-                    <User size={15} color="#0284c7" />
-                    <span>My Profile Details</span>
-                  </button>
-
-                  <button
-                    onClick={() => openAccountModal('security')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.6rem',
-                      padding: '0.55rem 0.65rem',
-                      borderRadius: '6px',
-                      fontSize: '0.8rem',
-                      color: '#334155',
-                      fontWeight: 500,
-                      width: '100%',
-                      textAlign: 'left'
-                    }}
-                    className="dropdown-hover"
-                  >
-                    <KeyRound size={15} color="#0284c7" />
-                    <span>Change Password</span>
-                  </button>
-
-                  <button
-                    onClick={() => openAccountModal('permissions')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.6rem',
-                      padding: '0.55rem 0.65rem',
-                      borderRadius: '6px',
-                      fontSize: '0.8rem',
-                      color: '#334155',
-                      fontWeight: 500,
-                      width: '100%',
-                      textAlign: 'left'
-                    }}
-                    className="dropdown-hover"
-                  >
-                    <ShieldCheck size={15} color="#0284c7" />
-                    <span>My Role & Permissions</span>
-                  </button>
-
-                  {isAdmin && (
-                    <button
-                      onClick={() => {
-                        setTab('users');
-                        setUserMenuOpen(false);
-                      }}
+              <div
+                className="saas-dropdown-menu"
+                style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 7px)',
+                  right: 0,
+                  width: '260px',
+                  maxHeight: 'calc(100vh - 75px)',
+                  overflowY: 'auto',
+                  background: '#FFFFFF',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '14px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
+                  padding: '8px',
+                  zIndex: 1000,
+                  boxSizing: 'border-box',
+                  animation: 'dropdownSlideFade 0.16s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}
+              >
+                {/* --- TOP USER CARD --- */}
+                <div
+                  style={{
+                    padding: '12px 12px 10px',
+                    background: '#F8FAFC',
+                    borderRadius: '10px',
+                    margin: '4px',
+                    marginBottom: '8px',
+                    border: '1px solid #F1F5F9'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div
                       style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #0F766E 0%, #14b8a6 100%)',
+                        color: '#FFFFFF',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.6rem',
-                        padding: '0.55rem 0.65rem',
-                        borderRadius: '6px',
-                        fontSize: '0.8rem',
-                        color: '#334155',
-                        fontWeight: 500,
-                        width: '100%',
-                        textAlign: 'left',
-                        borderTop: '1px dashed #e2e8f0',
-                        marginTop: '0.2rem',
-                        paddingTop: '0.5rem'
+                        justifyContent: 'center',
+                        fontWeight: 700,
+                        fontSize: '15px',
+                        flexShrink: 0,
+                        boxShadow: '0 2px 6px rgba(15, 118, 110, 0.25)'
                       }}
-                      className="dropdown-hover"
                     >
-                      <Users size={15} color="#6366f1" />
-                      <span>User Management (Staff & Roles)</span>
-                    </button>
-                  )}
+                      {userInitial}
+                    </div>
+
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          fontSize: '14px',
+                          fontWeight: 700,
+                          color: '#111827',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          lineHeight: 1.25
+                        }}
+                      >
+                        {user?.full_name || user?.username || 'Mudassir Arif'}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: '#6B7280',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          marginTop: '2px'
+                        }}
+                      >
+                        {userEmail}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row below: [ADMINISTRATOR badge] [SHOPOS ENTERPRISE badge] */}
+                  <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        padding: '2px 7px',
+                        borderRadius: '9999px',
+                        border: '1px solid #E5E7EB',
+                        color: '#374151',
+                        background: '#FFFFFF'
+                      }}
+                    >
+                      {roleLabel || 'ADMINISTRATOR'}
+                    </span>
+
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        padding: '2px 8px',
+                        borderRadius: '9999px',
+                        background: currentPlan === 'enterprise' ? '#7C3AED' : (currentPlan === 'pro' ? '#0F766E' : '#6B7280'),
+                        color: '#FFFFFF',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}
+                    >
+                      {currentPlan === 'enterprise' && <><span>ENTERPRISE</span> <Sparkles size={9} /></>}
+                      {currentPlan === 'pro' && <><span>PRO</span> ⭐</>}
+                      {currentPlan === 'free' && 'FREE PLAN'}
+                    </span>
+                  </div>
+
+                  {/* Business row: 🏪 "Latif Traders" 12px #374151 + "Frozen Food" teal badge */}
+                  <div
+                    style={{
+                      marginTop: '8px',
+                      paddingTop: '6px',
+                      borderTop: '1px solid #E5E7EB',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '6px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', minWidth: 0 }}>
+                      <span style={{ fontSize: '13px' }}>🏪</span>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: '#374151',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        {tenant?.business_name || 'Latif Traders'}
+                      </span>
+                    </div>
+
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: '#0F766E',
+                        background: '#F0FDFA',
+                        border: '1px solid #CCFBF1',
+                        borderRadius: '9999px',
+                        padding: '1px 7px',
+                        flexShrink: 0
+                      }}
+                    >
+                      {businessTypeLabel}
+                    </span>
+                  </div>
+
+                  {/* PLAN STATUS: "● Active • Renews 18 Nov 2026" */}
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      fontSize: '11px',
+                      color: '#6B7280',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <span style={{ color: '#10B981', fontSize: '9px' }}>●</span>
+                    <span>Active • Renews {renewalText}</span>
+                  </div>
                 </div>
 
-                {/* Divider */}
-                <div style={{ height: '1px', background: '#e2e8f0', margin: '0.4rem 0' }} />
+                {/* --- MENU ITEMS --- */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  {/* Divider label: ACCOUNT */}
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      color: '#9CA3AF',
+                      letterSpacing: '0.05em',
+                      padding: '6px 10px 2px',
+                      textTransform: 'uppercase'
+                    }}
+                  >
+                    Account
+                  </div>
 
-                {/* Sign Out Button */}
-                <button
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    logout();
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.6rem',
-                    padding: '0.55rem 0.65rem',
-                    borderRadius: '6px',
-                    fontSize: '0.8rem',
-                    color: '#dc2626',
-                    fontWeight: 600,
-                    width: '100%',
-                    textAlign: 'left',
-                    background: '#fef2f2'
-                  }}
-                  className="dropdown-hover"
-                >
-                  <LogOut size={15} color="#dc2626" />
-                  <span>Sign Out of Session</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => openAccountModal('profile')}
+                    style={{
+                      height: '36px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      color: '#374151',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#F4F6F9';
+                      e.currentTarget.style.color = '#111827';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#0F766E';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#374151';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#9CA3AF';
+                    }}
+                  >
+                    <User size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <span style={{ flex: 1 }}>My Profile</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openAccountModal('security')}
+                    style={{
+                      height: '36px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      color: '#374151',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#F4F6F9';
+                      e.currentTarget.style.color = '#111827';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#0F766E';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#374151';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#9CA3AF';
+                    }}
+                  >
+                    <KeyRound size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <span style={{ flex: 1 }}>Change Password</span>
+                  </button>
+
+                  {/* Divider label: BUSINESS */}
+                  <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      color: '#9CA3AF',
+                      letterSpacing: '0.05em',
+                      padding: '4px 10px 2px',
+                      textTransform: 'uppercase'
+                    }}
+                  >
+                    Business
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTab('settings');
+                      setUserMenuOpen(false);
+                    }}
+                    style={{
+                      height: '36px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      color: '#374151',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#F4F6F9';
+                      e.currentTarget.style.color = '#111827';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#0F766E';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#374151';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#9CA3AF';
+                    }}
+                  >
+                    <Sliders size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <span style={{ flex: 1 }}>Shop Settings</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigateSettingsTab('staff')}
+                    style={{
+                      height: '36px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      color: '#374151',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#F4F6F9';
+                      e.currentTarget.style.color = '#111827';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#0F766E';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#374151';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#9CA3AF';
+                    }}
+                  >
+                    <Users size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <span style={{ flex: 1 }}>Staff & Access</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigateSettingsTab('billing')}
+                    style={{
+                      height: '36px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      color: '#374151',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#F4F6F9';
+                      e.currentTarget.style.color = '#111827';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#0F766E';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#374151';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#9CA3AF';
+                    }}
+                  >
+                    <BarChart3 size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <span style={{ flex: 1 }}>My Plan & Billing</span>
+                  </button>
+
+                  {/* Divider label: SUPPORT */}
+                  <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      color: '#9CA3AF',
+                      letterSpacing: '0.05em',
+                      padding: '4px 10px 2px',
+                      textTransform: 'uppercase'
+                    }}
+                  >
+                    Support
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      setSupportModal('help');
+                    }}
+                    style={{
+                      height: '36px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      color: '#374151',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#F4F6F9';
+                      e.currentTarget.style.color = '#111827';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#0F766E';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#374151';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#9CA3AF';
+                    }}
+                  >
+                    <BookOpen size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <span style={{ flex: 1 }}>Help & Docs</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      setSupportModal('contact');
+                    }}
+                    style={{
+                      height: '36px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      color: '#374151',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#F4F6F9';
+                      e.currentTarget.style.color = '#111827';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#0F766E';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#374151';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#9CA3AF';
+                    }}
+                  >
+                    <MessageSquare size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <span style={{ flex: 1 }}>Contact Support</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      setSupportModal('bug');
+                    }}
+                    style={{
+                      height: '36px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      color: '#374151',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#F4F6F9';
+                      e.currentTarget.style.color = '#111827';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#0F766E';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#374151';
+                      const svg = e.currentTarget.querySelector('svg');
+                      if (svg) svg.style.color = '#9CA3AF';
+                    }}
+                  >
+                    <Bug size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <span style={{ flex: 1 }}>Report a Bug</span>
+                  </button>
+
+                  {/* Divider before Sign Out */}
+                  <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
+
+                  {/* [→ Sign Out] Color: #DC2626 (red) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      logout();
+                    }}
+                    style={{
+                      height: '36px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      color: '#DC2626',
+                      background: 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#FEF2F2')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <LogOut size={16} color="#DC2626" style={{ flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>Sign Out</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </div>
       </header>
 
-      {/* DEDICATED USER ACCOUNT MODAL */}
+      {/* DEDICATED USER ACCOUNT MODAL (Preserved) */}
       <UserProfileModal
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
         initialTab={profileModalTab}
       />
+
+      {/* SAAS SUPPORT MODAL: HELP & DOCUMENTATION */}
+      <Modal
+        isOpen={supportModal === 'help'}
+        onClose={() => setSupportModal(null)}
+        title="ShopOS Knowledge Base & User Guide"
+        subtitle="Quick reference guide, workflows, and hotkeys"
+        icon={<BookOpen size={22} color="#0F766E" />}
+        maxWidth="560px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* Card 1 */}
+          <div
+            style={{
+              background: '#F8FAFC',
+              border: '1px solid #E5E7EB',
+              borderRadius: '12px',
+              padding: '16px 18px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>⚡</span>
+              <span style={{ color: '#0F766E', fontWeight: 600, fontSize: '15px' }}>
+                1. High-Speed POS Counter Sales
+              </span>
+            </div>
+            <p style={{ margin: '6px 0 0 0', color: '#374151', fontSize: '14px', lineHeight: 1.6 }}>
+              Scan barcodes with a handheld scanner or press <code style={{ background: '#EEF2F6', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', fontFamily: 'monospace' }}>Alt + 1</code> to switch instantly to POS mode. Press Enter to process walk-in counter sales and automatically print receipts.
+            </p>
+          </div>
+
+          {/* Card 2 */}
+          <div
+            style={{
+              background: '#F8FAFC',
+              border: '1px solid #E5E7EB',
+              borderRadius: '12px',
+              padding: '16px 18px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>📦</span>
+              <span style={{ color: '#0284C7', fontWeight: 600, fontSize: '15px' }}>
+                2. Batch & Expiry Surveillance
+              </span>
+            </div>
+            <p style={{ margin: '6px 0 0 0', color: '#374151', fontSize: '14px', lineHeight: 1.6 }}>
+              Manage multiple expiry dates and batch lots per item. ShopOS enforces FIFO (First In, First Out) deduction and displays alert badges for items near expiry in the top notification tray.
+            </p>
+          </div>
+
+          {/* Card 3 */}
+          <div
+            style={{
+              background: '#F8FAFC',
+              border: '1px solid #E5E7EB',
+              borderRadius: '12px',
+              padding: '16px 18px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>📒</span>
+              <span style={{ color: '#7C3AED', fontWeight: 600, fontSize: '15px' }}>
+                3. Customer Ledgers & Udhaar Recovery
+              </span>
+            </div>
+            <p style={{ margin: '6px 0 0 0', color: '#374151', fontSize: '14px', lineHeight: 1.6 }}>
+              Record credit sales, share WhatsApp account statements with customers, and track partial disbursements with live double-entry party ledgers.
+            </p>
+          </div>
+
+          {/* Card 4 - Dark code block style keyboard shortcuts */}
+          <div
+            style={{
+              background: '#111827',
+              borderRadius: '10px',
+              padding: '16px',
+              color: '#F9FAFB'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '15px' }}>⌨️</span>
+              <span style={{ color: '#86EFAC', fontWeight: 600, fontSize: '14px' }}>
+                4. Keyboard Shortcuts Cheatsheet
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px 8px', fontFamily: 'monospace', color: '#86EFAC', fontSize: '12px' }}>
+                  Alt + 1
+                </span>
+                <span style={{ color: '#D1D5DB' }}>POS Terminal</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px 8px', fontFamily: 'monospace', color: '#86EFAC', fontSize: '12px' }}>
+                  Alt + 2
+                </span>
+                <span style={{ color: '#D1D5DB' }}>Inventory List</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px 8px', fontFamily: 'monospace', color: '#86EFAC', fontSize: '12px' }}>
+                  Alt + 3
+                </span>
+                <span style={{ color: '#D1D5DB' }}>Sales & Orders</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px 8px', fontFamily: 'monospace', color: '#86EFAC', fontSize: '12px' }}>
+                  Alt + 4
+                </span>
+                <span style={{ color: '#D1D5DB' }}>Purchases</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px 8px', fontFamily: 'monospace', color: '#86EFAC', fontSize: '12px' }}>
+                  Alt + B
+                </span>
+                <span style={{ color: '#D1D5DB' }}>Toggle Sidebar</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px 8px', fontFamily: 'monospace', color: '#86EFAC', fontSize: '12px' }}>
+                  Alt + 0
+                </span>
+                <span style={{ color: '#D1D5DB' }}>Dashboard</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* SAAS SUPPORT MODAL: CONTACT SUPPORT */}
+      <Modal
+        isOpen={supportModal === 'contact'}
+        onClose={() => setSupportModal(null)}
+        title="Contact ShopOS Support"
+        subtitle="Dedicated assistance for your store operations"
+        icon={<MessageSquare size={22} color="#0F766E" />}
+        maxWidth="520px"
+        footer={!contactSubmitted ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setSupportModal(null)}
+              style={{
+                height: '40px',
+                padding: '0 20px',
+                border: '1px solid #E5E7EB',
+                borderRadius: '10px',
+                background: '#FFFFFF',
+                color: '#374151',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#F4F6F9')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!contactMessage.trim()) return alert('Please enter your question or request.');
+                setContactSubmitted(true);
+                setContactMessage('');
+              }}
+              style={{
+                height: '40px',
+                padding: '0 20px',
+                background: '#0F766E',
+                color: '#FFFFFF',
+                borderRadius: '10px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#065F46')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#0F766E')}
+            >
+              <span>Send Message</span>
+              <ArrowRight size={15} />
+            </button>
+          </>
+        ) : null}
+      >
+        {contactSubmitted ? (
+          <div style={{ textAlign: 'center', padding: '24px 12px' }}>
+            <CheckCircle2 size={48} color="#10B981" style={{ margin: '0 auto 14px' }} />
+            <h4 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: 700, color: '#111827' }}>
+              Message Received!
+            </h4>
+            <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+              Our dedicated support team will reach out to <strong>{userEmail}</strong> within 1 hour.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setContactSubmitted(false); setSupportModal(null); }}
+              style={{
+                height: '40px',
+                padding: '0 24px',
+                background: '#0F766E',
+                color: '#FFFFFF',
+                borderRadius: '10px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Close Window
+            </button>
+          </div>
+        ) : (
+          <div>
+            {/* Contact info card: #F0FDF4, border #BBF7D0 */}
+            <div
+              style={{
+                background: '#F0FDF4',
+                border: '1px solid #BBF7D0',
+                borderRadius: '12px',
+                padding: '16px 18px',
+                marginBottom: '18px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                fontSize: '13px',
+                color: '#166534'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📱</span>
+                <span><strong>WhatsApp:</strong> +92 300 0746767</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📧</span>
+                <span><strong>Email:</strong> support@shopos.pk</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>🕐</span>
+                <span><strong>Hours:</strong> Mon – Sat: 9:00 AM – 10:00 PM PKT</span>
+              </div>
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}
+              >
+                How can we help?
+              </label>
+              <textarea
+                rows={4}
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                placeholder="Describe your inquiry, billing question, or custom setup request..."
+                style={{
+                  width: '100%',
+                  height: '100px',
+                  borderRadius: '10px',
+                  border: '1px solid #E5E7EB',
+                  padding: '12px 14px',
+                  fontSize: '14px',
+                  color: '#111827',
+                  background: '#FFFFFF',
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  transition: 'border-color 0.15s, box-shadow 0.15s'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#0F766E';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(15, 118, 110, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#E5E7EB';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* SAAS SUPPORT MODAL: REPORT A BUG */}
+      <Modal
+        isOpen={supportModal === 'bug'}
+        onClose={() => setSupportModal(null)}
+        title="Report an Issue or Bug"
+        subtitle="Help us identify and resolve platform problems"
+        icon={<Bug size={22} color="#DC2626" />}
+        maxWidth="520px"
+        footer={!bugSubmitted ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setSupportModal(null)}
+              style={{
+                height: '40px',
+                padding: '0 20px',
+                border: '1px solid #E5E7EB',
+                borderRadius: '10px',
+                background: '#FFFFFF',
+                color: '#374151',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#F4F6F9')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!bugDescription.trim()) return alert('Please describe the issue.');
+                setBugSubmitted(true);
+                setBugDescription('');
+              }}
+              style={{
+                height: '40px',
+                padding: '0 20px',
+                background: '#DC2626',
+                color: '#FFFFFF',
+                borderRadius: '10px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#B91C1C')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#DC2626')}
+            >
+              Submit Report
+            </button>
+          </>
+        ) : null}
+      >
+        {bugSubmitted ? (
+          <div style={{ textAlign: 'center', padding: '24px 12px' }}>
+            <CheckCircle2 size={48} color="#10B981" style={{ margin: '0 auto 14px' }} />
+            <h4 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: 700, color: '#111827' }}>
+              Issue Report Logged!
+            </h4>
+            <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+              Thank you for helping us improve ShopOS. Our engineering team has received your report with diagnostic details.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setBugSubmitted(false); setSupportModal(null); }}
+              style={{
+                height: '40px',
+                padding: '0 24px',
+                background: '#0F766E',
+                color: '#FFFFFF',
+                borderRadius: '10px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Close Window
+            </button>
+          </div>
+        ) : (
+          <div>
+            <div style={{ marginBottom: '16px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}
+              >
+                Issue Category
+              </label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '14px', top: '12px', fontSize: '16px', pointerEvents: 'none' }}>
+                  🐛
+                </span>
+                <select
+                  value={bugCategory}
+                  onChange={(e) => setBugCategory(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '44px',
+                    borderRadius: '10px',
+                    border: '1px solid #E5E7EB',
+                    padding: '0 14px 0 42px',
+                    fontSize: '14px',
+                    color: '#111827',
+                    background: '#FFFFFF',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.15s, box-shadow 0.15s'
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#0F766E';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(15, 118, 110, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#E5E7EB';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <option>Interface / Display</option>
+                  <option>POS Terminal & Invoicing</option>
+                  <option>Barcode & Thermal Printing</option>
+                  <option>Inventory & Stock Batches</option>
+                  <option>Customers & Udhaar Balances</option>
+                  <option>Performance or Slowness</option>
+                  <option>Other Feedback</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}
+              >
+                Describe the issue *
+              </label>
+              <textarea
+                rows={4}
+                value={bugDescription}
+                onChange={(e) => setBugDescription(e.target.value)}
+                placeholder="What happened? Please describe what you observed..."
+                style={{
+                  width: '100%',
+                  height: '120px',
+                  borderRadius: '10px',
+                  border: '1px solid #E5E7EB',
+                  padding: '12px 14px',
+                  fontSize: '14px',
+                  color: '#111827',
+                  background: '#FFFFFF',
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  transition: 'border-color 0.15s, box-shadow 0.15s'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#0F766E';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(15, 118, 110, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#E5E7EB';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
     </>
   );
 }

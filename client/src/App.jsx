@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
+import LandingPage from './pages/LandingPage';
+import Register from './pages/Register';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import PosSales from './pages/PosSales';
@@ -14,20 +16,134 @@ import Suppliers from './pages/Suppliers';
 import Expenses from './pages/Expenses';
 import CashFlow from './pages/CashFlow';
 import Reports from './pages/Reports';
-import Users from './pages/Users';
 import Settings from './pages/Settings';
+import SuperOwnerDashboard from './pages/SuperOwnerDashboard';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Sparkles, CheckCircle2, X } from 'lucide-react';
 import { api } from './utils/api';
+import { applyTheme as applyThemeHelper } from './utils/theme';
 
 function MainApp() {
-  const { user, loading, role, roleLabel, defaultTab, hasTabAccess } = useAuth();
-  const [currentTab, setTab] = useState('dashboard');
+  const { user, loading, role, roleLabel, defaultTab, hasTabAccess, tenant, plan, isSuperOwner, activeImpersonatedTenant, exitTenant, enterTenant } = useAuth();
+  const [superOwnerView, setSuperOwnerView] = useState(() => {
+    return window.location.pathname === '/superowner/dashboard';
+  });
+  const [currentTab, setTabState] = useState(() => {
+    const path = window.location.pathname;
+    const hash = window.location.hash;
+    const search = window.location.search;
+
+    // Normalize legacy /billing, /settings/billing or #billing to /settings?tab=billing
+    if (path === '/settings/billing' || path === '/billing' || hash === '#billing') {
+      try {
+        const url = new URL(window.location.href);
+        url.pathname = '/settings';
+        url.searchParams.set('tab', 'billing');
+        url.hash = '';
+        window.history.replaceState({}, '', url.toString());
+      } catch (_) {}
+      return 'settings';
+    }
+
+    // Normalize legacy /users, /settings/staff or #staff to /settings?tab=staff
+    if (path === '/settings/staff' || path === '/users' || hash === '#staff' || hash === '#users') {
+      try {
+        const url = new URL(window.location.href);
+        url.pathname = '/settings';
+        url.searchParams.set('tab', 'staff');
+        url.hash = '';
+        window.history.replaceState({}, '', url.toString());
+      } catch (_) {}
+      return 'settings';
+    }
+
+    if (path.startsWith('/settings') || search.includes('tab=')) return 'settings';
+    return 'dashboard';
+  });
+
+  // Centralized tab navigator that automatically resolves sub-tabs without duplicate route mounts
+  const setTab = (target) => {
+    if (target === 'users' || target === 'staff') {
+      try {
+        const url = new URL(window.location.href);
+        url.pathname = '/settings';
+        url.searchParams.set('tab', 'staff');
+        window.history.pushState({}, '', url.toString());
+      } catch (_) {}
+      window.dispatchEvent(new CustomEvent('settings_tab_change', { detail: 'staff' }));
+      setTabState('settings');
+      return;
+    }
+
+    if (target === 'billing' || target === 'plan') {
+      try {
+        const url = new URL(window.location.href);
+        url.pathname = '/settings';
+        url.searchParams.set('tab', 'billing');
+        window.history.pushState({}, '', url.toString());
+      } catch (_) {}
+      window.dispatchEvent(new CustomEvent('settings_tab_change', { detail: 'billing' }));
+      setTabState('settings');
+      return;
+    }
+
+    if (target === 'stock-valuation') {
+      setTabState('reports');
+      return;
+    }
+
+    setTabState(target);
+  };
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem('lt_sidebar_collapsed') === 'true';
   });
   const [alerts, setAlerts] = useState({ low_stock_count: 0, near_expiry_count: 0 });
+
+  // Public navigation views: 'landing' (default), 'login', 'register'
+  const [publicView, setPublicView] = useState(() => {
+    if (window.location.pathname === '/login' || window.location.hash === '#login') return 'login';
+    if (window.location.pathname === '/register' || window.location.hash === '#register') return 'register';
+    return 'landing';
+  });
+
+  useEffect(() => {
+    const handleLocation = () => {
+      const path = window.location.pathname;
+      if (path === '/superowner/dashboard') {
+        setSuperOwnerView(true);
+      } else if (path.startsWith('/superowner/tenant/')) {
+        const tid = path.split('/superowner/tenant/')[1];
+        if (tid) {
+          enterTenant({ id: tid, business_name: tid });
+          window.history.replaceState({}, '', '/');
+          setSuperOwnerView(false);
+        }
+      } else {
+        setSuperOwnerView(false);
+      }
+    };
+
+    window.addEventListener('popstate', handleLocation);
+    handleLocation();
+    return () => window.removeEventListener('popstate', handleLocation);
+  }, []);
+
+  useEffect(() => {
+    if (user && (window.location.pathname === '/register' || window.location.pathname === '/login')) {
+      try {
+        window.history.replaceState({}, '', '/');
+      } catch (_) {}
+    }
+  }, [user]);
+
+  // Soft limit quota banner state
+  const [quotaNotice, setQuotaNotice] = useState(null);
+
+  // First-time onboarding checklist
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return localStorage.getItem('shopos_onboarding_dismissed') !== 'true';
+  });
 
   const toggleSidebarCollapse = () => {
     setSidebarCollapsed(prev => {
@@ -36,6 +152,11 @@ function MainApp() {
       return next;
     });
   };
+
+  // Theme initialization & event listeners
+  useEffect(() => {
+    applyThemeHelper(localStorage.getItem('lt_theme') || 'light');
+  }, []);
 
   // When user loads or changes, ensure currentTab is an allowed tab
   useEffect(() => {
@@ -51,14 +172,16 @@ function MainApp() {
     const syncSettings = () => {
       api.get('/settings').then(res => {
         if (res && res.success && res.settings) {
-          if (res.settings.shop_name) {
-            localStorage.setItem('lt_shop_name', res.settings.shop_name);
-            document.title = `${res.settings.shop_name} - POS & Inventory System`;
-          }
+          const shopName = res.settings.shop_name || tenant?.business_name || 'Latif Traders';
+          localStorage.setItem('lt_shop_name', shopName);
+          document.title = `${shopName} - ShopOS Business Management`;
           if (res.settings.tagline) localStorage.setItem('lt_shop_tagline', res.settings.tagline);
           if (res.settings.phone) localStorage.setItem('lt_phone', res.settings.phone);
           if (res.settings.email) localStorage.setItem('lt_email', res.settings.email);
           if (res.settings.address) localStorage.setItem('lt_address', res.settings.address);
+          if (res.settings.theme && !localStorage.getItem('lt_theme')) {
+            applyThemeHelper(res.settings.theme);
+          }
           window.dispatchEvent(new CustomEvent('settings_updated', { detail: res.settings }));
         }
       }).catch(() => {});
@@ -67,11 +190,10 @@ function MainApp() {
     syncSettings();
     window.addEventListener('focus', syncSettings);
     return () => window.removeEventListener('focus', syncSettings);
-  }, [user]);
+  }, [user, tenant]);
 
   useEffect(() => {
     if (user) {
-      // Fetch badge alert counts
       api.get('/reports/dashboard').then(res => {
         if (res && res.success) {
           setAlerts({
@@ -82,10 +204,29 @@ function MainApp() {
           });
         }
       }).catch(err => console.error(err));
-    }
-  }, [user, currentTab]);
 
-  // Global Quick Switch Shortcuts (Alt + 0-7, Alt + B for sidebar) with role validation
+      // Check Free plan limits
+      if (plan === 'free') {
+        api.get('/settings/billing').then(res => {
+          if (res?.success && res.billing?.usage) {
+            const { products, invoices_this_month } = res.billing.usage;
+            if (products.used >= 40 || invoices_this_month.used >= 80) {
+              setQuotaNotice({
+                productsUsed: products.used,
+                productsLimit: products.limit,
+                invoicesUsed: invoices_this_month.used,
+                invoicesLimit: invoices_this_month.limit
+              });
+            } else {
+              setQuotaNotice(null);
+            }
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [user, currentTab, plan]);
+
+  // Global Quick Switch Shortcuts
   useEffect(() => {
     const handleGlobalShortcuts = (e) => {
       if (!e.altKey) return;
@@ -119,23 +260,52 @@ function MainApp() {
   }, [hasTabAccess]);
 
   if (loading) {
+    const isDark = (localStorage.getItem('lt_theme') || 'light') === 'dark';
     return (
       <div style={{
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#0f172a',
-        color: '#38bdf8',
-        fontWeight: 600
+        background: isDark ? '#090d16' : '#f8fafc',
+        color: isDark ? '#38bdf8' : '#0284c7',
+        fontWeight: 600,
+        fontSize: '15px'
       }}>
-        Initializing Latif Traders System...
+        Loading ShopOS Workspace...
       </div>
     );
   }
 
+  // ── Unauthenticated Views: Landing, Login, Register ──
   if (!user) {
-    return <Login />;
+    if (publicView === 'register') {
+      return (
+        <Register
+          onNavigateLogin={() => setPublicView('login')}
+          onNavigateLanding={() => setPublicView('landing')}
+        />
+      );
+    }
+    if (publicView === 'login') {
+      return (
+        <Login
+          onNavigateRegister={() => setPublicView('register')}
+          onNavigateLanding={() => setPublicView('landing')}
+        />
+      );
+    }
+    return (
+      <LandingPage
+        onNavigateLogin={() => setPublicView('login')}
+        onNavigateRegister={() => setPublicView('register')}
+      />
+    );
+  }
+
+  // ── SuperOwner Direct Route ──
+  if (user && isSuperOwner && superOwnerView) {
+    return <SuperOwnerDashboard />;
   }
 
   const isTabAllowed = hasTabAccess(currentTab);
@@ -155,6 +325,67 @@ function MainApp() {
       />
 
       <div className="main-content">
+        {/* SuperOwner Impersonation Banner */}
+        {isSuperOwner && (
+          <div style={{
+            background: '#FEF3C7',
+            borderBottom: '1px solid #FCD34D',
+            padding: '8px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '12px',
+            color: '#92400E',
+            fontWeight: 600,
+            zIndex: 99
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={15} color="#D97706" />
+              <span>⚠️ Viewing as: <strong>{tenant?.business_name || 'Latif Traders'}</strong> (SuperOwner)</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={() => {
+                  window.history.pushState({}, '', '/superowner/dashboard');
+                  setSuperOwnerView(true);
+                }}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #D97706',
+                  background: '#FFFFFF',
+                  color: '#92400E',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Control Panel
+              </button>
+              {activeImpersonatedTenant && (
+                <button
+                  onClick={() => {
+                    exitTenant();
+                    window.location.reload();
+                  }}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: '#D97706',
+                    color: '#FFFFFF',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Exit Tenant View
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <Header
           currentTab={currentTab}
           setTab={setTab}
@@ -165,6 +396,170 @@ function MainApp() {
         />
 
         <main className="page-body">
+          {/* Soft Quota Alert Banner for Free plan users approaching limit */}
+          {quotaNotice && (
+            <div style={{
+              margin: '0 0 1.25rem 0',
+              padding: '0.85rem 1.25rem',
+              borderRadius: '10px',
+              background: '#fef3c7',
+              border: '1px solid #fde68a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              color: '#92400e',
+              fontSize: '0.85rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <AlertTriangle size={18} className="text-amber-600 flex-shrink-0" />
+                <span>
+                  <strong>Free Plan Usage Warning:</strong> You have used{' '}
+                  <strong>{quotaNotice.productsUsed}/{quotaNotice.productsLimit}</strong> products and{' '}
+                  <strong>{quotaNotice.invoicesUsed}/{quotaNotice.invoicesLimit}</strong> invoices this month.
+                  Upgrade to Pro to remove all limits.
+                </span>
+              </div>
+              <button
+                onClick={() => setTab('settings')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: '#0284c7',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                Upgrade to Pro
+                <ArrowRight size={13} />
+              </button>
+            </div>
+          )}
+
+          {/* Welcome Onboarding Checklist for newly registered tenants */}
+          {showOnboarding && tenant?.id !== 'latif_001' && (
+            <div style={{
+              margin: '0 0 1.25rem 0',
+              padding: '1.25rem',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)',
+              border: '1px solid #bbf7d0',
+              position: 'relative'
+            }}>
+              <button
+                onClick={() => {
+                  setShowOnboarding(false);
+                  localStorage.setItem('shopos_onboarding_dismissed', 'true');
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748b',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={16} />
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <Sparkles size={18} className="text-emerald-600" />
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                  Welcome to ShopOS, {tenant?.business_name}! 🎉
+                </h3>
+              </div>
+              <p style={{ margin: '0 0 12px 0', fontSize: '0.825rem', color: '#475569', lineHeight: 1.5 }}>
+                Your isolated tenant database is ready. Follow this quick checklist to begin operating:
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                <button
+                  onClick={() => setTab('inventory')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: '#fff',
+                    color: '#0f172a',
+                    fontSize: '0.785rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  1. Add your first product
+                </button>
+                <button
+                  onClick={() => setTab('pos')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: '#fff',
+                    color: '#0f172a',
+                    fontSize: '0.785rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  2. Make your first POS sale
+                </button>
+                <button
+                  onClick={() => setTab('customers')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: '#fff',
+                    color: '#0f172a',
+                    fontSize: '0.785rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  3. Add a customer
+                </button>
+                <button
+                  onClick={() => setTab('settings')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: '#fff',
+                    color: '#0f172a',
+                    fontSize: '0.785rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  4. Setup business profile & logo
+                </button>
+              </div>
+            </div>
+          )}
+
           <ErrorBoundary fallbackTitle="Application Error" key={currentTab}>
             {!isTabAllowed ? (
               <div className="card" style={{
@@ -207,17 +602,15 @@ function MainApp() {
               <>
                 {currentTab === 'dashboard' && <Dashboard setTab={setTab} />}
                 {currentTab === 'pos' && <PosSales />}
-                {currentTab === 'sales' && <SalesList />}
-                {currentTab === 'inventory' && <Inventory />}
-                {currentTab === 'stock-adjust' && <StockAdjustment />}
+                {currentTab === 'sales' && <SalesList setTab={setTab} />}
+                {currentTab === 'inventory' && <Inventory setTab={setTab} />}
+                {currentTab === 'stock-adjust' && <StockAdjustment setTab={setTab} />}
                 {currentTab === 'purchases' && <Purchases />}
                 {currentTab === 'customers' && <Customers />}
                 {currentTab === 'suppliers' && <Suppliers />}
                 {currentTab === 'expenses' && <Expenses />}
                 {currentTab === 'cashflow' && <CashFlow />}
                 {currentTab === 'reports' && <Reports />}
-                {currentTab === 'stock-valuation' && <Reports initialReport="stock" />}
-                {currentTab === 'users' && <Users />}
                 {currentTab === 'settings' && <Settings />}
               </>
             )}

@@ -57,7 +57,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'X-Requested-With', 'x-tenant-id', 'X-Tenant-Id']
 }));
 
 app.use(express.json({ limit: '10mb' }));
@@ -89,6 +89,7 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/backups', require('./routes/backups'));
+app.use('/api/superowner', require('./routes/superowner'));
 
 // Serve Vite frontend in production if built
 const clientDist = path.join(__dirname, '..', 'client', 'dist');

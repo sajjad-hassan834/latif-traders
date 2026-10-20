@@ -3,6 +3,7 @@ const { db } = require('../config/database');
 // Dashboard Overview Metrics
 exports.getDashboardMetrics = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const today = new Date().toISOString().split('T')[0];
 
     // Today's Sales
@@ -13,39 +14,39 @@ exports.getDashboardMetrics = (req, res) => {
         COALESCE(SUM(paid_amount), 0) as cash_received,
         COALESCE(SUM(balance_due), 0) as credit_sales
       FROM sales
-      WHERE sale_date = ?
-    `).get(today);
+      WHERE sale_date = ? AND tenant_id = ?
+    `).get(today, tenantId);
 
-    // Today's Purchases (Net of Returns for today's bills)
+    // Today's Purchases
     const todayPurchases = db.prepare(`
       SELECT
         COUNT(p.id) as bill_count,
         COALESCE(SUM(
           MAX(0, p.grand_total - COALESCE((
-            SELECT SUM(total_amount) FROM returns WHERE original_invoice_id = p.id
+            SELECT SUM(total_amount) FROM returns WHERE original_invoice_id = p.id AND tenant_id = p.tenant_id
           ), 0))
         ), 0) as total_purchases,
         COALESCE(SUM(p.paid_amount), 0) as cash_paid
       FROM purchases p
-      WHERE p.purchase_date = ?
-    `).get(today);
+      WHERE p.purchase_date = ? AND p.tenant_id = ?
+    `).get(today, tenantId);
 
     // Today's Expenses
     const todayExpenses = db.prepare(`
       SELECT COALESCE(SUM(amount), 0) as total_expenses
       FROM expenses
-      WHERE expense_date = ?
-    `).get(today);
+      WHERE expense_date = ? AND tenant_id = ?
+    `).get(today, tenantId);
 
-    // Outstanding Receivables from all customers
+    // Outstanding Receivables from this tenant's customers
     const totalReceivables = db.prepare(`
-      SELECT COALESCE(SUM(current_balance), 0) as balance FROM customers
-    `).get().balance;
+      SELECT COALESCE(SUM(current_balance), 0) as balance FROM customers WHERE tenant_id = ?
+    `).get(tenantId).balance;
 
-    // Outstanding Payables to all suppliers
+    // Outstanding Payables to this tenant's suppliers
     const totalPayables = db.prepare(`
-      SELECT COALESCE(SUM(current_balance), 0) as balance FROM suppliers
-    `).get().balance;
+      SELECT COALESCE(SUM(current_balance), 0) as balance FROM suppliers WHERE tenant_id = ?
+    `).get(tenantId).balance;
 
     // Total Inventory Valuation
     const inventoryValuation = db.prepare(`
@@ -54,12 +55,12 @@ exports.getDashboardMetrics = (req, res) => {
         COALESCE(SUM(b.quantity * p.sale_price), 0) as total_retail_value,
         COALESCE(SUM(b.quantity), 0) as total_items_stock
       FROM batches b
-      JOIN products p ON b.product_id = p.id
-      WHERE b.status = 'active'
-    `).get();
+      JOIN products p ON b.product_id = p.id AND p.tenant_id = b.tenant_id
+      WHERE b.status = 'active' AND b.tenant_id = ?
+    `).get(tenantId);
 
     // Alert thresholds
-    const nearExpirySetting = db.prepare("SELECT value FROM settings WHERE key = 'near_expiry_days'").get();
+    const nearExpirySetting = db.prepare("SELECT value FROM tenant_settings WHERE tenant_id = ? AND key = 'near_expiry_days'").get(tenantId);
     const alertDays = nearExpirySetting ? parseInt(nearExpirySetting.value, 10) : 15;
     const alertDate = new Date(Date.now() + alertDays * 86400000).toISOString().split('T')[0];
 
@@ -68,24 +69,24 @@ exports.getDashboardMetrics = (req, res) => {
       SELECT p.id, p.name, p.sku, p.min_stock_level, p.unit,
         COALESCE(SUM(b.quantity), 0) as current_stock
       FROM products p
-      LEFT JOIN batches b ON p.id = b.product_id AND b.status = 'active'
-      WHERE p.status = 'active'
+      LEFT JOIN batches b ON p.id = b.product_id AND b.status = 'active' AND b.tenant_id = p.tenant_id
+      WHERE p.status = 'active' AND p.tenant_id = ?
       GROUP BY p.id
       HAVING current_stock <= p.min_stock_level
       ORDER BY current_stock ASC
       LIMIT 10
-    `).all();
+    `).all(tenantId);
 
     // Near expiry batches
     const nearExpiryBatches = db.prepare(`
       SELECT b.id, b.batch_no, b.expiry_date, b.quantity, p.name as product_name, p.unit,
         ROUND((julianday(b.expiry_date) - julianday(?))) as days_remaining
       FROM batches b
-      JOIN products p ON b.product_id = p.id
-      WHERE b.status = 'active' AND b.quantity > 0 AND b.expiry_date <= ?
+      JOIN products p ON b.product_id = p.id AND p.tenant_id = b.tenant_id
+      WHERE b.status = 'active' AND b.quantity > 0 AND b.expiry_date <= ? AND b.tenant_id = ?
       ORDER BY b.expiry_date ASC
       LIMIT 10
-    `).all(today, alertDate);
+    `).all(today, alertDate, tenantId);
 
     // Top Selling Products (Last 30 Days)
     const topProducts = db.prepare(`
@@ -93,35 +94,66 @@ exports.getDashboardMetrics = (req, res) => {
         SUM(si.quantity) as total_qty,
         SUM(si.total_price) as total_revenue
       FROM sale_items si
-      JOIN products p ON si.product_id = p.id
-      JOIN sales s ON si.sale_id = s.id
-      WHERE s.sale_date >= date('now', '-30 days')
+      JOIN products p ON si.product_id = p.id AND p.tenant_id = si.tenant_id
+      JOIN sales s ON si.sale_id = s.id AND s.tenant_id = si.tenant_id
+      WHERE s.sale_date >= date('now', '-30 days') AND si.tenant_id = ?
       GROUP BY p.id
       ORDER BY total_revenue DESC
       LIMIT 5
-    `).all();
+    `).all(tenantId);
 
     // Recent Sales
     const recentSales = db.prepare(`
       SELECT s.id, s.invoice_no, s.sale_date, s.grand_total, s.paid_amount, s.balance_due,
-        COALESCE(c.name, 'Counter Retail') as customer_name
+        s.payment_method, s.sale_type,
+        COALESCE(c.name, 'Counter Walk-in') as customer_name,
+        COALESCE((
+          SELECT p.name FROM sale_items si JOIN products p ON si.product_id = p.id WHERE si.sale_id = s.id LIMIT 1
+        ), 'Product Item') as product_name
       FROM sales s
-      LEFT JOIN customers c ON s.customer_id = c.id
+      LEFT JOIN customers c ON s.customer_id = c.id AND c.tenant_id = s.tenant_id
+      WHERE s.tenant_id = ?
       ORDER BY s.id DESC
-      LIMIT 6
-    `).all();
+      LIMIT 8
+    `).all(tenantId);
 
-    // Estimated Today Net Profit:
-    // Today's COGS for sold items
+    // Today's COGS
     const todayCOGS = db.prepare(`
       SELECT COALESCE(SUM(si.quantity * si.cost_price), 0) as cogs
       FROM sale_items si
-      JOIN sales s ON si.sale_id = s.id
-      WHERE s.sale_date = ?
-    `).get(today).cogs;
+      JOIN sales s ON si.sale_id = s.id AND s.tenant_id = si.tenant_id
+      WHERE s.sale_date = ? AND si.tenant_id = ?
+    `).get(today, tenantId).cogs;
 
     const estimatedGrossProfit = todaySales.total_sales - todayCOGS;
     const estimatedNetProfit = estimatedGrossProfit - todayExpenses.total_expenses;
+
+    // 14-day sales & margin trend
+    const salesTrend = db.prepare(`
+      SELECT
+        s.sale_date,
+        COALESCE(SUM(s.grand_total), 0) as total_sales,
+        COALESCE(SUM(s.grand_total - COALESCE(cogs.total_cogs, 0)), 0) as gross_margin
+      FROM sales s
+      LEFT JOIN (
+        SELECT sale_id, SUM(quantity * cost_price) as total_cogs
+        FROM sale_items
+        WHERE tenant_id = ?
+        GROUP BY sale_id
+      ) cogs ON s.id = cogs.sale_id
+      WHERE s.sale_date >= date('now', '-14 days') AND s.tenant_id = ?
+      GROUP BY s.sale_date
+      ORDER BY s.sale_date ASC
+    `).all(tenantId, tenantId);
+
+    // Top customer accounts with receivables
+    const topCustomers = db.prepare(`
+      SELECT id, name, phone, customer_type, current_balance
+      FROM customers
+      WHERE tenant_id = ? AND NOT (name LIKE '%Walk-in%' OR name LIKE '%Counter%')
+      ORDER BY current_balance DESC, id ASC
+      LIMIT 6
+    `).all(tenantId);
 
     return res.json({
       success: true,
@@ -142,7 +174,9 @@ exports.getDashboardMetrics = (req, res) => {
         low_stock_items: lowStockItems,
         near_expiry_batches: nearExpiryBatches,
         top_products: topProducts,
-        recent_sales: recentSales
+        recent_sales: recentSales,
+        sales_trend: salesTrend,
+        top_customers: topCustomers
       }
     });
   } catch (err) {
@@ -154,6 +188,7 @@ exports.getDashboardMetrics = (req, res) => {
 // Profit & Loss Report
 exports.getProfitAndLoss = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { start_date, end_date } = req.query;
     const sDate = start_date || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const eDate = end_date || new Date().toISOString().split('T')[0];
@@ -166,23 +201,23 @@ exports.getProfitAndLoss = (req, res) => {
         COALESCE(SUM(discount), 0) as total_discounts,
         COALESCE(SUM(grand_total), 0) as net_revenue
       FROM sales
-      WHERE sale_date >= ? AND sale_date <= ?
-    `).get(sDate, eDate);
+      WHERE sale_date >= ? AND sale_date <= ? AND tenant_id = ?
+    `).get(sDate, eDate, tenantId);
 
     // 2. Sales Returns
     const returnsData = db.prepare(`
       SELECT COALESCE(SUM(total_amount), 0) as return_total
       FROM returns
-      WHERE type = 'SALE_RETURN' AND date(created_at) >= ? AND date(created_at) <= ?
-    `).get(sDate, eDate);
+      WHERE type = 'SALE_RETURN' AND date(created_at) >= ? AND date(created_at) <= ? AND tenant_id = ?
+    `).get(sDate, eDate, tenantId);
 
     // 3. Cost of Goods Sold (COGS)
     const cogsData = db.prepare(`
       SELECT COALESCE(SUM(si.quantity * si.cost_price), 0) as cogs
       FROM sale_items si
-      JOIN sales s ON si.sale_id = s.id
-      WHERE s.sale_date >= ? AND s.sale_date <= ?
-    `).get(sDate, eDate);
+      JOIN sales s ON si.sale_id = s.id AND s.tenant_id = si.tenant_id
+      WHERE s.sale_date >= ? AND s.sale_date <= ? AND si.tenant_id = ?
+    `).get(sDate, eDate, tenantId);
 
     const adjustedRevenue = salesData.net_revenue - returnsData.return_total;
     const grossProfit = adjustedRevenue - cogsData.cogs;
@@ -192,11 +227,11 @@ exports.getProfitAndLoss = (req, res) => {
     const expensesByCategory = db.prepare(`
       SELECT ec.name as category, COALESCE(SUM(e.amount), 0) as amount
       FROM expenses e
-      LEFT JOIN expense_categories ec ON e.category_id = ec.id
-      WHERE e.expense_date >= ? AND e.expense_date <= ?
+      LEFT JOIN expense_categories ec ON e.category_id = ec.id AND ec.tenant_id = e.tenant_id
+      WHERE e.expense_date >= ? AND e.expense_date <= ? AND e.tenant_id = ?
       GROUP BY ec.id
       ORDER BY amount DESC
-    `).all(sDate, eDate);
+    `).all(sDate, eDate, tenantId);
 
     const totalExpenses = expensesByCategory.reduce((sum, item) => sum + item.amount, 0);
     const netProfit = grossProfit - totalExpenses;
@@ -248,6 +283,7 @@ exports.getProfitAndLoss = (req, res) => {
 // Daily Sales Report
 exports.getDailySalesReport = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { start_date, end_date } = req.query;
     const sDate = start_date || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const eDate = end_date || new Date().toISOString().split('T')[0];
@@ -265,10 +301,10 @@ exports.getDailySalesReport = (req, res) => {
         COALESCE(SUM(balance_due), 0) as credit_issued,
         COALESCE(SUM(balance_due), 0) as credit_sales
       FROM sales
-      WHERE sale_date >= ? AND sale_date <= ?
+      WHERE sale_date >= ? AND sale_date <= ? AND tenant_id = ?
       GROUP BY sale_date
       ORDER BY sale_date DESC
-    `).all(sDate, eDate);
+    `).all(sDate, eDate, tenantId);
 
     return res.json({ success: true, daily_summary: dailySummary });
   } catch (err) {
@@ -279,6 +315,7 @@ exports.getDailySalesReport = (req, res) => {
 // Current Stock & Valuation Report
 exports.getStockReport = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const stockReport = db.prepare(`
       SELECT p.id, p.name, p.sku, p.barcode, p.brand, p.unit, p.min_stock_level,
         c.name as category_name,
@@ -288,11 +325,12 @@ exports.getStockReport = (req, res) => {
         COALESCE(SUM(b.quantity * p.sale_price), 0) as total_retail_value,
         COALESCE(SUM(b.quantity * (p.sale_price - p.purchase_price)), 0) as potential_profit
       FROM products p
-      LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN batches b ON p.id = b.product_id AND b.status = 'active'
+      LEFT JOIN categories c ON p.category_id = c.id AND c.tenant_id = p.tenant_id
+      LEFT JOIN batches b ON p.id = b.product_id AND b.status = 'active' AND b.tenant_id = p.tenant_id
+      WHERE p.tenant_id = ?
       GROUP BY p.id
       ORDER BY p.name ASC
-    `).all();
+    `).all(tenantId);
 
     const totals = {
       total_items: stockReport.length,
@@ -311,8 +349,9 @@ exports.getStockReport = (req, res) => {
 // Expiry Alert Report
 exports.getExpiryReport = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const today = new Date().toISOString().split('T')[0];
-    const nearExpirySetting = db.prepare("SELECT value FROM settings WHERE key = 'near_expiry_days'").get();
+    const nearExpirySetting = db.prepare("SELECT value FROM tenant_settings WHERE tenant_id = ? AND key = 'near_expiry_days'").get(tenantId);
     const alertDays = nearExpirySetting ? parseInt(nearExpirySetting.value, 10) : 15;
     const alertDate = new Date(Date.now() + alertDays * 86400000).toISOString().split('T')[0];
 
@@ -325,10 +364,10 @@ exports.getExpiryReport = (req, res) => {
           ELSE 'GOOD'
         END as status_indicator
       FROM batches b
-      JOIN products p ON b.product_id = p.id
-      WHERE b.status = 'active' AND b.quantity > 0
+      JOIN products p ON b.product_id = p.id AND p.tenant_id = b.tenant_id
+      WHERE b.status = 'active' AND b.quantity > 0 AND b.tenant_id = ?
       ORDER BY b.expiry_date ASC
-    `).all(today, today, alertDate);
+    `).all(today, today, alertDate, tenantId);
 
     return res.json({ success: true, alert_days: alertDays, batches });
   } catch (err) {
@@ -339,6 +378,7 @@ exports.getExpiryReport = (req, res) => {
 // End-of-Day / Shift Register Z-Report
 exports.getDayRegister = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const date = req.query.date || new Date().toISOString().split('T')[0];
 
     // Sales metrics
@@ -352,25 +392,25 @@ exports.getDayRegister = (req, res) => {
         COALESCE(SUM(CASE WHEN payment_method = 'Card' THEN paid_amount ELSE 0 END), 0) as card_sales,
         COALESCE(SUM(balance_due), 0) as credit_sales
       FROM sales
-      WHERE sale_date = ?
-    `).get(date);
+      WHERE sale_date = ? AND tenant_id = ?
+    `).get(date, tenantId);
 
     // Items sold count
     const itemsSold = db.prepare(`
       SELECT COALESCE(SUM(si.quantity), 0) as total_qty
       FROM sale_items si
-      JOIN sales s ON si.sale_id = s.id
-      WHERE s.sale_date = ?
-    `).get(date).total_qty;
+      JOIN sales s ON si.sale_id = s.id AND s.tenant_id = si.tenant_id
+      WHERE s.sale_date = ? AND si.tenant_id = ?
+    `).get(date, tenantId).total_qty;
 
-    // Direct Customer Payments collected on account (ledger recoveries)
+    // Direct Customer Payments collected on account
     const customerReceipts = db.prepare(`
       SELECT
         COALESCE(SUM(CASE WHEN payment_method = 'Cash' THEN amount ELSE 0 END), 0) as cash_recovered,
         COALESCE(SUM(CASE WHEN payment_method != 'Cash' THEN amount ELSE 0 END), 0) as bank_recovered
       FROM payments
-      WHERE payment_date = ? AND (UPPER(party_type) = 'CUSTOMER' OR party_type = 'Customer') AND reference_id IS NULL
-    `).get(date);
+      WHERE payment_date = ? AND UPPER(party_type) = 'CUSTOMER' AND reference_id IS NULL AND tenant_id = ?
+    `).get(date, tenantId);
 
     // Cash Expenses paid today
     const expenseData = db.prepare(`
@@ -379,26 +419,26 @@ exports.getDayRegister = (req, res) => {
         COALESCE(SUM(CASE WHEN payment_method != 'Cash' THEN amount ELSE 0 END), 0) as bank_expenses,
         COUNT(*) as expense_count
       FROM expenses
-      WHERE expense_date = ?
-    `).get(date);
+      WHERE expense_date = ? AND tenant_id = ?
+    `).get(date, tenantId);
 
     // Detailed expenses list
     const expenseList = db.prepare(`
       SELECT e.id, e.title, e.amount, e.payment_method, ec.name as category_name
       FROM expenses e
-      LEFT JOIN expense_categories ec ON e.category_id = ec.id
-      WHERE e.expense_date = ?
+      LEFT JOIN expense_categories ec ON e.category_id = ec.id AND ec.tenant_id = e.tenant_id
+      WHERE e.expense_date = ? AND e.tenant_id = ?
       ORDER BY e.id ASC
-    `).all(date);
+    `).all(date, tenantId);
 
-    // Supplier Disbursements paid in cash today
+    // Supplier Disbursements
     const supplierDisbursements = db.prepare(`
       SELECT
         COALESCE(SUM(CASE WHEN payment_method = 'Cash' THEN amount ELSE 0 END), 0) as cash_disbursed,
         COALESCE(SUM(CASE WHEN payment_method != 'Cash' THEN amount ELSE 0 END), 0) as bank_disbursed
       FROM payments
-      WHERE payment_date = ? AND (UPPER(party_type) = 'SUPPLIER' OR party_type = 'Supplier') AND reference_id IS NULL
-    `).get(date);
+      WHERE payment_date = ? AND UPPER(party_type) = 'SUPPLIER' AND reference_id IS NULL AND tenant_id = ?
+    `).get(date, tenantId);
 
     // Net Cash in Drawer
     const totalCashIn = Number(salesData.cash_sales) + Number(customerReceipts.cash_recovered);
@@ -406,7 +446,7 @@ exports.getDayRegister = (req, res) => {
     const netDrawerCash = totalCashIn - totalCashOut;
 
     // Shop settings
-    const settingsRows = db.prepare('SELECT key, value FROM settings').all();
+    const settingsRows = db.prepare('SELECT key, value FROM tenant_settings WHERE tenant_id = ?').all(tenantId);
     const settings = settingsRows.reduce((acc, row) => {
       acc[row.key] = row.value;
       return acc;
@@ -438,21 +478,22 @@ exports.getDayRegister = (req, res) => {
   }
 };
 
-// Purchases Report (Date range, supplier, status)
+// Purchases Report
 exports.getPurchasesReport = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { start_date, end_date, supplier_id } = req.query;
     const sDate = start_date || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const eDate = end_date || new Date().toISOString().split('T')[0];
 
     let query = `
       SELECT p.*, s.name as supplier_name,
-        (SELECT COUNT(*) FROM purchase_items pi WHERE pi.purchase_id = p.id) as item_count
+        (SELECT COUNT(*) FROM purchase_items pi WHERE pi.purchase_id = p.id AND pi.tenant_id = p.tenant_id) as item_count
       FROM purchases p
-      JOIN suppliers s ON p.supplier_id = s.id
-      WHERE p.purchase_date >= ? AND p.purchase_date <= ?
+      JOIN suppliers s ON p.supplier_id = s.id AND s.tenant_id = p.tenant_id
+      WHERE p.purchase_date >= ? AND p.purchase_date <= ? AND p.tenant_id = ?
     `;
-    const params = [sDate, eDate];
+    const params = [sDate, eDate, tenantId];
 
     if (supplier_id) {
       query += ' AND p.supplier_id = ?';
@@ -466,8 +507,8 @@ exports.getPurchasesReport = (req, res) => {
     const totalQty = db.prepare(`
       SELECT COALESCE(SUM(pi.quantity), 0) as total_qty
       FROM purchase_items pi
-      JOIN purchases p ON pi.purchase_id = p.id
-      WHERE p.purchase_date >= ? AND p.purchase_date <= ?
+      JOIN purchases p ON pi.purchase_id = p.id AND p.tenant_id = pi.tenant_id
+      WHERE p.purchase_date >= ? AND p.purchase_date <= ? AND p.tenant_id = ?
       ${supplier_id ? 'AND p.supplier_id = ?' : ''}
     `).get(...params).total_qty;
 
@@ -485,9 +526,10 @@ exports.getPurchasesReport = (req, res) => {
   }
 };
 
-// Supplier-wise Purchase Report (Grouped by supplier with products breakdown)
+// Supplier-wise Purchase Report
 exports.getSupplierWisePurchaseReport = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { start_date, end_date } = req.query;
     const sDate = start_date || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const eDate = end_date || new Date().toISOString().split('T')[0];
@@ -500,13 +542,13 @@ exports.getSupplierWisePurchaseReport = (req, res) => {
         COALESCE(SUM(p.balance_due), 0) as total_credit_due,
         COALESCE(SUM(pi.quantity), 0) as total_quantity
       FROM suppliers s
-      JOIN purchases p ON s.id = p.supplier_id AND p.purchase_date >= ? AND p.purchase_date <= ?
-      LEFT JOIN purchase_items pi ON p.id = pi.purchase_id
+      JOIN purchases p ON s.id = p.supplier_id AND p.purchase_date >= ? AND p.purchase_date <= ? AND p.tenant_id = ?
+      LEFT JOIN purchase_items pi ON p.id = pi.purchase_id AND pi.tenant_id = p.tenant_id
+      WHERE s.tenant_id = ?
       GROUP BY s.id
       ORDER BY total_purchase_amount DESC
-    `).all(sDate, eDate);
+    `).all(sDate, eDate, tenantId, tenantId);
 
-    // Also get product breakdown for each supplier
     for (const sup of suppliers) {
       sup.products = db.prepare(`
         SELECT pr.name as product_name, COALESCE(pi.brand, pr.brand, '-') as brand,
@@ -515,12 +557,12 @@ exports.getSupplierWisePurchaseReport = (req, res) => {
           AVG(pi.unit_price) as avg_rate,
           SUM(pi.total_price) as total_amount
         FROM purchase_items pi
-        JOIN purchases p ON pi.purchase_id = p.id
-        JOIN products pr ON pi.product_id = pr.id
-        WHERE p.supplier_id = ? AND p.purchase_date >= ? AND p.purchase_date <= ?
+        JOIN purchases p ON pi.purchase_id = p.id AND p.tenant_id = pi.tenant_id
+        JOIN products pr ON pi.product_id = pr.id AND pr.tenant_id = pi.tenant_id
+        WHERE p.supplier_id = ? AND p.purchase_date >= ? AND p.purchase_date <= ? AND p.tenant_id = ?
         GROUP BY pr.id, pi.unit
         ORDER BY total_amount DESC
-      `).all(sup.id, sDate, eDate);
+      `).all(sup.id, sDate, eDate, tenantId);
     }
 
     const summary = {
@@ -538,9 +580,10 @@ exports.getSupplierWisePurchaseReport = (req, res) => {
   }
 };
 
-// Product-wise Purchase Report (Grouped by product with supplier history and purchase rates)
+// Product-wise Purchase Report
 exports.getProductWisePurchaseReport = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { start_date, end_date } = req.query;
     const sDate = start_date || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const eDate = end_date || new Date().toISOString().split('T')[0];
@@ -554,12 +597,12 @@ exports.getProductWisePurchaseReport = (req, res) => {
         SUM(pi.total_price) as total_purchase_amount,
         COUNT(DISTINCT p.supplier_id) as supplier_count
       FROM purchase_items pi
-      JOIN purchases p ON pi.purchase_id = p.id
-      JOIN products pr ON pi.product_id = pr.id
-      WHERE p.purchase_date >= ? AND p.purchase_date <= ?
+      JOIN purchases p ON pi.purchase_id = p.id AND p.tenant_id = pi.tenant_id
+      JOIN products pr ON pi.product_id = pr.id AND pr.tenant_id = pi.tenant_id
+      WHERE p.purchase_date >= ? AND p.purchase_date <= ? AND p.tenant_id = ?
       GROUP BY pr.id, pi.unit
       ORDER BY total_purchase_amount DESC
-    `).all(sDate, eDate);
+    `).all(sDate, eDate, tenantId);
 
     for (const prod of products) {
       prod.suppliers = db.prepare(`
@@ -571,11 +614,11 @@ exports.getProductWisePurchaseReport = (req, res) => {
           p.invoice_no,
           p.purchase_date
         FROM purchase_items pi
-        JOIN purchases p ON pi.purchase_id = p.id
-        JOIN suppliers s ON p.supplier_id = s.id
-        WHERE pi.product_id = ? AND p.purchase_date >= ? AND p.purchase_date <= ?
+        JOIN purchases p ON pi.purchase_id = p.id AND p.tenant_id = pi.tenant_id
+        JOIN suppliers s ON p.supplier_id = s.id AND s.tenant_id = p.tenant_id
+        WHERE pi.product_id = ? AND p.purchase_date >= ? AND p.purchase_date <= ? AND p.tenant_id = ?
         ORDER BY p.purchase_date DESC
-      `).all(prod.product_id, sDate, eDate);
+      `).all(prod.product_id, sDate, eDate, tenantId);
     }
 
     const summary = {
@@ -591,9 +634,10 @@ exports.getProductWisePurchaseReport = (req, res) => {
   }
 };
 
-// Product-wise Sales Report (Qty sold, revenue, average rate, profit)
+// Product-wise Sales Report
 exports.getProductSalesReport = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { start_date, end_date } = req.query;
     const sDate = start_date || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const eDate = end_date || new Date().toISOString().split('T')[0];
@@ -607,13 +651,14 @@ exports.getProductSalesReport = (req, res) => {
         COALESCE(SUM(si.quantity * si.cost_price), 0) as total_cost,
         COALESCE(SUM(si.total_price - (si.quantity * si.cost_price)), 0) as total_profit
       FROM products p
-      LEFT JOIN categories c ON p.category_id = c.id
-      LEFT JOIN sale_items si ON p.id = si.product_id
-      LEFT JOIN sales s ON si.sale_id = s.id AND s.sale_date >= ? AND s.sale_date <= ?
+      LEFT JOIN categories c ON p.category_id = c.id AND c.tenant_id = p.tenant_id
+      LEFT JOIN sale_items si ON p.id = si.product_id AND si.tenant_id = p.tenant_id
+      LEFT JOIN sales s ON si.sale_id = s.id AND s.sale_date >= ? AND s.sale_date <= ? AND s.tenant_id = p.tenant_id
+      WHERE p.tenant_id = ?
       GROUP BY p.id
       HAVING total_qty_sold > 0
       ORDER BY total_revenue DESC
-    `).all(sDate, eDate);
+    `).all(sDate, eDate, tenantId);
 
     const summary = {
       total_revenue: report.reduce((sum, r) => sum + r.total_revenue, 0),
@@ -631,6 +676,7 @@ exports.getProductSalesReport = (req, res) => {
 // Full Stock Movement Audit Ledger
 exports.getStockMovementsReport = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { start_date, end_date, product_id, type } = req.query;
     const sDate = start_date || new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
     const eDate = end_date || new Date().toISOString().split('T')[0];
@@ -638,12 +684,12 @@ exports.getStockMovementsReport = (req, res) => {
     let query = `
       SELECT im.*, p.name as product_name, p.sku, p.unit, b.batch_no, u.full_name as user_name
       FROM inventory_movements im
-      JOIN products p ON im.product_id = p.id
-      LEFT JOIN batches b ON im.batch_id = b.id
-      LEFT JOIN users u ON im.user_id = u.id
-      WHERE date(im.created_at) >= ? AND date(im.created_at) <= ?
+      JOIN products p ON im.product_id = p.id AND p.tenant_id = im.tenant_id
+      LEFT JOIN batches b ON im.batch_id = b.id AND b.tenant_id = im.tenant_id
+      LEFT JOIN users u ON im.user_id = u.id AND u.tenant_id = im.tenant_id
+      WHERE date(im.created_at) >= ? AND date(im.created_at) <= ? AND im.tenant_id = ?
     `;
-    const params = [sDate, eDate];
+    const params = [sDate, eDate, tenantId];
 
     if (product_id) {
       query += ' AND im.product_id = ?';

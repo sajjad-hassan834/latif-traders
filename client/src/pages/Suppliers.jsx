@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown, Trash2, RefreshCw } from 'lucide-react';
+import { Building2, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown, Trash2, RefreshCw, ArrowUpRight } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
 import Pagination from '../components/common/Pagination';
+import ActionMenu from '../components/common/ActionMenu';
 
 export default function Suppliers() {
   const { user, isAdmin: authIsAdmin } = useAuth();
@@ -235,10 +236,17 @@ export default function Suppliers() {
               ) : (
                 suppliers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(s => (
                   <tr key={s.id}>
-                    <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{s.name}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{s.contact_person || '-'}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{s.phone || '-'}</td>
-                    <td><span style={{ fontSize: '0.85rem', color: '#64748b' }}>{s.address || '-'}</span></td>
+                    <td style={{ minWidth: '180px' }}>
+                      <div style={{ fontWeight: 600, color: '#0f172a' }}>{s.name}</div>
+                      {s.address && (
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                          {s.address}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap', color: '#334155', fontWeight: 500 }}>{s.contact_person || '-'}</td>
+                    <td style={{ whiteSpace: 'nowrap', color: '#64748b' }}>{s.phone || '-'}</td>
+                    <td><span style={{ fontSize: '0.8rem', color: '#64748b' }}>{s.address || '-'}</span></td>
                     <td style={{ textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>
                       {s.current_balance > 0 ? (
                         <span style={{ color: '#ef4444' }}>{formatPKR(s.current_balance)}</span>
@@ -247,163 +255,51 @@ export default function Suppliers() {
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionMenuId(actionMenuId === s.id ? null : s.id);
-                          }}
-                          className="btn btn-secondary btn-sm"
-                          style={{
-                            padding: '3px 8px',
-                            fontSize: '0.725rem',
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            borderRadius: '5px'
-                          }}
-                          title="Supplier Actions"
+                          onClick={() => openLedger(s)}
+                          className="btn-table-action"
+                          title="View statement & ledger"
                         >
-                          <span>Action</span>
-                          <ChevronDown size={12} />
+                          <span>Details</span>
+                          <ArrowUpRight size={13} />
                         </button>
 
-                        {actionMenuId === s.id && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              right: 0,
-                              top: '100%',
-                              marginTop: '4px',
-                              background: '#ffffff',
-                              border: '1px solid #cbd5e1',
-                              borderRadius: '6px',
-                              boxShadow: '0 10px 25px -3px rgba(0,0,0,0.18), 0 4px 6px -2px rgba(0,0,0,0.08)',
-                              zIndex: 9999,
-                              minWidth: '150px',
-                              padding: '4px 0',
-                              textAlign: 'left'
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              onClick={() => {
-                                setActionMenuId(null);
-                                openEditSupplier(s);
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '7px 12px',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                background: 'none',
-                                border: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                color: '#1e293b',
-                                cursor: 'pointer',
-                                textAlign: 'left'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                            >
-                              <Edit size={13} color="#0284c7" />
-                              <span>Edit Supplier</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setActionMenuId(null);
-                                openLedger(s);
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '7px 12px',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                background: 'none',
-                                border: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                color: '#1e293b',
-                                cursor: 'pointer',
-                                textAlign: 'left'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                            >
-                              <FileText size={13} color="#6366f1" />
-                              <span>View Statement</span>
-                            </button>
-
-                            {s.current_balance > 0 && (
-                              <button
-                                onClick={() => {
-                                  setActionMenuId(null);
-                                  openPayModal(s);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '7px 12px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  background: 'none',
-                                  border: 'none',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  color: '#ef4444',
-                                  cursor: 'pointer',
-                                  textAlign: 'left'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                              >
-                                <DollarSign size={13} color="#ef4444" />
-                                <span>Disburse Payment</span>
-                              </button>
-                            )}
-
-                            {isAdmin && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActionMenuId(null);
-                                  setSupplierToDelete(s);
-                                  setShowDeleteModal(true);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '7px 12px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  background: 'none',
-                                  border: 'none',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  color: '#dc2626',
-                                  cursor: 'pointer',
-                                  textAlign: 'left',
-                                  borderTop: '1px solid #f1f5f9'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                              >
-                                <Trash2 size={13} color="#dc2626" />
-                                <span>Delete Supplier</span>
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                        <ActionMenu
+                          title="Supplier Actions"
+                          items={[
+                            {
+                              label: 'Edit Supplier',
+                              icon: <Edit size={14} color="#0284c7" />,
+                              onClick: () => openEditSupplier(s)
+                            },
+                            {
+                              label: 'View Statement',
+                              icon: <FileText size={14} color="#6366f1" />,
+                              onClick: () => openLedger(s)
+                            },
+                            s.current_balance > 0 && {
+                              label: 'Disburse Payment',
+                              icon: <DollarSign size={14} color="#ef4444" />,
+                              onClick: () => openPayModal(s)
+                            },
+                            isAdmin && { divider: true },
+                            isAdmin && {
+                              label: 'Delete Supplier',
+                              icon: <Trash2 size={14} color="#dc2626" />,
+                              danger: true,
+                              onClick: () => {
+                                setSupplierToDelete(s);
+                                setShowDeleteModal(true);
+                              }
+                            }
+                          ]}
+                        />
+                    </div>
+                  </td>
+                </tr>
+              ))
               )}
             </tbody>
           </table>
@@ -419,14 +315,26 @@ export default function Suppliers() {
       {/* ADD SUPPLIER MODAL */}
       {showAddModal && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ maxWidth: '580px', width: '96%' }}>
             <div className="modal-header">
-              <h3>Add New Frozen Food Distributor</h3>
-              <button onClick={() => setShowAddModal(false)}>✕</button>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Add New Supplier</h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  Register a distributor or vendor for procurement.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowAddModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <form onSubmit={handleAddSupplier}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Supplier / Company Name *</label>
                   <input
                     type="text"
@@ -439,7 +347,7 @@ export default function Suppliers() {
                 </div>
 
                 <div className="form-grid-2">
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Contact Person</label>
                     <input
                       type="text"
@@ -449,7 +357,7 @@ export default function Suppliers() {
                       onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Phone Number</label>
                     <input
                       type="text"
@@ -461,7 +369,7 @@ export default function Suppliers() {
                   </div>
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Address</label>
                   <input
                     type="text"
@@ -472,7 +380,7 @@ export default function Suppliers() {
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Opening Payable Balance (PKR)</label>
                   <input
                     type="number"
@@ -484,8 +392,8 @@ export default function Suppliers() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Supplier</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Supplier</button>
               </div>
             </form>
           </div>
@@ -495,26 +403,35 @@ export default function Suppliers() {
       {/* SUPPLIER LEDGER MODAL */}
       {showLedgerModal && ledgerData && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '850px' }}>
+          <div className="modal-content" style={{ maxWidth: '880px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3>Supplier Statement: {ledgerData.supplier.name}</h3>
-                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
+                  Supplier Statement: {ledgerData.supplier.name}
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Contact: {ledgerData.supplier.contact_person || '-'} • Phone: {ledgerData.supplier.phone || '-'}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => window.print()}>
-                  <Printer size={15} />
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <Printer size={14} />
                   <span>Print Statement</span>
                 </button>
-                <button onClick={() => setShowLedgerModal(false)}>✕</button>
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  onClick={() => setShowLedgerModal(false)}
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
               </div>
             </div>
             <div className="modal-body">
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', background: '#f8fafc', padding: '0.6rem 0.75rem', borderRadius: '6px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', background: '#f8fafc', padding: '0.6rem 0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>From:</span>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>From:</span>
                   <input
                     type="date"
                     className="form-control form-control-sm"
@@ -523,7 +440,7 @@ export default function Suppliers() {
                   />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>To:</span>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>To:</span>
                   <input
                     type="date"
                     className="form-control form-control-sm"
@@ -584,16 +501,16 @@ export default function Suppliers() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
-                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', width: '100%', maxWidth: '350px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%', maxWidth: '350px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
                     <span>Total Purchases (Credit):</span>
                     <strong>{formatPKR(ledgerData.summary.total_credit)}</strong>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
                     <span>Total Paid (Debit):</span>
                     <strong style={{ color: '#10b981' }}>{formatPKR(ledgerData.summary.total_debit)}</strong>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: 800, marginTop: '0.5rem', borderTop: '1px solid #cbd5e1', paddingTop: '0.5rem', color: '#ef4444' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 800, marginTop: '0.5rem', borderTop: '1px solid #cbd5e1', paddingTop: '0.5rem', color: '#ef4444' }}>
                     <span>Closing Payable:</span>
                     <span>{formatPKR(ledgerData.summary.closing_balance)}</span>
                   </div>
@@ -601,7 +518,7 @@ export default function Suppliers() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowLedgerModal(false)}>Close</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowLedgerModal(false)}>Close</button>
             </div>
           </div>
         </div>
@@ -610,18 +527,30 @@ export default function Suppliers() {
       {/* DISBURSE PAYMENT MODAL */}
       {showPayModal && selectedSup && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '480px' }}>
+          <div className="modal-content" style={{ maxWidth: '480px', width: '96%' }}>
             <div className="modal-header">
-              <h3>Pay Supplier: {selectedSup.name}</h3>
-              <button onClick={() => setShowPayModal(false)}>✕</button>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Pay Supplier</h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  Vendor: <strong>{selectedSup.name}</strong>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowPayModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <form onSubmit={handleRecordPayment}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ background: '#fee2e2', padding: '0.75rem 1rem', borderRadius: '8px', color: '#991b1b', fontWeight: 600 }}>
-                  Total Payable Outstanding: {formatPKR(selectedSup.current_balance)}
+                <div style={{ background: '#fee2e2', border: '1px solid #fecaca', padding: '0.75rem 1rem', borderRadius: '6px', color: '#991b1b', fontWeight: 600, fontSize: '0.85rem' }}>
+                  Total Payable Outstanding: <strong>{formatPKR(selectedSup.current_balance)}</strong>
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Payment Amount (PKR) *</label>
                   <input
                     type="number"
@@ -631,11 +560,12 @@ export default function Suppliers() {
                     placeholder="Enter amount"
                     value={payAmount}
                     onChange={(e) => setPayAmount(e.target.value)}
+                    autoFocus
                   />
                 </div>
 
                 <div className="form-grid-2">
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Payment Date</label>
                     <input
                       type="date"
@@ -644,7 +574,7 @@ export default function Suppliers() {
                       onChange={(e) => setPayDate(e.target.value)}
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Payment Method</label>
                     <select
                       className="form-control"
@@ -657,7 +587,7 @@ export default function Suppliers() {
                   </div>
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Notes / Cheque #</label>
                   <input
                     type="text"
@@ -669,8 +599,8 @@ export default function Suppliers() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowPayModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-danger">Confirm Payment</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowPayModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-danger btn-sm" style={{ minWidth: '130px' }}>Confirm Payment</button>
               </div>
             </form>
           </div>
@@ -680,14 +610,26 @@ export default function Suppliers() {
       {/* EDIT SUPPLIER MODAL */}
       {showEditModal && editFormData && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ maxWidth: '580px', width: '96%' }}>
             <div className="modal-header">
-              <h3>Edit Supplier</h3>
-              <button onClick={() => setShowEditModal(false)}>✕</button>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Edit Supplier</h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  Update vendor details and contact information.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowEditModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <form onSubmit={handleUpdateSupplier}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Supplier / Company Name *</label>
                   <input
                     type="text"
@@ -699,7 +641,7 @@ export default function Suppliers() {
                 </div>
 
                 <div className="form-grid-2">
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Contact Person</label>
                     <input
                       type="text"
@@ -708,7 +650,7 @@ export default function Suppliers() {
                       onChange={(e) => setEditFormData({ ...editFormData, contact_person: e.target.value })}
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Phone Number</label>
                     <input
                       type="text"
@@ -719,7 +661,7 @@ export default function Suppliers() {
                   </div>
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Address</label>
                   <input
                     type="text"
@@ -729,7 +671,7 @@ export default function Suppliers() {
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Notes</label>
                   <textarea
                     className="form-control"
@@ -739,13 +681,13 @@ export default function Suppliers() {
                   />
                 </div>
               </div>
-              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
                 <div>
                   {isAdmin && (
                     <button
                       type="button"
-                      className="btn btn-sm"
-                      style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}
+                      className="btn btn-danger btn-sm"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                       onClick={() => {
                         setShowEditModal(false);
                         setSupplierToDelete(selectedSup);
@@ -757,9 +699,9 @@ export default function Suppliers() {
                     </button>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary">Update Supplier</button>
+                <div style={{ display: 'flex', gap: '0.6rem' }}>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Update Supplier</button>
                 </div>
               </div>
             </form>
@@ -770,15 +712,22 @@ export default function Suppliers() {
       {/* CONFIRM DELETE SUPPLIER MODAL */}
       {showDeleteModal && supplierToDelete && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '440px' }}>
-            <div className="modal-header" style={{ borderBottom: '1px solid #fee2e2', background: '#fef2f2' }}>
+          <div className="modal-content" style={{ maxWidth: '440px', width: '96%' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #fee2e2', background: '#fff5f5' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Trash2 size={18} color="#dc2626" />
-                <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1rem', fontWeight: 700 }}>Confirm Delete Supplier</h3>
+                <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1.05rem', fontWeight: 700 }}>Confirm Delete Supplier</h3>
               </div>
-              <button onClick={() => setShowDeleteModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>✕</button>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowDeleteModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
-            <div className="modal-body" style={{ padding: '1.25rem', fontSize: '0.875rem', color: '#334155', lineHeight: 1.5 }}>
+            <div className="modal-body" style={{ fontSize: '0.875rem', color: '#334155', lineHeight: 1.5 }}>
               Are you sure you want to permanently delete supplier <strong>"{supplierToDelete.name}"</strong>?
               {supplierToDelete.current_balance > 0 ? (
                 <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#b91c1c', fontWeight: 600, fontSize: '0.8rem' }}>
@@ -790,7 +739,7 @@ export default function Suppliers() {
                 </div>
               )}
             </div>
-            <div className="modal-footer" style={{ padding: '0.75rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <div className="modal-footer">
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowDeleteModal(false)}>Cancel</button>
               <button
                 type="button"

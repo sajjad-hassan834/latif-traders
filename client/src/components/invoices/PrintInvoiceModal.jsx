@@ -88,13 +88,13 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: printFormat === 'a4' ? '820px' : '440px' }}>
+      <div className="modal-content" style={{ maxWidth: printFormat === 'a4' ? '820px' : '440px', width: '96%' }}>
         <div className="modal-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <FileText size={18} color="var(--primary)" />
-            <h3 style={{ fontSize: '1.05rem' }}>Invoice Preview</h3>
+          <div>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Invoice Preview</h3>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Ref: {sale.invoice_no}</p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <div style={{ display: 'flex', background: '#f1f5f9', padding: '2px', borderRadius: '6px' }}>
               <button
                 className={`btn btn-sm ${printFormat === 'thermal' ? 'btn-primary' : 'btn-secondary'}`}
@@ -111,13 +111,18 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
                 A4 Invoice
               </button>
             </div>
-            <button onClick={onClose} style={{ padding: '4px', color: '#64748b' }}>
-              <X size={18} />
+            <button
+              type="button"
+              className="modal-close-btn"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <X size={16} />
             </button>
           </div>
         </div>
 
-        <div className="modal-body" style={{ background: '#f8fafc', overflowY: 'auto', maxHeight: '72vh', padding: '1rem' }}>
+        <div className="modal-body" style={{ background: '#f8fafc', padding: '1rem' }}>
           <div className="printable-area">
             {printFormat === 'thermal' ? (
               /* THERMAL RECEIPT LAYOUT */

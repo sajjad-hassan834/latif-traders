@@ -33,13 +33,20 @@ export default function BarcodeLabelModal({ product, onClose }) {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: '580px', overflowX: 'hidden' }}>
+      <div className="modal-content" style={{ maxWidth: '580px', width: '96%', overflowX: 'hidden' }}>
         <div className="modal-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Barcode size={18} color="var(--primary)" />
-            <h3 style={{ fontSize: '1.05rem' }}>Barcode Sticker: {product.name}</h3>
+          <div>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Barcode Sticker: {product.name}</h3>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Generate printable thermal labels or A4 barcode sheets</p>
           </div>
-          <button onClick={onClose} style={{ color: '#64748b' }}><X size={18} /></button>
+          <button
+            type="button"
+            className="modal-close-btn"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
         </div>
 
         <div className="modal-body" style={{ background: '#f8fafc', overflowX: 'hidden' }}>

@@ -4,18 +4,19 @@ const { logAudit } = require('../middleware/audit');
 // List purchases with supplier info
 exports.getPurchases = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { start_date, end_date, supplier_id } = req.query;
 
     let query = `
       SELECT p.*, s.name as supplier_name, s.phone as supplier_phone, u.full_name as user_name,
-        (SELECT COUNT(*) FROM purchase_items pi WHERE pi.purchase_id = p.id) as item_count,
-        (SELECT COALESCE(SUM(total_amount), 0) FROM returns WHERE original_invoice_id = p.id) as returned_amount
+        (SELECT COUNT(*) FROM purchase_items pi WHERE pi.purchase_id = p.id AND pi.tenant_id = p.tenant_id) as item_count,
+        (SELECT COALESCE(SUM(total_amount), 0) FROM returns r WHERE r.original_invoice_id = p.id AND r.tenant_id = p.tenant_id) as returned_amount
       FROM purchases p
-      JOIN suppliers s ON p.supplier_id = s.id
-      LEFT JOIN users u ON p.user_id = u.id
-      WHERE 1=1
+      JOIN suppliers s ON p.supplier_id = s.id AND s.tenant_id = p.tenant_id
+      LEFT JOIN users u ON p.user_id = u.id AND u.tenant_id = p.tenant_id
+      WHERE p.tenant_id = ?
     `;
-    const params = [];
+    const params = [tenantId];
 
     if (start_date) {
       query += ` AND p.purchase_date >= ?`;
@@ -43,15 +44,16 @@ exports.getPurchases = (req, res) => {
 // Get single purchase invoice with line items
 exports.getPurchaseById = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
     const purchase = db.prepare(`
       SELECT p.*, s.name as supplier_name, s.phone as supplier_phone, s.address as supplier_address,
         u.full_name as user_name
       FROM purchases p
-      JOIN suppliers s ON p.supplier_id = s.id
-      LEFT JOIN users u ON p.user_id = u.id
-      WHERE p.id = ?
-    `).get(id);
+      JOIN suppliers s ON p.supplier_id = s.id AND s.tenant_id = p.tenant_id
+      LEFT JOIN users u ON p.user_id = u.id AND u.tenant_id = p.tenant_id
+      WHERE p.id = ? AND p.tenant_id = ?
+    `).get(id, tenantId);
 
     if (!purchase) {
       return res.status(404).json({ success: false, message: 'Purchase invoice not found.' });
@@ -60,9 +62,9 @@ exports.getPurchaseById = (req, res) => {
     const items = db.prepare(`
       SELECT pi.*, pr.name as product_name, pr.sku
       FROM purchase_items pi
-      JOIN products pr ON pi.product_id = pr.id
-      WHERE pi.purchase_id = ?
-    `).all(id);
+      JOIN products pr ON pi.product_id = pr.id AND pr.tenant_id = pi.tenant_id
+      WHERE pi.purchase_id = ? AND pi.tenant_id = ?
+    `).all(id, tenantId);
 
     return res.json({ success: true, purchase, items });
   } catch (err) {
@@ -73,6 +75,7 @@ exports.getPurchaseById = (req, res) => {
 // Create Purchase (Atomic Transaction)
 exports.createPurchase = (req, res) => {
   const transaction = db.transaction(() => {
+    const tenantId = req.tenant_id || 'latif_001';
     const {
       supplier_id, supplier_invoice_no, purchase_date,
       items, discount, tax, paid_amount, payment_method, notes
@@ -82,14 +85,14 @@ exports.createPurchase = (req, res) => {
       throw new Error('Supplier and at least one item are required.');
     }
 
-    const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(supplier_id);
+    const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?').get(supplier_id, tenantId);
     if (!supplier) {
       throw new Error('Supplier not found.');
     }
 
     // Generate unique internal purchase invoice number: PUR-YYYYMMDD-XXXX
     const dateStr = (purchase_date || new Date().toISOString().split('T')[0]).replace(/-/g, '');
-    const existingInvoices = db.prepare('SELECT invoice_no FROM purchases WHERE invoice_no LIKE ?').all(`PUR-${dateStr}-%`);
+    const existingInvoices = db.prepare('SELECT invoice_no FROM purchases WHERE invoice_no LIKE ? AND tenant_id = ?').all(`PUR-${dateStr}-%`, tenantId);
     let maxSuffix = 0;
     for (const inv of existingInvoices) {
       const parts = inv.invoice_no.split('-');
@@ -116,13 +119,14 @@ exports.createPurchase = (req, res) => {
 
     const insertPurchase = db.prepare(`
       INSERT INTO purchases (
-        invoice_no, supplier_invoice_no, supplier_id, purchase_date,
+        tenant_id, invoice_no, supplier_invoice_no, supplier_id, purchase_date,
         subtotal, discount, tax, grand_total, paid_amount, balance_due,
         payment_method, notes, user_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const pRes = insertPurchase.run(
+      tenantId,
       finalInvoice,
       supplier_invoice_no ? supplier_invoice_no.trim() : null,
       supplier_id,
@@ -143,16 +147,16 @@ exports.createPurchase = (req, res) => {
     // Process line items & stock additions
     const insertItem = db.prepare(`
       INSERT INTO purchase_items (
-        purchase_id, product_id, brand, batch_no, expiry_date,
+        tenant_id, purchase_id, product_id, brand, batch_no, expiry_date,
         quantity, unit, unit_price, discount, total_price
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertMovement = db.prepare(`
       INSERT INTO inventory_movements (
-        product_id, batch_id, type, quantity_delta, unit_price,
+        tenant_id, product_id, batch_id, type, quantity_delta, unit_price,
         balance_after, reference_id, reference_type, reason, user_id
-      ) VALUES (?, ?, 'PURCHASE', ?, ?, ?, ?, 'PURCHASE_INVOICE', ?, ?)
+      ) VALUES (?, ?, ?, 'PURCHASE', ?, ?, ?, ?, 'PURCHASE_INVOICE', ?, ?)
     `);
 
     for (let idx = 0; idx < items.length; idx++) {
@@ -161,8 +165,7 @@ exports.createPurchase = (req, res) => {
       const rate = Number(item.unit_price);
       const lineTotal = (qty * rate) - (Number(item.discount) || 0);
 
-      // Fetch product to resolve brand if not explicitly provided
-      const prodInfo = db.prepare('SELECT brand, supplier_id FROM products WHERE id = ?').get(item.product_id);
+      const prodInfo = db.prepare('SELECT brand, supplier_id FROM products WHERE id = ? AND tenant_id = ?').get(item.product_id, tenantId);
       const itemBrand = item.brand ? item.brand.trim() : (prodInfo?.brand || null);
 
       const today = new Date();
@@ -173,6 +176,7 @@ exports.createPurchase = (req, res) => {
         : `LOT-${yy}${mm}-${Date.now().toString().slice(-4)}${idx > 0 ? '-' + (idx + 1) : ''}`;
 
       insertItem.run(
+        tenantId,
         purchaseId,
         item.product_id,
         itemBrand,
@@ -185,8 +189,7 @@ exports.createPurchase = (req, res) => {
         lineTotal
       );
 
-      // Retrieve product to obtain current selling prices if not provided on invoice
-      const prod = db.prepare('SELECT * FROM products WHERE id = ?').get(item.product_id);
+      const prod = db.prepare('SELECT * FROM products WHERE id = ? AND tenant_id = ?').get(item.product_id, tenantId);
       const batchSalePrice = item.sale_price !== undefined && item.sale_price !== '' && Number(item.sale_price) > 0
         ? Number(item.sale_price)
         : (prod?.sale_price || 0);
@@ -194,27 +197,25 @@ exports.createPurchase = (req, res) => {
         ? Number(item.wholesale_price)
         : (prod?.wholesale_price || batchSalePrice);
 
-      // Create distinct batch with explicit supplier_id for true FIFO tracking
       let batchId = null;
       const existingBatch = db.prepare(`
         SELECT * FROM batches
-        WHERE product_id = ? AND batch_no = ? AND supplier_id = ? AND status = 'active'
-      `).get(item.product_id, itemBatchNo, supplier_id);
+        WHERE product_id = ? AND batch_no = ? AND supplier_id = ? AND status = 'active' AND tenant_id = ?
+      `).get(item.product_id, itemBatchNo, supplier_id, tenantId);
 
       if (existingBatch) {
-        db.prepare('UPDATE batches SET quantity = quantity + ?, purchase_price = ? WHERE id = ?')
-          .run(qty, rate, existingBatch.id);
+        db.prepare('UPDATE batches SET quantity = quantity + ?, purchase_price = ? WHERE id = ? AND tenant_id = ?')
+          .run(qty, rate, existingBatch.id, tenantId);
         batchId = existingBatch.id;
       } else {
         const exp = item.expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
         const bRes = db.prepare(`
-          INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(item.product_id, itemBatchNo, exp, qty, rate, batchSalePrice, batchWholesalePrice, item.storage_location || null, supplier_id);
+          INSERT INTO batches (tenant_id, product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(tenantId, item.product_id, itemBatchNo, exp, qty, rate, batchSalePrice, batchWholesalePrice, item.storage_location || null, supplier_id);
         batchId = bRes.lastInsertRowid;
       }
 
-      // Update product's latest purchase price, sale/wholesale prices, and default supplier
       db.prepare(`
         UPDATE products SET
           purchase_price = ?,
@@ -223,14 +224,14 @@ exports.createPurchase = (req, res) => {
           supplier_id = COALESCE(supplier_id, ?),
           brand = COALESCE(brand, ?),
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(rate, batchSalePrice, batchSalePrice, batchWholesalePrice, batchWholesalePrice, supplier_id, itemBrand, item.product_id);
+        WHERE id = ? AND tenant_id = ?
+      `).run(rate, batchSalePrice, batchSalePrice, batchWholesalePrice, batchWholesalePrice, supplier_id, itemBrand, item.product_id, tenantId);
 
-      // Calculate total stock after
-      const newTotal = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active'")
-        .get(item.product_id).s;
+      const newTotal = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ?")
+        .get(item.product_id, tenantId).s;
 
       insertMovement.run(
+        tenantId,
         item.product_id,
         batchId,
         qty,
@@ -242,11 +243,29 @@ exports.createPurchase = (req, res) => {
       );
     }
 
-    // Update Supplier Balance: Increase by unpaid balance_due
-    db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ?')
-      .run(balance_due, supplier_id);
+    // Update Supplier Balance
+    db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ? AND tenant_id = ?')
+      .run(balance_due, supplier_id, tenantId);
 
-
+    // If paid > 0, record supplier payment
+    if (paid > 0) {
+      db.prepare(`
+        INSERT INTO payments (
+          tenant_id, type, party_type, party_id, reference_id, reference_no,
+          amount, payment_method, payment_date, notes, user_id
+        ) VALUES (?, 'SUPPLIER_PAYMENT', 'SUPPLIER', ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        tenantId,
+        supplier_id,
+        purchaseId,
+        finalInvoice,
+        paid,
+        payment_method || 'Cash',
+        purchase_date || new Date().toISOString().split('T')[0],
+        `Payment on purchase #${finalInvoice}`,
+        req.user.id
+      );
+    }
 
     logAudit(
       req.user.id,
@@ -272,13 +291,14 @@ exports.createPurchase = (req, res) => {
 // Purchase Return
 exports.createPurchaseReturn = (req, res) => {
   const transaction = db.transaction(() => {
+    const tenantId = req.tenant_id || 'latif_001';
     const { original_purchase_id, reason, items } = req.body;
 
     if (!original_purchase_id || !items || !Array.isArray(items) || items.length === 0) {
       throw new Error('Original purchase ID and return items are required.');
     }
 
-    const origPurchase = db.prepare('SELECT * FROM purchases WHERE id = ?').get(original_purchase_id);
+    const origPurchase = db.prepare('SELECT * FROM purchases WHERE id = ? AND tenant_id = ?').get(original_purchase_id, tenantId);
     if (!origPurchase) {
       throw new Error('Original purchase not found.');
     }
@@ -291,9 +311,9 @@ exports.createPurchaseReturn = (req, res) => {
     }
 
     const retRes = db.prepare(`
-      INSERT INTO returns (return_no, type, original_invoice_id, original_invoice_no, party_id, total_amount, reason, user_id)
-      VALUES (?, 'PURCHASE_RETURN', ?, ?, ?, ?, ?, ?)
-    `).run(retNo, origPurchase.id, origPurchase.invoice_no, origPurchase.supplier_id, totalAmount, reason || 'Return to supplier', req.user.id);
+      INSERT INTO returns (tenant_id, return_no, type, original_invoice_id, original_invoice_no, party_id, total_amount, reason, user_id)
+      VALUES (?, ?, 'PURCHASE_RETURN', ?, ?, ?, ?, ?, ?)
+    `).run(tenantId, retNo, origPurchase.id, origPurchase.invoice_no, origPurchase.supplier_id, totalAmount, reason || 'Return to supplier', req.user.id);
 
     const returnId = retRes.lastInsertRowid;
 
@@ -303,31 +323,30 @@ exports.createPurchaseReturn = (req, res) => {
       const lineTotal = qty * rate;
 
       db.prepare(`
-        INSERT INTO return_items (return_id, product_id, batch_id, quantity, unit_price, total_amount, condition)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(returnId, item.product_id, item.batch_id || null, qty, rate, lineTotal, item.condition || 'RESELLABLE');
+        INSERT INTO return_items (tenant_id, return_id, product_id, batch_id, quantity, unit_price, total_amount, condition)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(tenantId, returnId, item.product_id, item.batch_id || null, qty, rate, lineTotal, item.condition || 'RESELLABLE');
 
       // Reduce batch quantity
       if (item.batch_id) {
-        db.prepare('UPDATE batches SET quantity = MAX(0, quantity - ?) WHERE id = ?').run(qty, item.batch_id);
+        db.prepare('UPDATE batches SET quantity = MAX(0, quantity - ?) WHERE id = ? AND tenant_id = ?').run(qty, item.batch_id, tenantId);
       } else {
-        // Reduce from earliest active batch
-        const b = db.prepare("SELECT id, quantity FROM batches WHERE product_id = ? AND status = 'active' AND quantity > 0 ORDER BY expiry_date ASC LIMIT 1").get(item.product_id);
+        const b = db.prepare("SELECT id, quantity FROM batches WHERE product_id = ? AND status = 'active' AND quantity > 0 AND tenant_id = ? ORDER BY expiry_date ASC LIMIT 1").get(item.product_id, tenantId);
         if (b) {
-          db.prepare('UPDATE batches SET quantity = MAX(0, quantity - ?) WHERE id = ?').run(qty, b.id);
+          db.prepare('UPDATE batches SET quantity = MAX(0, quantity - ?) WHERE id = ? AND tenant_id = ?').run(qty, b.id, tenantId);
         }
       }
 
-      const totalAfter = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active'").get(item.product_id).s;
+      const totalAfter = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ?").get(item.product_id, tenantId).s;
 
       db.prepare(`
-        INSERT INTO inventory_movements (product_id, batch_id, type, quantity_delta, unit_price, balance_after, reference_id, reference_type, reason, user_id)
-        VALUES (?, ?, 'RETURN', ?, ?, ?, ?, 'PURCHASE_RETURN', ?, ?)
-      `).run(item.product_id, item.batch_id || null, -qty, rate, totalAfter, returnId, `Purchase return ${retNo}`, req.user.id);
+        INSERT INTO inventory_movements (tenant_id, product_id, batch_id, type, quantity_delta, unit_price, balance_after, reference_id, reference_type, reason, user_id)
+        VALUES (?, ?, ?, 'RETURN', ?, ?, ?, ?, 'PURCHASE_RETURN', ?, ?)
+      `).run(tenantId, item.product_id, item.batch_id || null, -qty, rate, totalAfter, returnId, `Purchase return ${retNo}`, req.user.id);
     }
 
     // Reduce supplier balance
-    db.prepare('UPDATE suppliers SET current_balance = current_balance - ? WHERE id = ?').run(totalAmount, origPurchase.supplier_id);
+    db.prepare('UPDATE suppliers SET current_balance = current_balance - ? WHERE id = ? AND tenant_id = ?').run(totalAmount, origPurchase.supplier_id, tenantId);
 
     logAudit(req.user.id, req.user.full_name, 'RETURN', 'PURCHASE', returnId, `Created purchase return ${retNo} for ₨ ${totalAmount}`, req);
 
@@ -342,55 +361,51 @@ exports.createPurchaseReturn = (req, res) => {
   }
 };
 
-// Delete Purchase (reverses all batch, inventory, and supplier balance effects)
+// Delete Purchase
 exports.deletePurchase = (req, res) => {
   const transaction = db.transaction(() => {
+    const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
 
-    const purchase = db.prepare('SELECT * FROM purchases WHERE id = ?').get(id);
+    const purchase = db.prepare('SELECT * FROM purchases WHERE id = ? AND tenant_id = ?').get(id, tenantId);
     if (!purchase) throw new Error('Purchase invoice not found.');
 
-    const hasReturns = db.prepare('SELECT COUNT(*) as count FROM returns WHERE original_invoice_id = ?').get(id).count;
+    const hasReturns = db.prepare('SELECT COUNT(*) as count FROM returns WHERE original_invoice_id = ? AND tenant_id = ?').get(id, tenantId).count;
     if (hasReturns > 0) {
       throw new Error('Cannot delete a purchase that has return records. Delete the returns first or contact admin.');
     }
 
-    const hasSales = db.prepare(`
-      SELECT COUNT(*) as count FROM inventory_movements
-      WHERE reference_type = 'PURCHASE_INVOICE' AND reference_id = ? AND type = 'PURCHASE'
-    `).get(id).count;
-
-    const items = db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?').all(id);
+    const items = db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ? AND tenant_id = ?').all(id, tenantId);
 
     for (const item of items) {
       const batch = db.prepare(`
-        SELECT * FROM batches WHERE product_id = ? AND batch_no = ? AND supplier_id = ?
-      `).get(item.product_id, item.batch_no, purchase.supplier_id);
+        SELECT * FROM batches WHERE product_id = ? AND batch_no = ? AND supplier_id = ? AND tenant_id = ?
+      `).get(item.product_id, item.batch_no, purchase.supplier_id, tenantId);
 
       if (batch) {
         const newQty = batch.quantity - item.quantity;
         if (newQty <= 0) {
-          db.prepare("UPDATE batches SET quantity = 0, status = 'expired' WHERE id = ?").run(batch.id);
+          db.prepare("UPDATE batches SET quantity = 0, status = 'expired' WHERE id = ? AND tenant_id = ?").run(batch.id, tenantId);
         } else {
-          db.prepare('UPDATE batches SET quantity = ? WHERE id = ?').run(newQty, batch.id);
+          db.prepare('UPDATE batches SET quantity = ? WHERE id = ? AND tenant_id = ?').run(newQty, batch.id, tenantId);
         }
       }
     }
 
-    db.prepare("DELETE FROM inventory_movements WHERE reference_id = ? AND reference_type = 'PURCHASE_INVOICE'").run(id);
+    db.prepare("DELETE FROM inventory_movements WHERE reference_id = ? AND reference_type = 'PURCHASE_INVOICE' AND tenant_id = ?").run(id, tenantId);
 
     if (purchase.balance_due > 0) {
-      db.prepare('UPDATE suppliers SET current_balance = current_balance - ? WHERE id = ?')
-        .run(purchase.balance_due, purchase.supplier_id);
+      db.prepare('UPDATE suppliers SET current_balance = current_balance - ? WHERE id = ? AND tenant_id = ?')
+        .run(purchase.balance_due, purchase.supplier_id, tenantId);
     }
 
     if (purchase.paid_amount > 0) {
-      db.prepare("DELETE FROM payments WHERE reference_id = ? AND party_type = 'SUPPLIER' AND party_id = ?")
-        .run(id, purchase.supplier_id);
+      db.prepare("DELETE FROM payments WHERE reference_id = ? AND party_type = 'SUPPLIER' AND party_id = ? AND tenant_id = ?")
+        .run(id, purchase.supplier_id, tenantId);
     }
 
-    db.prepare('DELETE FROM purchase_items WHERE purchase_id = ?').run(id);
-    db.prepare('DELETE FROM purchases WHERE id = ?').run(id);
+    db.prepare('DELETE FROM purchase_items WHERE purchase_id = ? AND tenant_id = ?').run(id, tenantId);
+    db.prepare('DELETE FROM purchases WHERE id = ? AND tenant_id = ?').run(id, tenantId);
 
     logAudit(req.user.id, req.user.full_name, 'DELETE', 'PURCHASE', id, `Deleted purchase ${purchase.invoice_no} (₨ ${purchase.grand_total})`, req);
     return { success: true, message: `Purchase ${purchase.invoice_no} deleted successfully.` };
@@ -404,16 +419,17 @@ exports.deletePurchase = (req, res) => {
   }
 };
 
-// Update Purchase (edit header fields: supplier, date, paid amount, payment method, notes)
+// Update Purchase
 exports.updatePurchase = (req, res) => {
   const transaction = db.transaction(() => {
+    const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
     const { supplier_id, supplier_invoice_no, purchase_date, paid_amount, payment_method, notes } = req.body;
 
-    const purchase = db.prepare('SELECT * FROM purchases WHERE id = ?').get(id);
+    const purchase = db.prepare('SELECT * FROM purchases WHERE id = ? AND tenant_id = ?').get(id, tenantId);
     if (!purchase) throw new Error('Purchase invoice not found.');
 
-    const hasReturns = db.prepare('SELECT COUNT(*) as count FROM returns WHERE original_invoice_id = ?').get(id).count;
+    const hasReturns = db.prepare('SELECT COUNT(*) as count FROM returns WHERE original_invoice_id = ? AND tenant_id = ?').get(id, tenantId).count;
     if (hasReturns > 0) {
       throw new Error('Cannot edit a purchase that has return records. Delete the returns first.');
     }
@@ -427,32 +443,33 @@ exports.updatePurchase = (req, res) => {
 
     if (newSupplierId !== oldSupplierId) {
       if (oldBalanceDue > 0) {
-        db.prepare('UPDATE suppliers SET current_balance = current_balance - ? WHERE id = ?').run(oldBalanceDue, oldSupplierId);
+        db.prepare('UPDATE suppliers SET current_balance = current_balance - ? WHERE id = ? AND tenant_id = ?').run(oldBalanceDue, oldSupplierId, tenantId);
       }
       if (newBalance > 0) {
-        db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ?').run(newBalance, newSupplierId);
+        db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ? AND tenant_id = ?').run(newBalance, newSupplierId, tenantId);
       }
 
-      for (const item of (db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ?').all(id))) {
-        db.prepare('UPDATE batches SET supplier_id = ? WHERE product_id = ? AND batch_no = ? AND supplier_id = ?')
-          .run(newSupplierId, item.product_id, item.batch_no, oldSupplierId);
+      for (const item of (db.prepare('SELECT * FROM purchase_items WHERE purchase_id = ? AND tenant_id = ?').all(id, tenantId))) {
+        db.prepare('UPDATE batches SET supplier_id = ? WHERE product_id = ? AND batch_no = ? AND supplier_id = ? AND tenant_id = ?')
+          .run(newSupplierId, item.product_id, item.batch_no, oldSupplierId, tenantId);
       }
     } else {
       const balanceDiff = newBalance - oldBalanceDue;
       if (balanceDiff !== 0) {
-        db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ?').run(balanceDiff, newSupplierId);
+        db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ? AND tenant_id = ?').run(balanceDiff, newSupplierId, tenantId);
       }
     }
 
     if (purchase.paid_amount !== newPaid) {
-      db.prepare("DELETE FROM payments WHERE reference_id = ? AND party_type = 'SUPPLIER' AND party_id = ?")
-        .run(id, oldSupplierId);
+      db.prepare("DELETE FROM payments WHERE reference_id = ? AND party_type = 'SUPPLIER' AND party_id = ? AND tenant_id = ?")
+        .run(id, oldSupplierId, tenantId);
 
       if (newPaid > 0) {
         db.prepare(`
-          INSERT INTO payments (type, party_type, party_id, reference_id, reference_no, amount, payment_method, payment_date, notes, user_id)
-          VALUES ('SUPPLIER_PAYMENT', 'SUPPLIER', ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO payments (tenant_id, type, party_type, party_id, reference_id, reference_no, amount, payment_method, payment_date, notes, user_id)
+          VALUES (?, 'SUPPLIER_PAYMENT', 'SUPPLIER', ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
+          tenantId,
           newSupplierId, id, purchase.invoice_no, newPaid,
           payment_method || purchase.payment_method,
           purchase_date || purchase.purchase_date,
@@ -467,7 +484,7 @@ exports.updatePurchase = (req, res) => {
         supplier_id = ?, supplier_invoice_no = ?, purchase_date = ?,
         paid_amount = ?, balance_due = ?,
         payment_method = ?, notes = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `).run(
       newSupplierId,
       supplier_invoice_no !== undefined ? (supplier_invoice_no || null) : purchase.supplier_invoice_no,
@@ -476,7 +493,8 @@ exports.updatePurchase = (req, res) => {
       newBalance,
       payment_method || purchase.payment_method,
       notes !== undefined ? (notes || null) : purchase.notes,
-      id
+      id,
+      tenantId
     );
 
     logAudit(req.user.id, req.user.full_name, 'UPDATE', 'PURCHASE', id, `Updated purchase ${purchase.invoice_no}`, req);
@@ -494,13 +512,14 @@ exports.updatePurchase = (req, res) => {
 // Preview existing stock & active batches with vendor history for a product
 exports.getProductStockPreview = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { productId } = req.params;
     const product = db.prepare(`
       SELECT p.id, p.name, p.sku, p.brand, p.unit, p.purchase_price, p.sale_price, s.name as supplier_name
       FROM products p
-      LEFT JOIN suppliers s ON p.supplier_id = s.id
-      WHERE p.id = ?
-    `).get(productId);
+      LEFT JOIN suppliers s ON p.supplier_id = s.id AND s.tenant_id = p.tenant_id
+      WHERE p.id = ? AND p.tenant_id = ?
+    `).get(productId, tenantId);
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found.' });
@@ -510,10 +529,10 @@ exports.getProductStockPreview = (req, res) => {
       SELECT b.id, b.batch_no, b.quantity, b.purchase_price, b.sale_price, b.wholesale_price, b.expiry_date, b.created_at,
         COALESCE(s.name, 'Initial Opening') as supplier_name
       FROM batches b
-      LEFT JOIN suppliers s ON b.supplier_id = s.id
-      WHERE b.product_id = ? AND b.status = 'active' AND b.quantity > 0
+      LEFT JOIN suppliers s ON b.supplier_id = s.id AND s.tenant_id = b.tenant_id
+      WHERE b.product_id = ? AND b.status = 'active' AND b.quantity > 0 AND b.tenant_id = ?
       ORDER BY b.id ASC
-    `).all(productId);
+    `).all(productId, tenantId);
 
     const current_stock = batches.reduce((sum, b) => sum + Number(b.quantity), 0);
 
@@ -528,4 +547,3 @@ exports.getProductStockPreview = (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to fetch stock preview.' });
   }
 };
-

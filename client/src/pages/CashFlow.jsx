@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, ArrowUpRight, ArrowDownLeft, Printer, FileText, Eye, CheckCircle, Filter, Trash2 } from 'lucide-react';
+import { DollarSign, ArrowUpRight, ArrowDownLeft, Printer, FileText, Eye, CheckCircle, Filter, Trash2, X } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
@@ -97,48 +97,62 @@ export default function CashFlow() {
   const docRef = `CBK-${startDate.replace(/-/g, '')}-${endDate.replace(/-/g, '')}`;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* DATE RANGE & PRINT CONTROLS (Hidden in Print) */}
-      <div className="card no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', padding: '0.85rem 1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>From:</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* 1. PAGE HEADER & FILTER BAR */}
+      <div className="page-header no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Daily Cashbook & Cash Flow</h1>
+          <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0' }}>
+            Daily cash collections, customer recoveries, supplier disbursements, and net cash balance
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '6px',
+            padding: '2px 8px',
+            height: '34px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+          }}>
+            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>From:</span>
             <input
               type="date"
-              className="form-control"
-              style={{ height: '34px', fontSize: '0.85rem', minWidth: '135px' }}
+              style={{ border: 'none', background: 'transparent', height: '26px', fontSize: '0.775rem', color: '#0f172a' }}
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
             />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>To:</span>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>to</span>
             <input
               type="date"
-              className="form-control"
-              style={{ height: '34px', fontSize: '0.85rem', minWidth: '135px' }}
+              style={{ border: 'none', background: 'transparent', height: '26px', fontSize: '0.775rem', color: '#0f172a' }}
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
             />
           </div>
+
           <button
             onClick={loadCashbook}
             className="btn btn-primary btn-sm"
-            style={{ height: '34px', padding: '0 1rem', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem', fontWeight: 600 }}
+            style={{ height: '34px', padding: '0 0.9rem', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem', fontWeight: 600 }}
           >
             <Filter size={14} />
             <span>Filter</span>
           </button>
-        </div>
 
-        <button
-          onClick={() => window.print()}
-          className="btn btn-secondary btn-sm"
-          style={{ height: '34px', padding: '0 1rem', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}
-        >
-          <Printer size={15} />
-          <span>Print Daily Cashbook</span>
-        </button>
+          <button
+            onClick={() => window.print()}
+            className="btn btn-secondary btn-sm"
+            style={{ height: '34px', padding: '0 0.9rem', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}
+          >
+            <Printer size={15} />
+            <span>Print Cashbook</span>
+          </button>
+        </div>
       </div>
 
       {/* PRINTABLE CASHBOOK AUDIT DOCUMENT */}
@@ -158,53 +172,54 @@ export default function CashFlow() {
             user={user}
           />
 
-          {/* CASHBOOK SUMMARY METRIC CARDS (Formatted for both screen & paper) */}
+          {/* CASHBOOK SUMMARY METRIC CARDS */}
           <div className="cashbook-print-summary">
-            <div className="cashbook-summary-card" style={{ borderLeft: '4px solid #10b981' }}>
+            <div className="cashbook-summary-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>TOTAL CASH IN</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#10b981', marginTop: '0.2rem' }}>
+                  <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>TOTAL CASH IN</div>
+                  <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#059669', marginTop: '0.35rem', lineHeight: 1.1 }}>
                     {formatPKR(cashbook?.total_in || 0)}
                   </div>
-                  <div style={{ fontSize: '0.725rem', color: '#64748b', marginTop: '0.15rem' }}>Sales & Collections</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Sales collections & debt recoveries</div>
                 </div>
-                <div style={{ background: '#d1fae5', padding: '6px', borderRadius: '6px', color: '#10b981' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <ArrowDownLeft size={20} />
                 </div>
               </div>
             </div>
 
-            <div className="cashbook-summary-card" style={{ borderLeft: '4px solid #ef4444' }}>
+            <div className="cashbook-summary-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>TOTAL CASH OUT</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ef4444', marginTop: '0.2rem' }}>
+                  <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>TOTAL CASH OUT</div>
+                  <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#dc2626', marginTop: '0.35rem', lineHeight: 1.1 }}>
                     {formatPKR(cashbook?.total_out || 0)}
                   </div>
-                  <div style={{ fontSize: '0.725rem', color: '#64748b', marginTop: '0.15rem' }}>Expenses & Supplier Payouts</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Expenses & supplier payouts</div>
                 </div>
-                <div style={{ background: '#fee2e2', padding: '6px', borderRadius: '6px', color: '#ef4444' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <ArrowUpRight size={20} />
                 </div>
               </div>
             </div>
 
-            <div className="cashbook-summary-card" style={{ borderLeft: '4px solid #0284c7' }}>
+            <div className="cashbook-summary-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>NET CASH FLOW</div>
+                  <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>NET CASH FLOW</div>
                   <div style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 900,
-                    color: (cashbook?.net_cash_flow || 0) >= 0 ? '#0284c7' : '#ef4444',
-                    marginTop: '0.2rem'
+                    fontSize: '1.65rem',
+                    fontWeight: 800,
+                    color: (cashbook?.net_cash_flow || 0) >= 0 ? '#0284c7' : '#dc2626',
+                    marginTop: '0.35rem',
+                    lineHeight: 1.1
                   }}>
                     {formatPKR(cashbook?.net_cash_flow || 0)}
                   </div>
-                  <div style={{ fontSize: '0.725rem', color: '#64748b', marginTop: '0.15rem' }}>Cash In minus Cash Out</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Cash in minus cash out</div>
                 </div>
-                <div style={{ background: '#e0f2fe', padding: '6px', borderRadius: '6px', color: '#0284c7' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#eff6ff', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <DollarSign size={20} />
                 </div>
               </div>
@@ -273,8 +288,10 @@ export default function CashFlow() {
                             <span>{entry.ref_no}</span>
                           </button>
                         </td>
-                        <td style={{ width: '140px', fontWeight: 600, textAlign: 'left' }}>{entry.title}</td>
-                        <td style={{ width: '140px', textAlign: 'left' }}>{entry.party_name || '-'}</td>
+                        <td style={{ textAlign: 'left' }}>
+                          <span className="badge badge-stage">{entry.title}</span>
+                        </td>
+                        <td style={{ width: '140px', textAlign: 'left', fontWeight: 500 }}>{entry.party_name || '-'}</td>
                         <td style={{ minWidth: '120px', fontSize: '0.8rem', color: '#64748b', textAlign: 'left' }}>{entry.notes || '-'}</td>
                         <td style={{ textAlign: 'right', width: '130px', fontWeight: 700, color: '#10b981', whiteSpace: 'nowrap' }}>
                           {entry.flow === 'IN' ? formatPKR(entry.amount) : '-'}
@@ -282,28 +299,26 @@ export default function CashFlow() {
                         <td style={{ textAlign: 'right', width: '130px', fontWeight: 700, color: '#ef4444', whiteSpace: 'nowrap' }}>
                           {entry.flow === 'OUT' ? formatPKR(entry.amount) : '-'}
                         </td>
-                        <td className="no-print" style={{ textAlign: 'center', width: '130px', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'inline-flex', gap: '4px' }}>
+                        <td className="no-print" style={{ textAlign: 'center', width: '110px', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
                             <button
                               type="button"
-                              className="btn btn-secondary btn-sm"
+                              className="btn-table-action"
                               onClick={() => handleViewReceipt(entry)}
-                              style={{ padding: '2px 8px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
                               title="View Voucher / Receipt"
                             >
-                              <Printer size={11} />
-                              <span>View</span>
+                              <span>Details</span>
+                              <ArrowUpRight size={13} />
                             </button>
                             {isAdmin && entry.id && entry.source_type !== 'SALE' && entry.source_type !== 'PURCHASE' && entry.source_type !== 'EXPENSE' && (
                               <button
                                 type="button"
-                                className="btn btn-danger btn-sm"
+                                className="btn btn-secondary btn-sm"
                                 onClick={() => handleDeletePayment(entry.id, entry.ref_no)}
-                                style={{ padding: '2px 6px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: '3px', background: '#ef4444', color: '#fff', border: 'none' }}
+                                style={{ padding: '0 6px', height: '26px', color: '#ef4444', border: '1px solid #fecaca' }}
                                 title="Delete Duplicate Payment Record"
                               >
-                                <Trash2 size={11} />
-                                <span>Delete</span>
+                                <Trash2 size={12} />
                               </button>
                             )}
                           </div>
@@ -369,13 +384,20 @@ export default function CashFlow() {
       {/* GENERIC CASH TRANSACTION VOUCHER MODAL */}
       {genericReceipt && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '440px' }}>
-            <div className="modal-header" style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <CheckCircle size={16} color="var(--primary)" />
-                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>Cash Transaction Voucher</h3>
+          <div className="modal-content" style={{ maxWidth: '440px', width: '96%' }}>
+            <div className="modal-header">
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Cash Transaction Voucher</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Receipt details & print voucher</p>
               </div>
-              <button onClick={() => setGenericReceipt(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>✕</button>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setGenericReceipt(null)}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
             </div>
             <div className="modal-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               <div style={{ textAlign: 'center', borderBottom: '1px dashed #cbd5e1', paddingBottom: '0.75rem' }}>
@@ -430,7 +452,7 @@ export default function CashFlow() {
                 </div>
               </div>
             </div>
-            <div className="modal-footer" style={{ padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between' }}>
+            <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => setGenericReceipt(null)}>Close</button>
               <button type="button" className="btn btn-primary btn-sm" onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                 <Printer size={13} />

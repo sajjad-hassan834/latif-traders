@@ -5,35 +5,121 @@ import {
   Download,
   RotateCcw,
   Save,
-  ShieldAlert,
   CheckCircle,
-  Table,
   RefreshCw,
-  ExternalLink,
   Edit2,
-  Search,
-  X,
-  Check,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  HardDrive,
+  Printer,
+  Package,
+  ShieldCheck,
+  CreditCard,
+  Zap,
+  Check,
+  Building,
+  Image as ImageIcon,
+  ArrowRight,
+  Sparkles,
+  Users as UsersIcon,
+  Receipt
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
+import { applyTheme as applyThemeHelper } from '../utils/theme';
+import { useAuth } from '../context/AuthContext';
+import UsersTab from './Users';
 
-export default function Settings() {
+const BUSINESS_TYPE_LABELS = {
+  frozen_food: { name: 'Frozen Food', icon: '🧊' },
+  retail_general: { name: 'General Retail', icon: '🛒' },
+  clothing: { name: 'Clothing & Apparel', icon: '👕' },
+  pharmacy: { name: 'Pharmacy & Medical', icon: '💊' },
+  restaurant: { name: 'Restaurant / Food', icon: '🍕' },
+  hardware: { name: 'Hardware & Tools', icon: '🔧' },
+  electronics: { name: 'Electronics & Mobiles', icon: '📱' },
+  wholesale: { name: 'Wholesale Distributor', icon: '📦' }
+};
+
+export default function Settings({ initialTab: propInitialTab }) {
+  const { role, isAdmin, tenant, plan, updateTenantInfo } = useAuth();
+
+  const parseTabFromLocation = () => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam) {
+        if (tabParam === 'business-profile' || tabParam === 'profile') return 'business-profile';
+        if (tabParam === 'invoice' || tabParam === 'invoices') return 'invoice';
+        if (tabParam === 'inventory') return 'inventory';
+        if (tabParam === 'staff' || tabParam === 'users') return 'staff';
+        if (tabParam === 'billing' || tabParam === 'plan') return 'billing';
+        if (tabParam === 'backup' || tabParam === 'backups') return 'backup';
+      }
+    } catch (_) {}
+    if (propInitialTab) {
+      if (propInitialTab === 'profile') return 'business-profile';
+      if (propInitialTab === 'users') return 'staff';
+      return propInitialTab;
+    }
+    return 'business-profile';
+  };
+
+  const [activeTab, setActiveTab] = useState(parseTabFromLocation);
+
+  useEffect(() => {
+    const syncTab = (e) => {
+      if (e?.detail) {
+        const d = e.detail;
+        if (d === 'business-profile' || d === 'profile') setActiveTab('business-profile');
+        else if (d === 'invoice' || d === 'invoices') setActiveTab('invoice');
+        else if (d === 'inventory') setActiveTab('inventory');
+        else if (d === 'staff' || d === 'users') setActiveTab('staff');
+        else if (d === 'billing' || d === 'plan') setActiveTab('billing');
+        else if (d === 'backup' || d === 'backups') setActiveTab('backup');
+        return;
+      }
+      setActiveTab(parseTabFromLocation());
+    };
+
+    window.addEventListener('settings_tab_change', syncTab);
+    window.addEventListener('popstate', syncTab);
+    return () => {
+      window.removeEventListener('settings_tab_change', syncTab);
+      window.removeEventListener('popstate', syncTab);
+    };
+  }, []);
+
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId);
+    try {
+      const url = new URL(window.location.href);
+      url.pathname = '/settings';
+      url.searchParams.set('tab', tabId);
+      window.history.replaceState({}, '', url.toString());
+    } catch (_) {}
+  };
+
   const [settings, setSettings] = useState({
-    shop_name: 'LATIF TRADERS',
-    tagline: 'Frozen Food Wholesalers & Retailers',
+    shop_name: tenant?.business_name || 'Latif Traders',
+    tagline: 'Business Management',
     phone: '',
     email: '',
     address: '',
+    logo_url: '',
     currency: 'PKR',
     currency_symbol: '₨',
     near_expiry_days: '15',
     allow_negative_stock: 'false',
     invoice_footer: '',
-    print_default_format: 'thermal'
+    print_default_format: 'thermal',
+    theme: localStorage.getItem('lt_theme') || 'light'
   });
+
+  const [billingInfo, setBillingInfo] = useState(null);
+  const [loadingBilling, setLoadingBilling] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradingPlan, setUpgradingPlan] = useState(false);
 
   const [backups, setBackups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,22 +127,6 @@ export default function Settings() {
   const [saveSuccess, setSaveSuccess] = useState('');
   const [backupSuccess, setBackupSuccess] = useState('');
   const [downloadingBackup, setDownloadingBackup] = useState(null);
-
-  // Database Explorer States
-  const [dbTables, setDbTables] = useState([]);
-  const [selectedTable, setSelectedTable] = useState('products');
-  const [tableData, setTableData] = useState(null);
-  const [loadingTable, setLoadingTable] = useState(false);
-  const [tableCategory, setTableCategory] = useState('all');
-  const [tableSearch, setTableSearch] = useState('');
-  const [editingRow, setEditingRow] = useState(null);
-  const [editRowData, setEditRowData] = useState({});
-  const [savingRow, setSavingRow] = useState(false);
-
-  // Fresh Start / Wipe Data for Delivery States
-  const [showWipeModal, setShowWipeModal] = useState(false);
-  const [wiping, setWiping] = useState(false);
-  const [wipeConfirmText, setWipeConfirmText] = useState('');
 
   const loadData = async () => {
     try {
@@ -67,7 +137,11 @@ export default function Settings() {
       ]);
 
       if (sRes.success) {
-        setSettings(prev => ({ ...prev, ...sRes.settings }));
+        const currentLocal = localStorage.getItem('lt_theme');
+        const themeVal = currentLocal || sRes.settings.theme || 'light';
+        setSettings(prev => ({ ...prev, ...sRes.settings, theme: themeVal }));
+        applyThemeHelper(themeVal);
+
         if (sRes.settings.shop_name) localStorage.setItem('lt_shop_name', sRes.settings.shop_name);
         if (sRes.settings.tagline) localStorage.setItem('lt_shop_tagline', sRes.settings.tagline);
         if (sRes.settings.phone) localStorage.setItem('lt_phone', sRes.settings.phone);
@@ -82,112 +156,53 @@ export default function Settings() {
     }
   };
 
-  const loadDbTables = async () => {
+  const loadBilling = async () => {
     try {
-      const res = await api.get('/settings/db-tables');
-      if (res.success && res.tables) {
-        setDbTables(res.tables);
+      setLoadingBilling(true);
+      const res = await api.get('/settings/billing');
+      if (res?.success) {
+        setBillingInfo(res.billing);
       }
     } catch (err) {
-      console.error('Failed to load db tables:', err);
-    }
-  };
-
-  const loadTableData = async (tableName) => {
-    try {
-      setLoadingTable(true);
-      const res = await api.get(`/settings/db-table/${tableName}`);
-      if (res.success) {
-        setTableData(res);
-      }
-    } catch (err) {
-      console.error('Failed to load table rows:', err);
+      console.error('Failed to load billing details:', err);
     } finally {
-      setLoadingTable(false);
+      setLoadingBilling(false);
     }
   };
 
   useEffect(() => {
     loadData();
-    loadDbTables();
-    loadTableData('products');
+    loadBilling();
+
+    const handleThemeChanged = (e) => {
+      const newTheme = e.detail || localStorage.getItem('lt_theme') || 'light';
+      setSettings(prev => ({ ...prev, theme: newTheme }));
+    };
+    window.addEventListener('theme_changed', handleThemeChanged);
+    return () => window.removeEventListener('theme_changed', handleThemeChanged);
   }, []);
 
-  const categoryTableMap = {
-    inventory: ['products', 'batches', 'categories', 'units', 'inventory_movements', 'stock_adjustments'],
-    sales: ['sales', 'sale_items', 'returns', 'return_items'],
-    purchases: ['purchases', 'purchase_items'],
-    parties: ['customers', 'suppliers', 'payments'],
-    finances: ['expenses', 'expense_categories'],
-    system: ['settings', 'users', 'audit_logs']
-  };
-
-  const filteredTables = dbTables.filter(t => {
-    if (tableCategory === 'all') return true;
-    return (categoryTableMap[tableCategory] || []).includes(t.name);
-  });
-
-  const searchedRows = (tableData?.rows || []).filter(row => {
-    if (!tableSearch.trim()) return true;
-    const term = tableSearch.toLowerCase();
-    return Object.values(row).some(val => String(val ?? '').toLowerCase().includes(term));
-  });
-
-  const handleOpenEditRow = (row) => {
-    setEditingRow(row);
-    setEditRowData({ ...row });
-  };
-
-  const handleSaveRow = async (e) => {
-    e.preventDefault();
-    if (!editingRow) return;
-    try {
-      setSavingRow(true);
-      const rowId = editingRow.id !== undefined ? editingRow.id : editingRow.key;
-      const res = await api.put(`/settings/db-table/${selectedTable}/${encodeURIComponent(rowId)}`, editRowData);
-      if (res.success) {
-        setEditingRow(null);
-        loadTableData(selectedTable);
-        loadDbTables();
-        if (selectedTable === 'settings') {
-          if (editRowData.key === 'shop_name' && editRowData.value) {
-            localStorage.setItem('lt_shop_name', editRowData.value);
-            document.title = `${editRowData.value} - Frozen Food System`;
-          }
-          if (editRowData.key === 'tagline' && editRowData.value) {
-            localStorage.setItem('lt_shop_tagline', editRowData.value);
-          }
-          window.dispatchEvent(new Event('settings_updated'));
-          loadData();
-        }
-      }
-    } catch (err) {
-      alert('Failed to update record: ' + (err.message || 'Error'));
-    } finally {
-      setSavingRow(false);
-    }
-  };
-
   const handleSaveSettings = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     try {
       setSaving(true);
-      const res = await api.put('/settings', settings);
+      setSaveSuccess('');
+      const res = await api.post('/settings', settings);
       if (res.success) {
-        setSaveSuccess('Settings saved successfully!');
+        setSaveSuccess('Settings saved successfully.');
+        if (settings.theme) {
+          applyThemeHelper(settings.theme);
+        }
         if (settings.shop_name) {
           localStorage.setItem('lt_shop_name', settings.shop_name);
-          document.title = `${settings.shop_name} - POS & Inventory System`;
+          document.title = `${settings.shop_name} - ShopOS Business Management`;
+          updateTenantInfo({ business_name: settings.shop_name, logo_url: settings.logo_url });
         }
         if (settings.tagline) localStorage.setItem('lt_shop_tagline', settings.tagline);
         if (settings.phone) localStorage.setItem('lt_phone', settings.phone);
         if (settings.email) localStorage.setItem('lt_email', settings.email);
         if (settings.address) localStorage.setItem('lt_address', settings.address);
         window.dispatchEvent(new CustomEvent('settings_updated', { detail: settings }));
-        loadDbTables();
-        if (selectedTable === 'settings') {
-          loadTableData('settings');
-        }
         setTimeout(() => setSaveSuccess(''), 4000);
       }
     } catch (err) {
@@ -197,20 +212,21 @@ export default function Settings() {
     }
   };
 
-  const handleWipeData = async () => {
+  const handlePlanUpgrade = async (newPlan) => {
     try {
-      setWiping(true);
-      const res = await api.post('/settings/wipe-data-delivery');
+      setUpgradingPlan(true);
+      const res = await api.post('/settings/upgrade-plan', { plan: newPlan });
       if (res.success) {
-        setShowWipeModal(false);
-        setWipeConfirmText('');
-        alert(res.message || 'Database successfully wiped for fresh delivery! Sole Admin is Mudassir Arif.');
-        window.location.reload();
+        updateTenantInfo({ plan: newPlan });
+        await loadBilling();
+        setShowUpgradeModal(false);
+        setSaveSuccess(`Subscription plan updated to ${newPlan.toUpperCase()}!`);
+        setTimeout(() => setSaveSuccess(''), 4000);
       }
     } catch (err) {
-      alert('Failed to wipe data: ' + err.message);
+      alert('Failed to upgrade plan: ' + err.message);
     } finally {
-      setWiping(false);
+      setUpgradingPlan(false);
     }
   };
 
@@ -219,8 +235,9 @@ export default function Settings() {
       setBackupSuccess('');
       const res = await api.post('/backups/create');
       if (res.success) {
-        setBackupSuccess(`Backup created: ${res.backup.filename}`);
+        setBackupSuccess(`Backup created successfully: ${res.backup.filename}`);
         loadData();
+        setTimeout(() => setBackupSuccess(''), 5000);
       }
     } catch (err) {
       alert('Backup failed: ' + err.message);
@@ -265,528 +282,766 @@ export default function Settings() {
     }
   };
 
-  const handleRestoreBackup = async (filename) => {
-    if (!confirm(`Are you sure you want to restore database from backup "${filename}"? Any transactions created after this backup will be replaced.`)) {
-      return;
-    }
-
-    try {
-      const res = await api.post('/backups/restore', { filename });
-      if (res.success) {
-        alert(res.message);
-        window.location.reload();
+  const formatBackupDisplayName = (filename, createdAt) => {
+    if (!filename) return '-';
+    if (createdAt) {
+      const d = new Date(createdAt);
+      if (!isNaN(d.getTime())) {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        const hh = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        return `Backup — ${dd}/${mm}/${yyyy} at ${hh}:${min}`;
       }
-    } catch (err) {
-      alert('Restore failed: ' + err.message);
     }
+    return filename;
   };
 
+  const lastBackup = backups.length > 0 ? formatBackupDisplayName(backups[0].filename, backups[0].created_at).replace(/^Backup — /, '') : 'Never';
+  const totalBackupSizeKb = backups.reduce((acc, b) => acc + (Number(b.size_kb) || 0), 0);
+  const totalBackupSizeFormatted = totalBackupSizeKb >= 1024
+    ? `${(totalBackupSizeKb / 1024).toFixed(1)} MB`
+    : `${totalBackupSizeKb.toFixed(0)} KB`;
+
+  const currentBusinessType = BUSINESS_TYPE_LABELS[tenant?.business_type || 'frozen_food'] || { name: 'Retail / General', icon: '🏬' };
+
+  // SaaS Tab definitions (REORDERED per user specification)
+  const tabList = [
+    { id: 'business-profile', label: 'Business Profile', icon: '🏪' },
+    { id: 'invoice', label: 'Invoice & Receipts', icon: '🖨️' },
+    { id: 'inventory', label: 'Inventory Policy', icon: '📦' },
+    { id: 'staff', label: 'Staff & Access', icon: '👥' },
+    { id: 'billing', label: 'My Plan & Billing', icon: '💳' },
+    { id: 'backup', label: 'Backup & Recovery', icon: '💾' }
+  ];
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxWidth: '1080px', margin: '0 auto', width: '100%' }}>
+      {/* SUCCESS NOTIFICATIONS */}
       {saveSuccess && (
-        <div style={{ padding: '1rem', background: '#ecfdf5', color: '#065f46', borderRadius: '8px', fontWeight: 600 }}>
-          ✔ {saveSuccess}
+        <div style={{
+          padding: '0.85rem 1.15rem',
+          background: '#ecfdf5',
+          border: '1px solid #a7f3d0',
+          color: '#065f46',
+          borderRadius: '8px',
+          fontWeight: 600,
+          fontSize: '0.85rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <CheckCircle size={18} color="#10b981" />
+          <span>{saveSuccess}</span>
         </div>
       )}
 
       {backupSuccess && (
-        <div style={{ padding: '1rem', background: '#ecfdf5', color: '#065f46', borderRadius: '8px', fontWeight: 600 }}>
-          ✔ {backupSuccess}
+        <div style={{
+          padding: '0.85rem 1.15rem',
+          background: '#ecfdf5',
+          border: '1px solid #a7f3d0',
+          color: '#065f46',
+          borderRadius: '8px',
+          fontWeight: 600,
+          fontSize: '0.85rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <CheckCircle size={18} color="#10b981" />
+          <span>{backupSuccess}</span>
         </div>
       )}
 
-      {/* SHOP PROFILE & BUSINESS RULES */}
-      <div className="card" style={{ padding: '1.1rem 1.35rem', borderRadius: '10px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.65rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '6px', background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #bae6fd' }}>
-              <Sliders size={17} color="#0284c7" />
-            </div>
-            <div>
-              <h3 style={{ fontSize: '1rem', margin: 0, fontWeight: 700, color: '#0f172a' }}>Business Profile & Invoice Details</h3>
-              <p style={{ fontSize: '0.725rem', color: '#64748b', margin: 0 }}>
-                Information printed on invoices, thermal receipts, and system inventory policies.
-              </p>
-            </div>
-          </div>
-
-          <button type="submit" form="settings-form" disabled={saving} className="btn btn-primary btn-sm" style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', fontWeight: 600 }}>
-            <Save size={14} />
-            <span>{saving ? 'Saving...' : 'Save Settings'}</span>
-          </button>
-        </div>
-
-        <form id="settings-form" onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {/* Row 1: Shop Identity & Contact (3 Columns) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.73rem', fontWeight: 600, color: '#334155', marginBottom: '2px' }}>
-                Shop Name *
-              </label>
-              <input
-                type="text"
-                className="form-control"
-                style={{ height: '32px', fontSize: '0.8rem', padding: '0 8px' }}
-                required
-                value={settings.shop_name}
-                onChange={(e) => setSettings({ ...settings, shop_name: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.73rem', fontWeight: 600, color: '#334155', marginBottom: '2px' }}>
-                Tagline / Subtitle
-              </label>
-              <input
-                type="text"
-                className="form-control"
-                style={{ height: '32px', fontSize: '0.8rem', padding: '0 8px' }}
-                value={settings.tagline}
-                onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.73rem', fontWeight: 600, color: '#334155', marginBottom: '2px' }}>
-                Phone Numbers
-              </label>
-              <input
-                type="text"
-                className="form-control"
-                style={{ height: '32px', fontSize: '0.8rem', padding: '0 8px' }}
-                placeholder="+92 300 1234567"
-                value={settings.phone}
-                onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.73rem', fontWeight: 600, color: '#334155', marginBottom: '2px' }}>
-                Email Address
-              </label>
-              <input
-                type="email"
-                className="form-control"
-                style={{ height: '32px', fontSize: '0.8rem', padding: '0 8px' }}
-                placeholder="sales@latiftraders.com"
-                value={settings.email}
-                onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-              />
-            </div>
-
-            <div style={{ gridColumn: 'span 2' }}>
-              <label style={{ display: 'block', fontSize: '0.73rem', fontWeight: 600, color: '#334155', marginBottom: '2px' }}>
-                Shop Physical Address
-              </label>
-              <input
-                type="text"
-                className="form-control"
-                style={{ height: '32px', fontSize: '0.8rem', padding: '0 8px' }}
-                placeholder="Shop #, Market, City"
-                value={settings.address}
-                onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-              />
-            </div>
-          </div>
-
-          {/* Row 2: Inventory Policies & Receipt Footer Note (Side-by-Side) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.2rem' }}>
-            {/* Inventory Policies Box */}
-            <div style={{ background: '#f8fafc', padding: '0.65rem 0.8rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.775rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.45rem' }}>
-                📦 Inventory Policies & Alerts
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: '0.55rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.71rem', fontWeight: 600, color: '#475569', marginBottom: '2px' }}>
-                    Near-Expiry (Days)
-                  </label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    style={{ height: '30px', fontSize: '0.8rem', padding: '0 6px' }}
-                    min="1"
-                    max="90"
-                    value={settings.near_expiry_days}
-                    onChange={(e) => setSettings({ ...settings, near_expiry_days: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.71rem', fontWeight: 600, color: '#475569', marginBottom: '2px' }}>
-                    Negative Stock Policy
-                  </label>
-                  <select
-                    className="form-control"
-                    style={{ height: '30px', fontSize: '0.75rem', padding: '0 6px' }}
-                    value={settings.allow_negative_stock}
-                    onChange={(e) => setSettings({ ...settings, allow_negative_stock: e.target.value })}
-                  >
-                    <option value="false">Strictly Blocked (Recommended)</option>
-                    <option value="true">Allowed (Allow ≤ 0)</option>
-                  </select>
-                </div>
-              </div>
-              <div style={{ fontSize: '0.66rem', color: '#64748b', marginTop: '3px' }}>
-                Batches expiring within {settings.near_expiry_days || 15} days show warning badge.
-              </div>
-            </div>
-
-            {/* Receipt Footer Disclaimer Box */}
-            <div style={{ background: '#f8fafc', padding: '0.65rem 0.8rem', borderRadius: '6px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
-              <label style={{ display: 'block', fontSize: '0.775rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.35rem' }}>
-                🧾 Receipt / Invoice Footer Disclaimer
-              </label>
-              <textarea
-                className="form-control"
-                rows="2"
-                style={{ fontSize: '0.75rem', padding: '4px 6px', resize: 'vertical', flex: 1, minHeight: '48px' }}
-                placeholder="Thank you message or return policy printed at the bottom of bills..."
-                value={settings.invoice_footer}
-                onChange={(e) => setSettings({ ...settings, invoice_footer: e.target.value })}
-              />
-            </div>
-          </div>
-        </form>
-      </div>
-
-      {/* DATABASE BACKUP & RESTORE */}
-      <div className="card" style={{ overflow: 'hidden' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Database size={22} color="#10b981" />
-            <div>
-              <h3 style={{ fontSize: '1.2rem' }}>Database Backup & Disaster Recovery</h3>
-              <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                Create online SQLite backups, download snapshot files to USB, or restore previous data.
-              </p>
-            </div>
-          </div>
-          <button onClick={handleCreateBackup} className="btn btn-success">
-            <Database size={16} />
-            <span>Create Backup Now</span>
-          </button>
-        </div>
-
-        <div className="table-responsive">
-          <table className="table" style={{ width: '100%', minWidth: '600px' }}>
-            <thead>
-              <tr>
-                <th>Backup Filename</th>
-                <th>Size</th>
-                <th>Timestamp</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {backups.length === 0 ? (
-                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '1.5rem', color: '#64748b' }}>No backup files available yet. Click "Create Backup Now".</td></tr>
-              ) : (
-                backups.map(b => (
-                  <tr key={b.filename}>
-                    <td className="mono" style={{ fontWeight: 600 }}>{b.filename}</td>
-                    <td>{b.size_kb} KB</td>
-                    <td>{formatDateTime(b.created_at)}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                        <button
-                          onClick={() => handleDownloadBackup(b.filename)}
-                          disabled={downloadingBackup === b.filename}
-                          className="btn btn-secondary btn-sm"
-                          title="Download authentic .db snapshot file"
-                        >
-                          <Download size={14} className={downloadingBackup === b.filename ? 'animate-spin' : ''} />
-                          <span>{downloadingBackup === b.filename ? 'Downloading...' : 'Download'}</span>
-                        </button>
-                        <button
-                          onClick={() => handleRestoreBackup(b.filename)}
-                          className="btn btn-danger btn-sm"
-                          title="Restore Database"
-                        >
-                          <RotateCcw size={14} />
-                          <span>Restore</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* PAGE HEADER */}
+      <div className="page-header-container" style={{ marginBottom: '0.25rem' }}>
+        <div>
+          <h1 className="page-header-title" style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: '0 0 4px 0' }}>
+            Shop Settings & Subscription
+          </h1>
+          <p className="page-header-subtitle" style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
+            Manage store profile, subscription tier, receipt layouts, warehouse policies, and data backups
+          </p>
         </div>
       </div>
 
-      {/* SYSTEM FRESH START / CLIENT DELIVERY DATA WIPE */}
-      <div className="card" style={{ padding: '1.25rem', border: '1px solid #fecaca', background: '#fffafb', borderRadius: '10px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fca5a5', flexShrink: 0, marginTop: '2px' }}>
-              <Trash2 size={20} color="#dc2626" />
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '4px' }}>
-                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: '#991b1b' }}>
-                  Client Delivery Fresh Start (Wipe Test Data)
-                </h3>
-                <span className="badge badge-danger" style={{ fontSize: '0.675rem', padding: '2px 8px' }}>
-                  Admin Tool
-                </span>
-              </div>
-              <p style={{ fontSize: '0.8rem', color: '#7f1d1d', margin: 0, maxWidth: '650px', lineHeight: 1.5 }}>
-                Carefully cleans all test transactions, sales, purchases, test products, batches, suppliers, customer balances, and demo staff so your client starts with fresh, pristine records.
-                <strong> Mudassir Arif</strong> will be preserved as the sole Administrator, and default units and categories remain ready for client use.
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setWipeConfirmText('');
-              setShowWipeModal(true);
-            }}
-            className="btn btn-danger"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, padding: '0.55rem 1.1rem', boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)' }}
-          >
-            <Trash2 size={15} />
-            <span>Wipe All Test Data (Fresh Start)</span>
-          </button>
+      {/* HORIZONTAL TABS BAR (Scrollable with edge fade hint) */}
+      <div style={{ position: 'relative', width: '100%' }}>
+        <div
+          className="hide-scrollbar"
+          style={{
+            display: 'flex',
+            gap: '2px',
+            borderBottom: '1px solid #E5E7EB',
+            background: 'transparent',
+            padding: '0',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
+          }}
+        >
+          {tabList.map(tab => {
+            const isActive = activeTab === tab.id || (tab.id === 'business-profile' && activeTab === 'profile') || (tab.id === 'staff' && activeTab === 'users');
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabClick(tab.id)}
+                style={{
+                  height: '40px',
+                  padding: '0 16px',
+                  fontSize: '13px',
+                  borderRadius: '8px 8px 0 0',
+                  color: isActive ? '#0F766E' : '#6B7280',
+                  background: isActive ? '#FFFFFF' : 'transparent',
+                  border: 'none',
+                  borderBottom: isActive ? '2px solid #0F766E' : '2px solid transparent',
+                  fontWeight: isActive ? 600 : 500,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginRight: '2px',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = '#F4F6F9';
+                    e.currentTarget.style.color = '#374151';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = '#6B7280';
+                  }
+                }}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+                {tab.id === 'billing' && plan === 'free' && (
+                  <span style={{
+                    fontSize: '10px',
+                    padding: '1px 6px',
+                    borderRadius: '10px',
+                    background: '#fef3c7',
+                    color: '#b45309',
+                    fontWeight: 700
+                  }}>
+                    Free Tier
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
+
+        {/* Right edge fade gradient hint */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            bottom: '1px',
+            width: '32px',
+            background: 'linear-gradient(to right, rgba(248, 250, 252, 0) 0%, rgba(248, 250, 252, 0.95) 100%)',
+            pointerEvents: 'none',
+            borderRadius: '0 8px 0 0'
+          }}
+        />
       </div>
 
-      {/* 3. LIVE DATABASE EXPLORER (MODERNIZED UI & LIVE EDITOR) */}
-      <div className="card" style={{ padding: '1.25rem', border: '1px solid #cbd5e1', boxShadow: '0 4px 15px -3px rgba(0,0,0,0.07)' }}>
-        {/* Modern Header Banner */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', padding: '9px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)' }}>
-              <Table size={20} color="#ffffff" />
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <h3 style={{ fontSize: '1.2rem', margin: 0, fontWeight: 800, color: '#0f172a' }}>Live Database Explorer</h3>
-                <span className="badge badge-success" style={{ fontSize: '0.675rem', padding: '2px 8px' }}>
-                  SQLite WAL • Live
-                </span>
+      {/* ═════════ TAB 1: BUSINESS PROFILE ═════════ */}
+      {(activeTab === 'business-profile' || activeTab === 'profile') && (
+        <div className="card" style={{ padding: '1.5rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #A7F3D0' }}>
+                <Sliders size={18} color="#059669" />
               </div>
-              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
-                Visual inspector for live database tables, schema definitions, and in-place record management.
-              </p>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: '#0F172A' }}>Business Profile & Identity</h3>
+                <p style={{ fontSize: '0.785rem', color: '#64748B', margin: '2px 0 0 0' }}>
+                  Public business details printed on receipts, customer invoices, and reports.
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button
-              onClick={() => {
-                loadDbTables();
-                loadTableData(selectedTable);
-              }}
-              className="btn btn-secondary btn-sm"
-              title="Refresh Live Data"
-              style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
-            >
-              <RefreshCw size={13} className={loadingTable ? 'spin' : ''} />
-              <span>Refresh</span>
-            </button>
-            <a
-              href="https://sqliteviewer.app"
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn-secondary btn-sm"
-              title="Open in External Web SQLite Viewer"
-              style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
-            >
-              <ExternalLink size={13} />
-              <span>sqliteviewer.app ↗</span>
-            </a>
-          </div>
-        </div>
-
-        {/* Category Filter Chips */}
-        <div className="horizontal-scroll-tabs" style={{ marginBottom: '0.75rem' }}>
-          {[
-            { id: 'all', label: 'All Tables' },
-            { id: 'inventory', label: '📦 Inventory' },
-            { id: 'sales', label: '🛒 Sales' },
-            { id: 'purchases', label: '🚚 Purchases' },
-            { id: 'parties', label: '👥 Parties' },
-            { id: 'finances', label: '💰 Finance' },
-            { id: 'system', label: '⚙️ System' }
-          ].map(cat => (
-            <button
-              key={cat.id}
               type="button"
-              onClick={() => setTableCategory(cat.id)}
-              style={{
-                padding: '4px 10px',
-                borderRadius: '20px',
-                fontSize: '0.75rem',
-                fontWeight: tableCategory === cat.id ? 700 : 500,
-                background: tableCategory === cat.id ? '#0f172a' : '#f1f5f9',
-                color: tableCategory === cat.id ? '#ffffff' : '#475569',
-                border: 'none',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.15s ease'
-              }}
+              onClick={handleSaveSettings}
+              disabled={saving}
+              className="btn-sadax-teal"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', fontSize: '13px', borderRadius: '8px' }}
             >
-              {cat.label}
+              <Save size={15} />
+              <span>{saving ? 'Saving...' : 'Save Profile'}</span>
             </button>
-          ))}
-        </div>
+          </div>
 
-        {/* Table Selector Pills */}
-        <div className="horizontal-scroll-tabs" style={{ marginBottom: '1.25rem', background: '#f8fafc', padding: '0.65rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-          {filteredTables.map(t => (
-            <button
-              key={t.name}
-              type="button"
-              onClick={() => {
-                setSelectedTable(t.name);
-                loadTableData(t.name);
-                setTableSearch('');
-              }}
-              style={{
-                padding: '4px 10px',
-                borderRadius: '6px',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: selectedTable === t.name ? '1px solid #0284c7' : '1px solid #e2e8f0',
-                background: selectedTable === t.name ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : '#ffffff',
-                color: selectedTable === t.name ? '#ffffff' : '#334155',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: selectedTable === t.name ? '0 2px 6px rgba(2, 132, 199, 0.35)' : 'none',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <span>{t.name}</span>
-              <span style={{
-                background: selectedTable === t.name ? 'rgba(255,255,255,0.25)' : '#f1f5f9',
-                color: selectedTable === t.name ? '#ffffff' : '#64748b',
-                padding: '1px 5px',
-                borderRadius: '4px',
-                fontSize: '0.65rem',
-                fontWeight: 700
-              }}>
-                {t.count}
+          <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Business Type Badge (Read-only after signup) */}
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '10px',
+              padding: '14px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '26px' }}>{currentBusinessType.icon}</span>
+                <div>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>Registered Industry / Business Type</div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>{currentBusinessType.name}</div>
+                </div>
+              </div>
+              <span style={{ fontSize: '11px', color: '#0284c7', background: '#e0f2fe', padding: '4px 10px', borderRadius: '6px', fontWeight: 600 }}>
+                Pre-configured Seed Categories Active
               </span>
-            </button>
-          ))}
-        </div>
+            </div>
 
-        {/* Selected Table Records View */}
-        {loadingTable ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-            <RefreshCw size={24} className="spin" style={{ margin: '0 auto 0.5rem', display: 'block', color: '#0284c7' }} />
-            Loading records from table "{selectedTable}"...
-          </div>
-        ) : !tableData || !tableData.columns ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Select a table above to view data.</div>
-        ) : (
-          <div>
-            {/* Table Action / Search Bar */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#0f172a' }}>
-                  {selectedTable}
-                </span>
-                <span className="badge badge-info" style={{ fontSize: '0.675rem' }}>
-                  {tableData.totalRows} total rows
-                </span>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>•</span>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                  {tableData.columns.length} columns
-                </span>
-              </div>
-
-              {/* Instant Search Bar */}
-              <div style={{ position: 'relative', minWidth: '220px' }}>
-                <Search size={13} style={{ position: 'absolute', left: '10px', top: '8px', color: '#94a3b8' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  Shop / Business Name *
+                </label>
                 <input
                   type="text"
                   className="form-control"
-                  style={{ paddingLeft: '1.9rem', height: '28px', fontSize: '0.775rem' }}
-                  placeholder={`Search in ${selectedTable}...`}
-                  value={tableSearch}
-                  onChange={(e) => setTableSearch(e.target.value)}
+                  style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                  required
+                  value={settings.shop_name}
+                  onChange={(e) => setSettings({ ...settings, shop_name: e.target.value })}
                 />
-                {tableSearch && (
-                  <button
-                    onClick={() => setTableSearch('')}
-                    style={{ position: 'absolute', right: '6px', top: '6px', color: '#94a3b8', cursor: 'pointer' }}
-                  >
-                    <X size={13} />
-                  </button>
-                )}
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  Tagline / Subtitle
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                  value={settings.tagline}
+                  onChange={(e) => setSettings({ ...settings, tagline: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  Logo URL / Image Link
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                  placeholder="https://example.com/logo.png"
+                  value={settings.logo_url || ''}
+                  onChange={(e) => setSettings({ ...settings, logo_url: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  Contact Phone Numbers
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                  placeholder="+92 300 1234567"
+                  value={settings.phone}
+                  onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  Official Email Address
+                </label>
+                <input
+                  type="email"
+                  className="form-control"
+                  style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                  placeholder="contact@yourbusiness.com"
+                  value={settings.email}
+                  onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  System Appearance Theme
+                </label>
+                <select
+                  className="form-control"
+                  style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                  value={settings.theme || 'light'}
+                  onChange={(e) => {
+                    const newTheme = e.target.value;
+                    setSettings(prev => ({ ...prev, theme: newTheme }));
+                    applyThemeHelper(newTheme);
+                    api.post('/settings', { theme: newTheme }).catch(() => {});
+                  }}
+                >
+                  <option value="light">☀️ Light Theme (Default)</option>
+                  <option value="dark">🌙 Dark Theme</option>
+                </select>
+                <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
+                  Light Theme is enabled by default across all dashboards & reports.
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  Physical Shop / Warehouse Address
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                  placeholder="Shop #, Market, City, Pakistan"
+                  value={settings.address}
+                  onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                />
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ═════════ TAB 2: INVOICE & RECEIPTS ═════════ */}
+      {activeTab === 'invoice' && (
+        <div className="card" style={{ padding: '1.5rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #BBF7D0' }}>
+                <Printer size={18} color="#16A34A" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: '#0F172A' }}>Invoice & Thermal Receipts</h3>
+                <p style={{ fontSize: '0.785rem', color: '#64748B', margin: '2px 0 0 0' }}>
+                  Configure print slip templates, default print engines, currency signs, and footer text.
+                </p>
               </div>
             </div>
 
-            {/* Visual Data Grid */}
-            <div className="table-responsive" style={{ maxHeight: '460px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.03)', width: '100%', maxWidth: '100%' }}>
-              <table className="table" style={{ fontSize: '0.775rem', borderCollapse: 'separate', borderSpacing: 0, minWidth: '600px' }}>
-                <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-                  <tr style={{ background: '#0f172a', color: '#ffffff' }}>
-                    <th style={{ background: '#0f172a', color: '#94a3b8', width: '45px', textAlign: 'center', fontSize: '0.65rem' }}>#</th>
-                    {tableData.columns.map(col => (
-                      <th key={col.name} style={{ background: '#0f172a', color: '#f8fafc', whiteSpace: 'nowrap', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-                        <div style={{ fontWeight: 700 }}>{col.name}</div>
-                        <div style={{ fontSize: '0.6rem', color: col.pk ? '#38bdf8' : '#94a3b8', fontWeight: 500 }}>
-                          {col.type || 'TEXT'} {col.pk ? '🔑 PK' : ''}
-                        </div>
-                      </th>
-                    ))}
-                    {selectedTable !== 'audit_logs' && (
-                      <th style={{ background: '#0f172a', color: '#94a3b8', textAlign: 'center', width: '65px' }}>Action</th>
-                    )}
+            <button
+              type="button"
+              onClick={handleSaveSettings}
+              disabled={saving}
+              className="btn-sadax-teal"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', fontSize: '13px', borderRadius: '8px' }}
+            >
+              <Save size={15} />
+              <span>{saving ? 'Saving...' : 'Save Invoice Settings'}</span>
+            </button>
+          </div>
+
+          <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  Default Print Format
+                </label>
+                <select
+                  className="form-control"
+                  style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                  value={settings.print_default_format || 'thermal'}
+                  onChange={(e) => setSettings({ ...settings, print_default_format: e.target.value })}
+                >
+                  <option value="thermal">Thermal POS Receipt (80mm Roll)</option>
+                  <option value="standard">Full Sheet / A4 Invoice</option>
+                  <option value="half">Half Sheet / A5 Receipt</option>
+                </select>
+                <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
+                  Used automatically when printing receipts directly after checkout.
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  Currency Display Symbol
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <input
+                    type="text"
+                    className="form-control"
+                    style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                    placeholder="PKR"
+                    value={settings.currency || 'PKR'}
+                    onChange={(e) => setSettings({ ...settings, currency: e.target.value })}
+                  />
+                  <input
+                    type="text"
+                    className="form-control"
+                    style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                    placeholder="₨"
+                    value={settings.currency_symbol || '₨'}
+                    onChange={(e) => setSettings({ ...settings, currency_symbol: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  Receipt / Invoice Footer Disclaimer
+                </label>
+                <textarea
+                  className="form-control"
+                  rows="3"
+                  style={{ fontSize: '13px', borderRadius: '8px', padding: '10px 12px' }}
+                  placeholder="Thank you message, warranty policy, or return terms printed at the bottom of bills..."
+                  value={settings.invoice_footer}
+                  onChange={(e) => setSettings({ ...settings, invoice_footer: e.target.value })}
+                />
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ═════════ TAB 3: INVENTORY POLICY ═════════ */}
+      {activeTab === 'inventory' && (
+        <div className="card" style={{ padding: '1.5rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#F0F9FF', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #BAE6FD' }}>
+                <Package size={18} color="#0284C7" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: '#0F172A' }}>Warehouse & Inventory Policies</h3>
+                <p style={{ fontSize: '0.785rem', color: '#64748B', margin: '2px 0 0 0' }}>
+                  Safety thresholds, batch expiry warnings, and negative balance protections.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSaveSettings}
+              disabled={saving}
+              className="btn-sadax-teal"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', fontSize: '13px', borderRadius: '8px' }}
+            >
+              <Save size={15} />
+              <span>{saving ? 'Saving...' : 'Save Policies'}</span>
+            </button>
+          </div>
+
+          <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  Near-Expiry Alert Warning (Days)
+                </label>
+                <input
+                  type="number"
+                  className="form-control"
+                  style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                  min="1"
+                  max="90"
+                  value={settings.near_expiry_days}
+                  onChange={(e) => setSettings({ ...settings, near_expiry_days: e.target.value })}
+                />
+                <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
+                  Lots expiring within <strong>{settings.near_expiry_days || 15} days</strong> trigger warning badges.
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  Negative Stock Depletion Policy
+                </label>
+                <select
+                  className="form-control"
+                  style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                  value={settings.allow_negative_stock}
+                  onChange={(e) => setSettings({ ...settings, allow_negative_stock: e.target.value })}
+                >
+                  <option value="false">Strictly Blocked (Recommended — No overselling)</option>
+                  <option value="true">Allowed (Permit sales below zero stock)</option>
+                </select>
+                <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
+                  Prevent POS sales from completing when on-hand stock is insufficient.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '14px 16px', fontSize: '12.5px', color: '#475569', lineHeight: 1.5 }}>
+              💡 <strong>FIFO Batch Tracking:</strong> The system automatically rotates older product lots first when sales are made at POS. Batches reaching expiry before depletion will be flagged in the Inventory tab for immediate clearance or adjustment.
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ═════════ TAB 4: STAFF & ACCESS ═════════ */}
+      {(activeTab === 'staff' || activeTab === 'users') && (
+        <UsersTab />
+      )}
+
+      {/* ═════════ TAB 5: MY PLAN & BILLING ═════════ */}
+      {activeTab === 'billing' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Current Subscription Card */}
+          <div className="card" style={{ padding: '1.75rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1.25rem' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>
+                    {billingInfo?.plan_name || (plan === 'pro' ? 'Pro Plan' : (plan === 'enterprise' ? 'Enterprise Plan' : 'Free Forever Plan'))}
+                  </h2>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    padding: '3px 10px',
+                    borderRadius: '20px',
+                    background: plan === 'pro' ? '#e0f2fe' : (plan === 'enterprise' ? '#f3e8ff' : '#f1f5f9'),
+                    color: plan === 'pro' ? '#0369a1' : (plan === 'enterprise' ? '#7e22ce' : '#475569'),
+                    border: `1px solid ${plan === 'pro' ? '#bae6fd' : (plan === 'enterprise' ? '#e9d5ff' : '#e2e8f0')}`
+                  }}>
+                    Active Subscription
+                  </span>
+                </div>
+                <p style={{ margin: '6px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                  {plan === 'free' ? 'Single user account with basic limits' : 'Full-featured multi-user cloud workspace'}
+                  {billingInfo?.plan_expires_at ? ` • Valid until ${formatDate(billingInfo.plan_expires_at)}` : ''}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowUpgradeModal(true)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(14, 165, 233, 0.35)'
+                }}
+              >
+                <Sparkles size={16} />
+                <span>{plan === 'free' ? 'Upgrade to Pro' : 'Change Plan'}</span>
+              </button>
+            </div>
+
+            {/* Quota Usage Meters */}
+            <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.95rem', fontWeight: 700, color: '#334155' }}>
+              Resource Quota & Usage
+            </h4>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '1.75rem' }}>
+              {/* Products meter */}
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: 600, color: '#475569' }}>Active Products</span>
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                    {billingInfo?.usage?.products?.used || 0} / {billingInfo?.usage?.products?.limit === 'unlimited' ? '∞ Unlimited' : (billingInfo?.usage?.products?.limit || 50)}
+                  </span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${Math.min(100, billingInfo?.usage?.products?.pct || 0)}%`,
+                    height: '100%',
+                    background: (billingInfo?.usage?.products?.pct || 0) >= 90 ? '#ef4444' : '#0ea5e9'
+                  }} />
+                </div>
+              </div>
+
+              {/* Invoices meter */}
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: 600, color: '#475569' }}>Invoices This Month</span>
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                    {billingInfo?.usage?.invoices_this_month?.used || 0} / {billingInfo?.usage?.invoices_this_month?.limit === 'unlimited' ? '∞ Unlimited' : (billingInfo?.usage?.invoices_this_month?.limit || 100)}
+                  </span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${Math.min(100, billingInfo?.usage?.invoices_this_month?.pct || 0)}%`,
+                    height: '100%',
+                    background: (billingInfo?.usage?.invoices_this_month?.pct || 0) >= 90 ? '#ef4444' : '#10b981'
+                  }} />
+                </div>
+              </div>
+
+              {/* Staff users meter */}
+              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: 600, color: '#475569' }}>Staff Accounts</span>
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                    {billingInfo?.usage?.staff_users?.used || 1} / {billingInfo?.usage?.staff_users?.limit === 'unlimited' ? '∞ Unlimited' : (billingInfo?.usage?.staff_users?.limit || 1)}
+                  </span>
+                </div>
+                <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${Math.min(100, billingInfo?.usage?.staff_users?.pct || 0)}%`,
+                    height: '100%',
+                    background: (billingInfo?.usage?.staff_users?.pct || 0) >= 100 ? '#f59e0b' : '#6366f1'
+                  }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Plan Features Checklist */}
+            <h4 style={{ margin: '0 0 0.85rem 0', fontSize: '0.95rem', fontWeight: 700, color: '#334155' }}>
+              Features Included in Your Current Tier
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+              {(billingInfo?.features || [
+                'Full POS Billing & Cashier Mode',
+                'Thermal & A4 Invoice Printing',
+                'Customer & Supplier Ledgers',
+                'Stock Movements & Adjustments',
+                'Automated Expiry Warnings'
+              ]).map((feat, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#475569' }}>
+                  <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
+                  <span>{feat}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Billing History Table */}
+          <div className="card" style={{ padding: '1.5rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+            <h3 style={{ fontSize: '1.05rem', margin: '0 0 1rem 0', fontWeight: 700, color: '#0F172A' }}>
+              Subscription & Invoicing History
+            </h3>
+            <div className="table-responsive">
+              <table className="table" style={{ fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc' }}>
+                    <th>Plan</th>
+                    <th>Started Date</th>
+                    <th>Expiration</th>
+                    <th>Price</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {searchedRows.length === 0 ? (
+                  {billingInfo?.history && billingInfo.history.length > 0 ? (
+                    billingInfo.history.map((h, i) => (
+                      <tr key={i}>
+                        <td style={{ fontWeight: 700, textTransform: 'capitalize' }}>{h.plan}</td>
+                        <td>{formatDate(h.started_at)}</td>
+                        <td>{formatDate(h.expires_at)}</td>
+                        <td style={{ fontWeight: 600 }}>₨ {Number(h.price).toLocaleString()}</td>
+                        <td>
+                          <span style={{
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            background: '#dcfce7',
+                            color: '#15803d',
+                            fontSize: '11px',
+                            fontWeight: 700
+                          }}>
+                            {h.payment_status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
                     <tr>
-                      <td colSpan={tableData.columns.length + 2} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                        {tableSearch ? 'No rows match your search query.' : 'Table is currently empty (0 records).'}
+                      <td colSpan="5" style={{ textAlign: 'center', color: '#94a3b8', padding: '1.5rem' }}>
+                        No previous billing records found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═════════ TAB 6: BACKUP & RECOVERY ═════════ */}
+      {activeTab === 'backup' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="card" style={{ padding: '1.5rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #A7F3D0' }}>
+                  <HardDrive size={20} color="#10B981" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.15rem', margin: 0, fontWeight: 700, color: '#0F172A' }}>
+                    Database Backup & Recovery
+                  </h3>
+                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px', lineHeight: 1.4 }}>
+                    <div>Last backup: <strong style={{ color: '#0F172A' }}>{lastBackup}</strong></div>
+                    <div style={{ marginTop: '2px' }}>
+                      <span>Total backups: <strong style={{ color: '#0F172A' }}>{backups.length}</strong></span>
+                      <span style={{ margin: '0 6px' }}>•</span>
+                      <span>Total size: <strong style={{ color: '#0F172A' }}>{totalBackupSizeFormatted}</strong></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCreateBackup}
+                className="btn-sadax-teal"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '8px', fontWeight: 600, fontSize: '13px' }}
+              >
+                <HardDrive size={16} />
+                <span>Create Live Backup Now</span>
+              </button>
+            </div>
+
+            {/* Backups Table */}
+            <div className="table-responsive" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+              <table className="table" style={{ fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc' }}>
+                    <th>Backup Snapshot</th>
+                    <th>Created At</th>
+                    <th>Size</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {backups.length === 0 ? (
+                    <tr>
+                      <td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem' }}>
+                        No backup files found yet. Click "Create Live Backup Now" above.
                       </td>
                     </tr>
                   ) : (
-                    searchedRows.map((row, idx) => (
-                      <tr key={idx} style={{ background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                        <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.7rem', fontWeight: 600 }}>
-                          {idx + 1}
+                    backups.map((b, idx) => (
+                      <tr key={idx}>
+                        <td style={{ fontWeight: 600, color: '#0f172a' }}>{b.filename}</td>
+                        <td style={{ color: '#64748b' }}>{formatDateTime(b.created_at)}</td>
+                        <td style={{ color: '#64748b' }}>{b.size_kb} KB</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadBackup(b.filename)}
+                            disabled={downloadingBackup === b.filename}
+                            className="btn btn-secondary btn-sm"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                          >
+                            <Download size={13} />
+                            <span>{downloadingBackup === b.filename ? 'Downloading...' : 'Download'}</span>
+                          </button>
                         </td>
-                        {tableData.columns.map(col => {
-                          const val = row[col.name];
-                          return (
-                            <td key={col.name} style={{ whiteSpace: 'nowrap', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {val === null || val === undefined ? (
-                                <span style={{ color: '#cbd5e1', fontStyle: 'italic', fontSize: '0.7rem' }}>null</span>
-                              ) : col.name.includes('price') || col.name.includes('amount') || col.name.includes('total') || col.name.includes('balance') ? (
-                                <span style={{ fontWeight: 600, color: '#0284c7' }}>₨ {Number(val).toLocaleString()}</span>
-                              ) : col.pk ? (
-                                <span style={{ fontWeight: 700, color: '#0f172a' }}>{val}</span>
-                              ) : (
-                                String(val)
-                              )}
-                            </td>
-                          );
-                        })}
-                        {selectedTable !== 'audit_logs' && (
-                          <td style={{ textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditRow(row)}
-                              className="btn btn-secondary btn-sm"
-                              style={{ padding: '2px 6px', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                              title="Edit this record"
-                            >
-                              <Edit2 size={11} />
-                              <span>Edit</span>
-                            </button>
-                          </td>
-                        )}
                       </tr>
                     ))
                   )}
@@ -794,133 +1049,170 @@ export default function Settings() {
               </table>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* IN-PLACE ROW EDIT MODAL */}
-      {editingRow && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-          <div className="modal-card card" style={{ maxWidth: '540px', width: '90%', maxHeight: '85vh', overflowY: 'auto', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Edit2 size={18} color="var(--primary)" />
-                <h3 style={{ fontSize: '1.1rem', margin: 0 }}>
-                  Edit Record in <strong>{selectedTable}</strong>
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingRow(null)}
-                style={{ cursor: 'pointer', color: '#94a3b8' }}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveRow} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {tableData && tableData.columns && tableData.columns.map(col => {
-                const isReadOnly = col.pk || col.name === 'id' || col.name === 'created_at' || col.name === 'updated_at';
-                return (
-                  <div key={col.name} className="form-group">
-                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>{col.name} {col.pk ? '(Primary Key)' : ''}</span>
-                      <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{col.type}</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      disabled={isReadOnly}
-                      style={{ background: isReadOnly ? '#f1f5f9' : '#ffffff' }}
-                      value={editRowData[col.name] ?? ''}
-                      onChange={(e) => setEditRowData({ ...editRowData, [col.name]: e.target.value })}
-                    />
-                  </div>
-                );
-              })}
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setEditingRow(null)}
-                  className="btn btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingRow}
-                  className="btn btn-primary"
-                  style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
-                >
-                  <Check size={14} />
-                  <span>{savingRow ? 'Saving Changes...' : 'Save Record'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
 
-      {/* FRESH START WIPE CONFIRMATION MODAL */}
-      {showWipeModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.7)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-          <div className="modal-card card" style={{ maxWidth: '480px', width: '90%', padding: '1.5rem', border: '2px solid #ef4444', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', borderBottom: '1px solid #fee2e2', paddingBottom: '0.75rem' }}>
-              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <AlertTriangle size={20} color="#dc2626" />
+      {/* ═════════ UPGRADE PLAN MODAL ═════════ */}
+      {showUpgradeModal && (
+        <div className="modal-overlay" onClick={() => setShowUpgradeModal(false)}>
+          <div
+            className="modal-content"
+            style={{ maxWidth: '850px', width: '92%', padding: '2rem', borderRadius: '16px' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', margin: '0 0 6px 0' }}>
+                Switch Your Subscription Tier
+              </h2>
+              <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
+                Instant upgrade with immediate limit removal and new feature access.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+              {/* Free Card */}
+              <div style={{
+                padding: '20px',
+                borderRadius: '12px',
+                border: plan === 'free' ? '2px solid #0284c7' : '1px solid #e2e8f0',
+                background: plan === 'free' ? '#f0f9ff' : '#ffffff',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0' }}>Free Forever</h3>
+                  <div style={{ fontSize: '24px', fontWeight: 900, color: '#0f172a', margin: '10px 0' }}>₨ 0</div>
+                  <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div>• 1 User</div>
+                    <div>• 50 Products</div>
+                    <div>• 100 Invoices/mo</div>
+                    <div>• Thermal Print</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={plan === 'free' || upgradingPlan}
+                  onClick={() => handlePlanUpgrade('free')}
+                  style={{
+                    marginTop: '16px',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: plan === 'free' ? '#e2e8f0' : '#ffffff',
+                    cursor: plan === 'free' ? 'default' : 'pointer',
+                    fontWeight: 700,
+                    fontSize: '13px'
+                  }}
+                >
+                  {plan === 'free' ? 'Current Plan' : 'Downgrade to Free'}
+                </button>
               </div>
-              <div>
-                <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 700, color: '#991b1b' }}>
-                  Confirm Fresh Start Wipe
-                </h3>
-                <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>This action is permanent and irreversible.</p>
+
+              {/* Pro Card */}
+              <div style={{
+                padding: '20px',
+                borderRadius: '12px',
+                border: '2px solid #0ea5e9',
+                background: plan === 'pro' ? '#f0f9ff' : '#ffffff',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                position: 'relative'
+              }}>
+                <span style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: '#0ea5e9',
+                  color: '#fff',
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  padding: '2px 8px',
+                  borderRadius: '10px'
+                }}>
+                  Most Popular
+                </span>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0' }}>Professional</h3>
+                  <div style={{ fontSize: '24px', fontWeight: 900, color: '#0ea5e9', margin: '10px 0' }}>₨ 3,500 <span style={{ fontSize: '12px', color: '#64748b' }}>/mo</span></div>
+                  <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div>• Up to 5 Staff Users</div>
+                    <div>• Unlimited Products</div>
+                    <div>• Unlimited Invoices</div>
+                    <div>• Profit & Loss Statement</div>
+                    <div>• Custom Logo on Bills</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={plan === 'pro' || upgradingPlan}
+                  onClick={() => handlePlanUpgrade('pro')}
+                  style={{
+                    marginTop: '16px',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%)',
+                    color: '#fff',
+                    cursor: plan === 'pro' ? 'default' : 'pointer',
+                    fontWeight: 700,
+                    fontSize: '13px'
+                  }}
+                >
+                  {plan === 'pro' ? 'Current Plan' : 'Activate Pro Plan'}
+                </button>
+              </div>
+
+              {/* Enterprise Card */}
+              <div style={{
+                padding: '20px',
+                borderRadius: '12px',
+                border: plan === 'enterprise' ? '2px solid #7e22ce' : '1px solid #e2e8f0',
+                background: plan === 'enterprise' ? '#faf5ff' : '#ffffff',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0' }}>Enterprise</h3>
+                  <div style={{ fontSize: '24px', fontWeight: 900, color: '#7e22ce', margin: '10px 0' }}>₨ 8,500 <span style={{ fontSize: '12px', color: '#64748b' }}>/mo</span></div>
+                  <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div>• Unlimited Users</div>
+                    <div>• Multi-Branch Support</div>
+                    <div>• Custom Domain Integration</div>
+                    <div>• 24/7 Dedicated Support</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={plan === 'enterprise' || upgradingPlan}
+                  onClick={() => handlePlanUpgrade('enterprise')}
+                  style={{
+                    marginTop: '16px',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: plan === 'enterprise' ? '#e2e8f0' : '#ffffff',
+                    cursor: plan === 'enterprise' ? 'default' : 'pointer',
+                    fontWeight: 700,
+                    fontSize: '13px'
+                  }}
+                >
+                  {plan === 'enterprise' ? 'Current Plan' : 'Select Enterprise'}
+                </button>
               </div>
             </div>
 
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '0.85rem', marginBottom: '1.25rem', fontSize: '0.825rem', color: '#991b1b', lineHeight: 1.5 }}>
-              <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600 }}>The following data will be permanently cleared:</p>
-              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                <li>All sales invoices, POS records & customer debts</li>
-                <li>All purchase receipts, restocks & batches</li>
-                <li>All products, suppliers & supplier ledgers</li>
-                <li>All expense vouchers, return receipts & stock adjustments</li>
-                <li>All demo staff accounts (Keeping <strong>Mudassir Arif</strong> as sole Admin)</li>
-              </ul>
-            </div>
-
-            <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
-                To confirm, please type <strong style={{ color: '#dc2626' }}>WIPE</strong> below:
-              </label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Type WIPE to confirm"
-                value={wipeConfirmText}
-                onChange={(e) => setWipeConfirmText(e.target.value)}
-                autoFocus
-                style={{ fontWeight: 700, letterSpacing: '1px' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <div style={{ textAlign: 'center' }}>
               <button
                 type="button"
-                onClick={() => setShowWipeModal(false)}
-                className="btn btn-secondary"
-                disabled={wiping}
+                onClick={() => setShowUpgradeModal(false)}
+                className="btn btn-secondary btn-sm"
               >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleWipeData}
-                disabled={wipeConfirmText !== 'WIPE' || wiping}
-                className="btn btn-danger"
-                style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
-              >
-                <Trash2 size={14} />
-                <span>{wiping ? 'Wiping Database...' : 'Permanently Wipe & Start Fresh'}</span>
+                Close
               </button>
             </div>
           </div>

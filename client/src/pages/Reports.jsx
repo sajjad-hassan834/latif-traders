@@ -13,7 +13,9 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   RefreshCw,
-  ArrowDownToLine
+  ArrowDownToLine,
+  X,
+  ArrowRight
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate, formatDateTime } from '../utils/formatters';
@@ -77,6 +79,7 @@ function ReportsContent({ initialReport }) {
   const [movementsReport, setMovementsReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [selectedMovement, setSelectedMovement] = useState(null);
 
   const getReportMeta = () => {
     switch (activeReport) {
@@ -398,15 +401,46 @@ function ReportsContent({ initialReport }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      {/* REPORT TYPE SELECTOR */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.75rem 1rem' }}>
-        <div className="horizontal-scroll-tabs">
+      {/* 1. CLEAN PAGE HEADER */}
+      <div className="page-header no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+            {activeReport === 'stock' ? 'Inventory Stock Valuation' : 'Financial Reports & Analytics'}
+          </h1>
+          <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0' }}>
+            {activeReport === 'stock'
+              ? 'Real-time asset valuation, unit purchase costs, retail margins, and warehouse holding value'
+              : 'Certified profit & loss, daily sales audit, cash register closing, and product analytics'}
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+          <button onClick={loadReportData} className="btn btn-secondary btn-sm" style={{ height: '34px', fontSize: '0.8rem', padding: '0 0.85rem' }} title="Refresh Report Data">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            <span>Refresh</span>
+          </button>
+
+          <button onClick={handleExportCSV} className="btn btn-secondary btn-sm" style={{ height: '34px', fontSize: '0.8rem', padding: '0 0.85rem' }} title="Download Excel / CSV">
+            <Download size={13} />
+            <span>Export CSV</span>
+          </button>
+
+          <button onClick={() => window.print()} className="btn btn-primary btn-sm" style={{ height: '34px', fontSize: '0.8rem', fontWeight: 600, padding: '0 1rem' }} title="Print Official Report">
+            <Printer size={14} />
+            <span>Print Report</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. REPORT NAVIGATION TABS & FILTER TOOLBAR */}
+      <div className="card no-print" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.85rem 1.15rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
           {(isAdmin || canViewFinances) && (
             <button
               onClick={() => setActiveReport('pnl')}
-              className={`btn btn-sm ${activeReport === 'pnl' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`filter-pill ${activeReport === 'pnl' ? 'active' : ''}`}
             >
-              <TrendingUp size={14} />
+              <TrendingUp size={13} />
               <span>P&L Statement</span>
             </button>
           )}
@@ -414,9 +448,9 @@ function ReportsContent({ initialReport }) {
           {(isAdmin || canSell || canViewFinances) && (
             <button
               onClick={() => setActiveReport('daily')}
-              className={`btn btn-sm ${activeReport === 'daily' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`filter-pill ${activeReport === 'daily' ? 'active' : ''}`}
             >
-              <BarChart3 size={14} />
+              <BarChart3 size={13} />
               <span>Daily Sales</span>
             </button>
           )}
@@ -424,21 +458,29 @@ function ReportsContent({ initialReport }) {
           {(isAdmin || canSell || canViewFinances) && (
             <button
               onClick={() => setActiveReport('register')}
-              className={`btn btn-sm ${activeReport === 'register' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`filter-pill ${activeReport === 'register' ? 'active' : ''}`}
             >
-              <Receipt size={14} />
+              <Receipt size={13} />
               <span>Day-End Z-Register</span>
             </button>
           )}
 
-
+          {(isAdmin || canManageInventory || canViewFinances) && (
+            <button
+              onClick={() => setActiveReport('stock')}
+              className={`filter-pill ${activeReport === 'stock' ? 'active' : ''}`}
+            >
+              <Package size={13} />
+              <span>Stock Valuation</span>
+            </button>
+          )}
 
           {(isAdmin || canManageInventory || canViewFinances) && (
             <button
               onClick={() => setActiveReport('expiry')}
-              className={`btn btn-sm ${activeReport === 'expiry' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`filter-pill ${activeReport === 'expiry' ? 'active' : ''}`}
             >
-              <Clock size={14} />
+              <Clock size={13} />
               <span>Batch Expiry</span>
             </button>
           )}
@@ -446,9 +488,9 @@ function ReportsContent({ initialReport }) {
           {(isAdmin || canManageInventory || canViewFinances) && (
             <button
               onClick={() => setActiveReport('purchases')}
-              className={`btn btn-sm ${activeReport === 'purchases' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`filter-pill ${activeReport === 'purchases' ? 'active' : ''}`}
             >
-              <ArrowDownToLine size={14} />
+              <ArrowDownToLine size={13} />
               <span>Purchases Ledger</span>
             </button>
           )}
@@ -456,9 +498,9 @@ function ReportsContent({ initialReport }) {
           {(isAdmin || canSell || canViewFinances) && (
             <button
               onClick={() => setActiveReport('product-sales')}
-              className={`btn btn-sm ${activeReport === 'product-sales' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`filter-pill ${activeReport === 'product-sales' ? 'active' : ''}`}
             >
-              <DollarSign size={14} />
+              <DollarSign size={13} />
               <span>Product Sales</span>
             </button>
           )}
@@ -466,63 +508,104 @@ function ReportsContent({ initialReport }) {
           {(isAdmin || canManageInventory || canViewFinances) && (
             <button
               onClick={() => setActiveReport('movements')}
-              className={`btn btn-sm ${activeReport === 'movements' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`filter-pill ${activeReport === 'movements' ? 'active' : ''}`}
             >
-              <RefreshCw size={14} />
+              <RefreshCw size={13} />
               <span>Stock Movements</span>
             </button>
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem' }}>
-          {(activeReport === 'pnl' || activeReport === 'daily' || activeReport === 'purchases' || activeReport === 'product-sales' || activeReport === 'movements') && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <input
-                type="date"
-                className="form-control"
-                style={{ height: '30px', fontSize: '0.775rem' }}
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-              <span style={{ color: '#64748b', fontSize: '0.775rem' }}>to</span>
-              <input
-                type="date"
-                className="form-control"
-                style={{ height: '30px', fontSize: '0.775rem' }}
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-          )}
+        {/* DATE RANGE FILTER ROW (If applicable to report) */}
+        {((activeReport === 'pnl' || activeReport === 'daily' || activeReport === 'purchases' || activeReport === 'product-sales' || activeReport === 'movements') || activeReport === 'register') && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.65rem',
+            flexWrap: 'wrap',
+            borderTop: '1px solid #f1f5f9',
+            paddingTop: '0.65rem'
+          }}>
+            {(activeReport === 'pnl' || activeReport === 'daily' || activeReport === 'purchases' || activeReport === 'product-sales' || activeReport === 'movements') && (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '6px',
+                padding: '2px 8px',
+                height: '32px'
+              }}>
+                <Calendar size={13} color="#64748b" />
+                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>From:</span>
+                <input
+                  type="date"
+                  style={{ border: 'none', background: 'transparent', height: '24px', fontSize: '0.775rem', color: '#0f172a' }}
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+                <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>to</span>
+                <input
+                  type="date"
+                  style={{ border: 'none', background: 'transparent', height: '24px', fontSize: '0.775rem', color: '#0f172a' }}
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            )}
 
-          {activeReport === 'register' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <span style={{ color: '#64748b', fontSize: '0.775rem' }}>Shift Date:</span>
-              <input
-                type="date"
-                className="form-control"
-                style={{ height: '30px', fontSize: '0.775rem' }}
-                value={registerDate}
-                onChange={(e) => setRegisterDate(e.target.value)}
-              />
-            </div>
-          )}
+            {activeReport === 'register' && (
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '6px',
+                padding: '2px 8px',
+                height: '32px'
+              }}>
+                <Calendar size={13} color="#64748b" />
+                <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 600 }}>Shift Date:</span>
+                <input
+                  type="date"
+                  style={{ border: 'none', background: 'transparent', height: '24px', fontSize: '0.775rem', color: '#0f172a' }}
+                  value={registerDate}
+                  onChange={(e) => setRegisterDate(e.target.value)}
+                />
+              </div>
+            )}
 
-          <button onClick={loadReportData} className="btn btn-secondary btn-sm" title="Refresh Report Data">
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-            <span>Refresh</span>
-          </button>
-
-          <button onClick={handleExportCSV} className="btn btn-secondary btn-sm" title="Download Excel / CSV">
-            <Download size={13} />
-            <span>Export CSV</span>
-          </button>
-
-          <button onClick={() => window.print()} className="btn btn-secondary btn-sm" title="Print Report">
-            <Printer size={13} />
-            <span>Print</span>
-          </button>
-        </div>
+            {activeReport === 'purchases' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>View:</span>
+                <button
+                  type="button"
+                  onClick={() => setPurchasesView('summary')}
+                  className={`filter-pill ${purchasesView === 'summary' ? 'active' : ''}`}
+                >
+                  Summary
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPurchasesView('supplier')}
+                  className={`filter-pill ${purchasesView === 'supplier' ? 'active' : ''}`}
+                >
+                  By Supplier
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPurchasesView('product')}
+                  className={`filter-pill ${purchasesView === 'product' ? 'active' : ''}`}
+                >
+                  By Product
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ERROR BANNER IF ANY */}
@@ -567,96 +650,154 @@ function ReportsContent({ initialReport }) {
 
           {/* 1. PROFIT & LOSS STATEMENT */}
           {activeReport === 'pnl' && (
-            <div className="card" style={{ maxWidth: '850px', margin: '0 auto', width: '100%' }}>
-              {loading ? (
-                <div style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>Calculating financial statements...</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {/* REVENUE SECTION */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+              {/* 4 SUMMARY METRIC CARDS FOR P&L */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.85rem' }}>
+                <div className="card" style={{ padding: '1.15rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginBottom: '0.4rem' }}>
-                      1. Revenue / Turnover
-                    </h4>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.825rem' }}>
-                    <span>Gross Sales {invoiceCount > 0 ? `(${invoiceCount} invoices)` : ''}</span>
-                    <span style={{ fontWeight: 600 }}>{formatPKR(grossSales)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', color: '#ef4444', fontSize: '0.825rem' }}>
-                    <span>Less: Discounts Allowed</span>
-                    <span>- {formatPKR(discounts)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderTop: '1px dashed #cbd5e1', fontWeight: 700, fontSize: '0.85rem' }}>
-                    <span>Net Sales Revenue</span>
-                    <span style={{ color: '#0284c7' }}>{formatPKR(netSales)}</span>
-                  </div>
-                </div>
-
-                {/* COGS SECTION */}
-                <div>
-                  <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginBottom: '0.4rem' }}>
-                    2. Cost of Goods Sold (COGS)
-                  </h4>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.825rem' }}>
-                    <span>Cost of Frozen Items Sold (FIFO/Lot Cost)</span>
-                    <span style={{ fontWeight: 600 }}>{formatPKR(cogs)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderTop: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', fontWeight: 800, fontSize: '0.95rem' }}>
-                    <span>Gross Profit</span>
-                    <span style={{ color: grossProfit >= 0 ? '#10b981' : '#ef4444' }}>{formatPKR(grossProfit)}</span>
-                  </div>
-                </div>
-
-                {/* EXPENSES SECTION */}
-                <div>
-                  <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginBottom: '0.4rem' }}>
-                    3. Operating Expenses
-                  </h4>
-                  {categoryBreakdown.length === 0 ? (
-                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', padding: '0.25rem 0' }}>No operating expenses recorded for this period.</div>
-                  ) : (
-                    categoryBreakdown.map((exp, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0', fontSize: '0.825rem', color: '#475569' }}>
-                        <span>{exp.category_name}</span>
-                        <span>{formatPKR(exp.total_amount)}</span>
-                      </div>
-                    ))
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderTop: '1px dashed #cbd5e1', fontWeight: 700, color: '#ef4444', fontSize: '0.85rem' }}>
-                    <span>Total Operating Expenses</span>
-                    <span>- {formatPKR(totalExpenses)}</span>
-                  </div>
-                </div>
-
-                {/* NET PROFIT */}
-                <div style={{
-                  background: netProfit >= 0 ? '#ecfdf5' : '#fef2f2',
-                  border: `2px solid ${netProfit >= 0 ? '#10b981' : '#ef4444'}`,
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <div>
-                    <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: netProfit >= 0 ? '#065f46' : '#991b1b' }}>
-                      NET BUSINESS PROFIT / (LOSS)
-                    </h3>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                      Net Sales ({formatPKR(netSales)}) - COGS ({formatPKR(cogs)}) - Expenses ({formatPKR(totalExpenses)})
+                    <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Net Sales</div>
+                    <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0284c7', marginTop: '0.35rem', lineHeight: 1.1 }}>
+                      {formatPKR(netSales)}
                     </div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Gross sales after discounts</div>
                   </div>
-                  <div style={{
-                    fontSize: '1.4rem',
-                    fontWeight: 900,
-                    color: netProfit >= 0 ? '#059669' : '#dc2626'
-                  }}>
-                    {formatPKR(netProfit)}
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#eff6ff', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <DollarSign size={20} />
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '1.15rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cost of Goods (COGS)</div>
+                    <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#475569', marginTop: '0.35rem', lineHeight: 1.1 }}>
+                      {formatPKR(cogs)}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Stock purchase cost of items sold</div>
+                  </div>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#f1f5f9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Package size={20} />
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '1.15rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Operating Expenses</div>
+                    <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#ef4444', marginTop: '0.35rem', lineHeight: 1.1 }}>
+                      {formatPKR(totalExpenses)}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Shop utilities, bills & maintenance</div>
+                  </div>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <ArrowDownRight size={20} />
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '1.15rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Net Business Profit</div>
+                    <div style={{ fontSize: '1.65rem', fontWeight: 800, color: netProfit >= 0 ? '#059669' : '#dc2626', marginTop: '0.35rem', lineHeight: 1.1 }}>
+                      {formatPKR(netProfit)}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Net bottom-line margin</div>
+                  </div>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: netProfit >= 0 ? '#ecfdf5' : '#fef2f2', color: netProfit >= 0 ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <TrendingUp size={20} />
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+
+              {/* DETAILED P&L STATEMENT CARD */}
+              <div className="card" style={{ width: '100%', padding: '1.25rem' }}>
+                {loading ? (
+                  <div style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>Calculating financial statements...</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {/* REVENUE SECTION */}
+                    <div>
+                      <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginBottom: '0.4rem' }}>
+                        1. Revenue / Turnover
+                      </h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.825rem' }}>
+                        <span>Gross Sales {invoiceCount > 0 ? `(${invoiceCount} invoices)` : ''}</span>
+                        <span style={{ fontWeight: 600 }}>{formatPKR(grossSales)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', color: '#ef4444', fontSize: '0.825rem' }}>
+                        <span>Less: Discounts Allowed</span>
+                        <span>- {formatPKR(discounts)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderTop: '1px dashed #cbd5e1', fontWeight: 700, fontSize: '0.85rem' }}>
+                        <span>Net Sales Revenue</span>
+                        <span style={{ color: '#0284c7' }}>{formatPKR(netSales)}</span>
+                      </div>
+                    </div>
+
+                    {/* COGS SECTION */}
+                    <div>
+                      <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginBottom: '0.4rem' }}>
+                        2. Cost of Goods Sold (COGS)
+                      </h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontSize: '0.825rem' }}>
+                        <span>Cost of Frozen Items Sold (FIFO/Lot Cost)</span>
+                        <span style={{ fontWeight: 600 }}>{formatPKR(cogs)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderTop: '1px solid #cbd5e1', borderBottom: '1px solid #cbd5e1', fontWeight: 800, fontSize: '0.95rem' }}>
+                        <span>Gross Profit</span>
+                        <span style={{ color: grossProfit >= 0 ? '#10b981' : '#ef4444' }}>{formatPKR(grossProfit)}</span>
+                      </div>
+                    </div>
+
+                    {/* EXPENSES SECTION */}
+                    <div>
+                      <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginBottom: '0.4rem' }}>
+                        3. Operating Expenses
+                      </h4>
+                      {categoryBreakdown.length === 0 ? (
+                        <div style={{ fontSize: '0.8rem', color: '#94a3b8', padding: '0.25rem 0' }}>No operating expenses recorded for this period.</div>
+                      ) : (
+                        categoryBreakdown.map((exp, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0', fontSize: '0.825rem', color: '#475569' }}>
+                            <span>{exp.category_name}</span>
+                            <span>{formatPKR(exp.total_amount)}</span>
+                          </div>
+                        ))
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderTop: '1px dashed #cbd5e1', fontWeight: 700, color: '#ef4444', fontSize: '0.85rem' }}>
+                        <span>Total Operating Expenses</span>
+                        <span>- {formatPKR(totalExpenses)}</span>
+                      </div>
+                    </div>
+
+                    {/* NET PROFIT */}
+                    <div style={{
+                      background: netProfit >= 0 ? '#ecfdf5' : '#fef2f2',
+                      border: `2px solid ${netProfit >= 0 ? '#10b981' : '#ef4444'}`,
+                      borderRadius: '8px',
+                      padding: '1rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: netProfit >= 0 ? '#065f46' : '#991b1b' }}>
+                          NET BUSINESS PROFIT / (LOSS)
+                        </h3>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                          Net Sales ({formatPKR(netSales)}) - COGS ({formatPKR(cogs)}) - Expenses ({formatPKR(totalExpenses)})
+                        </div>
+                      </div>
+                      <div style={{
+                        fontSize: '1.4rem',
+                        fontWeight: 900,
+                        color: netProfit >= 0 ? '#059669' : '#dc2626'
+                      }}>
+                        {formatPKR(netProfit)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
         {/* 2. DAILY SALES SUMMARY */}
         {activeReport === 'daily' && (
@@ -823,56 +964,99 @@ function ReportsContent({ initialReport }) {
 
         {/* 4. STOCK VALUATION REPORT */}
         {activeReport === 'stock' && (
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1rem' }}>Inventory Stock & Valuation</h3>
-                <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Current physical stock valuation across all active frozen items</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+            {/* 3 SUMMARY METRIC CARDS FOR STOCK */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.85rem' }}>
+              <div className="card" style={{ padding: '1.15rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Cost (Kharid)</div>
+                  <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a', marginTop: '0.35rem', lineHeight: 1.1 }}>
+                    {formatPKR(stockTotals.total_cost_value || 0)}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Total purchase cost of inventory</div>
+                </div>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#f1f5f9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Package size={20} />
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', flexWrap: 'wrap' }}>
-                <div>Total Cost: <strong>{formatPKR(stockTotals.total_cost_value || 0)}</strong></div>
-                <div>Retail Value: <strong style={{ color: '#0284c7' }}>{formatPKR(stockTotals.total_retail_value || 0)}</strong></div>
-                <div>Potential Profit: <strong style={{ color: '#10b981' }}>{formatPKR(stockTotals.total_potential_profit || 0)}</strong></div>
+
+              <div className="card" style={{ padding: '1.15rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Retail Value (Sale)</div>
+                  <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0284c7', marginTop: '0.35rem', lineHeight: 1.1 }}>
+                    {formatPKR(stockTotals.total_retail_value || 0)}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Expected revenue at retail prices</div>
+                </div>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#eff6ff', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <TrendingUp size={20} />
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '1.15rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Potential Margin</div>
+                  <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#059669', marginTop: '0.35rem', lineHeight: 1.1 }}>
+                    {formatPKR(stockTotals.total_potential_profit || 0)}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>Unrealized gross profit upon sale</div>
+                </div>
+                <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <DollarSign size={20} />
+                </div>
               </div>
             </div>
 
-            <div className="table-responsive">
-              <table className="table" style={{ width: '100%', minWidth: '760px' }}>
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th style={{ textAlign: 'center' }}>In Stock</th>
-                    <th style={{ textAlign: 'right' }}>Cost (PKR)</th>
-                    <th style={{ textAlign: 'right' }}>Sale (PKR)</th>
-                    <th style={{ textAlign: 'right' }}>Total Cost (PKR)</th>
-                    <th style={{ textAlign: 'right' }}>Retail Value (PKR)</th>
-                    <th style={{ textAlign: 'right' }}>Profit (PKR)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stockItems.length === 0 ? (
+            {/* INVENTORY VALUATION TABLE CARD */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>Inventory Stock & Valuation Audit</h3>
+                  <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Itemized stock quantities, purchase costs, sale rates, and gross potential margin</p>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  Total active items: <strong style={{ color: '#0f172a' }}>{stockItems.length}</strong>
+                </div>
+              </div>
+
+              <div className="table-responsive">
+                <table className="table" style={{ width: '100%', minWidth: '760px' }}>
+                  <thead>
                     <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                        {loading ? 'Loading inventory data...' : 'No inventory items found.'}
-                      </td>
+                      <th>Product</th>
+                      <th>Category</th>
+                      <th style={{ textAlign: 'center' }}>In Stock</th>
+                      <th style={{ textAlign: 'right' }}>Cost (PKR)</th>
+                      <th style={{ textAlign: 'right' }}>Sale (PKR)</th>
+                      <th style={{ textAlign: 'right' }}>Total Cost (PKR)</th>
+                      <th style={{ textAlign: 'right' }}>Retail Value (PKR)</th>
+                      <th style={{ textAlign: 'right' }}>Profit (PKR)</th>
                     </tr>
-                  ) : (
-                    stockItems.map(item => (
-                      <tr key={item.id}>
-                        <td style={{ fontWeight: 600 }}>{item.name}</td>
-                        <td>{item.category_name || '-'}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 700 }}>{item.available_qty || 0} {item.unit || ''}</td>
-                        <td style={{ textAlign: 'right' }}>{formatPKR(item.purchase_price || 0)}</td>
-                        <td style={{ textAlign: 'right' }}>{formatPKR(item.sale_price || 0)}</td>
-                        <td style={{ textAlign: 'right' }}>{formatPKR(item.total_cost_value || 0)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#0284c7' }}>{formatPKR(item.total_retail_value || 0)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#10b981' }}>{formatPKR(item.potential_profit || 0)}</td>
+                  </thead>
+                  <tbody>
+                    {stockItems.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
+                          {loading ? 'Loading inventory data...' : 'No inventory items found.'}
+                        </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      stockItems.map(item => (
+                        <tr key={item.id}>
+                          <td style={{ fontWeight: 600 }}>{item.name}</td>
+                          <td>{item.category_name || '-'}</td>
+                          <td style={{ textAlign: 'center', fontWeight: 700 }}>{item.available_qty || 0} {item.unit || ''}</td>
+                          <td style={{ textAlign: 'right' }}>{formatPKR(item.purchase_price || 0)}</td>
+                          <td style={{ textAlign: 'right' }}>{formatPKR(item.sale_price || 0)}</td>
+                          <td style={{ textAlign: 'right' }}>{formatPKR(item.total_cost_value || 0)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#0284c7' }}>{formatPKR(item.total_retail_value || 0)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#10b981' }}>{formatPKR(item.potential_profit || 0)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -1243,48 +1427,143 @@ function ReportsContent({ initialReport }) {
           </div>
         )}
 
-        {/* 8. STOCK MOVEMENTS AUDIT LEDGER */}
+        {/* 8. STOCK MOVEMENTS AUDIT LEDGER (Compact 56px Rows + Details Side Panel) */}
         {activeReport === 'movements' && (
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="card" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
             <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid #e2e8f0' }}>
-              <h3 style={{ fontSize: '1rem' }}>Master Stock Movement Audit Trail</h3>
-              <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Traceable history of all restocks, sales deductions, returns, and damage adjustments.</p>
+              <h3 style={{ fontSize: '1rem', margin: 0, fontWeight: 700 }}>Master Stock Movement Audit Trail</h3>
+              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0' }}>Traceable history of all restocks, sales deductions, returns, and damage adjustments.</p>
             </div>
             <div className="table-responsive">
-              <table className="table" style={{ width: '100%', minWidth: '780px' }}>
+              <table className="table" style={{ width: '100%', minWidth: '700px' }}>
                 <thead>
-                  <tr>
-                    <th>Date & Time</th>
-                    <th>Product</th>
-                    <th>Batch Lot #</th>
-                    <th>Type</th>
-                    <th style={{ textAlign: 'center' }}>Change (Delta)</th>
-                    <th style={{ textAlign: 'center' }}>Balance After</th>
-                    <th>Reference / Reason</th>
-                    <th>Logged By</th>
+                  <tr style={{ background: '#F8FAFC' }}>
+                    <th style={{ height: '42px', padding: '0 16px', fontSize: '12px' }}>Date & Time</th>
+                    <th style={{ height: '42px', padding: '0 16px', fontSize: '12px' }}>Product</th>
+                    <th style={{ height: '42px', padding: '0 16px', fontSize: '12px' }}>Type</th>
+                    <th style={{ height: '42px', padding: '0 16px', fontSize: '12px', textAlign: 'center' }}>Change</th>
+                    <th style={{ height: '42px', padding: '0 16px', fontSize: '12px', textAlign: 'center' }}>Balance</th>
+                    <th style={{ height: '42px', padding: '0 16px', fontSize: '12px', textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {!movementsReport?.length ? (
-                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No stock movements recorded in date range.</td></tr>
+                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No stock movements recorded in date range.</td></tr>
                   ) : (
                     movementsReport.map(m => {
                       const isPositive = m.quantity_delta > 0;
+                      const dateObj = new Date(m.created_at);
+                      const dateStr = !isNaN(dateObj.getTime())
+                        ? `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`
+                        : m.created_at;
+                      const timeStr = !isNaN(dateObj.getTime())
+                        ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : '';
+
+                      // Type pill style
+                      const typeUpper = (m.type || '').toUpperCase();
+                      let typePillStyle = { background: '#F1F5F9', color: '#475569', border: '1px solid #E2E8F0' };
+                      if (typeUpper.includes('PURCHASE')) {
+                        typePillStyle = { background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' };
+                      } else if (typeUpper.includes('SALE')) {
+                        typePillStyle = { background: '#EFF6FF', color: '#1E40AF', border: '1px solid #BFDBFE' };
+                      } else if (typeUpper.includes('ADJUST')) {
+                        typePillStyle = { background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A' };
+                      } else if (typeUpper.includes('RETURN')) {
+                        typePillStyle = { background: '#FAF5FF', color: '#6B21A8', border: '1px solid #E9D5FF' };
+                      }
+
                       return (
-                        <tr key={m.id}>
-                          <td style={{ fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap' }}>{formatDateTime(m.created_at)}</td>
-                          <td style={{ fontWeight: 600 }}>
-                            <div>{m.product_name}</div>
-                            <div className="mono" style={{ fontSize: '0.7rem', color: '#64748b' }}>{m.sku}</div>
+                        <tr key={m.id} style={{ height: '56px', maxHeight: '56px' }}>
+                          {/* COLUMN 1: Date & Time */}
+                          <td style={{ padding: '8px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>
+                              {dateStr}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
+                              {timeStr}
+                            </div>
                           </td>
-                          <td className="mono" style={{ fontSize: '0.8rem' }}>{m.batch_no || '-'}</td>
-                          <td><span className="badge badge-info">{m.type}</span></td>
-                          <td style={{ textAlign: 'center', fontWeight: 700, color: isPositive ? '#10b981' : '#ef4444' }}>
-                            {isPositive ? `+${m.quantity_delta}` : m.quantity_delta} {m.unit}
+
+                          {/* COLUMN 2: Product */}
+                          <td style={{ padding: '8px 16px', verticalAlign: 'middle' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 600, color: '#111827', lineHeight: 1.25, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {m.product_name}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px', fontFamily: 'monospace' }}>
+                              {m.sku}
+                            </div>
                           </td>
-                          <td style={{ textAlign: 'center', fontWeight: 600 }}>{m.balance_after}</td>
-                          <td style={{ fontSize: '0.85rem', maxWidth: '240px' }}>{m.reason || '-'}</td>
-                          <td style={{ fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap' }}>{m.user_name || 'Staff'}</td>
+
+                          {/* COLUMN 3: Type (pill badge only) */}
+                          <td style={{ padding: '8px 16px', verticalAlign: 'middle' }}>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '3px 9px',
+                                borderRadius: '9999px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                                ...typePillStyle
+                              }}
+                            >
+                              {typeUpper}
+                            </span>
+                          </td>
+
+                          {/* COLUMN 4: Change (Delta) */}
+                          <td style={{ padding: '8px 16px', verticalAlign: 'middle', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <span
+                              style={{
+                                fontSize: '14px',
+                                fontWeight: 700,
+                                color: isPositive ? '#10B981' : '#EF4444'
+                              }}
+                            >
+                              {isPositive ? `+${m.quantity_delta}` : m.quantity_delta} {m.unit || 'pkt'}
+                            </span>
+                          </td>
+
+                          {/* COLUMN 5: Balance After */}
+                          <td style={{ padding: '8px 16px', verticalAlign: 'middle', textAlign: 'center', fontSize: '13px', color: '#4B5563', fontWeight: 600 }}>
+                            {m.balance_after}
+                          </td>
+
+                          {/* COLUMN 6: Action ("View →" button) */}
+                          <td style={{ padding: '8px 16px', verticalAlign: 'middle', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedMovement(m)}
+                              style={{
+                                height: '30px',
+                                padding: '0 10px',
+                                borderRadius: '6px',
+                                border: '1px solid #E5E7EB',
+                                background: '#FFFFFF',
+                                color: '#0F766E',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#F0FDFA';
+                                e.currentTarget.style.borderColor = '#0F766E';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#FFFFFF';
+                                e.currentTarget.style.borderColor = '#E5E7EB';
+                              }}
+                            >
+                              <span>View</span>
+                              <ArrowRight size={13} />
+                            </button>
+                          </td>
                         </tr>
                       );
                     })
@@ -1292,6 +1571,154 @@ function ReportsContent({ initialReport }) {
                 </tbody>
               </table>
             </div>
+
+            {/* DETAILS SIDE PANEL (Drawer) */}
+            {selectedMovement && (
+              <div
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  background: 'rgba(0,0,0,0.4)',
+                  backdropFilter: 'blur(3px)',
+                  zIndex: 1200,
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  animation: 'fadeIn 0.15s ease'
+                }}
+                onClick={() => setSelectedMovement(null)}
+              >
+                <div
+                  style={{
+                    width: '420px',
+                    maxWidth: '90vw',
+                    height: '100%',
+                    background: '#FFFFFF',
+                    boxShadow: '-8px 0 28px rgba(0,0,0,0.15)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    animation: 'slideInRight 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Panel Header */}
+                  <div
+                    style={{
+                      padding: '20px 24px',
+                      borderBottom: '1px solid #F3F4F6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#111827' }}>
+                        Movement Details
+                      </h3>
+                      <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#6B7280' }}>
+                        Audit trail log #{selectedMovement.id}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMovement(null)}
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        background: '#F4F6F9',
+                        color: '#6B7280',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  {/* Panel Body */}
+                  <div style={{ padding: '24px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '10px', border: '1px solid #E5E7EB' }}>
+                      <div style={{ fontSize: '11px', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>Product</div>
+                      <div style={{ fontSize: '16px', fontWeight: 700, color: '#111827', marginTop: '2px' }}>{selectedMovement.product_name}</div>
+                      <div style={{ fontSize: '12px', color: '#0F766E', fontFamily: 'monospace', marginTop: '2px' }}>SKU: {selectedMovement.sku}</div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px 12px' }}>
+                        <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>Movement Type</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#111827', marginTop: '4px', textTransform: 'uppercase' }}>
+                          {selectedMovement.type}
+                        </div>
+                      </div>
+
+                      <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px 12px' }}>
+                        <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>Quantity Delta</div>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: selectedMovement.quantity_delta > 0 ? '#10B981' : '#EF4444', marginTop: '4px' }}>
+                          {selectedMovement.quantity_delta > 0 ? `+${selectedMovement.quantity_delta}` : selectedMovement.quantity_delta} {selectedMovement.unit}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>Stock Balance</div>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#111827', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{(selectedMovement.balance_after || 0) - (selectedMovement.quantity_delta || 0)}</span>
+                        <ArrowRight size={14} color="#9CA3AF" />
+                        <span style={{ color: '#0F766E' }}>{selectedMovement.balance_after} {selectedMovement.unit}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>Batch / Lot Number</div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#111827', marginTop: '4px', fontFamily: 'monospace' }}>
+                        {selectedMovement.batch_no || 'Standard Stock (No Lot)'}
+                      </div>
+                    </div>
+
+                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>Reference / Reason</div>
+                      <div style={{ fontSize: '13px', color: '#374151', marginTop: '4px', lineHeight: 1.5 }}>
+                        {selectedMovement.reason || 'No description provided'}
+                      </div>
+                    </div>
+
+                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>Date, Time & Staff</div>
+                      <div style={{ fontSize: '13px', color: '#111827', fontWeight: 600, marginTop: '4px' }}>
+                        {formatDateTime(selectedMovement.created_at)}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                        Logged by: <strong>{selectedMovement.user_name || 'Staff User'}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Panel Footer */}
+                  <div style={{ padding: '16px 24px', borderTop: '1px solid #F3F4F6', textAlign: 'right' }}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMovement(null)}
+                      style={{
+                        height: '38px',
+                        padding: '0 20px',
+                        borderRadius: '8px',
+                        border: '1px solid #E5E7EB',
+                        background: '#FFFFFF',
+                        color: '#374151',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Close Details
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

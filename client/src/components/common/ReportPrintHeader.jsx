@@ -63,6 +63,12 @@ export default function ReportPrintHeader({
           {reportSubtitle && <div className="report-main-subtitle">{reportSubtitle}</div>}
         </div>
         <div className="report-meta-chips">
+          {docRef && (
+            <div className="report-meta-chip">
+              <span className="chip-label">REF:</span>
+              <span className="chip-val">{docRef}</span>
+            </div>
+          )}
           {dateRangeText && (
             <div className="report-meta-chip">
               <span className="chip-label">PERIOD:</span>

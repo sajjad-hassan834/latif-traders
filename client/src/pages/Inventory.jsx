@@ -1,11 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, Eye, Edit, AlertTriangle, Layers, Clock, Download, Barcode, ChevronDown, MoreVertical, PlusCircle, Trash2, AlertCircle, Check, X, Archive } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Search,
+  Plus,
+  Eye,
+  Edit,
+  AlertTriangle,
+  Layers,
+  Clock,
+  Download,
+  Barcode,
+  ChevronDown,
+  MoreVertical,
+  PlusCircle,
+  Trash2,
+  AlertCircle,
+  Check,
+  X,
+  Archive,
+  ArrowUpRight,
+  Home,
+  RefreshCw,
+  MoreHorizontal,
+  Package,
+  Filter,
+  Calendar
+} from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
 import { useAuth } from '../context/AuthContext';
 import BarcodeLabelModal from '../components/common/BarcodeLabelModal';
 import Pagination from '../components/common/Pagination';
+import StatCard from '../components/common/StatCard';
+import StatusBadge from '../components/common/StatusBadge';
+import ActionMenu from '../components/common/ActionMenu';
 
 export default function Inventory() {
   const { isAdmin, canManageInventory } = useAuth();
@@ -17,10 +45,19 @@ export default function Inventory() {
   const [search, setSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 15;
+  const [itemsPerPage, setItemsPerPage] = useState(15);
+  const [moreActionsOpen, setMoreActionsOpen] = useState(false);
+
+  const datePickerRef = useRef(null);
+  const moreFiltersRef = useRef(null);
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -51,7 +88,16 @@ export default function Inventory() {
   const [actionMenuId, setActionMenuId] = useState(null);
 
   useEffect(() => {
-    const handleOutsideClick = () => setActionMenuId(null);
+    const handleOutsideClick = (e) => {
+      setActionMenuId(null);
+      setMoreActionsOpen(false);
+      if (datePickerRef.current && !datePickerRef.current.contains(e.target)) {
+        setDatePickerOpen(false);
+      }
+      if (moreFiltersRef.current && !moreFiltersRef.current.contains(e.target)) {
+        setMoreFiltersOpen(false);
+      }
+    };
     window.addEventListener('click', handleOutsideClick);
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
@@ -422,301 +468,662 @@ export default function Inventory() {
     }
   };
 
+  const totalProducts = products.length;
+  const outOfStockCount = products.filter(p => Number(p.current_stock) <= 0).length;
+  const lowStockCount = products.filter(p => Number(p.current_stock) > 0 && Number(p.current_stock) <= Number(p.min_stock_level)).length;
+  const inStockCount = products.filter(p => Number(p.current_stock) > Number(p.min_stock_level)).length;
+  const totalStockValue = products.reduce((acc, p) => acc + ((Number(p.purchase_price) || 0) * (Number(p.current_stock) || 0)), 0);
+
+  const filteredProducts = products.filter(p => {
+    if (statusFilter === 'in_stock') return Number(p.current_stock) > Number(p.min_stock_level);
+    if (statusFilter === 'low_stock') return Number(p.current_stock) > 0 && Number(p.current_stock) <= Number(p.min_stock_level);
+    if (statusFilter === 'out_of_stock') return Number(p.current_stock) <= 0;
+    if (startDate && p.created_at && new Date(p.created_at) < new Date(startDate)) return false;
+    if (endDate && p.created_at && new Date(p.created_at) > new Date(endDate + 'T23:59:59')) return false;
+    return true;
+  });
+
+  const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const isFilterActive = search || selectedCat || selectedBrand || statusFilter !== 'all' || lowStockOnly || startDate || endDate;
+
+  const handleClearFilters = () => {
+    setSearch('');
+    setSelectedCat('');
+    setSelectedBrand('');
+    setStatusFilter('all');
+    setLowStockOnly(false);
+    setStartDate('');
+    setEndDate('');
+    setCurrentPage(1);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* TOOLBAR */}
-      {/* TOOLBAR */}
-      <div className="card" style={{ padding: '0.75rem 1rem' }}>
-        <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flex: '1 1 auto', minWidth: '280px', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', flex: '1 1 180px', minWidth: '140px' }}>
-              <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: '#94a3b8' }} />
-              <input
-                type="text"
-                className="form-control"
-                style={{ paddingLeft: '2rem', height: '34px', fontSize: '0.8rem', width: '100%' }}
-                placeholder="Search product name or item code..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && loadData()}
-              />
-            </div>
-
-            <select
-              className="form-control"
-              style={{ minWidth: '135px', width: 'auto', height: '34px', fontSize: '0.8rem', flexShrink: 0 }}
-              value={selectedCat}
-              onChange={(e) => setSelectedCat(e.target.value)}
-            >
-              <option value="">All Categories</option>
-              {categories.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-
-            <select
-              className="form-control"
-              style={{ minWidth: '125px', width: 'auto', height: '34px', fontSize: '0.8rem', flexShrink: 0 }}
-              value={selectedBrand}
-              onChange={(e) => setSelectedBrand(e.target.value)}
-            >
-              <option value="">All Brands</option>
-              {brands.map(b => (
-                <option key={b.id || b.name} value={b.name}>{b.name}</option>
-              ))}
-            </select>
-
-            <button
-              onClick={() => setLowStockOnly(!lowStockOnly)}
-              className={`btn btn-sm ${lowStockOnly ? 'btn-danger' : 'btn-secondary'}`}
-              style={{ height: '34px', padding: '0 10px', fontSize: '0.75rem', whiteSpace: 'nowrap', flexShrink: 0 }}
-            >
-              <AlertTriangle size={13} />
-              <span>Low Stock</span>
-            </button>
+      {/* 1. PAGE HEADER (SadaxCart Breadcrumb & Actions) */}
+      <div className="page-header-container">
+        <div>
+          <div className="header-breadcrumbs" style={{ marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', color: '#10b981' }}>
+              <Home size={15} color="#10b981" />
+            </span>
+            <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>/</span>
+            <span style={{ color: '#10b981', fontWeight: 600, fontSize: '0.8125rem' }}>Products List</span>
           </div>
+          <h1 className="page-header-title" style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', margin: '0 0 2px 0' }}>Products List</h1>
+          <p className="page-header-subtitle" style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>Here you can find all of your products</p>
+        </div>
 
-          <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexShrink: 0 }}>
-            <button onClick={handleExportStock} className="btn btn-secondary btn-sm" style={{ height: '34px', padding: '0 10px', fontSize: '0.75rem', whiteSpace: 'nowrap' }} title="Export to Excel / CSV">
-              <Download size={13} />
-              <span>Export CSV</span>
+        <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {canManageInventory && (
+            <button
+              type="button"
+              onClick={() => {
+                setCustomBrandModeAdd(false);
+                setShowAddModal(true);
+              }}
+              className="btn-sadax-teal"
+            >
+              <Plus size={16} />
+              <span>+ Add Product</span>
+            </button>
+          )}
+
+          {/* More Actions Dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMoreActionsOpen(!moreActionsOpen);
+              }}
+              className="btn-sadax-white"
+            >
+              <span>More Actions ···</span>
             </button>
 
-            {canManageInventory && (
-              <button onClick={() => setShowMetaModal(true)} className="btn btn-secondary btn-sm" style={{ height: '34px', padding: '0 10px', fontSize: '0.75rem', whiteSpace: 'nowrap' }} title="Manage Brands, Categories & Units">
-                <Layers size={13} />
-                <span>Brands & Categories</span>
-              </button>
-            )}
-
-            {canManageInventory && (
-              <button
-                onClick={() => {
-                  setCustomBrandModeAdd(false);
-                  setShowAddModal(true);
+            {moreActionsOpen && (
+              <div
+                className="dropdown-menu"
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: '100%',
+                  marginTop: '6px',
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '10px',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                  zIndex: 200,
+                  width: '210px',
+                  padding: '6px 0'
                 }}
-                className="btn btn-primary btn-sm"
-                style={{ height: '34px', padding: '0 12px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <Plus size={14} />
-                <span>Add Product</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreActionsOpen(false);
+                    handleExportStock();
+                  }}
+                  className="dropdown-item"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 14px',
+                    fontSize: '0.8rem',
+                    color: '#1e293b',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                >
+                  <Download size={14} color="#0284c7" />
+                  <span>Export CSV</span>
+                </button>
+
+                {canManageInventory && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMoreActionsOpen(false);
+                      setShowMetaModal(true);
+                    }}
+                    className="dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      padding: '8px 14px',
+                      fontSize: '0.8rem',
+                      color: '#1e293b',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                  >
+                    <Layers size={14} color="#6366f1" />
+                    <span>Brands & Categories</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMoreActionsOpen(false);
+                    loadData();
+                  }}
+                  className="dropdown-item"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    padding: '8px 14px',
+                    fontSize: '0.8rem',
+                    color: '#1e293b',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                >
+                  <RefreshCw size={14} color="#10b981" />
+                  <span>Refresh Products</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* PRODUCTS TABLE */}
-      <div className="card" style={{ padding: 0, overflow: 'visible' }}>
-        <div className="table-responsive" style={{ minHeight: '320px', paddingBottom: '110px', overflowX: 'auto' }}>
-          <table className="table" style={{ width: '100%', minWidth: '850px' }}>
+      {/* 2. STATS CARDS ROW (4 Cards matching SadaxCart reference style) */}
+      <div className="sadax-stat-card-row">
+        <StatCard
+          label="Total Products"
+          value={totalProducts.toLocaleString()}
+          trend="up"
+          subtitle="Total Products last 365 days"
+        />
+        <StatCard
+          label="Products Sales"
+          value={formatPKR(totalStockValue)}
+          trend="neutral"
+          subtitle="Total Products Sales last 365 days"
+        />
+        <StatCard
+          label="Stock Products"
+          value={inStockCount.toLocaleString()}
+          trend="up"
+          subtitle="Available for immediate sale"
+        />
+        <StatCard
+          label="Out of Stock"
+          value={outOfStockCount.toLocaleString()}
+          trend="down"
+          subtitle={`${lowStockCount} low stock alerts`}
+        />
+      </div>
+
+      {/* 3. TOOLBAR & TABLE CONTAINER (SadaxCart Card) */}
+      <div className="sadax-table-card">
+        {/* Filter Toolbar Row */}
+        <div className="sadax-toolbar-row">
+          {/* Search Box (left-aligned search icon inside input, height 40px) */}
+          <div className="sadax-search-box">
+            <Search size={15} className="sadax-search-icon" />
+            <input
+              type="text"
+              placeholder="Search by name, Product ID, SKU..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && loadData()}
+              className="sadax-search-input"
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* All Status Dropdown */}
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="sadax-select-control"
+              >
+                <option value="all">All Status</option>
+                <option value="in_stock">In Stock</option>
+                <option value="low_stock">Low Stock</option>
+                <option value="out_of_stock">Out of Stock</option>
+              </select>
+            </div>
+
+            {/* Date Range Picker Button */}
+            <div className="action-menu-container" ref={datePickerRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDatePickerOpen(!datePickerOpen);
+                }}
+                className={`sadax-filter-btn ${(startDate || endDate) ? 'active' : ''}`}
+                title="Select Date Range"
+              >
+                <Calendar size={14} color={(startDate || endDate) ? '#10b981' : '#6b7280'} />
+                <span>
+                  {startDate && endDate
+                    ? `${formatDate(startDate)} to ${formatDate(endDate)}`
+                    : startDate
+                      ? `From ${formatDate(startDate)}`
+                      : '01 Jan, 2024 to 31 Dec, 2024'}
+                </span>
+                <ChevronDown size={13} color="#9ca3af" />
+              </button>
+
+              {datePickerOpen && (
+                <div
+                  className="dropdown-menu"
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '100%',
+                    marginTop: '6px',
+                    background: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                    zIndex: 200,
+                    width: '280px',
+                    padding: '1rem'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#0f172a' }}>
+                    Select Date Range
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', marginBottom: '3px' }}>Start Date</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="form-control"
+                        style={{ height: '32px', fontSize: '0.785rem' }}
+                        title="Start Date"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', marginBottom: '3px' }}>End Date</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="form-control"
+                        style={{ height: '32px', fontSize: '0.785rem' }}
+                        title="End Date"
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '0.65rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStartDate('');
+                        setEndDate('');
+                        setDatePickerOpen(false);
+                      }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: '0.75rem', height: '28px' }}
+                    >
+                      Reset
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDatePickerOpen(false)}
+                      className="btn btn-sm"
+                      style={{ background: '#10b981', color: '#fff', fontSize: '0.75rem', height: '28px' }}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* More Filter Button */}
+            <div className="action-menu-container" ref={moreFiltersRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMoreFiltersOpen(!moreFiltersOpen);
+                }}
+                className={`sadax-filter-btn ${(selectedCat || selectedBrand || lowStockOnly) ? 'active' : ''}`}
+              >
+                <Filter size={14} color={(selectedCat || selectedBrand || lowStockOnly) ? '#10b981' : '#6b7280'} />
+                <span>More Filter</span>
+                <ChevronDown size={13} color="#9ca3af" />
+              </button>
+
+              {moreFiltersOpen && (
+                <div
+                  className="dropdown-menu"
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: '100%',
+                    marginTop: '6px',
+                    background: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                    zIndex: 200,
+                    width: '260px',
+                    padding: '1rem'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#0f172a' }}>
+                    Additional Filters
+                  </div>
+
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '4px', fontWeight: 600 }}>
+                      Category
+                    </label>
+                    <select
+                      value={selectedCat}
+                      onChange={(e) => {
+                        setSelectedCat(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="form-control"
+                      style={{ height: '32px', fontSize: '0.8rem' }}
+                    >
+                      <option value="">All Categories</option>
+                      {categories.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '4px', fontWeight: 600 }}>
+                      Brand
+                    </label>
+                    <select
+                      value={selectedBrand}
+                      onChange={(e) => {
+                        setSelectedBrand(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      className="form-control"
+                      style={{ height: '32px', fontSize: '0.8rem' }}
+                    >
+                      <option value="">All Brands</option>
+                      {brands.map(b => (
+                        <option key={b.id || b.name} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', color: '#334155' }}>
+                      <input
+                        type="checkbox"
+                        checked={lowStockOnly}
+                        onChange={(e) => {
+                          setLowStockOnly(e.target.checked);
+                          setCurrentPage(1);
+                        }}
+                      />
+                      <span>Low Stock Items Only</span>
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCat('');
+                        setSelectedBrand('');
+                        setLowStockOnly(false);
+                      }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: '0.75rem', flex: 1 }}
+                    >
+                      Reset
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMoreFiltersOpen(false)}
+                      className="btn btn-sm"
+                      style={{ background: '#10b981', color: '#fff', fontSize: '0.75rem', flex: 1 }}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Clear Filters */}
+            {isFilterActive && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="btn btn-secondary btn-sm"
+                style={{ height: '40px', padding: '0 0.85rem', borderRadius: '8px', color: '#dc2626' }}
+                title="Clear all filters"
+              >
+                Clear
+              </button>
+            )}
+
+            {/* Refresh Button */}
+            <button
+              type="button"
+              onClick={loadData}
+              className="sadax-icon-btn"
+              title="Refresh inventory"
+            >
+              <RefreshCw size={15} className={loading ? 'spin' : ''} />
+            </button>
+          </div>
+        </div>
+
+        {/* 4. PRODUCTS DATA TABLE (EXACT 6 COLUMNS MATCHING SADAXCART) */}
+        <div className="table-responsive" style={{ margin: 0, border: 'none' }}>
+          <table className="sadax-table" style={{ margin: 0 }}>
             <thead>
               <tr>
-                <th style={{ minWidth: '170px', textAlign: 'left' }}>Product Name</th>
-                <th style={{ width: '105px', minWidth: '105px', textAlign: 'left' }}>Item Code</th>
-                <th style={{ width: '110px', minWidth: '110px', textAlign: 'left' }}>Category</th>
-                <th style={{ textAlign: 'center', width: '75px', minWidth: '75px' }}>Stock</th>
-                <th style={{ textAlign: 'center', width: '60px', minWidth: '60px' }}>Unit</th>
-                <th style={{ textAlign: 'right', width: '90px', minWidth: '90px' }}>Cost</th>
-                <th style={{ textAlign: 'right', width: '90px', minWidth: '90px' }}>Sale</th>
-                <th style={{ textAlign: 'right', width: '95px', minWidth: '95px' }}>Wholesale</th>
-                <th style={{ textAlign: 'center', width: '200px', minWidth: '200px' }}>Actions</th>
+                <th style={{ minWidth: '240px' }}>Product Name</th>
+                <th style={{ minWidth: '160px' }}>ID & Create Date</th>
+                <th style={{ minWidth: '140px' }}>Price</th>
+                <th style={{ minWidth: '120px' }}>Stock</th>
+                <th style={{ minWidth: '130px' }}>Status</th>
+                <th style={{ width: '130px', textAlign: 'center' }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '2.5rem' }}>Loading inventory records...</td>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '3.5rem 1rem' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '0.875rem' }}>
+                      <RefreshCw size={18} className="spin" color="#10b981" />
+                      <span>Loading products inventory...</span>
+                    </div>
+                  </td>
                 </tr>
-              ) : products.length === 0 ? (
+              ) : filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>No products found.</td>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '4rem 1rem' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#f1f5f9', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem' }}>
+                      <Package size={24} />
+                    </div>
+                    <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>No products found</strong>
+                    <p style={{ fontSize: '0.785rem', color: '#64748b', margin: '4px 0 1rem 0' }}>
+                      {isFilterActive ? 'Try adjusting your search query, status filters, or date range.' : 'Click "+ Add Product" to add your first product.'}
+                    </p>
+                    {isFilterActive ? (
+                      <button onClick={handleClearFilters} className="btn btn-secondary btn-sm">
+                        Clear All Filters
+                      </button>
+                    ) : (
+                      <button onClick={() => setShowAddModal(true)} className="btn-sadax-teal btn-sm" style={{ height: '32px' }}>
+                        + Add Product
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ) : (
-                products.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((p) => {
-                  const isLow = p.current_stock <= p.min_stock_level;
-                  const isOut = p.current_stock === 0;
+                paginatedProducts.map((p) => {
+                  const isLow = Number(p.current_stock) <= Number(p.min_stock_level) && Number(p.current_stock) > 0;
+                  const isOut = Number(p.current_stock) <= 0;
 
                   return (
-                    <tr key={p.id}>
-                      <td style={{ fontWeight: 600, maxWidth: '230px' }}>
-                        <div style={{ wordBreak: 'break-word', lineHeight: 1.25, fontSize: '0.8125rem', color: '#0f172a' }}>{p.name}</div>
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '3px' }}>
-                          {p.brand && <span style={{ fontSize: '0.675rem', fontWeight: 600, color: '#0284c7', background: '#f0f9ff', padding: '0 5px', borderRadius: '3px', border: '1px solid #bae6fd' }}>{p.brand}</span>}
+                    <tr
+                      key={p.id}
+                      style={{
+                        height: '72px',
+                        borderBottom: '1px solid #f3f4f6',
+                        transition: 'background-color 0.1s ease'
+                      }}
+                    >
+                      {/* Column 1: Product Name */}
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '6px',
+                            background: '#f3f4f6',
+                            border: '1px solid #e5e7eb',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <Package size={16} color="#6b7280" />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{
+                              fontWeight: 600,
+                              fontSize: '14px',
+                              color: '#111827',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '220px'
+                            }} title={p.name}>
+                              {p.name}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic', marginTop: '2px' }}>
+                              {p.category_name || 'General Product'}
+                              {p.brand && ` • ${p.brand}`}
+                            </div>
+                          </div>
                         </div>
                       </td>
-                      <td className="mono" style={{ fontSize: '0.75rem', whiteSpace: 'nowrap', fontWeight: 600 }}>
-                        <span style={{ background: '#f8fafc', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', color: '#334155' }}>
-                          {p.sku}
-                        </span>
+
+                      {/* Column 2: ID & Create Date */}
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <div style={{ fontWeight: 600, fontSize: '13px', color: '#111827' }}>
+                          #{p.sku || `ITM-${p.id}`}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                          {p.created_at ? formatDate(p.created_at) : '17/10/2026'}
+                        </div>
                       </td>
-                      <td style={{ maxWidth: '115px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#475569', fontSize: '0.8rem' }} title={p.category_name}>
-                        {p.category_name || '-'}
+
+                      {/* Column 3: Price */}
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <div style={{ fontWeight: 600, fontSize: '14px', color: '#111827' }}>
+                          {formatPKR(p.sale_price)}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                          Cost: {formatPKR(p.purchase_price)}
+                        </div>
                       </td>
-                      <td style={{ textAlign: 'center', width: '75px' }}>
-                        <span className={`badge ${isOut ? 'badge-danger' : isLow ? 'badge-warning' : 'badge-success'}`} style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem' }}>
-                          {p.current_stock}
-                        </span>
+
+                      {/* Column 4: Stock */}
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <div style={{ fontWeight: 700, fontSize: '16px', color: isOut ? '#dc2626' : '#111827' }}>
+                          {Number(p.current_stock).toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                          {p.unit || 'pkt'}
+                        </div>
                       </td>
-                      <td style={{ textAlign: 'center', width: '60px', color: '#64748b', fontSize: '0.75rem', fontWeight: 500 }}>{p.unit}</td>
-                      <td style={{ textAlign: 'right', width: '90px', whiteSpace: 'nowrap', fontSize: '0.8rem', color: '#64748b' }}>{formatPKR(p.purchase_price)}</td>
-                      <td style={{ textAlign: 'right', width: '90px', fontWeight: 700, color: '#0284c7', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{formatPKR(p.sale_price)}</td>
-                      <td style={{ textAlign: 'right', width: '95px', color: '#475569', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{formatPKR(p.wholesale_price)}</td>
-                      <td style={{ textAlign: 'center', width: '100px', whiteSpace: 'nowrap' }}>
-                        <div style={{ position: 'relative', display: 'inline-block' }}>
+
+                      {/* Column 5: Status */}
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <StatusBadge status={isOut ? 'out-stock' : isLow ? 'low-stock' : 'published'} />
+                      </td>
+
+                      {/* Column 6: Action */}
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle', textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                          {/* Direct Details Button */}
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActionMenuId(actionMenuId === p.id ? null : p.id);
-                            }}
-                            className="btn btn-secondary btn-sm"
-                            style={{
-                              padding: '3px 8px',
-                              fontSize: '0.725rem',
-                              fontWeight: 600,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              borderRadius: '5px'
-                            }}
-                            title="Product Actions"
+                            onClick={() => viewProductDetail(p.id)}
+                            className="sadax-action-details"
+                            title="View Batches & Stock Details"
                           >
-                            <span>Action</span>
-                            <ChevronDown size={12} />
+                            Details
                           </button>
 
-                          {actionMenuId === p.id && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                right: 0,
-                                top: '100%',
-                                marginTop: '4px',
-                                background: '#ffffff',
-                                border: '1px solid #cbd5e1',
-                                borderRadius: '6px',
-                                boxShadow: '0 10px 25px -3px rgba(0,0,0,0.18), 0 4px 10px -2px rgba(0,0,0,0.08)',
-                                zIndex: 9999,
-                                minWidth: '180px',
-                                padding: '4px 0',
-                                textAlign: 'left'
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {canManageInventory && (
-                                <button
-                                  onClick={() => {
-                                    setActionMenuId(null);
-                                    openEditProduct(p);
-                                  }}
-                                  style={{
-                                    width: '100%',
-                                    padding: '7px 12px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    background: 'none',
-                                    border: 'none',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    color: '#1e293b',
-                                    cursor: 'pointer',
-                                    textAlign: 'left'
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                                >
-                                  <Edit size={13} color="#0284c7" />
-                                  <span>Edit Product</span>
-                                </button>
-                              )}
-
-                              {canManageInventory && (
-                                <button
-                                  onClick={() => {
-                                    setActionMenuId(null);
-                                    openRestock(p);
-                                  }}
-                                  style={{
-                                    width: '100%',
-                                    padding: '7px 12px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    background: 'none',
-                                    border: 'none',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    color: '#1e293b',
-                                    cursor: 'pointer',
-                                    textAlign: 'left'
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                                >
-                                  <PlusCircle size={13} color="#10b981" />
-                                  <span>Add Stock (Inward)</span>
-                                </button>
-                              )}
-
-                              <button
-                                onClick={() => {
-                                  setActionMenuId(null);
-                                  viewProductDetail(p.id);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '7px 12px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  background: 'none',
-                                  border: 'none',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  color: '#1e293b',
-                                  cursor: 'pointer',
-                                  textAlign: 'left'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                              >
-                                <Eye size={13} color="#0284c7" />
-                                <span>Batches & History</span>
-                              </button>
-
-                              {canManageInventory && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActionMenuId(null);
-                                    confirmDeleteProduct(p);
-                                  }}
-                                  style={{
-                                    width: '100%',
-                                    padding: '7px 12px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    background: 'none',
-                                    border: 'none',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    color: '#dc2626',
-                                    cursor: 'pointer',
-                                    textAlign: 'left',
-                                    borderTop: '1px solid #f1f5f9'
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                                >
-                                  <Trash2 size={13} color="#dc2626" />
-                                  <span>Delete Product</span>
-                                </button>
-                              )}
-                            </div>
-                          )}
+                          {/* Action Dropdown Menu (Portal-based, immune to clipping) */}
+                          <ActionMenu
+                            title="Product Actions"
+                            items={[
+                              canManageInventory && {
+                                label: 'Edit Product',
+                                icon: <Edit size={14} color="#0284c7" />,
+                                onClick: () => openEditProduct(p)
+                              },
+                              canManageInventory && {
+                                label: 'Add Stock (Inward)',
+                                icon: <PlusCircle size={14} color="#10b981" />,
+                                onClick: () => openRestock(p)
+                              },
+                              {
+                                label: 'Batches & History',
+                                icon: <Eye size={14} color="#0284c7" />,
+                                onClick: () => viewProductDetail(p.id)
+                              },
+                              {
+                                label: 'Print Barcode Label',
+                                icon: <Barcode size={14} color="#6366f1" />,
+                                onClick: () => {
+                                  setSelectedProduct(p);
+                                  setShowBarcodeModal(true);
+                                }
+                              },
+                              canManageInventory && { divider: true },
+                              canManageInventory && {
+                                label: 'Delete Product',
+                                icon: <Trash2 size={14} color="#dc2626" />,
+                                danger: true,
+                                onClick: () => confirmDeleteProduct(p)
+                              }
+                            ]}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -726,11 +1133,14 @@ export default function Inventory() {
             </tbody>
           </table>
         </div>
+
+        {/* 5. PAGINATION CONTROLS */}
         <Pagination
           currentPage={currentPage}
-          totalItems={products.length}
-          itemsPerPage={ITEMS_PER_PAGE}
+          totalItems={filteredProducts.length}
+          itemsPerPage={itemsPerPage}
           onPageChange={setCurrentPage}
+          onPageSizeChange={setItemsPerPage}
         />
       </div>
 
@@ -745,28 +1155,27 @@ export default function Inventory() {
       {/* QUICK RESTOCK / STOCK INWARD MODAL */}
       {showRestockModal && restockProduct && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '640px', width: '96%', maxHeight: '92vh', overflowY: 'auto' }}>
-            <div className="modal-header" style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
-                    + Inward Stock Lot: {restockProduct.name}
-                  </h3>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
-                    Current Stock: <strong>{restockProduct.current_stock} {restockProduct.unit}</strong> • Standard Sale: <strong>{formatPKR(restockProduct.sale_price)}</strong>
-                  </div>
+          <div className="modal-content" style={{ maxWidth: '640px', width: '96%' }}>
+            <div className="modal-header">
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
+                  Restock / Inward Stock Lot
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  {restockProduct.name} • Current Stock: <strong>{restockProduct.current_stock} {restockProduct.unit}</strong> • Standard Sale: <strong>{formatPKR(restockProduct.sale_price)}</strong>
                 </div>
               </div>
               <button
+                type="button"
+                className="modal-close-btn"
                 onClick={() => setShowRestockModal(false)}
-                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}
+                aria-label="Close"
               >
                 ✕
               </button>
             </div>
             <form onSubmit={handleSaveRestock}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '1.25rem' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Incoming Quantity ({restockProduct.unit}) *</label>
@@ -869,15 +1278,15 @@ export default function Inventory() {
                   </div>
                 </div>
 
-                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '8px 10px', fontSize: '0.75rem', color: '#166534' }}>
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px 12px', fontSize: '0.8rem', color: '#166534', lineHeight: 1.45 }}>
                   💡 <strong>FIFO Rule:</strong> This new batch will be stored as an independent inventory lot. When you sell at POS, the system will automatically sell your older batch first, and then transition to this new batch with its updated cost.
                 </div>
               </div>
-              <div className="modal-footer" style={{ padding: '0.75rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+              <div className="modal-footer">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowRestockModal(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '0.4rem 1.25rem', background: '#10b981', borderColor: '#059669' }}>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ background: '#10b981', borderColor: '#059669', minWidth: '130px' }}>
                   Save Inward Stock
                 </button>
               </div>
@@ -889,21 +1298,25 @@ export default function Inventory() {
       {/* ADD PRODUCT MODAL */}
       {showAddModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '760px', width: '96%', maxHeight: '92vh', overflowY: 'auto' }}>
-            <div className="modal-header" style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary)' }} />
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Add Product</h3>
+          <div className="modal-content" style={{ maxWidth: '760px', width: '96%' }}>
+            <div className="modal-header">
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Add Product</h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  Register a new inventory product, brand, unit, and stock alerts.
+                </div>
               </div>
               <button
+                type="button"
+                className="modal-close-btn"
                 onClick={() => setShowAddModal(false)}
-                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}
+                aria-label="Close"
               >
                 ✕
               </button>
             </div>
             <form onSubmit={handleSaveProduct}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', padding: '1.25rem' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
                 {/* Row 1: Product Name & Brand */}
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
@@ -1018,9 +1431,9 @@ export default function Inventory() {
                   </div>
                 </div>
               </div>
-              <div className="modal-footer" style={{ padding: '0.75rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+              <div className="modal-footer">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '0.4rem 1.25rem' }}>Save Product</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Product</button>
               </div>
             </form>
           </div>
@@ -1033,12 +1446,19 @@ export default function Inventory() {
           <div className="modal-content" style={{ maxWidth: '700px' }}>
             <div className="modal-header">
               <div>
-                <h3>{selectedProduct.name}</h3>
-                <div style={{ fontSize: '0.775rem', color: '#64748b', marginTop: '2px' }}>
-                  Item Code: {selectedProduct.sku} • Brand / Company: <strong>{selectedProduct.brand || 'Frozen'}</strong> • Unit: <strong>{selectedProduct.unit}</strong>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>{selectedProduct.name}</h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  Item Code: {selectedProduct.sku} • Brand: <strong>{selectedProduct.brand || 'Frozen'}</strong> • Unit: <strong>{selectedProduct.unit}</strong>
                 </div>
               </div>
-              <button onClick={() => setShowDetailModal(false)}>✕</button>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowDetailModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
@@ -1111,21 +1531,25 @@ export default function Inventory() {
       {/* EDIT PRODUCT MODAL */}
       {showEditModal && editFormData && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '760px', width: '96%', maxHeight: '92vh', overflowY: 'auto' }}>
-            <div className="modal-header" style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary)' }} />
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Edit Product</h3>
+          <div className="modal-content" style={{ maxWidth: '760px', width: '96%' }}>
+            <div className="modal-header">
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Edit Product</h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  Update product details, pricing tiers, and inventory alert levels.
+                </div>
               </div>
               <button
+                type="button"
+                className="modal-close-btn"
                 onClick={() => setShowEditModal(false)}
-                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}
+                aria-label="Close"
               >
                 ✕
               </button>
             </div>
             <form onSubmit={handleUpdateProduct}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', padding: '1.25rem' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
                 {/* Row 1: Product Name & Brand */}
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
@@ -1296,13 +1720,13 @@ export default function Inventory() {
                   </div>
                 </div>
               </div>
-              <div className="modal-footer" style={{ padding: '0.75rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
                 <div>
                   {canManageInventory && (
                     <button
                       type="button"
-                      className="btn btn-sm"
-                      style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 600 }}
+                      className="btn btn-sm btn-danger"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                       onClick={() => {
                         const targetProd = products.find(p => p.id === editFormData.id) || editFormData;
                         setShowEditModal(false);
@@ -1314,9 +1738,9 @@ export default function Inventory() {
                     </button>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.6rem' }}>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary btn-sm" style={{ padding: '0.4rem 1.25rem' }}>Update Product</button>
+                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Update Product</button>
                 </div>
               </div>
             </form>
@@ -1331,9 +1755,16 @@ export default function Inventory() {
             <div className="modal-header">
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <Layers size={18} color="var(--primary)" />
-                <h3 style={{ margin: 0 }}>Brands, Categories & Units Manager</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Brands, Categories & Units Manager</h3>
               </div>
-              <button onClick={() => setShowMetaModal(false)}>✕</button>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowMetaModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
@@ -1594,14 +2025,16 @@ export default function Inventory() {
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#991b1b' }}>Delete Product</h3>
               </div>
               <button
+                type="button"
+                className="modal-close-btn"
                 onClick={() => { setShowDeleteModal(false); setProductToDelete(null); setDeleteWarning(null); }}
-                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}
+                aria-label="Close"
               >
                 ✕
               </button>
             </div>
 
-            <div className="modal-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem' }}>
                 <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>{productToDelete.name}</div>
                 <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '0.775rem', color: '#64748b', flexWrap: 'wrap' }}>
@@ -1639,7 +2072,7 @@ export default function Inventory() {
               )}
             </div>
 
-            <div className="modal-footer" style={{ padding: '0.85rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <div className="modal-footer">
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"

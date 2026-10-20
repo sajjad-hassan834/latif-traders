@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Eye, ArrowDownToLine, Trash2, RotateCcw, Printer, Download, Package, Edit, ChevronDown, FileText } from 'lucide-react';
+import { Search, Plus, Eye, ArrowDownToLine, Trash2, RotateCcw, Printer, Download, Package, Edit, ChevronDown, FileText, ArrowUpRight } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
 import { useAuth } from '../context/AuthContext';
 import SearchableSelect from '../components/common/SearchableSelect';
 import Pagination from '../components/common/Pagination';
+import ActionMenu from '../components/common/ActionMenu';
 
 export default function Purchases() {
   const { canManageInventory } = useAuth();
@@ -44,13 +45,6 @@ export default function Purchases() {
   const [errorMsg, setErrorMsg] = useState('');
   const [brands, setBrands] = useState([]);
   const [activeStockPreview, setActiveStockPreview] = useState(null);
-  const [actionMenuId, setActionMenuId] = useState(null);
-
-  useEffect(() => {
-    const handleOutsideClick = () => setActionMenuId(null);
-    window.addEventListener('click', handleOutsideClick);
-    return () => window.removeEventListener('click', handleOutsideClick);
-  }, []);
 
   const loadData = async () => {
     try {
@@ -410,164 +404,50 @@ export default function Purchases() {
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionMenuId(actionMenuId === p.id ? null : p.id);
-                          }}
-                          className="btn btn-secondary btn-sm"
-                          style={{
-                            padding: '3px 8px',
-                            fontSize: '0.725rem',
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            borderRadius: '5px'
-                          }}
-                          title="Purchase Actions"
+                          onClick={() => viewPurchase(p.id)}
+                          className="btn-table-action"
+                          title="View Purchase Details"
                         >
-                          <span>Action</span>
-                          <ChevronDown size={12} />
+                          <span>Details</span>
+                          <ArrowUpRight size={13} />
                         </button>
 
-                        {actionMenuId === p.id && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              right: 0,
-                              top: '100%',
-                              marginTop: '4px',
-                              background: '#ffffff',
-                              border: '1px solid #cbd5e1',
-                              borderRadius: '6px',
-                              boxShadow: '0 10px 25px -3px rgba(0,0,0,0.18), 0 4px 6px -2px rgba(0,0,0,0.08)',
-                              zIndex: 9999,
-                              minWidth: '160px',
-                              padding: '4px 0',
-                              textAlign: 'left'
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              onClick={() => {
-                                setActionMenuId(null);
-                                viewPurchase(p.id);
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '7px 12px',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                background: 'none',
-                                border: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                color: '#1e293b',
-                                cursor: 'pointer',
-                                textAlign: 'left'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                            >
-                              <Eye size={13} color="#0284c7" />
-                              <span>View Bill</span>
-                            </button>
-
-                            {canManageInventory && !isFullyReturned && (
-                              <button
-                                onClick={() => {
-                                  setActionMenuId(null);
-                                  openReturnModal(p.id);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '7px 12px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  background: 'none',
-                                  border: 'none',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  color: '#1e293b',
-                                  cursor: 'pointer',
-                                  textAlign: 'left'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                              >
-                                <RotateCcw size={13} color="#f59e0b" />
-                                <span>Return Goods</span>
-                              </button>
-                            )}
-
-                            {canManageInventory && (
-                              <button
-                                onClick={() => {
-                                  setActionMenuId(null);
-                                  openEditModal(p.id);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '7px 12px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  background: 'none',
-                                  border: 'none',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  color: '#1e293b',
-                                  cursor: 'pointer',
-                                  textAlign: 'left'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                              >
-                                <Edit size={13} color="#0284c7" />
-                                <span>Edit Purchase</span>
-                              </button>
-                            )}
-
-                            {canManageInventory && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActionMenuId(null);
-                                  setSelectedPurchase(p);
-                                  setShowDeleteModal(true);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '7px 12px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  background: 'none',
-                                  border: 'none',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  color: '#dc2626',
-                                  cursor: 'pointer',
-                                  textAlign: 'left',
-                                  borderTop: '1px solid #f1f5f9'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                              >
-                                <Trash2 size={13} color="#dc2626" />
-                                <span>Delete Purchase</span>
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                        <ActionMenu
+                          title="Purchase Actions"
+                          items={[
+                            {
+                              label: 'View Bill',
+                              icon: <Eye size={14} color="#0284c7" />,
+                              onClick: () => viewPurchase(p.id)
+                            },
+                            canManageInventory && !isFullyReturned && {
+                              label: 'Return Goods',
+                              icon: <RotateCcw size={14} color="#f59e0b" />,
+                              onClick: () => openReturnModal(p.id)
+                            },
+                            canManageInventory && {
+                              label: 'Edit Purchase',
+                              icon: <Edit size={14} color="#0284c7" />,
+                              onClick: () => openEditModal(p.id)
+                            },
+                            canManageInventory && { divider: true },
+                            canManageInventory && {
+                              label: 'Delete Purchase',
+                              icon: <Trash2 size={14} color="#dc2626" />,
+                              danger: true,
+                              onClick: () => {
+                                setSelectedPurchase(p);
+                                setShowDeleteModal(true);
+                              }
+                            }
+                          ]}
+                        />
+                    </div>
+                  </td>
+                </tr>
                 );
                 })
               )}
@@ -585,10 +465,22 @@ export default function Purchases() {
       {/* NEW PURCHASE BILL MODAL */}
       {showNewModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '900px' }}>
+          <div className="modal-content" style={{ maxWidth: '920px', width: '96%' }}>
             <div className="modal-header">
-              <h3>Create Purchase</h3>
-              <button onClick={() => setShowNewModal(false)}>✕</button>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Create Purchase Shipment</h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  Record new incoming supplier stock, batch lots, and payable settlement.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowNewModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
 
             {errorMsg && (
@@ -884,8 +776,8 @@ export default function Purchases() {
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowNewModal(false)}>Cancel</button>
-                <button type="submit" disabled={submitting} className="btn btn-primary">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowNewModal(false)}>Cancel</button>
+                <button type="submit" disabled={submitting} className="btn btn-primary btn-sm" style={{ minWidth: '150px' }}>
                   {submitting ? 'Saving...' : 'Save & Increase Stock'}
                 </button>
               </div>
@@ -897,20 +789,27 @@ export default function Purchases() {
       {/* DETAIL MODAL */}
       {showDetailModal && selectedPurchase && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '750px' }}>
+          <div className="modal-content" style={{ maxWidth: '750px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3>Purchase Bill: {selectedPurchase.purchase.invoice_no}</h3>
-                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Purchase Bill: {selectedPurchase.purchase.invoice_no}</h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Supplier: {selectedPurchase.purchase.supplier_name} • Date: {formatDate(selectedPurchase.purchase.purchase_date)}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => window.print()}>
-                  <Printer size={15} />
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <Printer size={14} />
                   <span>Print Bill</span>
                 </button>
-                <button onClick={() => setShowDetailModal(false)}>✕</button>
+                <button
+                  type="button"
+                  className="modal-close-btn"
+                  onClick={() => setShowDetailModal(false)}
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
               </div>
             </div>
             <div className="modal-body">
@@ -947,24 +846,24 @@ export default function Purchases() {
               </table>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <div style={{ width: '250px', fontSize: '0.9rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ width: '250px', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <span>Grand Total:</span>
                     <strong>{formatPKR(selectedPurchase.purchase.grand_total)}</strong>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <span>Paid:</span>
                     <span>{formatPKR(selectedPurchase.purchase.paid_amount)}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444', fontWeight: 700 }}>
                     <span>Payable Due:</span>
-                    <strong>{formatPKR(selectedPurchase.purchase.balance_due)}</strong>
+                    <span>{formatPKR(selectedPurchase.purchase.balance_due)}</span>
                   </div>
                 </div>
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowDetailModal(false)}>Close</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowDetailModal(false)}>Close</button>
             </div>
           </div>
         </div>
@@ -973,18 +872,25 @@ export default function Purchases() {
       {/* PURCHASE RETURN MODAL */}
       {showReturnModal && returnPurchase && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '850px' }}>
+          <div className="modal-content" style={{ maxWidth: '850px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <RotateCcw size={18} color="#ef4444" />
                   <span>Return Goods to Supplier</span>
                 </h3>
-                <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Supplier: <strong>{returnPurchase.supplier_name}</strong> • Bill: <strong>{returnPurchase.invoice_no}</strong>
                 </div>
               </div>
-              <button onClick={() => setShowReturnModal(false)}>✕</button>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowReturnModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <form onSubmit={handleSubmitReturn}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -1069,8 +975,8 @@ export default function Purchases() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowReturnModal(false)}>Cancel</button>
-                <button type="submit" disabled={returnSubmitting} className="btn btn-danger">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowReturnModal(false)}>Cancel</button>
+                <button type="submit" disabled={returnSubmitting} className="btn btn-danger btn-sm" style={{ minWidth: '150px' }}>
                   {returnSubmitting ? 'Processing Return...' : 'Confirm Purchase Return'}
                 </button>
               </div>
@@ -1082,15 +988,27 @@ export default function Purchases() {
       {/* EDIT PURCHASE MODAL */}
       {showEditModal && editForm && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '600px' }}>
+          <div className="modal-content" style={{ maxWidth: '600px', width: '96%' }}>
             <div className="modal-header">
-              <h3>Edit Purchase: {editForm.invoice_no}</h3>
-              <button onClick={() => { setShowEditModal(false); setEditForm(null); }}>✕</button>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Edit Purchase: {editForm.invoice_no}</h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  Update vendor, bill reference, and recorded payments.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => { setShowEditModal(false); setEditForm(null); }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <form onSubmit={handleUpdatePurchase}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-grid-2">
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Supplier *</label>
                     <select
                       className="form-control"
@@ -1103,7 +1021,7 @@ export default function Purchases() {
                       ))}
                     </select>
                   </div>
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Supplier Bill #</label>
                     <input
                       type="text"
@@ -1115,7 +1033,7 @@ export default function Purchases() {
                 </div>
 
                 <div className="form-grid-2">
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Purchase Date *</label>
                     <input
                       type="date"
@@ -1125,7 +1043,7 @@ export default function Purchases() {
                       required
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Payment Method</label>
                     <select
                       className="form-control"
@@ -1177,8 +1095,8 @@ export default function Purchases() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => { setShowEditModal(false); setEditForm(null); }}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Changes</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setShowEditModal(false); setEditForm(null); }}>Cancel</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Changes</button>
               </div>
             </form>
           </div>
@@ -1188,10 +1106,20 @@ export default function Purchases() {
       {/* DELETE PURCHASE CONFIRMATION MODAL */}
       {showDeleteModal && selectedPurchase && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '480px' }}>
-            <div className="modal-header">
-              <h3 style={{ color: '#dc2626' }}>Delete Purchase</h3>
-              <button onClick={() => { setShowDeleteModal(false); setSelectedPurchase(null); }}>✕</button>
+          <div className="modal-content" style={{ maxWidth: '480px', width: '96%' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #fee2e2', background: '#fff5f5' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Trash2 size={18} color="#dc2626" />
+                <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1.05rem', fontWeight: 700 }}>Delete Purchase</h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => { setShowDeleteModal(false); setSelectedPurchase(null); }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <div className="modal-body">
               <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
@@ -1199,7 +1127,7 @@ export default function Purchases() {
                   Are you sure you want to delete this purchase invoice?
                 </p>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.9rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Invoice:</span>
                   <strong>{selectedPurchase.invoice_no}</strong>
@@ -1213,13 +1141,13 @@ export default function Purchases() {
                   <strong>{formatPKR(selectedPurchase.grand_total)}</strong>
                 </div>
               </div>
-              <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '1rem', margin: '1rem 0 0' }}>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '1rem', margin: '1rem 0 0', lineHeight: 1.45 }}>
                 This will reverse all stock batches and inventory movements created by this purchase. This action cannot be undone.
               </p>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => { setShowDeleteModal(false); setSelectedPurchase(null); }}>Cancel</button>
-              <button className="btn btn-danger" onClick={handleDeletePurchase}>Yes, Delete Purchase</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => { setShowDeleteModal(false); setSelectedPurchase(null); }}>Cancel</button>
+              <button className="btn btn-danger btn-sm" onClick={handleDeletePurchase}>Yes, Delete Purchase</button>
             </div>
           </div>
         </div>

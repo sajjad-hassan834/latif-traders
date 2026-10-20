@@ -5,10 +5,10 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "server": "node server/index.js",
+    "server": "node --watch server/index.js",
     "client": "npm --prefix client run dev",
     "build": "npm --prefix client run build",
-    "dev": "concurrently \"node server/index.js\" \"npm --prefix client run dev\""
+    "dev": "concurrently \"node --watch server/index.js\" \"npm --prefix client run dev\""
   },
   "keywords": [
     "pos",

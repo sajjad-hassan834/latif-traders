@@ -8,6 +8,9 @@ dist/
 dist-ssr/
 
 # SQLite Database & Backups
+*.db
+data/*.db
+data/*_backup*
 data/*.db-wal
 data/*.db-shm
 data/*.db-journal

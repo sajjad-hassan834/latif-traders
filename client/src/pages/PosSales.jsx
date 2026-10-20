@@ -1682,18 +1682,25 @@ export default function PosSales() {
       {/* HELD ORDERS MODAL */}
       {showHeldModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '480px' }}>
+          <div className="modal-content" style={{ maxWidth: '520px', width: '96%' }}>
             <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Pause size={16} color="#f59e0b" />
-                <h3 style={{ fontSize: '0.95rem' }}>Parked / Held Carts ({heldOrders.length})</h3>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Parked / Held Carts ({heldOrders.length})</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Resume or discard parked customer transactions</p>
               </div>
-              <button onClick={() => setShowHeldModal(false)}>✕</button>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowHeldModal(false)}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
             </div>
-            <div className="modal-body" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+            <div className="modal-body" style={{ maxHeight: '380px', overflowY: 'auto' }}>
               {heldOrders.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>
-                  No held orders currently.
+                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#94a3b8' }}>
+                  No held orders currently parked.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1701,7 +1708,7 @@ export default function PosSales() {
                     <div
                       key={held.id}
                       style={{
-                        padding: '0.6rem 0.75rem',
+                        padding: '0.75rem',
                         background: '#f8fafc',
                         border: '1px solid #e2e8f0',
                         borderRadius: '6px',
@@ -1711,30 +1718,30 @@ export default function PosSales() {
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.8rem', color: '#0f172a' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a' }}>
                           {held.customer_name}
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                          Parked at {held.created_at} • {held.items.length} item(s) • Total: <strong>{formatPKR(held.grand_total)}</strong>
+                        <div style={{ fontSize: '0.725rem', color: '#64748b', marginTop: '2px' }}>
+                          Parked at {held.created_at} • {held.items.length} item(s) • Total: <strong style={{ color: '#0f172a' }}>{formatPKR(held.grand_total)}</strong>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
                         <button
                           type="button"
                           className="btn btn-primary btn-sm"
-                          style={{ height: '26px', fontSize: '0.725rem', padding: '0 0.5rem' }}
+                          style={{ height: '30px', fontSize: '0.75rem', padding: '0 0.6rem' }}
                           onClick={() => handleResumeHeldOrder(held)}
                         >
-                          <Play size={11} /> Resume
+                          <Play size={12} /> Resume
                         </button>
                         <button
                           type="button"
                           className="btn btn-secondary btn-sm"
-                          style={{ height: '26px', fontSize: '0.725rem', padding: '0 0.4rem', color: '#ef4444' }}
+                          style={{ height: '30px', fontSize: '0.75rem', padding: '0 0.5rem', color: '#ef4444' }}
                           onClick={() => handleDiscardHeldOrder(held.id)}
                           title="Discard Parked Bill"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
@@ -1754,16 +1761,23 @@ export default function PosSales() {
       {/* QUICK ADD PRODUCT MODAL */}
       {showQuickAdd && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '420px' }}>
+          <div className="modal-content" style={{ maxWidth: '460px', width: '96%' }}>
             <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Zap size={15} color="var(--primary)" />
-                <h3 style={{ fontSize: '0.95rem' }}>Quick Add Product to POS</h3>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Quick Add Product</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Create a fast catalog item and add directly to bill</p>
               </div>
-              <button onClick={() => setShowQuickAdd(false)}>✕</button>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowQuickAdd(false)}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
             </div>
             <form onSubmit={handleQuickAddSubmit}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                 <div className="form-group">
                   <label className="form-label">Product Name *</label>
                   <input
@@ -1777,7 +1791,7 @@ export default function PosSales() {
                   />
                 </div>
 
-                <div className="form-grid-2" style={{ gap: '0.5rem' }}>
+                <div className="form-grid-2" style={{ gap: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label">Sale Price (PKR) *</label>
                     <input
@@ -1801,7 +1815,7 @@ export default function PosSales() {
                   </div>
                 </div>
 
-                <div className="form-grid-2" style={{ gap: '0.5rem' }}>
+                <div className="form-grid-2" style={{ gap: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label">Unit</label>
                     <select
@@ -1838,16 +1852,23 @@ export default function PosSales() {
       {/* QUICK ADD CUSTOMER MODAL */}
       {showQuickCustomer && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '400px' }}>
+          <div className="modal-content" style={{ maxWidth: '440px', width: '96%' }}>
             <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <UserPlus size={15} color="var(--primary)" />
-                <h3 style={{ fontSize: '0.95rem' }}>Quick Register Customer</h3>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Quick Register Customer</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Create a new customer profile on the fly</p>
               </div>
-              <button onClick={() => setShowQuickCustomer(false)}>✕</button>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowQuickCustomer(false)}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
             </div>
             <form onSubmit={handleQuickCustomerSubmit}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                 <div className="form-group">
                   <label className="form-label">Customer Name *</label>
                   <input
@@ -1872,7 +1893,7 @@ export default function PosSales() {
                   />
                 </div>
 
-                <div className="form-grid-2" style={{ gap: '0.5rem' }}>
+                <div className="form-grid-2" style={{ gap: '0.75rem' }}>
                   <div className="form-group">
                     <label className="form-label">Customer Type</label>
                     <select
@@ -1908,43 +1929,50 @@ export default function PosSales() {
       {/* KEYBOARD SHORTCUTS CHEAT SHEET MODAL */}
       {showShortcuts && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '440px' }}>
+          <div className="modal-content" style={{ maxWidth: '460px', width: '96%' }}>
             <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <HelpCircle size={16} color="var(--primary)" />
-                <h3 style={{ fontSize: '0.95rem' }}>Cashier POS Keyboard Shortcuts</h3>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Cashier POS Shortcuts</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Quick reference hotkeys for high-speed checkout</p>
               </div>
-              <button onClick={() => setShowShortcuts(false)}>✕</button>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowShortcuts(false)}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
             </div>
-            <div className="modal-body">
-              <table className="table" style={{ fontSize: '0.775rem' }}>
+            <div className="modal-body" style={{ padding: '1rem' }}>
+              <table className="table" style={{ fontSize: '0.8rem', margin: 0 }}>
                 <tbody>
                   <tr>
-                    <td style={{ width: '120px' }}><kbd style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F2</kbd> or <kbd style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>/</kbd></td>
-                    <td>Focus Barcode Scanner / Product Search</td>
+                    <td style={{ width: '130px' }}><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F2</kbd> or <kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>/</kbd></td>
+                    <td>Focus Product Search / Scanner</td>
                   </tr>
                   <tr>
-                    <td><kbd style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Enter</kbd></td>
+                    <td><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Enter</kbd></td>
                     <td>Add matched barcode or searched item to cart</td>
                   </tr>
                   <tr>
-                    <td><kbd style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F4</kbd></td>
+                    <td><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F4</kbd></td>
                     <td>Complete Sale & Process Checkout</td>
                   </tr>
                   <tr>
-                    <td><kbd style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F7</kbd></td>
+                    <td><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F7</kbd></td>
                     <td>Hold / Park Current Cart for next customer</td>
                   </tr>
                   <tr>
-                    <td><kbd style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F8</kbd></td>
+                    <td><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F8</kbd></td>
                     <td>Open Parked / Held Carts list to resume</td>
                   </tr>
                   <tr>
-                    <td><kbd style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>?</kbd></td>
+                    <td><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>?</kbd></td>
                     <td>Show this shortcuts help dialog</td>
                   </tr>
                   <tr>
-                    <td><kbd style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Esc</kbd></td>
+                    <td><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Esc</kbd></td>
                     <td>Close any active modal or clear selection</td>
                   </tr>
                 </tbody>
@@ -1962,13 +1990,20 @@ export default function PosSales() {
       {/* RECENT RECEIPTS MODAL */}
       {showRecentInvoicesModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '680px' }}>
+          <div className="modal-content" style={{ maxWidth: '720px', width: '96%' }}>
             <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <FileText size={16} color="var(--primary)" />
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Recent Sales Invoices & Receipts</h3>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Recent Sales Invoices & Receipts</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Search and reprint recent customer counter bills</p>
               </div>
-              <button onClick={() => setShowRecentInvoicesModal(false)}>✕</button>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowRecentInvoicesModal(false)}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <input

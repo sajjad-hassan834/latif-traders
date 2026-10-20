@@ -1,27 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Lock, 
   User, 
-  LogIn, 
-  ShieldAlert, 
-  ShieldCheck, 
+  ArrowRight, 
+  AlertCircle, 
   Eye, 
   EyeOff, 
-  Boxes, 
-  Zap, 
-  HelpCircle,
-  Send,
+  Store,
+  Sun,
+  Moon,
+  X,
+  XCircle,
   CheckCircle2,
   Clock,
-  XCircle,
-  X,
-  KeyRound
+  Send,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
-import LtLogo from '../components/common/LtLogo';
+import { toggleTheme as toggleThemeHelper } from '../utils/theme';
 
-export default function Login() {
+export default function Login({ onNavigateRegister, onNavigateLanding }) {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +28,44 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Field focus states
+  const [focusedField, setFocusedField] = useState(null);
+
+  // Theme Sync
+  const [theme, setTheme] = useState(() => localStorage.getItem('lt_theme') || 'light');
+  const isDark = theme === 'dark';
+
+  useEffect(() => {
+    const handleThemeSync = (e) => {
+      if (e?.detail) setTheme(e.detail);
+    };
+    window.addEventListener('theme_changed', handleThemeSync);
+    return () => window.removeEventListener('theme_changed', handleThemeSync);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = toggleThemeHelper(theme);
+    setTheme(next);
+  };
+
+  const t = {
+    pageBg: isDark ? '#0b1120' : '#F0F4F8',
+    textColor: isDark ? '#f8fafc' : '#111827',
+    headerBg: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+    headerBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
+    cardBg: isDark ? '#131d31' : '#FFFFFF',
+    cardBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
+    cardShadow: isDark ? '0 25px 60px -15px rgba(0, 0, 0, 0.7)' : '0 4px 24px rgba(0,0,0,0.08)',
+    inputBg: isDark ? '#0f172a' : '#ffffff',
+    inputBorder: isDark ? 'rgba(255, 255, 255, 0.14)' : '#E5E7EB',
+    inputText: isDark ? '#ffffff' : '#111827',
+    labelColor: isDark ? '#cbd5e1' : '#374151',
+    subText: isDark ? '#94a3b8' : '#6B7280',
+    titleColor: isDark ? '#ffffff' : '#111827',
+    noticeBg: isDark ? '#0f172a' : '#F9FAFB',
+    noticeBorder: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+  };
 
   // Forgot Password Modal State
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -118,225 +155,429 @@ export default function Login() {
   };
 
   return (
-    <div className="login-universe">
-      <div className="login-stage">
-        {/* LEFT ENTERPRISE SHOWCASE PANEL */}
-        <div className="login-hero-pane">
-          <div>
-            <div className="login-brand-badge">
-              <div className="login-brand-icon" style={{ background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <LtLogo size={40} />
-              </div>
-              <div>
-                <h2 className="login-brand-title">LATIF TRADERS</h2>
-                <div className="login-brand-sub">Frozen Food ERP & POS</div>
-              </div>
-            </div>
-
-            <div className="login-hero-content">
-              <h1 className="login-hero-heading">
-                Cold-Chain & <span>Commerce</span> System.
-              </h1>
-              <p className="login-hero-desc">
-                High-volume frozen food wholesale, cold room batch expiry tracking, counter POS, and automated ledgers.
-              </p>
-
-              <div className="login-feature-list">
-                <div className="login-feature-item">
-                  <div className="login-feature-icon">
-                    <Boxes size={15} />
-                  </div>
-                  <div className="login-feature-text">
-                    <h4>Sub-Zero FIFO Batch Control</h4>
-                    <p>Expiry dates & cold room rack assignments.</p>
-                  </div>
-                </div>
-
-                <div className="login-feature-item">
-                  <div className="login-feature-icon">
-                    <Zap size={15} />
-                  </div>
-                  <div className="login-feature-text">
-                    <h4>Counter POS & Thermal Billing</h4>
-                    <p>Barcode checkout, quick cash & thermal receipts.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div style={{
+      minHeight: '100vh',
+      background: t.pageBg,
+      color: t.textColor,
+      fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      {/* ═════════ TOP NAVBAR (Identical to Register page) ═════════ */}
+      <header style={{
+        padding: '16px 32px',
+        borderBottom: `1px solid ${t.headerBorder}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: t.headerBg,
+        boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
+      }}>
+        <div
+          onClick={onNavigateLanding}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+        >
+          <div style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #0F766E 0%, #14b8a6 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(15, 118, 110, 0.3)'
+          }}>
+            <Store className="w-5 h-5 text-white" />
           </div>
-
-          <div className="login-hero-footer">
-            <div className="login-status-indicator">
-              <span className="login-pulse-dot"></span>
-              <span>All Systems Online</span>
-            </div>
-            <span>v2.4 Enterprise</span>
-          </div>
+          <span style={{ fontSize: '20px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
+            Shop<span style={{ color: '#0F766E' }}>OS</span>
+          </span>
         </div>
 
-        {/* RIGHT AUTHENTICATION CARD */}
-        <div className="login-form-pane">
-          <div>
-            <div className="login-form-header">
-              <h3>Sign In</h3>
-              <p>Enter your staff credentials to access the terminal.</p>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '14px' }}>
+          <button
+            onClick={toggleTheme}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              border: `1px solid ${t.headerBorder}`,
+              background: isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
+              color: t.textColor,
+              cursor: 'pointer'
+            }}
+            title={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+          >
+            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+          </button>
+          <button
+            onClick={onNavigateRegister}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              border: '1px solid #0F766E',
+              background: 'transparent',
+              color: '#0F766E',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: '13px'
+            }}
+          >
+            Start Free Today
+          </button>
+        </div>
+      </header>
 
-            {errorMsg && (
+      {/* ═════════ CENTERED CARD CONTAINER ═════════ */}
+      <main style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '36px 20px'
+      }}>
+        <div style={{
+          width: '480px',
+          maxWidth: '90vw',
+          background: t.cardBg,
+          borderRadius: '16px',
+          boxShadow: t.cardShadow,
+          padding: '40px 48px',
+          border: `1px solid ${t.cardBorder}`,
+          boxSizing: 'border-box'
+        }}>
+          {/* 1. LOGO + BRAND (top center) */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '32px'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              marginBottom: '8px'
+            }}>
               <div style={{
-                padding: '0.65rem 0.85rem',
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: '8px',
-                color: '#b91c1c',
-                fontSize: '0.785rem',
-                fontWeight: 600,
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #0F766E 0%, #14b8a6 100%)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '0.85rem',
-                lineHeight: 1.35
+                justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(15, 118, 110, 0.3)'
               }}>
-                <ShieldAlert size={16} style={{ flexShrink: 0 }} />
-                <span>{errorMsg}</span>
+                <Store className="w-5 h-5 text-white" />
               </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div className="login-field-group">
-                <label>Username / Staff ID</label>
-                <div className="login-input-wrap">
-                  <User size={18} className="login-input-icon" />
-                  <input
-                    type="text"
-                    className="login-input"
-                    required
-                    autoFocus
-                    placeholder="Enter your username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="login-field-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
-                  <label style={{ margin: 0 }}>Password</label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForgotUsername(username);
-                      setForgotSuccessMsg('');
-                      setForgotErrorMsg('');
-                      setStatusResult(null);
-                      setShowForgotModal(true);
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#0284c7',
-                      fontSize: '0.745rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '3px'
-                    }}
-                  >
-                    <KeyRound size={12} />
-                    <span>Forgot Password?</span>
-                  </button>
-                </div>
-                <div className="login-input-wrap">
-                  <Lock size={18} className="login-input-icon" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    className="login-input"
-                    style={{ paddingRight: '2.75rem' }}
-                    required
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="login-password-toggle"
-                    onClick={() => setShowPassword(!showPassword)}
-                    title={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0.85rem 0 1.25rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.8rem', color: '#475569', userSelect: 'none' }}>
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    style={{ borderRadius: '4px', accentColor: '#0284c7' }}
-                  />
-                  <span>Keep me signed in</span>
-                </label>
-                <span style={{ fontSize: '0.775rem', color: '#64748b' }}>
-                  Press <kbd style={{ padding: '2px 5px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.7rem' }}>Enter ↵</kbd>
-                </span>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="login-submit-btn"
-              >
-                <LogIn size={18} />
-                <span>{loading ? 'Authenticating...' : 'Sign In to Workspace'}</span>
-              </button>
-            </form>
+              <span style={{ fontSize: '22px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
+                Shop<span style={{ color: '#0F766E' }}>OS</span>
+              </span>
+            </div>
+            <div style={{ fontSize: '13px', color: t.subText, margin: 0, textAlign: 'center' }}>
+              Sign in to your workspace
+            </div>
           </div>
 
-          {/* SECURE TERMINAL NOTICE */}
-          <div style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid #e2e8f0' }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.65rem', 
-              padding: '0.75rem 0.9rem', 
-              background: '#f8fafc', 
-              borderRadius: '8px', 
-              border: '1px solid #e2e8f0',
-              marginBottom: '1rem'
+          {/* ERROR ALERT BANNER */}
+          {errorMsg && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#ef4444',
+              fontSize: '13px',
+              marginBottom: '20px'
             }}>
-              <ShieldCheck size={18} style={{ color: '#0284c7', flexShrink: 0 }} />
-              <div style={{ fontSize: '0.75rem', color: '#64748b', lineHeight: 1.4 }}>
-                <strong style={{ color: '#1e293b' }}>Authorized Staff Access Only</strong><br />
-                User accounts and role permissions are managed exclusively by the Administrator.
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {/* 2. FORM FIELDS */}
+          <form onSubmit={handleSubmit}>
+            {/* Email or Username */}
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '13px',
+                fontWeight: 500,
+                color: t.labelColor,
+                marginBottom: '6px'
+              }}>
+                Email or Username
+              </label>
+              <div style={{ position: 'relative' }}>
+                <User
+                  size={18}
+                  style={{
+                    position: 'absolute',
+                    left: '14px',
+                    top: '15px',
+                    color: focusedField === 'username' ? '#0F766E' : '#9CA3AF',
+                    transition: 'color 0.2s'
+                  }}
+                />
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="Enter your email or username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onFocus={() => setFocusedField('username')}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    width: '100%',
+                    height: '48px',
+                    borderRadius: '10px',
+                    border: focusedField === 'username' ? '1px solid #0F766E' : `1px solid ${t.inputBorder}`,
+                    boxShadow: focusedField === 'username' ? '0 0 0 3px rgba(15, 118, 110, 0.1)' : 'none',
+                    background: t.inputBg,
+                    color: t.inputText,
+                    fontSize: '14px',
+                    padding: '0 14px 0 44px',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    transition: 'border-color 0.2s, box-shadow 0.2s'
+                  }}
+                />
               </div>
             </div>
 
-            <div className="login-footer-trust">
-              <ShieldCheck size={14} style={{ color: '#10b981' }} />
-              <span>TLS 1.3 Encrypted • Latif Traders Security Guard</span>
+            {/* Password with Forgot Password link */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 500, color: t.labelColor, margin: 0 }}>
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotUsername(username);
+                    setForgotSuccessMsg('');
+                    setForgotErrorMsg('');
+                    setStatusResult(null);
+                    setShowForgotModal(true);
+                  }}
+                  style={{
+                    fontSize: '12px',
+                    color: '#0F766E',
+                    fontWeight: 600,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0
+                  }}
+                >
+                  Forgot Password?
+                </button>
+              </div>
+
+              <div style={{ position: 'relative' }}>
+                <Lock
+                  size={18}
+                  style={{
+                    position: 'absolute',
+                    left: '14px',
+                    top: '15px',
+                    color: focusedField === 'password' ? '#0F766E' : '#9CA3AF',
+                    transition: 'color 0.2s'
+                  }}
+                />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => setFocusedField(null)}
+                  style={{
+                    width: '100%',
+                    height: '48px',
+                    borderRadius: '10px',
+                    border: focusedField === 'password' ? '1px solid #0F766E' : `1px solid ${t.inputBorder}`,
+                    boxShadow: focusedField === 'password' ? '0 0 0 3px rgba(15, 118, 110, 0.1)' : 'none',
+                    background: t.inputBg,
+                    color: t.inputText,
+                    fontSize: '14px',
+                    padding: '0 44px 0 44px',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    transition: 'border-color 0.2s, box-shadow 0.2s'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '14px',
+                    top: '15px',
+                    background: 'none',
+                    border: 'none',
+                    color: '#9CA3AF',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
+
+            {/* "Keep me signed in" checkbox */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                style={{
+                  accentColor: '#0F766E',
+                  width: '16px',
+                  height: '16px',
+                  cursor: 'pointer',
+                  borderRadius: '4px'
+                }}
+              />
+              <label
+                htmlFor="rememberMe"
+                style={{
+                  fontSize: '13px',
+                  color: t.labelColor,
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}
+              >
+                Keep me signed in
+              </label>
+            </div>
+
+            {/* 3. SIGN IN BUTTON */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                height: '48px',
+                borderRadius: '10px',
+                border: 'none',
+                background: '#0F766E',
+                color: '#ffffff',
+                fontSize: '15px',
+                fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(15, 118, 110, 0.35)',
+                transition: 'background 0.2s, opacity 0.2s',
+                opacity: loading ? 0.8 : 1
+              }}
+              onMouseEnter={e => !loading && (e.currentTarget.style.background = '#065F46')}
+              onMouseLeave={e => !loading && (e.currentTarget.style.background = '#0F766E')}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Authenticating...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In to Workspace</span>
+                  <ArrowRight size={18} />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* 4. DIVIDER */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            margin: '20px 0',
+            color: '#9CA3AF',
+            fontSize: '12px'
+          }}>
+            <div style={{ flex: 1, height: '1px', background: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }} />
+            <span style={{ padding: '0 12px' }}>or</span>
+            <div style={{ flex: 1, height: '1px', background: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }} />
+          </div>
+
+          {/* 5. BOTTOM LINKS */}
+          <div style={{ textAlign: 'center', fontSize: '14px', color: t.subText }}>
+            Don't have an account?{' '}
+            <button
+              type="button"
+              onClick={onNavigateRegister}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#0F766E',
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: 0
+              }}
+            >
+              Start Free Today on ShopOS →
+            </button>
+          </div>
+
+          {/* 6. SECURITY NOTICE (bottom of card) */}
+          <div style={{
+            marginTop: '20px',
+            borderRadius: '8px',
+            background: t.noticeBg,
+            border: `1px solid ${t.noticeBorder}`,
+            padding: '12px 16px',
+            textAlign: 'center',
+            fontSize: '11px',
+            color: '#9CA3AF',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px'
+          }}>
+            <Lock size={12} />
+            <span>TLS 1.3 Encrypted • ShopOS Security</span>
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* FORGOT PASSWORD MODAL */}
+      {/* ═════════ FORGOT PASSWORD MODAL ═════════ */}
       {showForgotModal && (
         <div className="modal-overlay" style={{ zIndex: 1000 }}>
-          <div className="modal-content" style={{ maxWidth: '440px', width: '90%', animation: 'modalFadeIn 0.2s ease-out' }}>
-            <div className="modal-header" style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <KeyRound size={18} style={{ color: '#0284c7' }} />
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#1e293b' }}>Staff Password Reset</h3>
+          <div className="modal-content" style={{ maxWidth: '440px', width: '90%' }}>
+            <div className="modal-header">
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Staff Password Reset</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Submit a ticket or check status of your request</p>
               </div>
               <button 
+                type="button"
+                className="modal-close-btn"
                 onClick={() => setShowForgotModal(false)}
-                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
+                aria-label="Close"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
@@ -349,11 +590,11 @@ export default function Login() {
                   flex: 1,
                   padding: '0.75rem',
                   border: 'none',
-                  borderBottom: forgotTab === 'request' ? '2px solid #0284c7' : '2px solid transparent',
+                  borderBottom: forgotTab === 'request' ? '2px solid #0F766E' : '2px solid transparent',
                   background: 'none',
                   fontWeight: 600,
                   fontSize: '0.8rem',
-                  color: forgotTab === 'request' ? '#0284c7' : '#64748b',
+                  color: forgotTab === 'request' ? '#0F766E' : '#64748b',
                   cursor: 'pointer'
                 }}
               >
@@ -366,11 +607,11 @@ export default function Login() {
                   flex: 1,
                   padding: '0.75rem',
                   border: 'none',
-                  borderBottom: forgotTab === 'status' ? '2px solid #0284c7' : '2px solid transparent',
+                  borderBottom: forgotTab === 'status' ? '2px solid #0F766E' : '2px solid transparent',
                   background: 'none',
                   fontWeight: 600,
                   fontSize: '0.8rem',
-                  color: forgotTab === 'status' ? '#0284c7' : '#64748b',
+                  color: forgotTab === 'status' ? '#0F766E' : '#64748b',
                   cursor: 'pointer'
                 }}
               >
@@ -471,7 +712,14 @@ export default function Login() {
                     type="submit"
                     disabled={forgotSubmitting}
                     className="login-submit-btn"
-                    style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      background: '#0F766E'
+                    }}
                   >
                     <Send size={16} />
                     <span>{forgotSubmitting ? 'Submitting to Admin...' : 'Submit Request to Admin'}</span>
@@ -496,7 +744,7 @@ export default function Login() {
                       type="submit"
                       disabled={statusLoading}
                       className="login-submit-btn"
-                      style={{ padding: '0 1rem', whiteSpace: 'nowrap', width: 'auto' }}
+                      style={{ padding: '0 1rem', whiteSpace: 'nowrap', width: 'auto', background: '#0F766E' }}
                     >
                       {statusLoading ? 'Checking...' : 'Check Status'}
                     </button>
@@ -563,4 +811,3 @@ export default function Login() {
     </div>
   );
 }
-

@@ -11,6 +11,11 @@ export async function request(endpoint, options = {}) {
     ...(options.headers || {})
   };
 
+  const superownerTenantId = localStorage.getItem('lt_superowner_tenant_id');
+  if (superownerTenantId) {
+    headers['x-tenant-id'] = superownerTenantId;
+  }
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }

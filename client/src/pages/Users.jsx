@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Plus, History, UserCheck, Lock, Edit, KeyRound, Check, XCircle, Clock, Sparkles, RefreshCw, Trash2, ChevronDown } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
+import ActionMenu from '../components/common/ActionMenu';
 
 export default function Users() {
   const [users, setUsers] = useState([]);
@@ -18,17 +19,11 @@ export default function Users() {
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedLog, setSelectedLog] = useState(null);
   const [resolveAction, setResolveAction] = useState('approve');
   const [newPassword, setNewPassword] = useState('');
   const [adminNote, setAdminNote] = useState('');
   const [resolving, setResolving] = useState(false);
-  const [actionMenuId, setActionMenuId] = useState(null);
-
-  useEffect(() => {
-    const handleOutsideClick = () => setActionMenuId(null);
-    window.addEventListener('click', handleOutsideClick);
-    return () => window.removeEventListener('click', handleOutsideClick);
-  }, []);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -241,107 +236,29 @@ export default function Users() {
                     </td>
                     <td>{formatDate(u.created_at)}</td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ position: 'relative', display: 'inline-block' }}>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionMenuId(actionMenuId === u.id ? null : u.id);
-                          }}
-                          className="btn btn-secondary btn-sm"
-                          style={{
-                            padding: '3px 8px',
-                            fontSize: '0.725rem',
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            borderRadius: '5px'
-                          }}
-                          title="User Actions"
-                        >
-                          <span>Action</span>
-                          <ChevronDown size={12} />
-                        </button>
-
-                        {actionMenuId === u.id && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              right: 0,
-                              top: '100%',
-                              marginTop: '4px',
-                              background: '#ffffff',
-                              border: '1px solid #cbd5e1',
-                              borderRadius: '6px',
-                              boxShadow: '0 10px 25px -3px rgba(0,0,0,0.18), 0 4px 6px -2px rgba(0,0,0,0.08)',
-                              zIndex: 9999,
-                              minWidth: '160px',
-                              padding: '4px 0',
-                              textAlign: 'left'
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              onClick={() => {
-                                setActionMenuId(null);
-                                setSelectedUser({ ...u, password: '' });
-                                setShowEditModal(true);
-                              }}
-                              style={{
-                                width: '100%',
-                                padding: '7px 12px',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                background: 'none',
-                                border: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                color: '#1e293b',
-                                cursor: 'pointer',
-                                textAlign: 'left'
-                              }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                            >
-                              <Edit size={13} color="#0284c7" />
-                              <span>Edit User</span>
-                            </button>
-
-                            {u.username !== 'admin' && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActionMenuId(null);
-                                  setSelectedUser(u);
-                                  setShowDeleteModal(true);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '7px 12px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  background: 'none',
-                                  border: 'none',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  color: '#dc2626',
-                                  cursor: 'pointer',
-                                  textAlign: 'left',
-                                  borderTop: '1px solid #f1f5f9'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                              >
-                                <Trash2 size={13} color="#dc2626" />
-                                <span>Delete User</span>
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      <ActionMenu
+                        title="User Actions"
+                        items={[
+                          {
+                            label: 'Edit User',
+                            icon: <Edit size={14} color="#0284c7" />,
+                            onClick: () => {
+                              setSelectedUser({ ...u, password: '' });
+                              setShowEditModal(true);
+                            }
+                          },
+                          u.username !== 'admin' && { divider: true },
+                          u.username !== 'admin' && {
+                            label: 'Delete User',
+                            icon: <Trash2 size={14} color="#dc2626" />,
+                            danger: true,
+                            onClick: () => {
+                              setSelectedUser(u);
+                              setShowDeleteModal(true);
+                            }
+                          }
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -478,47 +395,250 @@ export default function Users() {
 
       {/* AUDIT LOGS */}
       {activeTab === 'logs' && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="table-responsive">
-            <table className="table" style={{ width: '100%', minWidth: '700px' }}>
-              <thead>
-                <tr>
-                  <th>Timestamp</th>
-                  <th>Responsible User</th>
-                  <th>Action</th>
-                  <th>Target Entity</th>
-                  <th>Details</th>
-                  <th>IP Address</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogs.map(log => (
-                  <tr key={log.id}>
-                    <td style={{ fontSize: '0.8rem', color: '#64748b' }}>{formatDateTime(log.created_at)}</td>
-                    <td style={{ fontWeight: 600 }}>{log.user_name}</td>
-                    <td><span className="badge badge-info">{log.action}</span></td>
-                    <td><span className="mono" style={{ fontSize: '0.8rem' }}>{log.entity_type}</span></td>
-                    <td style={{ fontSize: '0.85rem' }}>{log.details}</td>
-                    <td style={{ fontSize: '0.75rem', color: '#64748b' }}>{log.ip_address}</td>
+        <div style={{ position: 'relative' }}>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="table-responsive">
+              <table className="table" style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', height: 42 }}>
+                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B' }}>Date & Time</th>
+                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B' }}>User</th>
+                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B' }}>Action</th>
+                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B' }}>Entity</th>
+                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B' }}>Summary</th>
+                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B', textAlign: 'right' }}>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {auditLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '32px 16px', textAlign: 'center', color: '#94A3B8' }}>
+                        No audit events recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    auditLogs.map(log => {
+                      const dateObj = new Date(log.created_at);
+                      const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString('en-GB') : '—';
+                      const timeStr = !isNaN(dateObj) ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                      
+                      const actionPills = {
+                        CREATE: { bg: '#DCFCE7', text: '#15803D' },
+                        UPDATE: { bg: '#E0F2FE', text: '#0369A1' },
+                        DELETE: { bg: '#FEE2E2', text: '#B91C1C' },
+                        LOGIN: { bg: '#F3E8FF', text: '#7E22CE' },
+                        LOGOUT: { bg: '#F1F5F9', text: '#475569' }
+                      };
+                      const pill = actionPills[log.action] || { bg: '#F1F5F9', text: '#475569' };
+
+                      return (
+                        <tr key={log.id} style={{ height: 56, borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.15s' }}>
+                          
+                          {/* Date & Time */}
+                          <td style={{ padding: '8px 16px', verticalAlign: 'middle' }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', lineHeight: 1.2 }}>
+                              {dateStr}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                              {timeStr}
+                            </div>
+                          </td>
+
+                          {/* User */}
+                          <td style={{ padding: '8px 16px', verticalAlign: 'middle' }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>
+                              {log.user_name || 'System'}
+                            </div>
+                          </td>
+
+                          {/* Action Pill */}
+                          <td style={{ padding: '8px 16px', verticalAlign: 'middle' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '3px 8px',
+                              borderRadius: 12,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              background: pill.bg,
+                              color: pill.text
+                            }}>
+                              {log.action}
+                            </span>
+                          </td>
+
+                          {/* Target Entity */}
+                          <td style={{ padding: '8px 16px', verticalAlign: 'middle' }}>
+                            <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#0F766E', fontWeight: 600 }}>
+                              {log.entity_type} {log.entity_id ? `#${log.entity_id}` : ''}
+                            </span>
+                          </td>
+
+                          {/* Details Summary (truncated) */}
+                          <td style={{ padding: '8px 16px', verticalAlign: 'middle', maxWidth: 260 }}>
+                            <div style={{
+                              fontSize: 13,
+                              color: '#475569',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {log.details || '—'}
+                            </div>
+                          </td>
+
+                          {/* View Button */}
+                          <td style={{ padding: '8px 16px', verticalAlign: 'middle', textAlign: 'right' }}>
+                            <button
+                              onClick={() => setSelectedLog(log)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '4px 10px',
+                                borderRadius: 6,
+                                border: '1px solid #CBD5E1',
+                                background: '#FFFFFF',
+                                color: '#0F766E',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <span>View</span>
+                              <span>→</span>
+                            </button>
+                          </td>
+
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+
+          {/* Audit Details Side Panel */}
+          {selectedLog && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: 420,
+              maxWidth: '92vw',
+              background: '#FFFFFF',
+              boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
+              zIndex: 9999,
+              display: 'flex',
+              flexDirection: 'column',
+              fontFamily: "'Outfit', 'Inter', sans-serif"
+            }}>
+              {/* Drawer Header */}
+              <div style={{ padding: '18px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0F172A' }}>Audit Log Details</h3>
+                  <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Log Entry #{selectedLog.id}</div>
+                </div>
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #E2E8F0', background: '#F8FAFC', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Drawer Body */}
+              <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Timestamp</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>
+                    {formatDateTime(selectedLog.created_at)}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Responsible User</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{selectedLog.user_name || 'System'}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>IP Address</div>
+                    <div style={{ fontSize: 13, color: '#475569', fontFamily: 'monospace' }}>{selectedLog.ip_address || '—'}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Action Type</div>
+                    <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: '#E0F2FE', color: '#0369A1' }}>
+                      {selectedLog.action}
+                    </span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Entity Target</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0F766E', fontFamily: 'monospace' }}>
+                      {selectedLog.entity_type} {selectedLog.entity_id ? `(#${selectedLog.entity_id})` : ''}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 6 }}>Event Payload & Description</div>
+                  <div style={{
+                    padding: 12,
+                    borderRadius: 8,
+                    background: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    fontSize: 13,
+                    color: '#334155',
+                    lineHeight: 1.5,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    fontFamily: selectedLog.details?.startsWith('{') ? 'monospace' : 'inherit'
+                  }}>
+                    {selectedLog.details || 'No additional details logged.'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Drawer Footer */}
+              <div style={{ padding: '14px 20px', borderTop: '1px solid #E2E8F0', background: '#F8FAFC', display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#334155', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* ADD USER MODAL */}
       {showAddModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '520px' }}>
+          <div className="modal-content" style={{ maxWidth: '520px', width: '96%' }}>
             <div className="modal-header">
-              <h3>Create Staff Account</h3>
-              <button onClick={() => setShowAddModal(false)}>✕</button>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Create Staff Account</h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  Register a cashier, store manager, or administrator.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowAddModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <form onSubmit={handleCreateUser}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Username *</label>
                   <input
                     type="text"
@@ -530,7 +650,7 @@ export default function Users() {
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Full Name *</label>
                   <input
                     type="text"
@@ -542,7 +662,7 @@ export default function Users() {
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Email</label>
                   <input
                     type="email"
@@ -553,7 +673,7 @@ export default function Users() {
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Role Permissions *</label>
                   <select
                     className="form-control"
@@ -567,7 +687,7 @@ export default function Users() {
                   </select>
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Initial Password *</label>
                   <input
                     type="password"
@@ -580,8 +700,8 @@ export default function Users() {
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Create Account</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Create Account</button>
               </div>
             </form>
           </div>
@@ -591,18 +711,25 @@ export default function Users() {
       {/* EDIT USER MODAL */}
       {showEditModal && selectedUser && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '560px' }}>
-            <div className="modal-header" style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0' }}>
+          <div className="modal-content" style={{ maxWidth: '560px', width: '96%' }}>
+            <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Edit User</h3>
-                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Edit User</h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Username: <strong className="mono" style={{ color: '#0284c7' }}>{selectedUser.username}</strong>
                 </div>
               </div>
-              <button onClick={() => setShowEditModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowEditModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <form onSubmit={handleUpdateUser}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', padding: '1.25rem' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {/* Identity Card */}
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -691,9 +818,9 @@ export default function Users() {
                   </div>
                 </div>
               </div>
-              <div className="modal-footer" style={{ padding: '0.75rem 1.25rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <div className="modal-footer">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm">Save Changes</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Changes</button>
               </div>
             </form>
           </div>
@@ -703,18 +830,28 @@ export default function Users() {
       {/* DELETE USER CONFIRMATION MODAL */}
       {showDeleteModal && selectedUser && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '440px' }}>
-            <div className="modal-header">
-              <h3 style={{ color: '#dc2626' }}>Delete User</h3>
-              <button onClick={() => { setShowDeleteModal(false); setSelectedUser(null); }}>✕</button>
+          <div className="modal-content" style={{ maxWidth: '440px', width: '96%' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid #fee2e2', background: '#fff5f5' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Trash2 size={18} color="#dc2626" />
+                <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1.05rem', fontWeight: 700 }}>Delete User</h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => { setShowDeleteModal(false); setSelectedUser(null); }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <div className="modal-body">
               <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
-                <p style={{ margin: 0, fontWeight: 600, color: '#991b1b' }}>
+                <p style={{ margin: 0, fontWeight: 600, color: '#991b1b', fontSize: '0.85rem' }}>
                   Are you sure you want to delete this user account?
                 </p>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.9rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Username:</span>
                   <strong className="mono">{selectedUser.username}</strong>
@@ -728,13 +865,13 @@ export default function Users() {
                   <strong>{selectedUser.role}</strong>
                 </div>
               </div>
-              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '1rem 0 0' }}>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '1rem 0 0', lineHeight: 1.45 }}>
                 This action cannot be undone. All password reset requests for this user will also be removed.
               </p>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => { setShowDeleteModal(false); setSelectedUser(null); }}>Cancel</button>
-              <button className="btn btn-danger" onClick={handleDeleteUser}>Yes, Delete User</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => { setShowDeleteModal(false); setSelectedUser(null); }}>Cancel</button>
+              <button className="btn btn-danger btn-sm" onClick={handleDeleteUser}>Yes, Delete User</button>
             </div>
           </div>
         </div>
@@ -743,13 +880,22 @@ export default function Users() {
       {/* RESOLVE PASSWORD RESET MODAL */}
       {showResolveModal && selectedRequest && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '500px' }}>
+          <div className="modal-content" style={{ maxWidth: '500px', width: '96%' }}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <KeyRound size={18} style={{ color: resolveAction === 'approve' ? '#10b981' : '#ef4444' }} />
-                <h3>{resolveAction === 'approve' ? 'Approve & Assign Password' : 'Reject Reset Request'}</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>
+                  {resolveAction === 'approve' ? 'Approve & Assign Password' : 'Reject Reset Request'}
+                </h3>
               </div>
-              <button onClick={() => setShowResolveModal(false)}>✕</button>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowResolveModal(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
             <form onSubmit={handleResolveSubmit}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -769,7 +915,7 @@ export default function Users() {
                   )}
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Action</label>
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem' }}>
@@ -799,7 +945,7 @@ export default function Users() {
                 </div>
 
                 {resolveAction === 'approve' && (
-                  <div className="form-group">
+                  <div className="form-group" style={{ margin: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                       <label className="form-label" style={{ margin: 0 }}>New Password for Staff *</label>
                       <button
@@ -835,7 +981,7 @@ export default function Users() {
                   </div>
                 )}
 
-                <div className="form-group">
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Note for Staff (Optional)</label>
                   <textarea
                     className="form-control"
@@ -848,13 +994,14 @@ export default function Users() {
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowResolveModal(false)}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowResolveModal(false)}>
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={resolving}
-                  className={`btn ${resolveAction === 'approve' ? 'btn-primary' : 'btn-danger'}`}
+                  className={`btn btn-sm ${resolveAction === 'approve' ? 'btn-primary' : 'btn-danger'}`}
+                  style={{ minWidth: '150px' }}
                 >
                   {resolving ? 'Processing...' : (resolveAction === 'approve' ? 'Approve & Reset Password' : 'Reject Request')}
                 </button>

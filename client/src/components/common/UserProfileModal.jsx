@@ -1,22 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import {
   User,
-  Shield,
   KeyRound,
   CheckCircle,
   AlertTriangle,
-  X,
   Lock,
   Mail,
-  UserCheck,
-  ShieldCheck,
-  Info
+  ShieldCheck
 } from 'lucide-react';
+import Modal from './Modal';
 import { api } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
 export default function UserProfileModal({ isOpen, onClose, initialTab = 'profile' }) {
-  const { user, role, roleLabel, isAdmin, isSales, isInventory, isAccountant } = useAuth();
+  const { user, role, roleLabel, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState(initialTab);
 
   // Profile form state
@@ -98,359 +95,409 @@ export default function UserProfileModal({ isOpen, onClose, initialTab = 'profil
     }
   };
 
-  const permissionsList = [
-    { label: 'Point of Sale (POS) Counter Billing', granted: isAdmin || isSales },
-    { label: 'Sales History & Invoice Viewing', granted: isAdmin || isSales || isAccountant },
-    { label: 'Frozen Food Inventory & Batch Lookup', granted: true },
-    { label: 'Physical Stock Adjustments & Waste Logging', granted: isAdmin || isInventory },
-    { label: 'Supplier Purchases & Restocking Receiving', granted: isAdmin || isInventory || isAccountant },
-    { label: 'Customer Accounts & Credit / Udhaar Ledgers', granted: isAdmin || isSales || isAccountant },
-    { label: 'Supplier Accounts & Disbursement Ledgers', granted: isAdmin || isInventory || isAccountant },
-    { label: 'Operating Expenses & Bills Logging', granted: isAdmin || isAccountant },
-    { label: 'Cashbook & Cash Drawer Management', granted: isAdmin || isAccountant },
-    { label: 'Daily Sales & Day-End Z-Register Reports', granted: isAdmin || isSales || isAccountant },
-    { label: 'Stock Valuation & Expiry Alerts Reports', granted: isAdmin || isInventory || isAccountant },
-    { label: 'Profit & Loss (P&L) Financial Statements', granted: isAdmin || isAccountant },
-    { label: 'Staff Account Management & Audit Logs', granted: isAdmin },
-    { label: 'Database Backups & System Configuration', granted: isAdmin }
-  ];
+  const userInitial = user?.full_name?.charAt(0) || user?.username?.charAt(0) || 'U';
+
+  const headerAvatar = (
+    <div
+      style={{
+        width: '40px',
+        height: '40px',
+        borderRadius: '50%',
+        background: 'linear-gradient(135deg, #0F766E 0%, #14b8a6 100%)',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 800,
+        fontSize: '16px',
+        boxShadow: '0 4px 12px rgba(15, 118, 110, 0.25)'
+      }}
+    >
+      {userInitial}
+    </div>
+  );
+
+  const inputStyle = {
+    width: '100%',
+    height: '44px',
+    borderRadius: '10px',
+    border: '1px solid #E5E7EB',
+    padding: '0 14px',
+    fontSize: '14px',
+    color: '#111827',
+    background: '#ffffff',
+    boxSizing: 'border-box',
+    outline: 'none',
+    transition: 'border-color 0.15s, box-shadow 0.15s'
+  };
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: '13px',
+    fontWeight: 500,
+    color: '#374151',
+    marginBottom: '6px'
+  };
+
+  const handleInputFocus = (e) => {
+    e.currentTarget.style.borderColor = '#0F766E';
+    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(15, 118, 110, 0.1)';
+  };
+
+  const handleInputBlur = (e) => {
+    e.currentTarget.style.borderColor = '#E5E7EB';
+    e.currentTarget.style.boxShadow = 'none';
+  };
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 1100 }}>
-      <div className="modal-content" style={{ maxWidth: '540px', padding: 0, overflow: 'hidden' }}>
-        {/* MODAL HEADER */}
-        <div style={{
-          padding: '1rem 1.25rem',
-          borderBottom: '1px solid #e2e8f0',
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="User Profile & Security"
+      subtitle="Manage your personal credentials and account settings"
+      icon={headerAvatar}
+      maxWidth="520px"
+      bodyPadding="0"
+    >
+      {/* TABS (My Profile / Change Password) */}
+      <div
+        style={{
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: '#f8fafc'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '0.9rem'
-            }}>
-              {user?.full_name?.charAt(0) || user?.username?.charAt(0) || 'U'}
-            </div>
-            <div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>User Account & Security</h3>
-              <p style={{ fontSize: '0.725rem', color: '#64748b' }}>Manage your personal profile, credentials, and access</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            style={{ color: '#94a3b8', padding: '4px', borderRadius: '4px' }}
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
-        </div>
+          padding: '0 28px',
+          borderBottom: '1px solid #F3F4F6',
+          background: '#FFFFFF'
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('profile')}
+          style={{
+            height: '44px',
+            fontSize: '13px',
+            padding: '0 4px',
+            marginRight: '20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'profile' ? '2px solid #0F766E' : '2px solid transparent',
+            color: activeTab === 'profile' ? '#0F766E' : '#6B7280',
+            fontWeight: activeTab === 'profile' ? 600 : 500,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <User size={15} />
+          <span>My Profile</span>
+        </button>
 
-        {/* TABS HEADER */}
-        <div className="horizontal-scroll-tabs" style={{
-          borderBottom: '1px solid #e2e8f0',
-          background: '#fafafa',
-          padding: '0 0.5rem'
-        }}>
-          <button
-            onClick={() => setActiveTab('profile')}
-            style={{
-              padding: '0.65rem 0.9rem',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              color: activeTab === 'profile' ? '#0284c7' : '#64748b',
-              borderBottom: activeTab === 'profile' ? '2px solid #0284c7' : '2px solid transparent',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <User size={14} />
-            <span>My Profile</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('security')}
-            style={{
-              padding: '0.65rem 0.9rem',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              color: activeTab === 'security' ? '#0284c7' : '#64748b',
-              borderBottom: activeTab === 'security' ? '2px solid #0284c7' : '2px solid transparent',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <KeyRound size={14} />
-            <span>Change Password</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('permissions')}
-            style={{
-              padding: '0.65rem 0.9rem',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              color: activeTab === 'permissions' ? '#0284c7' : '#64748b',
-              borderBottom: activeTab === 'permissions' ? '2px solid #0284c7' : '2px solid transparent',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <ShieldCheck size={14} />
-            <span>Role Permissions</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab('security')}
+          style={{
+            height: '44px',
+            fontSize: '13px',
+            padding: '0 4px',
+            marginRight: '20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'security' ? '2px solid #0F766E' : '2px solid transparent',
+            color: activeTab === 'security' ? '#0F766E' : '#6B7280',
+            fontWeight: activeTab === 'security' ? 600 : 500,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <KeyRound size={15} />
+          <span>Change Password</span>
+        </button>
+      </div>
 
-        {/* TAB 1: MY PROFILE */}
-        {activeTab === 'profile' && (
-          <form onSubmit={handleUpdateProfile}>
-            <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              {profileMessage && (
-                <div style={{
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: '6px',
-                  fontSize: '0.8rem',
+      {/* TAB 1: MY PROFILE */}
+      {activeTab === 'profile' && (
+        <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {profileMessage && (
+              <div
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  background: profileMessage.type === 'success' ? '#ecfdf5' : '#fef2f2',
-                  border: `1px solid ${profileMessage.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
-                  color: profileMessage.type === 'success' ? '#065f46' : '#991b1b'
-                }}>
-                  {profileMessage.type === 'success' ? <CheckCircle size={15} /> : <AlertTriangle size={15} />}
-                  <span>{profileMessage.text}</span>
-                </div>
-              )}
-
-              <div className="form-grid-2" style={{ gap: '0.75rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Username</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    disabled
-                    value={user?.username || ''}
-                    style={{ background: '#f1f5f9', cursor: 'not-allowed', fontWeight: 600 }}
-                  />
-                  <span style={{ fontSize: '0.675rem', color: '#94a3b8', marginTop: '2px', display: 'block' }}>
-                    Username cannot be changed
-                  </span>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Assigned Role</label>
-                  <div style={{
-                    height: '32px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '0 0.65rem',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '6px'
-                  }}>
-                    <span className={`role-badge-pill role-badge-${role || 'sales'}`}>
-                      {roleLabel}
-                    </span>
-                  </div>
-                </div>
+                  gap: '8px',
+                  background: profileMessage.type === 'success' ? '#ECFDF5' : '#FEF2F2',
+                  border: `1px solid ${profileMessage.type === 'success' ? '#A7F3D0' : '#FECACA'}`,
+                  color: profileMessage.type === 'success' ? '#065F46' : '#DC2626'
+                }}
+              >
+                {profileMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+                <span>{profileMessage.text}</span>
               </div>
+            )}
 
-              <div className="form-group">
-                <label className="form-label">Full Display Name *</label>
+            {/* Read-only Username + Role Badge */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>Username</label>
                 <input
                   type="text"
-                  className="form-control"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Tariq Mehmood"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Email Address (Optional)</label>
-                <input
-                  type="email"
-                  className="form-control"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@latiftraders.com"
-                />
-              </div>
-            </div>
-
-            <div style={{
-              padding: '0.75rem 1.25rem',
-              borderTop: '1px solid #e2e8f0',
-              background: '#f8fafc',
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '0.5rem'
-            }}>
-              <button type="button" onClick={onClose} className="btn btn-secondary btn-sm">
-                Cancel
-              </button>
-              <button type="submit" disabled={profileSaving} className="btn btn-primary btn-sm">
-                {profileSaving ? 'Saving...' : 'Save Profile Details'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* TAB 2: CHANGE PASSWORD */}
-        {activeTab === 'security' && (
-          <form onSubmit={handleChangePassword}>
-            <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              {passwordMessage && (
-                <div style={{
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: '6px',
-                  fontSize: '0.8rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: passwordMessage.type === 'success' ? '#ecfdf5' : '#fef2f2',
-                  border: `1px solid ${passwordMessage.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
-                  color: passwordMessage.type === 'success' ? '#065f46' : '#991b1b'
-                }}>
-                  {passwordMessage.type === 'success' ? <CheckCircle size={15} /> : <AlertTriangle size={15} />}
-                  <span>{passwordMessage.text}</span>
-                </div>
-              )}
-
-              <div className="form-group">
-                <label className="form-label">Current Password *</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  required
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">New Password *</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  required
-                  minLength={6}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Minimum 6 characters"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Confirm New Password *</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  required
-                  minLength={6}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Re-enter new password"
-                />
-              </div>
-            </div>
-
-            <div style={{
-              padding: '0.75rem 1.25rem',
-              borderTop: '1px solid #e2e8f0',
-              background: '#f8fafc',
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '0.5rem'
-            }}>
-              <button type="button" onClick={onClose} className="btn btn-secondary btn-sm">
-                Cancel
-              </button>
-              <button type="submit" disabled={passwordSaving} className="btn btn-primary btn-sm">
-                {passwordSaving ? 'Updating...' : 'Update Password'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* TAB 3: ROLE PERMISSIONS */}
-        {activeTab === 'permissions' && (
-          <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{
-              padding: '0.65rem 0.85rem',
-              background: '#f0f9ff',
-              border: '1px solid #bae6fd',
-              borderRadius: '6px',
-              fontSize: '0.775rem',
-              color: '#0369a1',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <Info size={16} flexShrink={0} />
-              <span>
-                Permissions are governed by your assigned role (<strong>{roleLabel}</strong>). Contact a system administrator to adjust your permissions.
-              </span>
-            </div>
-
-            <div style={{
-              maxHeight: '280px',
-              overflowY: 'auto',
-              border: '1px solid #e2e8f0',
-              borderRadius: '6px'
-            }}>
-              {permissionsList.map((item, idx) => (
-                <div
-                  key={idx}
+                  disabled
+                  value={user?.username || ''}
                   style={{
-                    padding: '0.5rem 0.75rem',
-                    borderBottom: idx < permissionsList.length - 1 ? '1px solid #f1f5f9' : 'none',
+                    ...inputStyle,
+                    background: '#F9FAFB',
+                    color: '#9CA3AF',
+                    cursor: 'not-allowed'
+                  }}
+                />
+                <span style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px', display: 'block' }}>
+                  Username cannot be changed
+                </span>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Assigned Role</label>
+                <div
+                  style={{
+                    ...inputStyle,
                     display: 'flex',
-                    justifyContent: 'space-between',
                     alignItems: 'center',
-                    fontSize: '0.775rem',
-                    background: item.granted ? '#ffffff' : '#fafafa'
+                    background: '#F9FAFB'
                   }}
                 >
-                  <span style={{ color: item.granted ? '#0f172a' : '#94a3b8', fontWeight: item.granted ? 600 : 400 }}>
-                    {item.label}
-                  </span>
-                  <span style={{
-                    padding: '1px 6px',
-                    borderRadius: '4px',
-                    fontSize: '0.675rem',
-                    fontWeight: 700,
-                    background: item.granted ? '#ecfdf5' : '#f1f5f9',
-                    color: item.granted ? '#059669' : '#94a3b8',
-                    border: `1px solid ${item.granted ? '#a7f3d0' : '#e2e8f0'}`
-                  }}>
-                    {item.granted ? 'Allowed' : 'Restricted'}
+                  <span
+                    style={{
+                      background: '#FEF2F2',
+                      color: '#DC2626',
+                      border: '1px solid #FECACA',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      padding: '3px 8px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em'
+                    }}
+                  >
+                    {roleLabel || 'ADMINISTRATOR'}
                   </span>
                 </div>
-              ))}
+              </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.5rem' }}>
-              <button type="button" onClick={onClose} className="btn btn-primary btn-sm">
-                Close
-              </button>
+            {/* Full Name */}
+            <div>
+              <label style={labelStyle}>Full Display Name *</label>
+              <input
+                type="text"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="e.g. Mudassir Arif"
+                style={inputStyle}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+              />
+            </div>
+
+            {/* Email Address */}
+            <div>
+              <label style={labelStyle}>Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@latiftraders.com"
+                style={inputStyle}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+              />
             </div>
           </div>
-        )}
-      </div>
-    </div>
+
+          {/* MODAL FOOTER */}
+          <div
+            style={{
+              padding: '16px 28px 24px',
+              borderTop: '1px solid #F3F4F6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: '10px'
+            }}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                height: '40px',
+                padding: '0 20px',
+                border: '1px solid #E5E7EB',
+                borderRadius: '10px',
+                background: '#FFFFFF',
+                color: '#374151',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#F4F6F9')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={profileSaving}
+              style={{
+                height: '40px',
+                padding: '0 20px',
+                background: '#0F766E',
+                color: '#FFFFFF',
+                borderRadius: '10px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: profileSaving ? 'not-allowed' : 'pointer',
+                opacity: profileSaving ? 0.7 : 1,
+                transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => !profileSaving && (e.currentTarget.style.background = '#065F46')}
+              onMouseLeave={(e) => !profileSaving && (e.currentTarget.style.background = '#0F766E')}
+            >
+              {profileSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* TAB 2: CHANGE PASSWORD */}
+      {activeTab === 'security' && (
+        <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {passwordMessage && (
+              <div
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: passwordMessage.type === 'success' ? '#ECFDF5' : '#FEF2F2',
+                  border: `1px solid ${passwordMessage.type === 'success' ? '#A7F3D0' : '#FECACA'}`,
+                  color: passwordMessage.type === 'success' ? '#065F46' : '#DC2626'
+                }}
+              >
+                {passwordMessage.type === 'success' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+                <span>{passwordMessage.text}</span>
+              </div>
+            )}
+
+            <div>
+              <label style={labelStyle}>Current Password *</label>
+              <input
+                type="password"
+                required
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter your current password"
+                style={inputStyle}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>New Password *</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Minimum 6 characters"
+                style={inputStyle}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Confirm New Password *</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter new password"
+                style={inputStyle}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+              />
+            </div>
+          </div>
+
+          {/* MODAL FOOTER */}
+          <div
+            style={{
+              padding: '16px 28px 24px',
+              borderTop: '1px solid #F3F4F6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: '10px'
+            }}
+          >
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                height: '40px',
+                padding: '0 20px',
+                border: '1px solid #E5E7EB',
+                borderRadius: '10px',
+                background: '#FFFFFF',
+                color: '#374151',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#F4F6F9')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#FFFFFF')}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={passwordSaving}
+              style={{
+                height: '40px',
+                padding: '0 20px',
+                background: '#0F766E',
+                color: '#FFFFFF',
+                borderRadius: '10px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: passwordSaving ? 'not-allowed' : 'pointer',
+                opacity: passwordSaving ? 0.7 : 1,
+                transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => !passwordSaving && (e.currentTarget.style.background = '#065F46')}
+              onMouseLeave={(e) => !passwordSaving && (e.currentTarget.style.background = '#0F766E')}
+            >
+              {passwordSaving ? 'Updating...' : 'Update Password'}
+            </button>
+          </div>
+        </form>
+      )}
+    </Modal>
   );
 }

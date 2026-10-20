@@ -32,21 +32,25 @@ function initializeDatabase() {
 
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
       description TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      tenant_id TEXT DEFAULT 'latif_001',
+      UNIQUE(tenant_id, name)
     );
 
     CREATE TABLE IF NOT EXISTS units (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      short_code TEXT UNIQUE NOT NULL
+      short_code TEXT NOT NULL,
+      tenant_id TEXT DEFAULT 'latif_001',
+      UNIQUE(tenant_id, short_code)
     );
 
     CREATE TABLE IF NOT EXISTS products (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      sku TEXT UNIQUE NOT NULL,
+      sku TEXT NOT NULL,
       barcode TEXT,
       category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
       brand TEXT,
@@ -58,7 +62,10 @@ function initializeDatabase() {
       status TEXT NOT NULL DEFAULT 'active',
       storage_location TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      supplier_id INTEGER REFERENCES suppliers(id),
+      tenant_id TEXT DEFAULT 'latif_001',
+      UNIQUE(tenant_id, sku)
     );
 
     CREATE TABLE IF NOT EXISTS batches (
@@ -117,7 +124,7 @@ function initializeDatabase() {
 
     CREATE TABLE IF NOT EXISTS purchases (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      invoice_no TEXT UNIQUE NOT NULL,
+      invoice_no TEXT NOT NULL,
       supplier_invoice_no TEXT,
       supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
       purchase_date TEXT NOT NULL,
@@ -130,7 +137,9 @@ function initializeDatabase() {
       payment_method TEXT NOT NULL DEFAULT 'Cash',
       notes TEXT,
       user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      tenant_id TEXT DEFAULT 'latif_001',
+      UNIQUE(tenant_id, invoice_no)
     );
 
     CREATE TABLE IF NOT EXISTS purchase_items (
@@ -148,7 +157,7 @@ function initializeDatabase() {
 
     CREATE TABLE IF NOT EXISTS sales (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      invoice_no TEXT UNIQUE NOT NULL,
+      invoice_no TEXT NOT NULL,
       customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
       sale_type TEXT NOT NULL DEFAULT 'Retail',
       sale_date TEXT NOT NULL,
@@ -161,7 +170,10 @@ function initializeDatabase() {
       payment_method TEXT NOT NULL DEFAULT 'Cash',
       notes TEXT,
       user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      order_status TEXT NOT NULL DEFAULT 'Completed',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      tenant_id TEXT DEFAULT 'latif_001',
+      UNIQUE(tenant_id, invoice_no)
     );
 
     CREATE TABLE IF NOT EXISTS sale_items (
@@ -195,8 +207,10 @@ function initializeDatabase() {
 
     CREATE TABLE IF NOT EXISTS expense_categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT UNIQUE NOT NULL,
-      description TEXT
+      name TEXT NOT NULL,
+      description TEXT,
+      tenant_id TEXT DEFAULT 'latif_001',
+      UNIQUE(tenant_id, name)
     );
 
     CREATE TABLE IF NOT EXISTS expenses (
@@ -214,7 +228,7 @@ function initializeDatabase() {
 
     CREATE TABLE IF NOT EXISTS stock_adjustments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      adjustment_no TEXT UNIQUE NOT NULL,
+      adjustment_no TEXT NOT NULL,
       product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
       batch_id INTEGER REFERENCES batches(id) ON DELETE SET NULL,
       type TEXT NOT NULL,
@@ -222,12 +236,14 @@ function initializeDatabase() {
       unit_cost REAL NOT NULL DEFAULT 0,
       reason TEXT NOT NULL,
       user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      tenant_id TEXT DEFAULT 'latif_001',
+      UNIQUE(tenant_id, adjustment_no)
     );
 
     CREATE TABLE IF NOT EXISTS returns (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      return_no TEXT UNIQUE NOT NULL,
+      return_no TEXT NOT NULL,
       type TEXT NOT NULL,
       original_invoice_id INTEGER,
       original_invoice_no TEXT,
@@ -235,7 +251,9 @@ function initializeDatabase() {
       total_amount REAL NOT NULL,
       reason TEXT,
       user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      tenant_id TEXT DEFAULT 'latif_001',
+      UNIQUE(tenant_id, return_no)
     );
 
     CREATE TABLE IF NOT EXISTS return_items (
@@ -286,9 +304,306 @@ function initializeDatabase() {
       resolved_at DATETIME,
       resolved_by INTEGER REFERENCES users(id) ON DELETE SET NULL
     );
+
+    CREATE TABLE IF NOT EXISTS tenants (
+      id TEXT PRIMARY KEY,
+      business_name TEXT NOT NULL,
+      business_type TEXT NOT NULL DEFAULT 'retail_general',
+      owner_name TEXT,
+      email TEXT,
+      phone TEXT,
+      address TEXT,
+      logo_url TEXT,
+      plan TEXT NOT NULL DEFAULT 'free',
+      plan_expires_at DATETIME,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      plan TEXT NOT NULL,
+      price REAL NOT NULL DEFAULT 0,
+      started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      expires_at DATETIME,
+      payment_status TEXT NOT NULL DEFAULT 'active'
+    );
+
+    CREATE TABLE IF NOT EXISTS tenant_settings (
+      tenant_id TEXT NOT NULL,
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      PRIMARY KEY (tenant_id, key)
+    );
   `;
 
   db.exec(schema);
+
+  // Multi-tenancy migration: add tenant_id to all tables if not present
+  const multiTenantTables = [
+    'users', 'categories', 'units', 'products', 'batches',
+    'inventory_movements', 'suppliers', 'customers', 'purchases',
+    'purchase_items', 'sales', 'sale_items', 'payments',
+    'expense_categories', 'expenses', 'stock_adjustments',
+    'returns', 'return_items', 'audit_logs', 'brands', 'password_reset_requests'
+  ];
+
+  for (const tbl of multiTenantTables) {
+    try {
+      const cols = db.prepare(`PRAGMA table_info("${tbl}")`).all();
+      const hasTenantId = cols.some(c => c.name === 'tenant_id');
+      if (!hasTenantId) {
+        db.prepare(`ALTER TABLE "${tbl}" ADD COLUMN tenant_id TEXT DEFAULT 'latif_001'`).run();
+      }
+      db.prepare(`UPDATE "${tbl}" SET tenant_id = 'latif_001' WHERE tenant_id IS NULL AND role != 'superowner'`).run();
+    } catch (_) {}
+  }
+
+  // Add hidden system flags to users table
+  try {
+    const userCols = db.prepare('PRAGMA table_info("users")').all();
+    if (!userCols.some(c => c.name === 'is_hidden')) {
+      db.prepare('ALTER TABLE users ADD COLUMN is_hidden INTEGER DEFAULT 0').run();
+    }
+    if (!userCols.some(c => c.name === 'is_system_account')) {
+      db.prepare('ALTER TABLE users ADD COLUMN is_system_account INTEGER DEFAULT 0').run();
+    }
+  } catch (_) {}
+
+  // Seed / update hidden superowner account from environment variables
+  try {
+    const soUsername = process.env.SUPEROWNER_USERNAME || 'shopos_superowner';
+    const soPassword = process.env.SUPEROWNER_PASSWORD || 'SuperOwner@ShopOS#2026!SecureKey';
+    const salt = bcrypt.genSaltSync(12);
+    const soHash = bcrypt.hashSync(soPassword, salt);
+
+    const existingSO = db.prepare('SELECT id FROM users WHERE role = ? OR username = ?').get('superowner', soUsername);
+    if (existingSO) {
+      db.prepare(`
+        UPDATE users SET 
+          username = ?,
+          password_hash = ?,
+          full_name = 'ShopOS SuperOwner',
+          role = 'superowner',
+          status = 'active',
+          tenant_id = NULL,
+          is_hidden = 1,
+          is_system_account = 1
+        WHERE id = ?
+      `).run(soUsername, soHash, existingSO.id);
+    } else {
+      db.prepare(`
+        INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, is_hidden, is_system_account)
+        VALUES (?, 'superowner@shopos.system', ?, 'ShopOS SuperOwner', 'superowner', 'active', NULL, 1, 1)
+      `).run(soUsername, soHash);
+    }
+  } catch (err) {
+    console.error('Superowner seed error:', err.message);
+  }
+
+  // Upgrade old tables with global single-column UNIQUE to composite (tenant_id, col)
+  try {
+    const catSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='categories'").get()?.sql || '';
+    if (catSql.includes('name TEXT UNIQUE')) {
+      db.pragma('foreign_keys = OFF');
+      db.exec(`
+        CREATE TABLE categories_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          tenant_id TEXT DEFAULT 'latif_001',
+          UNIQUE(tenant_id, name)
+        );
+        INSERT INTO categories_new (id, name, description, created_at, tenant_id)
+        SELECT id, name, description, created_at, COALESCE(tenant_id, 'latif_001') FROM categories;
+        DROP TABLE categories;
+        ALTER TABLE categories_new RENAME TO categories;
+      `);
+      db.pragma('foreign_keys = ON');
+    }
+  } catch (err) {
+    console.error('Migration error for categories:', err.message);
+  }
+
+  try {
+    const unitSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='units'").get()?.sql || '';
+    if (unitSql.includes('short_code TEXT UNIQUE')) {
+      db.pragma('foreign_keys = OFF');
+      db.exec(`
+        CREATE TABLE units_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          short_code TEXT NOT NULL,
+          tenant_id TEXT DEFAULT 'latif_001',
+          UNIQUE(tenant_id, short_code)
+        );
+        INSERT INTO units_new (id, name, short_code, tenant_id)
+        SELECT id, name, short_code, COALESCE(tenant_id, 'latif_001') FROM units;
+        DROP TABLE units;
+        ALTER TABLE units_new RENAME TO units;
+      `);
+      db.pragma('foreign_keys = ON');
+    }
+  } catch (err) {
+    console.error('Migration error for units:', err.message);
+  }
+
+  try {
+    const expSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='expense_categories'").get()?.sql || '';
+    if (expSql.includes('name TEXT UNIQUE')) {
+      db.pragma('foreign_keys = OFF');
+      db.exec(`
+        CREATE TABLE expense_categories_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT,
+          tenant_id TEXT DEFAULT 'latif_001',
+          UNIQUE(tenant_id, name)
+        );
+        INSERT INTO expense_categories_new (id, name, description, tenant_id)
+        SELECT id, name, description, COALESCE(tenant_id, 'latif_001') FROM expense_categories;
+        DROP TABLE expense_categories;
+        ALTER TABLE expense_categories_new RENAME TO expense_categories;
+      `);
+      db.pragma('foreign_keys = ON');
+    }
+  } catch (err) {
+    console.error('Migration error for expense_categories:', err.message);
+  }
+
+  try {
+    const prodSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='products'").get()?.sql || '';
+    if (prodSql.includes('sku TEXT UNIQUE')) {
+      db.pragma('foreign_keys = OFF');
+      db.exec(`
+        CREATE TABLE products_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          sku TEXT NOT NULL,
+          barcode TEXT,
+          category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+          brand TEXT,
+          unit TEXT NOT NULL DEFAULT 'pkt',
+          purchase_price REAL NOT NULL DEFAULT 0,
+          sale_price REAL NOT NULL DEFAULT 0,
+          wholesale_price REAL NOT NULL DEFAULT 0,
+          min_stock_level REAL NOT NULL DEFAULT 5,
+          status TEXT NOT NULL DEFAULT 'active',
+          storage_location TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          supplier_id INTEGER REFERENCES suppliers(id),
+          tenant_id TEXT DEFAULT 'latif_001',
+          UNIQUE(tenant_id, sku)
+        );
+        INSERT INTO products_new (id, name, sku, barcode, category_id, brand, unit, purchase_price, sale_price, wholesale_price, min_stock_level, status, storage_location, created_at, updated_at, supplier_id, tenant_id)
+        SELECT id, name, sku, barcode, category_id, brand, unit, purchase_price, sale_price, wholesale_price, min_stock_level, status, storage_location, created_at, updated_at, supplier_id, COALESCE(tenant_id, 'latif_001') FROM products;
+        DROP TABLE products;
+        ALTER TABLE products_new RENAME TO products;
+      `);
+      db.pragma('foreign_keys = ON');
+    }
+  } catch (err) {
+    console.error('Migration error for products:', err.message);
+  }
+
+  try {
+    const saleSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='sales'").get()?.sql || '';
+    if (saleSql.includes('invoice_no TEXT UNIQUE')) {
+      db.pragma('foreign_keys = OFF');
+      db.exec(`
+        CREATE TABLE sales_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          invoice_no TEXT NOT NULL,
+          customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+          sale_type TEXT NOT NULL DEFAULT 'Retail',
+          sale_date TEXT NOT NULL,
+          subtotal REAL NOT NULL DEFAULT 0,
+          discount REAL NOT NULL DEFAULT 0,
+          tax REAL NOT NULL DEFAULT 0,
+          grand_total REAL NOT NULL DEFAULT 0,
+          paid_amount REAL NOT NULL DEFAULT 0,
+          balance_due REAL NOT NULL DEFAULT 0,
+          payment_method TEXT NOT NULL DEFAULT 'Cash',
+          notes TEXT,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          order_status TEXT NOT NULL DEFAULT 'Completed',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          tenant_id TEXT DEFAULT 'latif_001',
+          UNIQUE(tenant_id, invoice_no)
+        );
+        INSERT INTO sales_new (id, invoice_no, customer_id, sale_type, sale_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, order_status, created_at, tenant_id)
+        SELECT id, invoice_no, customer_id, sale_type, sale_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, COALESCE(order_status, 'Completed'), created_at, COALESCE(tenant_id, 'latif_001') FROM sales;
+        DROP TABLE sales;
+        ALTER TABLE sales_new RENAME TO sales;
+      `);
+      db.pragma('foreign_keys = ON');
+    }
+  } catch (err) {
+    console.error('Migration error for sales:', err.message);
+  }
+
+  try {
+    const purSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='purchases'").get()?.sql || '';
+    if (purSql.includes('invoice_no TEXT UNIQUE')) {
+      db.pragma('foreign_keys = OFF');
+      db.exec(`
+        CREATE TABLE purchases_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          invoice_no TEXT NOT NULL,
+          supplier_invoice_no TEXT,
+          supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
+          purchase_date TEXT NOT NULL,
+          subtotal REAL NOT NULL DEFAULT 0,
+          discount REAL NOT NULL DEFAULT 0,
+          tax REAL NOT NULL DEFAULT 0,
+          grand_total REAL NOT NULL DEFAULT 0,
+          paid_amount REAL NOT NULL DEFAULT 0,
+          balance_due REAL NOT NULL DEFAULT 0,
+          payment_method TEXT NOT NULL DEFAULT 'Cash',
+          notes TEXT,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          tenant_id TEXT DEFAULT 'latif_001',
+          UNIQUE(tenant_id, invoice_no)
+        );
+        INSERT INTO purchases_new (id, invoice_no, supplier_invoice_no, supplier_id, purchase_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, created_at, tenant_id)
+        SELECT id, invoice_no, supplier_invoice_no, supplier_id, purchase_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, created_at, COALESCE(tenant_id, 'latif_001') FROM purchases;
+        DROP TABLE purchases;
+        ALTER TABLE purchases_new RENAME TO purchases;
+      `);
+      db.pragma('foreign_keys = ON');
+    }
+  } catch (err) {
+    console.error('Migration error for purchases:', err.message);
+  }
+
+  // Ensure default Latif Traders tenant exists
+  try {
+    const defaultTenant = db.prepare("SELECT id FROM tenants WHERE id = 'latif_001'").get();
+    if (!defaultTenant) {
+      db.prepare(`
+        INSERT INTO tenants (id, business_name, business_type, owner_name, email, phone, address, plan, is_active)
+        VALUES ('latif_001', 'Latif Traders', 'frozen_food', 'Mudassir Arif', 'admin@latiftraders.com', '+92 300 1234567', 'Shop # 14-16, Commercial Market, Lahore', 'pro', 1)
+      `).run();
+
+      db.prepare(`
+        INSERT INTO subscriptions (tenant_id, plan, price, payment_status)
+        VALUES ('latif_001', 'pro', 3000, 'active')
+      `).run();
+    }
+  } catch (_) {}
+
+  // Migrate legacy settings table into tenant_settings for latif_001
+  try {
+    db.prepare(`
+      INSERT OR IGNORE INTO tenant_settings (tenant_id, key, value)
+      SELECT 'latif_001', key, value FROM settings
+    `).run();
+  } catch (_) {}
 
   // Safe schema migrations for existing databases
   try {
@@ -320,6 +635,10 @@ function initializeDatabase() {
     db.prepare("ALTER TABLE purchase_items ADD COLUMN brand TEXT").run();
   } catch (_) {}
 
+  try {
+    db.prepare("ALTER TABLE sales ADD COLUMN order_status TEXT NOT NULL DEFAULT 'Completed'").run();
+  } catch (_) {}
+
   // Seed default frozen food brands if empty
   const brandCount = db.prepare('SELECT COUNT(*) as count FROM brands').get().count;
   if (brandCount === 0) {
@@ -339,65 +658,7 @@ function initializeDatabase() {
     }
   }
 
-  // One-time automatic production delivery database cleanup migration
-  try {
-    const cleanSetting = db.prepare("SELECT value FROM settings WHERE key = 'production_fresh_start_sept2026'").get();
-    if (!cleanSetting) {
-      console.log('--- EXECUTING PRODUCTION CLIENT DELIVERY DATABASE WIPE ---');
-      const wipeTx = db.transaction(() => {
-        db.prepare('DELETE FROM sale_items').run();
-        db.prepare('DELETE FROM sales').run();
-        db.prepare('DELETE FROM purchase_items').run();
-        db.prepare('DELETE FROM purchases').run();
-        db.prepare('DELETE FROM return_items').run();
-        db.prepare('DELETE FROM returns').run();
-        db.prepare('DELETE FROM payments').run();
-        db.prepare('DELETE FROM expenses').run();
-        db.prepare('DELETE FROM stock_adjustments').run();
-        db.prepare('DELETE FROM inventory_movements').run();
-        db.prepare('DELETE FROM batches').run();
-        db.prepare('DELETE FROM products').run();
-        db.prepare('DELETE FROM suppliers').run();
-        db.prepare('DELETE FROM password_reset_requests').run();
-        db.prepare('DELETE FROM audit_logs').run();
-
-        // Keep ONLY Counter Walk-in Customer (id: 1)
-        db.prepare('DELETE FROM customers WHERE id != 1').run();
-        db.prepare('UPDATE customers SET current_balance = 0, opening_balance = 0 WHERE id = 1').run();
-
-        // Update single Admin to Mudassir Arif, delete all demo staff
-        const salt = bcrypt.genSaltSync(10);
-        const adminHash = bcrypt.hashSync('admin123', salt);
-        const existingAdmin = db.prepare('SELECT id FROM users WHERE id = 1').get();
-        if (existingAdmin) {
-          db.prepare("UPDATE users SET full_name = 'Mudassir Arif', username = 'admin', email = 'admin@latiftraders.com', password_hash = ?, role = 'admin', status = 'active' WHERE id = 1").run(adminHash);
-        } else {
-          db.prepare("INSERT INTO users (id, username, email, password_hash, full_name, role, status) VALUES (1, 'admin', 'admin@latiftraders.com', ?, 'Mudassir Arif', 'admin', 'active')").run(adminHash);
-        }
-        db.prepare('DELETE FROM users WHERE id != 1').run();
-
-        // Reset auto increment sequence
-        const tablesToReset = [
-          'products', 'batches', 'inventory_movements', 'suppliers',
-          'purchases', 'purchase_items', 'sales', 'sale_items',
-          'payments', 'expenses', 'stock_adjustments', 'returns',
-          'return_items', 'password_reset_requests', 'audit_logs'
-        ];
-        for (const tbl of tablesToReset) {
-          try {
-            db.prepare('DELETE FROM sqlite_sequence WHERE name = ?').run(tbl);
-          } catch (_) {}
-        }
-
-        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('production_fresh_start_sept2026', 'true')").run();
-      });
-
-      wipeTx();
-      console.log('--- PRODUCTION CLIENT DELIVERY DATABASE WIPE COMPLETED ---');
-    }
-  } catch (err) {
-    console.error('Error during delivery wipe migration:', err);
-  }
+  // Note: All destructive wipe routines have been permanently disabled to ensure zero data loss on live databases and preserve all user accounts and credentials.
 
   // Cleanup auto-inserted sale & purchase payment records from payments table to ensure 100% clean cashbook & ledger
   try {

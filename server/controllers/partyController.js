@@ -4,9 +4,10 @@ const { logAudit } = require('../middleware/audit');
 // Customers CRUD
 exports.getCustomers = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { search, customer_type } = req.query;
-    let query = 'SELECT * FROM customers WHERE 1=1';
-    const params = [];
+    let query = 'SELECT * FROM customers WHERE tenant_id = ?';
+    const params = [tenantId];
 
     if (search) {
       query += ' AND (name LIKE ? OR phone LIKE ? OR address LIKE ?)';
@@ -28,23 +29,25 @@ exports.getCustomers = (req, res) => {
 
 exports.createCustomer = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { name, phone, address, customer_type, opening_balance, credit_limit, notes } = req.body;
     if (!name) return res.status(400).json({ success: false, message: 'Customer name is required.' });
 
     const openBal = Number(opening_balance) || 0;
     const stmt = db.prepare(`
-      INSERT INTO customers (name, phone, address, customer_type, opening_balance, credit_limit, current_balance, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO customers (tenant_id, name, phone, address, customer_type, opening_balance, credit_limit, current_balance, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
+      tenantId,
       name.trim(),
       phone ? phone.trim() : null,
       address ? address.trim() : null,
       customer_type || 'Retail',
       openBal,
       Number(credit_limit) || 0,
-      openBal, // Initial current balance = opening balance
+      openBal,
       notes ? notes.trim() : null
     );
 
@@ -57,16 +60,17 @@ exports.createCustomer = (req, res) => {
 
 exports.updateCustomer = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
     const { name, phone, address, customer_type, credit_limit, notes } = req.body;
 
-    const existing = db.prepare('SELECT * FROM customers WHERE id = ?').get(id);
+    const existing = db.prepare('SELECT * FROM customers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
     if (!existing) return res.status(404).json({ success: false, message: 'Customer not found.' });
 
     db.prepare(`
       UPDATE customers SET
         name = ?, phone = ?, address = ?, customer_type = ?, credit_limit = ?, notes = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `).run(
       name ? name.trim() : existing.name,
       phone !== undefined ? phone : existing.phone,
@@ -74,7 +78,8 @@ exports.updateCustomer = (req, res) => {
       customer_type || existing.customer_type,
       credit_limit !== undefined ? Number(credit_limit) : existing.credit_limit,
       notes !== undefined ? notes : existing.notes,
-      id
+      id,
+      tenantId
     );
 
     logAudit(req.user.id, req.user.full_name, 'UPDATE', 'CUSTOMER', id, `Updated customer #${id}`, req);
@@ -86,14 +91,16 @@ exports.updateCustomer = (req, res) => {
 
 exports.deleteCustomer = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
-    if (Number(id) === 1) {
-      return res.status(400).json({ success: false, message: 'Cannot delete the default Walk-in / Counter customer.' });
-    }
 
-    const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(id);
+    const customer = db.prepare('SELECT * FROM customers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
     if (!customer) {
       return res.status(404).json({ success: false, message: 'Customer not found.' });
+    }
+
+    if (customer.name.toLowerCase().includes('walk-in') || customer.name.toLowerCase().includes('counter')) {
+      return res.status(400).json({ success: false, message: 'Cannot delete the default Walk-in / Counter customer.' });
     }
 
     if (Math.abs(Number(customer.current_balance) || 0) > 0.01) {
@@ -104,12 +111,9 @@ exports.deleteCustomer = (req, res) => {
     }
 
     const deleteTransaction = db.transaction(() => {
-      // Nullify customer reference in historical sales so sale invoices remain valid
-      db.prepare('UPDATE sales SET customer_id = NULL WHERE customer_id = ?').run(id);
-      // Delete party payment ledger records
-      db.prepare("DELETE FROM payments WHERE party_type = 'CUSTOMER' AND party_id = ?").run(id);
-      // Delete customer record
-      db.prepare('DELETE FROM customers WHERE id = ?').run(id);
+      db.prepare('UPDATE sales SET customer_id = NULL WHERE customer_id = ? AND tenant_id = ?').run(id, tenantId);
+      db.prepare("DELETE FROM payments WHERE party_type = 'CUSTOMER' AND party_id = ? AND tenant_id = ?").run(id, tenantId);
+      db.prepare('DELETE FROM customers WHERE id = ? AND tenant_id = ?').run(id, tenantId);
     });
 
     deleteTransaction();
@@ -125,20 +129,20 @@ exports.deleteCustomer = (req, res) => {
 // Customer Ledger (Date-wise statement)
 exports.getCustomerLedger = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
     const { start_date, end_date } = req.query;
 
-    const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(id);
+    const customer = db.prepare('SELECT * FROM customers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
     if (!customer) return res.status(404).json({ success: false, message: 'Customer not found.' });
 
-    // Collect Sales (Debit to customer), Payments/Receipts (Credit from customer), Returns (Credit to customer)
-    let salesQuery = "SELECT id, invoice_no as ref_no, sale_date as date, 'SALE' as type, grand_total as amount, paid_amount, balance_due, notes FROM sales WHERE customer_id = ?";
-    let paymentsQuery = "SELECT id, reference_no as ref_no, payment_date as date, 'RECEIPT' as type, amount, 0 as paid_amount, 0 as balance_due, notes, payment_method FROM payments WHERE party_type = 'CUSTOMER' AND party_id = ?";
-    let returnsQuery = "SELECT id, return_no as ref_no, created_at as date, 'RETURN' as type, total_amount as amount, 0 as paid_amount, 0 as balance_due, reason as notes FROM returns WHERE type = 'SALE_RETURN' AND party_id = ?";
+    let salesQuery = "SELECT id, invoice_no as ref_no, sale_date as date, 'SALE' as type, grand_total as amount, paid_amount, balance_due, notes FROM sales WHERE customer_id = ? AND tenant_id = ?";
+    let paymentsQuery = "SELECT id, reference_no as ref_no, payment_date as date, 'RECEIPT' as type, amount, 0 as paid_amount, 0 as balance_due, notes, payment_method FROM payments WHERE party_type = 'CUSTOMER' AND party_id = ? AND tenant_id = ?";
+    let returnsQuery = "SELECT id, return_no as ref_no, created_at as date, 'RETURN' as type, total_amount as amount, 0 as paid_amount, 0 as balance_due, reason as notes FROM returns WHERE type = 'SALE_RETURN' AND party_id = ? AND tenant_id = ?";
 
-    const sParams = [id];
-    const pParams = [id];
-    const rParams = [id];
+    const sParams = [id, tenantId];
+    const pParams = [id, tenantId];
+    const rParams = [id, tenantId];
 
     if (start_date) {
       salesQuery += ' AND sale_date >= ?';
@@ -162,10 +166,9 @@ exports.getCustomerLedger = (req, res) => {
     const payments = db.prepare(paymentsQuery).all(...pParams);
     const returns = db.prepare(returnsQuery).all(...rParams);
 
-    // Combine and sort chronologically
     const allEntries = [];
 
-    // Add opening balance
+    // Opening balance
     const opnBal = Number(customer.opening_balance) || 0;
     allEntries.push({
       date: customer.created_at ? customer.created_at.split(' ')[0] : '2026-01-01',
@@ -232,10 +235,8 @@ exports.getCustomerLedger = (req, res) => {
       });
     }
 
-    // Sort by date ascending
     allEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Calculate running balance
     let running = 0;
     const ledger = allEntries.map(entry => {
       running += (entry.debit - entry.credit);
@@ -269,9 +270,10 @@ exports.getCustomerLedger = (req, res) => {
 // Suppliers CRUD
 exports.getSuppliers = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { search } = req.query;
-    let query = 'SELECT * FROM suppliers WHERE 1=1';
-    const params = [];
+    let query = 'SELECT * FROM suppliers WHERE tenant_id = ?';
+    const params = [tenantId];
 
     if (search) {
       query += ' AND (name LIKE ? OR phone LIKE ? OR contact_person LIKE ?)';
@@ -289,16 +291,18 @@ exports.getSuppliers = (req, res) => {
 
 exports.createSupplier = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { name, phone, address, contact_person, opening_balance, notes } = req.body;
     if (!name) return res.status(400).json({ success: false, message: 'Supplier name is required.' });
 
     const openBal = Number(opening_balance) || 0;
     const stmt = db.prepare(`
-      INSERT INTO suppliers (name, phone, address, contact_person, opening_balance, current_balance, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO suppliers (tenant_id, name, phone, address, contact_person, opening_balance, current_balance, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
+      tenantId,
       name.trim(),
       phone ? phone.trim() : null,
       address ? address.trim() : null,
@@ -317,23 +321,25 @@ exports.createSupplier = (req, res) => {
 
 exports.updateSupplier = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
     const { name, phone, address, contact_person, notes } = req.body;
 
-    const existing = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(id);
+    const existing = db.prepare('SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
     if (!existing) return res.status(404).json({ success: false, message: 'Supplier not found.' });
 
     db.prepare(`
       UPDATE suppliers SET
         name = ?, phone = ?, address = ?, contact_person = ?, notes = ?
-      WHERE id = ?
+      WHERE id = ? AND tenant_id = ?
     `).run(
       name ? name.trim() : existing.name,
       phone !== undefined ? phone : existing.phone,
       address !== undefined ? address : existing.address,
       contact_person !== undefined ? contact_person : existing.contact_person,
       notes !== undefined ? notes : existing.notes,
-      id
+      id,
+      tenantId
     );
 
     logAudit(req.user.id, req.user.full_name, 'UPDATE', 'SUPPLIER', id, `Updated supplier #${id}`, req);
@@ -345,9 +351,10 @@ exports.updateSupplier = (req, res) => {
 
 exports.deleteSupplier = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
 
-    const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(id);
+    const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
     if (!supplier) {
       return res.status(404).json({ success: false, message: 'Supplier not found.' });
     }
@@ -360,12 +367,9 @@ exports.deleteSupplier = (req, res) => {
     }
 
     const deleteTransaction = db.transaction(() => {
-      // Nullify supplier reference in historical purchases so purchase records remain valid
-      db.prepare('UPDATE purchases SET supplier_id = NULL WHERE supplier_id = ?').run(id);
-      // Delete party payment ledger records
-      db.prepare("DELETE FROM payments WHERE party_type = 'SUPPLIER' AND party_id = ?").run(id);
-      // Delete supplier record
-      db.prepare('DELETE FROM suppliers WHERE id = ?').run(id);
+      db.prepare('UPDATE purchases SET supplier_id = NULL WHERE supplier_id = ? AND tenant_id = ?').run(id, tenantId);
+      db.prepare("DELETE FROM payments WHERE party_type = 'SUPPLIER' AND party_id = ? AND tenant_id = ?").run(id, tenantId);
+      db.prepare('DELETE FROM suppliers WHERE id = ? AND tenant_id = ?').run(id, tenantId);
     });
 
     deleteTransaction();
@@ -381,19 +385,20 @@ exports.deleteSupplier = (req, res) => {
 // Supplier Ledger (Date-wise statement)
 exports.getSupplierLedger = (req, res) => {
   try {
+    const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
     const { start_date, end_date } = req.query;
 
-    const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ?').get(id);
+    const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
     if (!supplier) return res.status(404).json({ success: false, message: 'Supplier not found.' });
 
-    let purchasesQuery = "SELECT id, invoice_no as ref_no, purchase_date as date, 'PURCHASE' as type, grand_total as amount, paid_amount, balance_due, notes FROM purchases WHERE supplier_id = ?";
-    let paymentsQuery = "SELECT id, reference_no as ref_no, payment_date as date, 'PAYMENT' as type, amount, notes FROM payments WHERE party_type = 'SUPPLIER' AND party_id = ?";
-    let returnsQuery = "SELECT id, return_no as ref_no, created_at as date, 'RETURN' as type, total_amount as amount, reason as notes FROM returns WHERE type = 'PURCHASE_RETURN' AND party_id = ?";
+    let purchasesQuery = "SELECT id, invoice_no as ref_no, purchase_date as date, 'PURCHASE' as type, grand_total as amount, paid_amount, balance_due, notes FROM purchases WHERE supplier_id = ? AND tenant_id = ?";
+    let paymentsQuery = "SELECT id, reference_no as ref_no, payment_date as date, 'PAYMENT' as type, amount, notes FROM payments WHERE party_type = 'SUPPLIER' AND party_id = ? AND tenant_id = ?";
+    let returnsQuery = "SELECT id, return_no as ref_no, created_at as date, 'RETURN' as type, total_amount as amount, reason as notes FROM returns WHERE type = 'PURCHASE_RETURN' AND party_id = ? AND tenant_id = ?";
 
-    const purParams = [id];
-    const payParams = [id];
-    const retParams = [id];
+    const purParams = [id, tenantId];
+    const payParams = [id, tenantId];
+    const retParams = [id, tenantId];
 
     if (start_date) {
       purchasesQuery += ' AND purchase_date >= ?';
@@ -419,7 +424,6 @@ exports.getSupplierLedger = (req, res) => {
 
     const allEntries = [];
 
-    // Opening balance
     allEntries.push({
       date: supplier.created_at ? supplier.created_at.split(' ')[0] : '2026-01-01',
       ref_no: 'OPN-BAL',
@@ -467,7 +471,6 @@ exports.getSupplierLedger = (req, res) => {
 
     allEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    // Running balance (Credit increases payable, Debit decreases payable)
     let running = 0;
     const ledger = allEntries.map(entry => {
       running += (entry.credit - entry.debit);
@@ -493,32 +496,32 @@ exports.getSupplierLedger = (req, res) => {
   }
 };
 
-// Recalculate all supplier current_balance from actual purchase/payment/return data (Admin fix)
+// Recalculate supplier balances for current tenant
 exports.recalculateSupplierBalances = (req, res) => {
   try {
-    const suppliers = db.prepare('SELECT * FROM suppliers').all();
+    const tenantId = req.tenant_id || 'latif_001';
+    const suppliers = db.prepare('SELECT * FROM suppliers WHERE tenant_id = ?').all(tenantId);
     let fixed = 0;
 
     const recalcTransaction = db.transaction(() => {
       for (const sup of suppliers) {
-        // Correct balance = opening_balance + SUM(balance_due from purchases) - SUM(payments) - SUM(returns)
         const purchaseCredit = db.prepare(`
-          SELECT COALESCE(SUM(balance_due), 0) as total FROM purchases WHERE supplier_id = ?
-        `).get(sup.id).total;
+          SELECT COALESCE(SUM(balance_due), 0) as total FROM purchases WHERE supplier_id = ? AND tenant_id = ?
+        `).get(sup.id, tenantId).total;
 
         const paymentsMade = db.prepare(`
-          SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE party_type = 'SUPPLIER' AND party_id = ?
-        `).get(sup.id).total;
+          SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE party_type = 'SUPPLIER' AND party_id = ? AND tenant_id = ?
+        `).get(sup.id, tenantId).total;
 
         const returnsMade = db.prepare(`
-          SELECT COALESCE(SUM(total_amount), 0) as total FROM returns WHERE type = 'PURCHASE_RETURN' AND party_id = ?
-        `).get(sup.id).total;
+          SELECT COALESCE(SUM(total_amount), 0) as total FROM returns WHERE type = 'PURCHASE_RETURN' AND party_id = ? AND tenant_id = ?
+        `).get(sup.id, tenantId).total;
 
         const correctBalance = (Number(sup.opening_balance) || 0) + purchaseCredit - paymentsMade - returnsMade;
         const oldBalance = Number(sup.current_balance) || 0;
 
         if (Math.abs(correctBalance - oldBalance) > 0.01) {
-          db.prepare('UPDATE suppliers SET current_balance = ? WHERE id = ?').run(correctBalance, sup.id);
+          db.prepare('UPDATE suppliers SET current_balance = ? WHERE id = ? AND tenant_id = ?').run(correctBalance, sup.id, tenantId);
           fixed++;
         }
       }

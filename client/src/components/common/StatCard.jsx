@@ -1,22 +1,30 @@
 import React from 'react';
 
-export default function StatCard({ title, value, subtitle, icon: Icon, color = 'var(--primary)', bg = 'var(--primary-light)' }) {
+/**
+ * Reusable StatCard component (SadaxCart style)
+ * props: { label, value, trend ('up' | 'down' | 'neutral'), subtitle }
+ * - trend 'up': green dash indicator (#10B981)
+ * - trend 'down': red dash indicator (#EF4444)
+ * - trend 'neutral': yellow dash indicator (#F59E0B)
+ */
+export default function StatCard({ label, title, value, trend = 'up', subtitle }) {
+  const displayLabel = label || title;
+
+  const getTrendColor = () => {
+    if (trend === 'down') return '#EF4444';
+    if (trend === 'neutral') return '#F59E0B';
+    return '#10B981';
+  };
+
   return (
-    <div className="card stat-card" style={{ '--stat-accent': color, '--stat-bg': bg }}>
-      <div>
-        <div className="stat-label">{title}</div>
-        <div className="stat-value">{value}</div>
-        {subtitle && (
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            {subtitle}
-          </div>
-        )}
-      </div>
-      {Icon && (
-        <div className="stat-icon">
-          <Icon size={18} />
-        </div>
-      )}
+    <div className="sadax-stat-card">
+      <div className="sadax-stat-label">{displayLabel}</div>
+      <div className="sadax-stat-value">{value}</div>
+      <div
+        className="sadax-trend-dash"
+        style={{ backgroundColor: getTrendColor() }}
+      />
+      {subtitle && <div className="sadax-stat-subtext">{subtitle}</div>}
     </div>
   );
 }
