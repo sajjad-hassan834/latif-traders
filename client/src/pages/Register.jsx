@@ -101,8 +101,8 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
     titleColor: isDark ? '#ffffff' : '#0f172a',
     boxBg: isDark ? '#0f172a' : '#f8fafc',
     boxBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
-    tealBtn: 'linear-gradient(135deg, #0F766E 0%, #14b8a6 100%)',
-    tealSolid: '#0F766E'
+    tealBtn: 'linear-gradient(135deg, #0266FE 0%, #1D4ED8 100%)',
+    tealSolid: '#0266FE'
   };
 
   const handleChange = (field, value) => {
@@ -243,20 +243,19 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
           onClick={onNavigateLanding}
           style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
         >
-          <div style={{
-            width: '38px',
-            height: '38px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #0F766E 0%, #14b8a6 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(15, 118, 110, 0.3)'
-          }}>
-            <Store className="w-5 h-5 text-white" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="ShopOS Logo"
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '9px',
+              objectFit: 'contain',
+              boxShadow: '0 2px 8px rgba(2, 102, 254, 0.25)'
+            }}
+          />
           <span style={{ fontSize: '20px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
-            Shop<span style={{ color: '#0F766E' }}>OS</span>
+            Shop<span style={{ color: '#0266FE' }}>OS</span>
           </span>
         </div>
 
@@ -283,15 +282,19 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
             <button
               onClick={onNavigateLogin}
               style={{
-                padding: '6px 14px',
-                borderRadius: '6px',
-                border: '1px solid #0F766E',
-                background: 'transparent',
-                color: '#0F766E',
+                padding: '8px 18px',
+                borderRadius: '8px',
+                border: '1px solid #0266FE',
+                background: '#0266FE',
+                color: '#ffffff',
                 fontWeight: 600,
                 cursor: 'pointer',
-                fontSize: '13px'
+                fontSize: '13px',
+                boxShadow: '0 2px 8px rgba(2, 102, 254, 0.25)',
+                transition: 'background 0.2s'
               }}
+              onMouseEnter={e => e.currentTarget.style.background = '#0052cc'}
+              onMouseLeave={e => e.currentTarget.style.background = '#0266FE'}
             >
               Sign In
             </button>
@@ -333,7 +336,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                 width: '28px',
                 height: '28px',
                 borderRadius: '50%',
-                background: step >= 1 ? '#0F766E' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
+                background: step >= 1 ? '#0266FE' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
                 color: step >= 1 ? '#fff' : (isDark ? '#94a3b8' : '#64748b'),
                 fontSize: '13px',
                 fontWeight: 700,
@@ -348,7 +351,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
             <div style={{
               width: '36px',
               height: '2px',
-              background: step >= 2 ? '#0F766E' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
+              background: step >= 2 ? '#0266FE' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
               transition: 'all 0.2s'
             }} />
 
@@ -358,7 +361,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                 width: '28px',
                 height: '28px',
                 borderRadius: '50%',
-                background: step >= 2 ? '#0F766E' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
+                background: step >= 2 ? '#0266FE' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
                 color: step >= 2 ? '#fff' : (isDark ? '#94a3b8' : '#64748b'),
                 fontSize: '13px',
                 fontWeight: 700,
@@ -373,7 +376,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
             <div style={{
               width: '36px',
               height: '2px',
-              background: step >= 3 ? '#0F766E' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
+              background: step >= 3 ? '#0266FE' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
               transition: 'all 0.2s'
             }} />
 
@@ -602,7 +605,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                     padding: '13px',
                     borderRadius: '8px',
                     border: 'none',
-                    background: '#0F766E',
+                    background: '#0266FE',
                     color: '#ffffff',
                     fontSize: '15px',
                     fontWeight: 700,
@@ -611,13 +614,13 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    boxShadow: '0 4px 14px rgba(15, 118, 110, 0.35)',
+                    boxShadow: '0 4px 14px rgba(2, 102, 254, 0.35)',
                     transition: 'all 0.2s'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#0d9488'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#0F766E'}
+                  onMouseEnter={e => e.currentTarget.style.background = '#0052cc'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#0266FE'}
                 >
-                  <span>Continue →</span>
+                  <span>Continue</span>
                 </button>
 
                 {/* Already have account? Sign In link */}
@@ -629,7 +632,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#0F766E',
+                      color: '#0266FE',
                       fontWeight: 700,
                       cursor: 'pointer',
                       padding: 0
@@ -779,7 +782,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                     padding: '13px',
                     borderRadius: '8px',
                     border: 'none',
-                    background: '#0F766E',
+                    background: '#0266FE',
                     color: '#ffffff',
                     fontSize: '15px',
                     fontWeight: 700,
@@ -788,12 +791,12 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    boxShadow: '0 4px 14px rgba(15, 118, 110, 0.35)',
+                    boxShadow: '0 4px 14px rgba(2, 102, 254, 0.35)',
                     transition: 'all 0.2s',
                     opacity: loading ? 0.8 : 1
                   }}
-                  onMouseEnter={e => !loading && (e.currentTarget.style.background = '#0d9488')}
-                  onMouseLeave={e => !loading && (e.currentTarget.style.background = '#0F766E')}
+                  onMouseEnter={e => !loading && (e.currentTarget.style.background = '#0052cc')}
+                  onMouseLeave={e => !loading && (e.currentTarget.style.background = '#0266FE')}
                 >
                   {loading ? (
                     <>
@@ -801,7 +804,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       <span>Setting up Workspace...</span>
                     </>
                   ) : (
-                    <span>Complete Setup →</span>
+                    <span>Complete Setup</span>
                   )}
                 </button>
 
@@ -884,7 +887,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       type="checkbox"
                       checked={checkedItems.product}
                       onChange={() => {}}
-                      style={{ accentColor: '#0F766E', width: '16px', height: '16px', cursor: 'pointer' }}
+                      style={{ accentColor: '#0266FE', width: '16px', height: '16px', cursor: 'pointer' }}
                     />
                     <Package className="w-4 h-4 text-slate-400" />
                     <span style={{ textDecoration: checkedItems.product ? 'line-through' : 'none' }}>
@@ -908,7 +911,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       type="checkbox"
                       checked={checkedItems.sale}
                       onChange={() => {}}
-                      style={{ accentColor: '#0F766E', width: '16px', height: '16px', cursor: 'pointer' }}
+                      style={{ accentColor: '#0266FE', width: '16px', height: '16px', cursor: 'pointer' }}
                     />
                     <ShoppingCart className="w-4 h-4 text-slate-400" />
                     <span style={{ textDecoration: checkedItems.sale ? 'line-through' : 'none' }}>
@@ -932,7 +935,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       type="checkbox"
                       checked={checkedItems.customer}
                       onChange={() => {}}
-                      style={{ accentColor: '#0F766E', width: '16px', height: '16px', cursor: 'pointer' }}
+                      style={{ accentColor: '#0266FE', width: '16px', height: '16px', cursor: 'pointer' }}
                     />
                     <Users className="w-4 h-4 text-slate-400" />
                     <span style={{ textDecoration: checkedItems.customer ? 'line-through' : 'none' }}>
@@ -956,7 +959,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       type="checkbox"
                       checked={checkedItems.invoice}
                       onChange={() => {}}
-                      style={{ accentColor: '#0F766E', width: '16px', height: '16px', cursor: 'pointer' }}
+                      style={{ accentColor: '#0266FE', width: '16px', height: '16px', cursor: 'pointer' }}
                     />
                     <ReceiptText className="w-4 h-4 text-slate-400" />
                     <span style={{ textDecoration: checkedItems.invoice ? 'line-through' : 'none' }}>
@@ -966,7 +969,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                 </div>
               </div>
 
-              {/* Go to Dashboard → big teal button */}
+              {/* Go to Dashboard button */}
               <button
                 type="button"
                 onClick={handleGoToDashboard}
@@ -975,7 +978,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                   padding: '14px',
                   borderRadius: '10px',
                   border: 'none',
-                  background: '#0F766E',
+                  background: '#0266FE',
                   color: '#ffffff',
                   fontSize: '16px',
                   fontWeight: 700,
@@ -984,13 +987,13 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  boxShadow: '0 6px 20px rgba(15, 118, 110, 0.4)',
+                  boxShadow: '0 6px 20px rgba(2, 102, 254, 0.4)',
                   transition: 'all 0.2s'
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#0d9488'}
-                onMouseLeave={e => e.currentTarget.style.background = '#0F766E'}
+                onMouseEnter={e => e.currentTarget.style.background = '#0052cc'}
+                onMouseLeave={e => e.currentTarget.style.background = '#0266FE'}
               >
-                <span>Go to Dashboard →</span>
+                <span>Go to Dashboard</span>
               </button>
             </div>
           )}

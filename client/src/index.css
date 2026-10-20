@@ -8,13 +8,13 @@
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* Brand Colors - Deep Cold Storage Navy & Cyan Glow */
-  --primary: #0284c7;
-  --primary-hover: #0369a1;
-  --primary-light: #f0f9ff;
-  --primary-border: #bae6fd;
-  --primary-dark: #075985;
-  --primary-gradient: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  /* Brand Colors - Logo Vibrant Royal Blue & Electric Blue */
+  --primary: #0266fe;
+  --primary-hover: #0052cc;
+  --primary-light: #eff6ff;
+  --primary-border: #bfdbfe;
+  --primary-dark: #1d4ed8;
+  --primary-gradient: linear-gradient(135deg, #0266fe 0%, #1d4ed8 100%);
   
   --secondary: #475569;
   --secondary-light: #f8fafc;

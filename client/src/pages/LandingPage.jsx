@@ -107,7 +107,7 @@ const PRICING_PLANS = [
     cadence: '/ month',
     desc: 'For small shops getting started with digital management.',
     highlight: false,
-    cta: 'Start Free Today',
+    cta: 'Sign Up',
     features: [
       { text: '50 products & 100 invoices/mo', included: true },
       { text: '1 user account', included: true },
@@ -323,36 +323,58 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
             <a href="#testimonials" style={{ color: '#475569', fontSize: '14px', textDecoration: 'none', fontWeight: 500, transition: 'color 0.15s' }}>Testimonials</a>
           </nav>
 
-          {/* Top Navbar Action: Login Button */}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+          {/* Top Navbar Actions: Sign In & Sign Up Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
               onClick={onNavigateLogin}
               style={{
-                background: '#1D4ED8',
+                background: 'transparent',
+                color: '#1e293b',
+                borderRadius: '8px',
+                padding: '8px 18px',
+                fontWeight: 600,
+                fontSize: '14px',
+                border: '1px solid #cbd5e1',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = '#0266FE';
+                e.currentTarget.style.color = '#0266FE';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = '#cbd5e1';
+                e.currentTarget.style.color = '#1e293b';
+              }}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={onNavigateRegister}
+              style={{
+                background: '#0266FE',
                 color: '#ffffff',
-                borderRadius: '10px',
-                padding: '10px 22px',
+                borderRadius: '8px',
+                padding: '8px 20px',
                 fontWeight: 600,
                 fontSize: '14px',
                 border: 'none',
                 cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(29, 78, 216, 0.25)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
+                boxShadow: '0 2px 8px rgba(2, 102, 254, 0.25)',
                 transition: 'all 0.2s ease'
               }}
               onMouseEnter={e => {
+                e.currentTarget.style.background = '#0052cc';
                 e.currentTarget.style.transform = 'translateY(-1px)';
-                e.currentTarget.style.boxShadow = '0 4px 14px rgba(29, 78, 216, 0.35)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(2, 102, 254, 0.35)';
               }}
               onMouseLeave={e => {
+                e.currentTarget.style.background = '#0266FE';
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(29, 78, 216, 0.25)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(2, 102, 254, 0.25)';
               }}
             >
-              Login
-              <ArrowRight className="w-4 h-4" />
+              Sign Up
             </button>
           </div>
         </div>
@@ -410,11 +432,11 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
             marginBottom: '22px'
           }}>
             <div style={{
-              background: 'rgba(15, 118, 110, 0.08)',
-              border: '1px solid rgba(15, 118, 110, 0.2)',
+              background: 'rgba(2, 102, 254, 0.08)',
+              border: '1px solid rgba(2, 102, 254, 0.2)',
               borderRadius: '100px',
               padding: '8px 20px',
-              color: '#0F766E',
+              color: '#0266FE',
               fontSize: '15px',
               fontWeight: 600,
               minWidth: '280px',
@@ -461,31 +483,32 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
             <button
               onClick={onNavigateRegister}
               style={{
-                background: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%)',
+                background: '#0266FE',
                 color: '#ffffff',
-                padding: '16px 32px',
+                padding: '16px 36px',
                 borderRadius: '12px',
                 fontSize: '16px',
                 fontWeight: 700,
                 border: 'none',
                 cursor: 'pointer',
-                boxShadow: '0 4px 20px rgba(37, 99, 235, 0.35)',
+                boxShadow: '0 4px 20px rgba(2, 102, 254, 0.35)',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '10px',
+                justifyContent: 'center',
                 transition: 'all 0.2s ease'
               }}
               onMouseEnter={e => {
+                e.currentTarget.style.background = '#0052cc';
                 e.currentTarget.style.transform = 'translateY(-1px) scale(1.02)';
-                e.currentTarget.style.boxShadow = '0 8px 25px rgba(37, 99, 235, 0.45)';
+                e.currentTarget.style.boxShadow = '0 8px 25px rgba(2, 102, 254, 0.45)';
               }}
               onMouseLeave={e => {
+                e.currentTarget.style.background = '#0266FE';
                 e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                e.currentTarget.style.boxShadow = '0 4px 20px rgba(37, 99, 235, 0.35)';
+                e.currentTarget.style.boxShadow = '0 4px 20px rgba(2, 102, 254, 0.35)';
               }}
             >
-              Start Free Today
-              <ArrowRight className="w-5 h-5" />
+              Sign Up
             </button>
 
             {/* Secondary button */}
@@ -495,16 +518,19 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                 background: '#ffffff',
                 border: '2px solid #E5E7EB',
                 color: '#374151',
-                padding: '16px 32px',
+                padding: '16px 36px',
                 borderRadius: '12px',
                 fontSize: '16px',
                 fontWeight: 600,
                 cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 transition: 'all 0.2s ease'
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#0F766E';
-                e.currentTarget.style.color = '#0F766E';
+                e.currentTarget.style.borderColor = '#0266FE';
+                e.currentTarget.style.color = '#0266FE';
                 e.currentTarget.style.transform = 'translateY(-1px)';
               }}
               onMouseLeave={e => {
@@ -513,7 +539,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
-              Live Shop Login
+              Sign In
             </button>
           </div>
 
@@ -542,7 +568,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                   whiteSpace: 'nowrap'
                 }}
               >
-                <Check size={14} color="#0F766E" strokeWidth={2.5} />
+                <Check size={14} color="#0266FE" strokeWidth={2.5} />
                 <span>{item}</span>
               </div>
             ))}
@@ -611,10 +637,10 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                 gap: '16px',
                 marginBottom: '24px'
               }}>
-                {/* Stat 1: Today's Sales Revenue -> teal #0F766E */}
+                {/* Stat 1: Today's Sales Revenue -> blue #0266FE */}
                 <div style={{ background: '#F8FAFC', padding: '18px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
                   <div style={{ fontSize: '12px', color: '#64748B', marginBottom: '6px', fontWeight: 600 }}>Today's Sales Revenue</div>
-                  <div style={{ fontSize: '26px', fontWeight: 800, color: '#0F766E', letterSpacing: '-0.5px' }}>₨ 84,500</div>
+                  <div style={{ fontSize: '26px', fontWeight: 800, color: '#0266FE', letterSpacing: '-0.5px' }}>₨ 84,500</div>
                   <div style={{ fontSize: '11px', color: '#16A34A', marginTop: '4px', fontWeight: 600 }}>↑ 18% vs yesterday</div>
                 </div>
 
@@ -725,7 +751,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
           <div style={{
             fontSize: '12px',
             letterSpacing: '2px',
-            color: '#0F766E',
+            color: '#0266FE',
             fontWeight: 600,
             textAlign: 'center',
             textTransform: 'uppercase',
@@ -778,8 +804,8 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#0F766E';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(15, 118, 110, 0.15)';
+                e.currentTarget.style.borderColor = '#0266FE';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(2, 102, 254, 0.15)';
                 e.currentTarget.style.transform = 'translateY(-2px)';
               }}
               onMouseLeave={e => {
@@ -819,7 +845,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
           <div style={{
             fontSize: '12px',
             letterSpacing: '2px',
-            color: '#0F766E',
+            color: '#0266FE',
             fontWeight: 600,
             textAlign: 'center',
             textTransform: 'uppercase',
@@ -870,7 +896,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                 transition: 'all 0.2s ease'
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#0F766E';
+                e.currentTarget.style.borderColor = '#0266FE';
                 e.currentTarget.style.transform = 'translateY(-2px)';
               }}
               onMouseLeave={e => {
@@ -903,7 +929,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
           <div style={{
             fontSize: '12px',
             letterSpacing: '2px',
-            color: '#0F766E',
+            color: '#0266FE',
             fontWeight: 600,
             textAlign: 'center',
             textTransform: 'uppercase',
@@ -951,9 +977,9 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                 justifyContent: 'space-between',
                 position: 'relative',
                 background: '#FFFFFF',
-                border: plan.highlight ? '2px solid #0F766E' : '1px solid #E2E8F0',
+                border: plan.highlight ? '2px solid #0266FE' : '1px solid #E2E8F0',
                 boxShadow: plan.highlight
-                  ? '0 20px 40px -10px rgba(15, 118, 110, 0.22)'
+                  ? '0 20px 40px -10px rgba(2, 102, 254, 0.22)'
                   : '0 4px 18px -2px rgba(15, 23, 42, 0.05)'
               }}
             >
@@ -963,7 +989,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                   top: '-12px',
                   left: '50%',
                   transform: 'translateX(-50%)',
-                  background: 'linear-gradient(135deg, #0ea5e9 0%, #0F766E 100%)',
+                  background: 'linear-gradient(135deg, #0266FE 0%, #1D4ED8 100%)',
                   color: '#ffffff',
                   fontSize: '11px',
                   fontWeight: 800,
@@ -971,7 +997,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                   padding: '4px 14px',
                   borderRadius: '20px',
                   letterSpacing: '0.5px',
-                  boxShadow: '0 4px 10px rgba(15, 118, 110, 0.3)'
+                  boxShadow: '0 4px 10px rgba(2, 102, 254, 0.3)'
                 }}>
                   {plan.badge}
                 </div>
@@ -982,7 +1008,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                 <p style={{ fontSize: '13px', color: '#64748B', minHeight: '38px', lineHeight: 1.5, margin: 0 }}>{plan.desc}</p>
 
                 <div style={{ margin: '24px 0', borderBottom: '1px solid #E2E8F0', paddingBottom: '24px' }}>
-                  <div style={{ fontSize: '40px', fontWeight: 900, color: plan.highlight ? '#0F766E' : '#0F172A' }}>{plan.price}</div>
+                  <div style={{ fontSize: '40px', fontWeight: 900, color: plan.highlight ? '#0266FE' : '#0F172A' }}>{plan.price}</div>
                   <div style={{ fontSize: '13px', color: '#64748B' }}>{plan.cadence}</div>
                 </div>
 
@@ -994,7 +1020,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                         width: '18px',
                         height: '18px',
                         borderRadius: '50%',
-                        background: feat.included ? '#0F766E' : '#E5E7EB',
+                        background: feat.included ? '#0266FE' : '#E5E7EB',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1039,15 +1065,15 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                     justifyContent: 'center'
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = '#0F766E';
-                    e.currentTarget.style.color = '#0F766E';
+                    e.currentTarget.style.borderColor = '#0266FE';
+                    e.currentTarget.style.color = '#0266FE';
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.borderColor = '#E5E7EB';
                     e.currentTarget.style.color = '#374151';
                   }}
                 >
-                  Start Free Today
+                  Sign Up
                 </button>
               )}
 
@@ -1060,26 +1086,26 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                     fontSize: '14px',
                     fontWeight: 600,
                     width: '100%',
-                    background: '#0F766E',
+                    background: '#0266FE',
                     color: '#ffffff',
                     border: 'none',
                     cursor: 'pointer',
-                    boxShadow: '0 4px 14px rgba(15, 118, 110, 0.3)',
+                    boxShadow: '0 4px 14px rgba(2, 102, 254, 0.3)',
                     transition: 'all 0.2s ease',
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.background = '#065F46';
-                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(15, 118, 110, 0.45)';
+                    e.currentTarget.style.background = '#0052cc';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(2, 102, 254, 0.45)';
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.background = '#0F766E';
-                    e.currentTarget.style.boxShadow = '0 4px 14px rgba(15, 118, 110, 0.3)';
+                    e.currentTarget.style.background = '#0266FE';
+                    e.currentTarget.style.boxShadow = '0 4px 14px rgba(2, 102, 254, 0.3)';
                   }}
                 >
-                  Start Pro Trial
+                  Sign Up for Pro
                 </button>
               )}
 
@@ -1143,7 +1169,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
           <div style={{
             fontSize: '12px',
             letterSpacing: '2px',
-            color: '#0F766E',
+            color: '#0266FE',
             fontWeight: 600,
             textAlign: 'center',
             textTransform: 'uppercase',
@@ -1206,7 +1232,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
 
               <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '16px' }}>
                 <div style={{ fontWeight: 700, color: '#0F172A', fontSize: '15px' }}>{tItem.name}</div>
-                <div style={{ fontSize: '13px', color: '#0F766E', fontWeight: 600 }}>{tItem.business}</div>
+                <div style={{ fontSize: '13px', color: '#0266FE', fontWeight: 600 }}>{tItem.business}</div>
                 <div style={{ fontSize: '12px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
                   <span>📍</span> {tItem.location}
                 </div>
@@ -1225,9 +1251,9 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
           <div style={{
             borderRadius: '24px',
             padding: '60px 40px',
-            background: 'linear-gradient(135deg, #0F4C75 0%, #1B6CA8 50%, #0F766E 100%)',
+            background: 'linear-gradient(135deg, #0266FE 0%, #1D4ED8 50%, #0f172a 100%)',
             textAlign: 'center',
-            boxShadow: '0 25px 50px -12px rgba(15, 118, 110, 0.35)'
+            boxShadow: '0 25px 50px -12px rgba(2, 102, 254, 0.35)'
           }}>
             <h2 style={{ fontSize: '40px', fontWeight: 900, color: '#ffffff', marginBottom: '16px', letterSpacing: '-0.5px' }}>
               Ready to Digitize Your Shop?
@@ -1235,26 +1261,25 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
             <p style={{ fontSize: '18px', color: '#e0f2fe', maxWidth: '640px', margin: '0 auto 32px', lineHeight: 1.6 }}>
               Join thousands of traders moving from messy registers to ShopOS. Setup in under 60 seconds.
             </p>
-            {/* FIX 4: CTA Button on teal/gradient background has distinct white bg, teal text, hover #F0FDF4 */}
             <button
               onClick={onNavigateRegister}
               style={{
-                padding: '16px 40px',
+                padding: '16px 44px',
                 borderRadius: '12px',
                 border: 'none',
                 background: '#ffffff',
-                color: '#0F766E',
+                color: '#0266FE',
                 fontSize: '16px',
                 fontWeight: 700,
                 cursor: 'pointer',
                 boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '10px',
+                justifyContent: 'center',
                 transition: 'all 0.2s ease'
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.background = '#F0FDF4';
+                e.currentTarget.style.background = '#EFF6FF';
                 e.currentTarget.style.transform = 'translateY(-2px)';
                 e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.2)';
               }}
@@ -1264,8 +1289,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                 e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.15)';
               }}
             >
-              Start Free Today
-              <ArrowRight className="w-5 h-5" />
+              Sign Up
             </button>
           </div>
         </div>
@@ -1304,13 +1328,13 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                   }}
                 />
                 <span style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A' }}>
-                  Shop<span style={{ color: '#0F766E' }}>OS</span>
+                  Shop<span style={{ color: '#0266FE' }}>OS</span>
                 </span>
               </div>
               <p style={{ fontSize: '13px', color: '#64748B', lineHeight: '1.6', margin: '0 0 12px' }}>
                 Operating System for Smart Businesses
               </p>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F766E' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#0266FE' }}>
                 🇵🇰 Made in Pakistan
               </div>
             </div>
@@ -1335,7 +1359,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#0F766E',
+                    color: '#0266FE',
                     textAlign: 'left',
                     padding: 0,
                     fontSize: '13px',
@@ -1343,7 +1367,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                     cursor: 'pointer'
                   }}
                 >
-                  Start Free — No Credit Card →
+                  Sign Up (Free)
                 </button>
                 <button
                   onClick={onNavigateLogin}
@@ -1358,7 +1382,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                     cursor: 'pointer'
                   }}
                 >
-                  Sign In to Your Shop →
+                  Sign In to Your Shop
                 </button>
               </div>
             </div>
@@ -1370,7 +1394,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                 <a
                   href="mailto:support@shopos.pk"
                   style={{
-                    color: '#0F766E',
+                    color: '#0266FE',
                     fontWeight: 600,
                     textDecoration: 'none',
                     display: 'inline-flex',

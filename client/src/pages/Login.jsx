@@ -177,20 +177,19 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
           onClick={onNavigateLanding}
           style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
         >
-          <div style={{
-            width: '38px',
-            height: '38px',
-            borderRadius: '10px',
-            background: 'linear-gradient(135deg, #0F766E 0%, #14b8a6 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(15, 118, 110, 0.3)'
-          }}>
-            <Store className="w-5 h-5 text-white" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="ShopOS Logo"
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '9px',
+              objectFit: 'contain',
+              boxShadow: '0 2px 8px rgba(2, 102, 254, 0.25)'
+            }}
+          />
           <span style={{ fontSize: '20px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
-            Shop<span style={{ color: '#0F766E' }}>OS</span>
+            Shop<span style={{ color: '#0266FE' }}>OS</span>
           </span>
         </div>
 
@@ -216,17 +215,21 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
           <button
             onClick={onNavigateRegister}
             style={{
-              padding: '6px 14px',
-              borderRadius: '6px',
-              border: '1px solid #0F766E',
-              background: 'transparent',
-              color: '#0F766E',
+              padding: '8px 18px',
+              borderRadius: '8px',
+              border: '1px solid #0266FE',
+              background: '#0266FE',
+              color: '#ffffff',
               fontWeight: 600,
               cursor: 'pointer',
-              fontSize: '13px'
+              fontSize: '13px',
+              boxShadow: '0 2px 8px rgba(2, 102, 254, 0.25)',
+              transition: 'background 0.2s'
             }}
+            onMouseEnter={e => e.currentTarget.style.background = '#0052cc'}
+            onMouseLeave={e => e.currentTarget.style.background = '#0266FE'}
           >
-            Start Free Today
+            Sign Up
           </button>
         </div>
       </header>
@@ -262,27 +265,26 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '10px',
+              gap: '12px',
               marginBottom: '8px'
             }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
-                background: 'linear-gradient(135deg, #0F766E 0%, #14b8a6 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(15, 118, 110, 0.3)'
-              }}>
-                <Store className="w-5 h-5 text-white" />
-              </div>
-              <span style={{ fontSize: '22px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
-                Shop<span style={{ color: '#0F766E' }}>OS</span>
+              <img
+                src="/logo.png"
+                alt="ShopOS Logo"
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '12px',
+                  objectFit: 'contain',
+                  boxShadow: '0 4px 14px rgba(2, 102, 254, 0.28)'
+                }}
+              />
+              <span style={{ fontSize: '24px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
+                Shop<span style={{ color: '#0266FE' }}>OS</span>
               </span>
             </div>
             <div style={{ fontSize: '13px', color: t.subText, margin: 0, textAlign: 'center' }}>
-              Sign in to your workspace
+              Sign in to your account
             </div>
           </div>
 
@@ -325,7 +327,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                     position: 'absolute',
                     left: '14px',
                     top: '15px',
-                    color: focusedField === 'username' ? '#0F766E' : '#9CA3AF',
+                    color: focusedField === 'username' ? '#0266FE' : '#9CA3AF',
                     transition: 'color 0.2s'
                   }}
                 />
@@ -342,8 +344,8 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                     width: '100%',
                     height: '48px',
                     borderRadius: '10px',
-                    border: focusedField === 'username' ? '1px solid #0F766E' : `1px solid ${t.inputBorder}`,
-                    boxShadow: focusedField === 'username' ? '0 0 0 3px rgba(15, 118, 110, 0.1)' : 'none',
+                    border: focusedField === 'username' ? '1px solid #0266FE' : `1px solid ${t.inputBorder}`,
+                    boxShadow: focusedField === 'username' ? '0 0 0 3px rgba(2, 102, 254, 0.15)' : 'none',
                     background: t.inputBg,
                     color: t.inputText,
                     fontSize: '14px',
@@ -373,7 +375,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   }}
                   style={{
                     fontSize: '12px',
-                    color: '#0F766E',
+                    color: '#0266FE',
                     fontWeight: 600,
                     background: 'none',
                     border: 'none',
@@ -392,7 +394,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                     position: 'absolute',
                     left: '14px',
                     top: '15px',
-                    color: focusedField === 'password' ? '#0F766E' : '#9CA3AF',
+                    color: focusedField === 'password' ? '#0266FE' : '#9CA3AF',
                     transition: 'color 0.2s'
                   }}
                 />
@@ -408,8 +410,8 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                     width: '100%',
                     height: '48px',
                     borderRadius: '10px',
-                    border: focusedField === 'password' ? '1px solid #0F766E' : `1px solid ${t.inputBorder}`,
-                    boxShadow: focusedField === 'password' ? '0 0 0 3px rgba(15, 118, 110, 0.1)' : 'none',
+                    border: focusedField === 'password' ? '1px solid #0266FE' : `1px solid ${t.inputBorder}`,
+                    boxShadow: focusedField === 'password' ? '0 0 0 3px rgba(2, 102, 254, 0.15)' : 'none',
                     background: t.inputBg,
                     color: t.inputText,
                     fontSize: '14px',
@@ -450,7 +452,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
                 style={{
-                  accentColor: '#0F766E',
+                  accentColor: '#0266FE',
                   width: '16px',
                   height: '16px',
                   cursor: 'pointer',
@@ -479,7 +481,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                 height: '48px',
                 borderRadius: '10px',
                 border: 'none',
-                background: '#0F766E',
+                background: '#0266FE',
                 color: '#ffffff',
                 fontSize: '15px',
                 fontWeight: 600,
@@ -488,23 +490,20 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                boxShadow: '0 4px 14px rgba(15, 118, 110, 0.35)',
+                boxShadow: '0 4px 14px rgba(2, 102, 254, 0.35)',
                 transition: 'background 0.2s, opacity 0.2s',
                 opacity: loading ? 0.8 : 1
               }}
-              onMouseEnter={e => !loading && (e.currentTarget.style.background = '#065F46')}
-              onMouseLeave={e => !loading && (e.currentTarget.style.background = '#0F766E')}
+              onMouseEnter={e => !loading && (e.currentTarget.style.background = '#0052cc')}
+              onMouseLeave={e => !loading && (e.currentTarget.style.background = '#0266FE')}
             >
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Authenticating...</span>
+                  <span>Signing in...</span>
                 </>
               ) : (
-                <>
-                  <span>Sign In to Workspace</span>
-                  <ArrowRight size={18} />
-                </>
+                <span>Sign In</span>
               )}
             </button>
           </form>
@@ -531,13 +530,13 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#0F766E',
+                color: '#0266FE',
                 fontWeight: 600,
                 cursor: 'pointer',
                 padding: 0
               }}
             >
-              Start Free Today on ShopOS →
+              Sign Up
             </button>
           </div>
 
@@ -590,11 +589,11 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   flex: 1,
                   padding: '0.75rem',
                   border: 'none',
-                  borderBottom: forgotTab === 'request' ? '2px solid #0F766E' : '2px solid transparent',
+                  borderBottom: forgotTab === 'request' ? '2px solid #0266FE' : '2px solid transparent',
                   background: 'none',
                   fontWeight: 600,
                   fontSize: '0.8rem',
-                  color: forgotTab === 'request' ? '#0F766E' : '#64748b',
+                  color: forgotTab === 'request' ? '#0266FE' : '#64748b',
                   cursor: 'pointer'
                 }}
               >
@@ -607,11 +606,11 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   flex: 1,
                   padding: '0.75rem',
                   border: 'none',
-                  borderBottom: forgotTab === 'status' ? '2px solid #0F766E' : '2px solid transparent',
+                  borderBottom: forgotTab === 'status' ? '2px solid #0266FE' : '2px solid transparent',
                   background: 'none',
                   fontWeight: 600,
                   fontSize: '0.8rem',
-                  color: forgotTab === 'status' ? '#0F766E' : '#64748b',
+                  color: forgotTab === 'status' ? '#0266FE' : '#64748b',
                   cursor: 'pointer'
                 }}
               >
@@ -718,7 +717,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                       justifyContent: 'center',
                       alignItems: 'center',
                       gap: '0.5rem',
-                      background: '#0F766E'
+                      background: '#0266FE'
                     }}
                   >
                     <Send size={16} />
@@ -744,7 +743,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                       type="submit"
                       disabled={statusLoading}
                       className="login-submit-btn"
-                      style={{ padding: '0 1rem', whiteSpace: 'nowrap', width: 'auto', background: '#0F766E' }}
+                      style={{ padding: '0 1rem', whiteSpace: 'nowrap', width: 'auto', background: '#0266FE' }}
                     >
                       {statusLoading ? 'Checking...' : 'Check Status'}
                     </button>
