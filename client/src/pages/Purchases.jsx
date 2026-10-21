@@ -46,6 +46,31 @@ export default function Purchases() {
   const [brands, setBrands] = useState([]);
   const [activeStockPreview, setActiveStockPreview] = useState(null);
 
+  // Staging product configuration
+  const [stagedProductId, setStagedProductId] = useState('');
+  const [stageQty, setStageQty] = useState('10');
+  const [stagePurchasePrice, setStagePurchasePrice] = useState('');
+  const [stageSalePrice, setStageSalePrice] = useState('');
+  const [stageWholesalePrice, setStageWholesalePrice] = useState('');
+
+  const generateAutoBillNo = () => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `BILL-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}-${Date.now().toString().slice(-3)}`;
+  };
+
+  const openNewPurchaseModal = () => {
+    setSupplierInvoiceNo(generateAutoBillNo());
+    setSupplierId('');
+    setItems([]);
+    setPaidAmount('');
+    setNotes('');
+    setErrorMsg('');
+    setActiveStockPreview(null);
+    setStagedProductId('');
+    setShowNewModal(true);
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -80,6 +105,42 @@ export default function Purchases() {
     } catch (err) {
       console.error('Failed to load stock preview:', err);
     }
+  };
+
+  const handleSelectProduct = (productId) => {
+    setStagedProductId(productId);
+    const prod = products.find(p => p.id === Number(productId));
+    if (prod) {
+      setStageQty('10');
+      setStagePurchasePrice(prod.purchase_price !== undefined && prod.purchase_price !== null ? String(prod.purchase_price) : '0');
+      setStageSalePrice(prod.sale_price !== undefined && prod.sale_price !== null ? String(prod.sale_price) : '0');
+      setStageWholesalePrice(prod.wholesale_price !== undefined && prod.wholesale_price !== null ? String(prod.wholesale_price) : String(prod.sale_price || 0));
+      loadStockPreview(prod.id);
+    }
+  };
+
+  const handleAddStagedItem = () => {
+    const prod = products.find(p => p.id === Number(stagedProductId));
+    if (!prod) return;
+
+    setItems([...items, {
+      product_id: prod.id,
+      name: prod.name,
+      brand: prod.brand || '',
+      unit: prod.unit || 'pkt',
+      batch_no: `LOT-${Date.now().toString().slice(-5)}`,
+      expiry_date: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
+      quantity: Number(stageQty) || 1,
+      unit_price: Number(stagePurchasePrice) || 0,
+      wholesale_price: Number(stageWholesalePrice) || Number(stageSalePrice) || 0,
+      sale_price: Number(stageSalePrice) || 0,
+      discount: 0
+    }]);
+
+    setStagedProductId('');
+    setStagePurchasePrice('');
+    setStageSalePrice('');
+    setStageWholesalePrice('');
   };
 
   const addItemToBill = (productId) => {
@@ -329,12 +390,7 @@ export default function Purchases() {
             <span>Export CSV</span>
           </button>
           {canManageInventory && (
-            <button onClick={() => {
-              const now = new Date();
-              const pad = (n) => String(n).padStart(2, '0');
-              setSupplierInvoiceNo(`INV-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`);
-              setShowNewModal(true);
-            }} className="btn btn-primary btn-sm">
+            <button onClick={openNewPurchaseModal} className="btn btn-primary btn-sm">
               <Plus size={14} />
               <span>New Purchase Bill</span>
             </button>
@@ -508,14 +564,22 @@ export default function Purchases() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Supplier Bill #</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label className="form-label" style={{ margin: 0 }}>Supplier Bill #</label>
+                      <span style={{ fontSize: '0.68rem', color: '#0284c7', background: '#e0f2fe', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                        ⚡ Auto-Generated
+                      </span>
+                    </div>
                     <input
                       type="text"
-                      className="form-control"
-                      placeholder="e.g. INV-9874"
+                      className="form-control mono"
+                      placeholder="Auto: BILL-YYYYMMDD-XXXX"
                       value={supplierInvoiceNo}
                       onChange={(e) => setSupplierInvoiceNo(e.target.value)}
                     />
+                    <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>
+                      Auto-assigned to prevent human errors or duplicates.
+                    </div>
                   </div>
 
                   <div className="form-group">
@@ -530,80 +594,148 @@ export default function Purchases() {
                   </div>
                 </div>
 
-                {/* ADD PRODUCT TO BILL */}
+                {/* ADD PRODUCT TO BILL WITH PRICING CONTROLS */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 240px' }}>
-                      <label className="form-label">Add Product to Shipment *</label>
+                    <div style={{ flex: '1 1 320px' }}>
+                      <label className="form-label" style={{ fontWeight: 600 }}>Add Product to Shipment *</label>
                       <SearchableSelect
                         options={products
                           .filter(p => !supplierId || String(p.supplier_id) === String(supplierId) || p.supplier_id === null)
                           .map(p => ({ value: p.id, label: `${p.name} ${p.brand ? `[${p.brand}]` : ''}` }))}
-                        value=""
+                        value={stagedProductId}
                         onChange={(val) => {
-                          if (val) addItemToBill(val);
+                          if (val) handleSelectProduct(val);
                         }}
-                        placeholder="-- Select Product --"
+                        placeholder="-- Choose Product to Add --"
                       />
                     </div>
                   </div>
 
-                  {/* EXISTING STOCK & ACTIVE BATCHES PREVIEW (FIFO RATE COMPARISON) */}
-                  {activeStockPreview && (
-                    <div style={{ background: '#ffffff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '0.75rem 0.85rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.4rem', marginBottom: '0.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <Package size={16} color="#0284c7" />
-                          <strong style={{ color: '#0369a1', fontSize: '0.875rem' }}>
-                            Existing Stock: {activeStockPreview.product?.name} ({activeStockPreview.product?.brand || 'Frozen Item'})
+                  {/* STAGED PRODUCT PRICING CONFIGURATION */}
+                  {stagedProductId && (() => {
+                    const selectedProd = products.find(p => p.id === Number(stagedProductId));
+                    return (
+                      <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '8px', padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+                          <strong style={{ color: '#166534', fontSize: '0.875rem' }}>
+                            Configure Prices & Quantity for This Shipment
                           </strong>
+                          <span style={{ fontSize: '0.75rem', color: '#15803d', fontWeight: 600 }}>
+                            {selectedProd?.name} ({selectedProd?.unit || 'pkt'})
+                          </span>
                         </div>
-                        <div style={{ fontSize: '0.8rem', color: '#334155' }}>
-                          Total Current Available Stock: <strong style={{ color: '#0284c7', fontSize: '0.9rem' }}>{activeStockPreview.current_stock} {activeStockPreview.product?.unit}</strong>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem', alignItems: 'flex-end' }}>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '3px' }}>
+                              Quantity ({selectedProd?.unit || 'pkt'}) *
+                            </label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              style={{ height: '36px', fontSize: '0.85rem', fontWeight: 600 }}
+                              min="0.1"
+                              step="any"
+                              value={stageQty}
+                              onChange={(e) => setStageQty(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0369a1', display: 'block', marginBottom: '3px' }}>
+                              Purchase Cost (₨) *
+                            </label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              style={{ height: '36px', fontSize: '0.85rem', fontWeight: 700, borderColor: '#38bdf8' }}
+                              min="0"
+                              step="any"
+                              value={stagePurchasePrice}
+                              onChange={(e) => setStagePurchasePrice(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', display: 'block', marginBottom: '3px' }}>
+                              Retail Sale Price (₨) *
+                            </label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              style={{ height: '36px', fontSize: '0.85rem', fontWeight: 700, borderColor: '#4ade80' }}
+                              min="0"
+                              step="any"
+                              value={stageSalePrice}
+                              onChange={(e) => setStageSalePrice(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '3px' }}>
+                              Wholesale Price (₨)
+                            </label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              style={{ height: '36px', fontSize: '0.85rem' }}
+                              min="0"
+                              step="any"
+                              value={stageWholesalePrice}
+                              onChange={(e) => setStageWholesalePrice(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <button
+                              type="button"
+                              onClick={handleAddStagedItem}
+                              className="btn btn-primary btn-sm"
+                              style={{ height: '36px', width: '100%', fontWeight: 700, background: '#16a34a', borderColor: '#15803d' }}
+                            >
+                              + Add to Bill
+                            </button>
+                          </div>
                         </div>
                       </div>
+                    );
+                  })()}
 
-                      {activeStockPreview.batches?.length === 0 ? (
-                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                          ℹ️ No active batches in inventory. This purchase will establish the initial FIFO stock lot.
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                            Current Active Batches In Stock:
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.45rem' }}>
-                            {activeStockPreview.batches.map(b => (
-                              <div key={b.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.45rem 0.65rem', fontSize: '0.75rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                                  <span className="mono" style={{ color: '#0284c7' }}>{b.batch_no}</span>
-                                  <span style={{ color: '#059669', fontWeight: 700 }}>₨ {b.purchase_price} / {activeStockPreview.product?.unit}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.7rem', marginTop: '2px' }}>
-                                  <span>Qty: {b.quantity} {activeStockPreview.product?.unit}</span>
-                                  <span title="Supplier source">From: <strong>{b.supplier_name}</strong></span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                  {/* COMPACT STOCK PREVIEW */}
+                  {activeStockPreview && (
+                    <div style={{ background: '#ffffff', border: '1px solid #bae6fd', borderRadius: '6px', padding: '0.5rem 0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', fontSize: '0.8rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Package size={15} color="#0284c7" />
+                        <span style={{ color: '#0369a1', fontWeight: 600 }}>{activeStockPreview.product?.name}</span>
+                        <span style={{ color: '#64748b' }}>• Total In-Stock: <strong style={{ color: '#0284c7' }}>{activeStockPreview.current_stock} {activeStockPreview.product?.unit}</strong></span>
+                      </div>
+                      {activeStockPreview.batches?.length > 0 && (
+                        <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>
+                          Active Batches: {activeStockPreview.batches.slice(0, 3).map(b => `${b.batch_no} (₨${b.purchase_price})`).join(', ')}
                         </div>
                       )}
                     </div>
                   )}
                 </div>
 
+                {/* LINE ITEMS TABLE HEADER & NOTIFICATION */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.25rem' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                    Products In Shipment ({items.length})
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#0284c7', background: '#e0f2fe', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bae6fd' }}>
+                    💡 Setting Purchase Cost and Retail Sale updates your active catalog and batch FIFO rates
+                  </div>
+                </div>
+
                 {/* LINE ITEMS TABLE */}
-                <div className="table-responsive">
+                <div className="table-responsive" style={{ maxHeight: '280px', overflowY: 'auto' }}>
                   <table className="table" style={{ width: '100%', minWidth: '780px' }}>
                     <thead>
                       <tr>
                         <th style={{ minWidth: '150px' }}>Product</th>
-                        <th style={{ minWidth: '110px' }}>Brand</th>
-                        <th style={{ minWidth: '85px' }}>Unit</th>
+                        <th style={{ minWidth: '100px' }}>Brand</th>
+                        <th style={{ minWidth: '75px' }}>Unit</th>
                         <th style={{ width: '85px' }}>Quantity</th>
-                        <th style={{ width: '110px' }}>Rate (₨)</th>
-                        <th style={{ width: '110px' }}>Sale Price</th>
-                        <th style={{ width: '110px' }}>Wholesale</th>
+                        <th style={{ width: '115px', color: '#0369a1' }}>Purchase Cost (₨)</th>
+                        <th style={{ width: '115px', color: '#15803d' }}>Retail Sale (₨)</th>
+                        <th style={{ width: '105px' }}>Wholesale (₨)</th>
                         <th>Batch / Lot #</th>
                         <th>Expiry Date</th>
                         <th style={{ textAlign: 'right' }}>Total (PKR)</th>
@@ -660,7 +792,7 @@ export default function Purchases() {
                               <input
                                 type="number"
                                 className="form-control"
-                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '75px' }}
+                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '75px', fontWeight: 600 }}
                                 min="0.1"
                                 step="any"
                                 value={it.quantity}
@@ -671,7 +803,7 @@ export default function Purchases() {
                               <input
                                 type="number"
                                 className="form-control"
-                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '95px' }}
+                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '105px', borderColor: '#38bdf8', fontWeight: 700, color: '#0369a1' }}
                                 min="0"
                                 value={it.unit_price}
                                 onChange={(e) => updateItem(idx, 'unit_price', e.target.value)}
@@ -681,7 +813,7 @@ export default function Purchases() {
                               <input
                                 type="number"
                                 className="form-control"
-                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '95px' }}
+                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '105px', borderColor: '#4ade80', fontWeight: 700, color: '#15803d' }}
                                 min="0"
                                 value={it.sale_price}
                                 onChange={(e) => updateItem(idx, 'sale_price', e.target.value)}

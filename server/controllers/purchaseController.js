@@ -125,10 +125,14 @@ exports.createPurchase = (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
+    const finalSupplierInvoice = (supplier_invoice_no && supplier_invoice_no.trim())
+      ? supplier_invoice_no.trim()
+      : finalInvoice.replace('PUR-', 'BILL-');
+
     const pRes = insertPurchase.run(
       tenantId,
       finalInvoice,
-      supplier_invoice_no ? supplier_invoice_no.trim() : null,
+      finalSupplierInvoice,
       supplier_id,
       purchase_date || new Date().toISOString().split('T')[0],
       subtotal,
