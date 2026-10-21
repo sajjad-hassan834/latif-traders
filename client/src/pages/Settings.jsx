@@ -609,11 +609,13 @@ export default function Settings({ initialTab: propInitialTab }) {
                     api.post('/settings', { theme: newTheme }).catch(() => {});
                   }}
                 >
-                  <option value="light">☀️ Light Theme (Default)</option>
-                  <option value="dark">🌙 Dark Theme</option>
+                  <option value="light">☀️ Classic Light (ShopOS Blue)</option>
+                  <option value="dark">🌙 Midnight Dark (OLED Slate)</option>
+                  <option value="emerald">🍃 Emerald Green (Fresh Business)</option>
+                  <option value="indigo">🔮 Royal Indigo (Modern Tech)</option>
                 </select>
                 <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
-                  Light Theme is enabled by default across all dashboards & reports.
+                  Choose from 4 custom business themes tailored for eye comfort and aesthetics.
                 </div>
               </div>
 

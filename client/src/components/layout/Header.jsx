@@ -32,7 +32,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../utils/api';
 import { formatDate } from '../../utils/formatters';
-import { toggleTheme as toggleThemeHelper } from '../../utils/theme';
+import { toggleTheme as toggleThemeHelper, applyTheme as applyThemeHelper, AVAILABLE_THEMES } from '../../utils/theme';
 import UserProfileModal from '../common/UserProfileModal';
 import NotificationCenter from '../common/NotificationCenter';
 import Modal from '../common/Modal';
@@ -64,8 +64,10 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
   const [billingUsage, setBillingUsage] = useState({ productsUsed: 1, productsLimit: 50 });
   const [planExpiresAt, setPlanExpiresAt] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('lt_theme') || 'light');
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
 
   const superOwnerMenuRef = useRef(null);
+  const themeMenuRef = useRef(null);
 
   useEffect(() => {
     if (isSuperOwner) {
@@ -98,6 +100,9 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
       }
       if (superOwnerMenuRef.current && !superOwnerMenuRef.current.contains(event.target)) {
         setSuperOwnerDropdownOpen(false);
+      }
+      if (themeMenuRef.current && !themeMenuRef.current.contains(event.target)) {
+        setThemeMenuOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -255,27 +260,95 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
         </div>
 
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
-          {/* Light Theme Default Toggle Button */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="btn btn-secondary btn-sm"
-            title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-            aria-label="Toggle visual theme"
-            style={{
-              padding: '0 8px',
-              height: '30px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '7px',
-              background: theme === 'dark' ? '#1e293b' : '#ffffff',
-              border: theme === 'dark' ? '1px solid #334155' : '1px solid #e2e8f0',
-              cursor: 'pointer'
-            }}
-          >
-            {theme === 'dark' ? <Sun size={14} color="#f59e0b" /> : <Moon size={14} color="#0284c7" />}
-          </button>
+          {/* 4-Theme Selector Dropdown */}
+          <div style={{ position: 'relative' }} ref={themeMenuRef}>
+            <button
+              type="button"
+              onClick={() => setThemeMenuOpen(!themeMenuOpen)}
+              className="btn btn-secondary btn-sm"
+              title={`Theme: ${(AVAILABLE_THEMES.find(t => t.id === theme) || AVAILABLE_THEMES[0]).name}. Click to switch theme.`}
+              aria-label="Toggle visual theme"
+              style={{
+                padding: '0 8px',
+                height: '30px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                borderRadius: '7px',
+                background: theme === 'dark' ? '#1e293b' : '#ffffff',
+                border: theme === 'dark' ? '1px solid #334155' : '1px solid #e2e8f0',
+                cursor: 'pointer',
+                fontSize: '0.8rem'
+              }}
+            >
+              <span>{(AVAILABLE_THEMES.find(t => t.id === theme) || AVAILABLE_THEMES[0]).icon}</span>
+              <ChevronDown size={11} color="#64748b" />
+            </button>
+
+            {themeMenuOpen && (
+              <div style={{
+                position: 'absolute',
+                right: 0,
+                top: 'calc(100% + 6px)',
+                background: theme === 'dark' ? '#1e293b' : '#ffffff',
+                border: theme === 'dark' ? '1px solid #334155' : '1px solid #cbd5e1',
+                borderRadius: '10px',
+                boxShadow: '0 12px 28px -4px rgba(0, 0, 0, 0.2)',
+                width: '190px',
+                padding: '6px',
+                zIndex: 1200,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '3px'
+              }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', padding: '4px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Choose Theme
+                </div>
+                {AVAILABLE_THEMES.map(th => {
+                  const isActive = th.id === theme;
+                  return (
+                    <button
+                      key={th.id}
+                      type="button"
+                      onClick={() => {
+                        applyThemeHelper(th.id);
+                        setTheme(th.id);
+                        setThemeMenuOpen(false);
+                        const token = localStorage.getItem('lt_token');
+                        if (token) {
+                          api.post('/settings', { theme: th.id }).catch(() => {});
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '6px 8px',
+                        borderRadius: '6px',
+                        border: isActive ? `1.5px solid ${th.color}` : '1px solid transparent',
+                        background: isActive ? (theme === 'dark' ? 'rgba(56, 189, 248, 0.15)' : '#f0fdf4') : 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        width: '100%',
+                        transition: 'background 0.12s'
+                      }}
+                      onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9'; }}
+                      onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '1.05rem' }}>{th.icon}</span>
+                        <div>
+                          <div style={{ fontSize: '0.8rem', fontWeight: isActive ? 700 : 500, color: theme === 'dark' ? '#f8fafc' : '#0f172a' }}>{th.name}</div>
+                          <div style={{ fontSize: '0.67rem', color: '#64748b' }}>{th.desc}</div>
+                        </div>
+                      </div>
+                      {isActive && <span style={{ color: th.color, fontWeight: 800, fontSize: '0.85rem' }}>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {/* Notification Center */}
           <NotificationCenter alerts={alerts} setTab={setTab} />

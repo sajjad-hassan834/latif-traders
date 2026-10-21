@@ -24,10 +24,12 @@ import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useAuth } from '../context/AuthContext';
 import ReportPrintHeader from '../components/common/ReportPrintHeader';
 import ReportPrintFooter from '../components/common/ReportPrintFooter';
+import Pagination from '../components/common/Pagination';
 
 function ReportsContent({ initialReport }) {
   const { user, isAdmin, canSell, canManageInventory, canViewFinances, role } = useAuth();
 
+  const [productSalesPage, setProductSalesPage] = useState(1);
   const [activeReport, setActiveReport] = useState(() => {
     if (initialReport) return initialReport;
     if (role === 'sales') return 'register';
@@ -1405,7 +1407,9 @@ function ReportsContent({ initialReport }) {
                     {!productSalesReport?.report?.length ? (
                       <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No product sales recorded in date range.</td></tr>
                     ) : (
-                      productSalesReport.report.map((r, idx) => (
+                      productSalesReport.report
+                        .slice((productSalesPage - 1) * 15, productSalesPage * 15)
+                        .map((r) => (
                         <tr key={r.id}>
                           <td style={{ fontWeight: 600 }}>
                             <div>{r.name}</div>
@@ -1423,6 +1427,16 @@ function ReportsContent({ initialReport }) {
                   </tbody>
                 </table>
               </div>
+              {productSalesReport?.report?.length > 15 && (
+                <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                  <Pagination
+                    currentPage={productSalesPage}
+                    totalItems={productSalesReport.report.length}
+                    itemsPerPage={15}
+                    onPageChange={setProductSalesPage}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}

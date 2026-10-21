@@ -238,27 +238,39 @@ exports.getCustomerLedger = (req, res) => {
     allEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     let running = 0;
-    const ledger = allEntries.map(entry => {
+    const chronologicalLedger = allEntries.map(entry => {
       running += (entry.debit - entry.credit);
       return {
         ...entry,
-        balance: running
+        balance: running,
+        invoice_due: entry.balance_due !== undefined ? entry.balance_due : (entry.bill_amount > 0 ? Math.max(0, entry.bill_amount - entry.paid_amount) : 0)
       };
     });
 
-    const totalPurchased = ledger.reduce((acc, l) => acc + (l.bill_amount || 0), 0);
-    const totalPaid = ledger.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
+    const totalPurchased = chronologicalLedger.reduce((acc, l) => acc + (l.bill_amount || 0), 0);
+    const totalPaid = chronologicalLedger.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
+    const closingBalance = running;
+
+    // Cross-verify and keep customers.current_balance synchronized
+    if (!start_date && !end_date && Math.abs((Number(customer.current_balance) || 0) - closingBalance) > 0.01) {
+      db.prepare('UPDATE customers SET current_balance = ? WHERE id = ? AND tenant_id = ?').run(closingBalance, customer.id, tenantId);
+      customer.current_balance = closingBalance;
+    }
+
+    // Return newest-first so outstanding recent bills appear at the top of the modal
+    const ledger = [...chronologicalLedger].reverse();
 
     return res.json({
       success: true,
       customer,
       ledger,
+      chronological_ledger: chronologicalLedger,
       summary: {
         total_purchased: totalPurchased,
         total_paid: totalPaid,
         total_debit: totalPurchased,
         total_credit: totalPaid,
-        closing_balance: running
+        closing_balance: closingBalance
       }
     });
   } catch (err) {
@@ -536,3 +548,46 @@ exports.recalculateSupplierBalances = (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to recalculate supplier balances.' });
   }
 };
+
+// Automated Cross-Verification & Recalculation for Customer Balances
+exports.recalculateCustomerBalances = (req, res) => {
+  try {
+    const tenantId = req.tenant_id || 'latif_001';
+    const customers = db.prepare('SELECT id, name, opening_balance, current_balance FROM customers WHERE tenant_id = ?').all(tenantId);
+    let fixed = 0;
+
+    const recalcTransaction = db.transaction(() => {
+      for (const cust of customers) {
+        const salesStats = db.prepare(`
+          SELECT COALESCE(SUM(grand_total), 0) as total_sales, COALESCE(SUM(paid_amount), 0) as total_paid
+          FROM sales WHERE customer_id = ? AND tenant_id = ?
+        `).get(cust.id, tenantId);
+
+        const directPayments = db.prepare(`
+          SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE party_type = 'CUSTOMER' AND party_id = ? AND tenant_id = ?
+        `).get(cust.id, tenantId).total;
+
+        const returnsMade = db.prepare(`
+          SELECT COALESCE(SUM(total_amount), 0) as total FROM returns WHERE type = 'SALE_RETURN' AND party_id = ? AND tenant_id = ?
+        `).get(cust.id, tenantId).total;
+
+        const correctBalance = (Number(cust.opening_balance) || 0) + (Number(salesStats.total_sales) || 0) - (Number(salesStats.total_paid) || 0) - directPayments - returnsMade;
+        const oldBalance = Number(cust.current_balance) || 0;
+
+        if (Math.abs(correctBalance - oldBalance) > 0.01) {
+          db.prepare('UPDATE customers SET current_balance = ? WHERE id = ? AND tenant_id = ?').run(correctBalance, cust.id, tenantId);
+          fixed++;
+        }
+      }
+    });
+
+    recalcTransaction();
+
+    logAudit(req.user.id, req.user.full_name, 'RECALCULATE', 'CUSTOMER', null, `Recalculated all customer balances. Fixed ${fixed} customers.`, req);
+    return res.json({ success: true, message: `Recalculated customer balances. ${fixed} customer(s) were corrected.`, fixed });
+  } catch (err) {
+    console.error('Recalculate customer balances error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to recalculate customer balances.' });
+  }
+};
+

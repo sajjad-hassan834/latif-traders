@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown, Trash2, ArrowUpRight } from 'lucide-react';
+import { Users, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown, Trash2, ArrowUpRight, RefreshCw } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,7 @@ export default function Customers() {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [syncingBalances, setSyncingBalances] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedFilter, setSelectedFilter] = useState('all');
   const ITEMS_PER_PAGE = 15;
@@ -187,6 +188,21 @@ export default function Customers() {
     }
   };
 
+  const handleSyncCustomerBalances = async () => {
+    try {
+      setSyncingBalances(true);
+      const res = await api.post('/customers/recalculate-balances');
+      if (res.success) {
+        alert(res.message);
+        loadCustomers();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to recalculate customer balances.');
+    } finally {
+      setSyncingBalances(false);
+    }
+  };
+
   const allCount = customers.length;
   const dueCount = customers.filter(c => Number(c.current_balance) > 0).length;
   const retailCount = customers.filter(c => c.customer_type === 'Retail').length;
@@ -209,10 +225,25 @@ export default function Customers() {
             {allCount} total customers · {dueCount} with outstanding balance
           </p>
         </div>
-        <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
-          <Plus size={16} />
-          <span>Add New Customer</span>
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={handleSyncCustomerBalances}
+              disabled={syncingBalances}
+              className="btn btn-secondary btn-sm"
+              title="Audit and re-calculate all customer balances from verified invoices & receipts"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '36px' }}
+            >
+              <RefreshCw size={14} className={syncingBalances ? 'spin' : ''} />
+              <span>{syncingBalances ? 'Auditing...' : 'Audit & Sync Balances'}</span>
+            </button>
+          )}
+          <button onClick={() => setShowAddModal(true)} className="btn btn-primary" style={{ height: '36px' }}>
+            <Plus size={16} />
+            <span>Add New Customer</span>
+          </button>
+        </div>
       </div>
 
       {/* FILTER PILLS & SEARCH BAR */}
@@ -472,41 +503,104 @@ export default function Customers() {
       )}
 
       {/* CUSTOMER LEDGER / STATEMENT MODAL */}
+      {/* CUSTOMER LEDGER / STATEMENT MODAL */}
       {showLedgerModal && ledgerData && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '960px', width: '96%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
-            {/* FIX 1: MODAL HEADER */}
-            <div className="modal-header" style={{ padding: '16px 24px', borderBottom: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '50%',
-                  background: '#0F766E',
-                  color: '#FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  fontWeight: 700,
-                  flexShrink: 0
-                }}>
-                  {(ledgerData.customer.name || 'C').charAt(0).toUpperCase()}
+          <div className="modal-content" style={{ maxWidth: '980px', width: '96%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+            {/* MODAL HEADER: TWO ROWS PREVENTING ANY BUTTON COLLISION */}
+            <div className="modal-header" style={{
+              padding: '16px 22px',
+              borderBottom: '1px solid #E5E7EB',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              background: '#FFFFFF'
+            }}>
+              {/* Row 1: Identity & Action Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
+                    background: '#0F766E',
+                    color: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: 700,
+                    flexShrink: 0
+                  }}>
+                    {(ledgerData.customer.name || 'C').charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '19px', fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>
+                      {ledgerData.customer.name}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
+                      {ledgerData.customer.customer_type ? `${ledgerData.customer.customer_type} Customer` : 'Retail Customer'}
+                      {ledgerData.customer.phone && ledgerData.customer.phone !== 'None' && (
+                        <span> • 📞 {ledgerData.customer.phone}</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>
-                    {ledgerData.customer.name}
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
-                    {ledgerData.customer.customer_type ? `${ledgerData.customer.customer_type} Customer` : 'Retail Customer'}
-                    {ledgerData.customer.phone && ledgerData.customer.phone !== 'None' && (
-                      <span> • 📞 {ledgerData.customer.phone}</span>
-                    )}
-                  </div>
+
+                {/* Top-Right Action Controls: Dedicated container with zero collision */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    style={{
+                      height: '34px',
+                      padding: '0 12px',
+                      background: '#FFFFFF',
+                      border: '1px solid #D1D5DB',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: '#374151',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      whiteSpace: 'nowrap'
+                    }}
+                    title="Print customer ledger statement"
+                  >
+                    <Printer size={15} />
+                    <span>Print Statement</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="modal-close-btn"
+                    onClick={() => setShowLedgerModal(false)}
+                    aria-label="Close"
+                    style={{
+                      width: '34px',
+                      height: '34px',
+                      borderRadius: '8px',
+                      border: '1px solid #D1D5DB',
+                      background: '#F3F4F6',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: '#4B5563',
+                      fontSize: '16px',
+                      fontWeight: 700,
+                      flexShrink: 0
+                    }}
+                    title="Close ledger"
+                  >
+                    ✕
+                  </button>
                 </div>
               </div>
 
-              {/* Header Right: Info Chips & Actions */}
+              {/* Row 2: Customer Status Chips */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <div style={{ background: '#F3F4F6', color: '#374151', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                   <span>📅</span> Customer since: {ledgerData.customer.created_at ? formatDate(ledgerData.customer.created_at) : 'Active'}
@@ -516,134 +610,110 @@ export default function Customers() {
                 </div>
                 {Number(ledgerData.summary.closing_balance || 0) <= 0 ? (
                   <div style={{ background: '#D1FAE5', color: '#065F46', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    ✓ Fully Settled
+                    ✓ Fully Settled (No Pending Udhaar)
                   </div>
                 ) : (
                   <div style={{ background: '#FEE2E2', color: '#991B1B', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    ⚠️ {formatPKR(ledgerData.summary.closing_balance)} Pending
+                    ⚠️ Total Pending Udhaar: {formatPKR(ledgerData.summary.closing_balance)}
                   </div>
                 )}
-
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  style={{
-                    height: '34px',
-                    padding: '0 12px',
-                    background: '#FFFFFF',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    color: '#374151',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <Printer size={14} />
-                  <span>Print Statement</span>
-                </button>
-                <button
-                  type="button"
-                  className="modal-close-btn"
-                  onClick={() => setShowLedgerModal(false)}
-                  aria-label="Close"
-                  style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6B7280' }}
-                >
-                  ✕
-                </button>
               </div>
             </div>
 
-            <div className="modal-body" style={{ padding: '20px 24px' }}>
-              {/* FIX 2: DATE FILTER BAR */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>Filter by date:</span>
-                <input
-                  type="date"
-                  style={{
-                    height: '36px',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                    padding: '0 12px',
-                    fontSize: '13px',
-                    color: '#111827',
-                    background: '#FFFFFF'
-                  }}
-                  value={ledgerStartDate}
-                  onChange={(e) => setLedgerStartDate(e.target.value)}
-                />
-                <input
-                  type="date"
-                  style={{
-                    height: '36px',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                    padding: '0 12px',
-                    fontSize: '13px',
-                    color: '#111827',
-                    background: '#FFFFFF'
-                  }}
-                  value={ledgerEndDate}
-                  onChange={(e) => setLedgerEndDate(e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => openLedger(selectedCust, ledgerStartDate, ledgerEndDate)}
-                  style={{
-                    height: '36px',
-                    padding: '0 16px',
-                    background: '#0F766E',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  Apply Filter →
-                </button>
-                {(ledgerStartDate || ledgerEndDate) && (
+            <div className="modal-body" style={{ padding: '18px 22px' }}>
+              {/* DATE FILTER BAR */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>Filter by date:</span>
+                  <input
+                    type="date"
+                    style={{
+                      height: '34px',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '7px',
+                      padding: '0 10px',
+                      fontSize: '13px',
+                      color: '#111827',
+                      background: '#FFFFFF'
+                    }}
+                    value={ledgerStartDate}
+                    onChange={(e) => setLedgerStartDate(e.target.value)}
+                  />
+                  <input
+                    type="date"
+                    style={{
+                      height: '34px',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '7px',
+                      padding: '0 10px',
+                      fontSize: '13px',
+                      color: '#111827',
+                      background: '#FFFFFF'
+                    }}
+                    value={ledgerEndDate}
+                    onChange={(e) => setLedgerEndDate(e.target.value)}
+                  />
                   <button
                     type="button"
-                    onClick={() => {
-                      setLedgerStartDate('');
-                      setLedgerEndDate('');
-                      openLedger(selectedCust, '', '');
-                    }}
+                    onClick={() => openLedger(selectedCust, ledgerStartDate, ledgerEndDate)}
                     style={{
-                      background: 'none',
+                      height: '34px',
+                      padding: '0 14px',
+                      background: '#0F766E',
+                      color: '#FFFFFF',
                       border: 'none',
-                      color: '#6B7280',
+                      borderRadius: '7px',
                       fontSize: '13px',
+                      fontWeight: 600,
                       cursor: 'pointer',
-                      padding: '0 8px',
-                      textDecoration: 'underline'
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
                     }}
                   >
-                    Clear
+                    Apply Filter →
                   </button>
-                )}
+                  {(ledgerStartDate || ledgerEndDate) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLedgerStartDate('');
+                        setLedgerEndDate('');
+                        openLedger(selectedCust, '', '');
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#6B7280',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        padding: '0 8px',
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ fontSize: '11px', color: '#64748B', background: '#F1F5F9', padding: '3px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                  ⚡ Sorted: Newest Invoices First
+                </div>
               </div>
 
-              {/* FIX 3 & 4: REDESIGNED TABLE COLUMNS & ROWS */}
+              {/* DUAL-BALANCE LEDGER TABLE */}
               <div className="table-responsive" style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: '10px' }}>
-                <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', minWidth: '820px', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E5E7EB' }}>
-                      <th style={{ width: '100px', padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Date</th>
-                      <th style={{ width: '140px', padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Invoice #</th>
-                      <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Description</th>
-                      <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Amount</th>
-                      <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Paid</th>
-                      <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Balance</th>
-                      <th style={{ width: '80px', padding: '10px 16px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Action</th>
+                      <th style={{ width: '95px', padding: '10px 14px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Date</th>
+                      <th style={{ width: '135px', padding: '10px 14px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Invoice #</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Description</th>
+                      <th style={{ width: '105px', padding: '10px 14px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Bill Total</th>
+                      <th style={{ width: '105px', padding: '10px 14px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Paid</th>
+                      <th style={{ width: '115px', padding: '10px 14px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#DC2626', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Bill Due</th>
+                      <th style={{ width: '125px', padding: '10px 14px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#0F766E', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Account Balance</th>
+                      <th style={{ width: '75px', padding: '10px 14px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -651,7 +721,6 @@ export default function Customers() {
                       const isOpening = row.type === 'OPENING' || row.ref_no === 'OPN-BAL';
                       const isSale = row.ref_no && row.ref_no.startsWith('INV-');
 
-                      // Format clean short description with colored dot
                       let dot = '•';
                       let descText = row.notes || 'Transaction';
                       let descColor = '#374151';
@@ -687,16 +756,16 @@ export default function Customers() {
                           <tr
                             key={idx}
                             style={{
-                              height: '52px',
+                              height: '48px',
                               background: '#FFFBEB',
                               borderBottom: '1px solid #F3F4F6',
                               verticalAlign: 'middle'
                             }}
                           >
-                            <td style={{ padding: '0 16px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '0 14px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
                               {formatDate(row.date)}
                             </td>
-                            <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
                               <span style={{
                                 background: '#E5E7EB',
                                 color: '#374151',
@@ -709,13 +778,14 @@ export default function Customers() {
                                 OPENING
                               </span>
                             </td>
-                            <td style={{ padding: '0 16px', fontSize: '13px', color: '#6B7280' }}>
+                            <td style={{ padding: '0 14px', fontSize: '13px', color: '#6B7280' }}>
                               <span style={{ marginRight: '6px' }}>⚫</span>
                               <span>Account Opening Balance</span>
                             </td>
-                            <td style={{ padding: '0 16px', textAlign: 'right', fontSize: '14px', color: '#9CA3AF' }}>—</td>
-                            <td style={{ padding: '0 16px', textAlign: 'right', fontSize: '14px', color: '#9CA3AF' }}>—</td>
-                            <td style={{ padding: '0 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '0 14px', textAlign: 'right', fontSize: '13px', color: '#9CA3AF' }}>—</td>
+                            <td style={{ padding: '0 14px', textAlign: 'right', fontSize: '13px', color: '#9CA3AF' }}>—</td>
+                            <td style={{ padding: '0 14px', textAlign: 'right', fontSize: '13px', color: '#9CA3AF' }}>—</td>
+                            <td style={{ padding: '0 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <span style={{
                                 background: row.balance > 0 ? '#FEE2E2' : '#D1FAE5',
                                 color: row.balance > 0 ? '#991B1B' : '#065F46',
@@ -728,16 +798,18 @@ export default function Customers() {
                                 {row.balance > 0 ? formatPKR(row.balance) : 'Rs 0 ✓'}
                               </span>
                             </td>
-                            <td style={{ padding: '0 16px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>—</td>
+                            <td style={{ padding: '0 14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>—</td>
                           </tr>
                         );
                       }
+
+                      const dueAmount = row.invoice_due !== undefined ? Number(row.invoice_due) : Math.max(0, Number(row.bill_amount || 0) - Number(row.paid_amount || 0));
 
                       return (
                         <tr
                           key={idx}
                           style={{
-                            height: '52px',
+                            height: '50px',
                             borderBottom: '1px solid #F3F4F6',
                             verticalAlign: 'middle',
                             transition: 'background 0.15s'
@@ -745,10 +817,10 @@ export default function Customers() {
                           onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; }}
                           onMouseLeave={(e) => { e.currentTarget.style.background = '#FFFFFF'; }}
                         >
-                          <td style={{ padding: '0 16px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0 14px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
                             {formatDate(row.date)}
                           </td>
-                          <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
                             {isSale ? (
                               <button
                                 type="button"
@@ -759,7 +831,7 @@ export default function Customers() {
                                   color: '#0F766E',
                                   fontFamily: 'monospace',
                                   fontSize: '12px',
-                                  fontWeight: 600,
+                                  fontWeight: 700,
                                   cursor: 'pointer',
                                   padding: 0,
                                   textDecoration: 'none',
@@ -775,51 +847,66 @@ export default function Customers() {
                               </span>
                             )}
                           </td>
-                          <td style={{ padding: '0 16px', fontSize: '13px', color: descColor, whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0 14px', fontSize: '13px', color: descColor, whiteSpace: 'nowrap' }}>
                             <span style={{ marginRight: '6px' }}>{dot}</span>
                             <span style={{ fontWeight: 500 }}>{descText}</span>
                           </td>
-                          <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 700, fontSize: '14px', color: '#111827', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0 14px', textAlign: 'right', fontWeight: 600, fontSize: '13px', color: '#111827', whiteSpace: 'nowrap' }}>
                             {row.bill_amount > 0 ? formatPKR(row.bill_amount) : <span style={{ color: '#9CA3AF' }}>—</span>}
                           </td>
-                          <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 600, fontSize: '14px', color: '#16A34A', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0 14px', textAlign: 'right', fontWeight: 600, fontSize: '13px', color: '#16A34A', whiteSpace: 'nowrap' }}>
                             {row.paid_amount > 0 ? formatPKR(row.paid_amount) : <span style={{ color: '#9CA3AF' }}>—</span>}
                           </td>
-                          <td style={{ padding: '0 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            {row.balance <= 0 ? (
-                              <span style={{
-                                background: '#D1FAE5',
-                                color: '#065F46',
-                                borderRadius: '6px',
-                                padding: '2px 8px',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                                display: 'inline-block'
-                              }}>
-                                Rs 0 ✓
-                              </span>
+                          {/* INVOICE DUE (SPECIFIC BILL OUTSTANDING) */}
+                          <td style={{ padding: '0 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {row.bill_amount > 0 ? (
+                              dueAmount > 0 ? (
+                                <span style={{
+                                  background: '#FEE2E2',
+                                  color: '#991B1B',
+                                  borderRadius: '6px',
+                                  padding: '2px 8px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  display: 'inline-block'
+                                }}>
+                                  ⚠️ {formatPKR(dueAmount)}
+                                </span>
+                              ) : (
+                                <span style={{
+                                  background: '#D1FAE5',
+                                  color: '#065F46',
+                                  borderRadius: '6px',
+                                  padding: '2px 8px',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  display: 'inline-block'
+                                }}>
+                                  Rs 0 ✓ Paid
+                                </span>
+                              )
                             ) : (
-                              <span style={{
-                                background: '#FEE2E2',
-                                color: '#991B1B',
-                                borderRadius: '6px',
-                                padding: '2px 8px',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                                display: 'inline-block'
-                              }}>
-                                {formatPKR(row.balance)}
-                              </span>
+                              <span style={{ color: '#9CA3AF' }}>—</span>
                             )}
                           </td>
-                          <td style={{ padding: '0 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          {/* ACCOUNT BALANCE (RUNNING TOTAL AT THIS POINT) */}
+                          <td style={{ padding: '0 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <span style={{
+                              fontWeight: 700,
+                              fontSize: '13px',
+                              color: row.balance > 0 ? '#991B1B' : '#065F46'
+                            }}>
+                              {row.balance > 0 ? formatPKR(row.balance) : 'Rs 0'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0 14px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {isSale ? (
                               <button
                                 type="button"
                                 onClick={() => handleViewInvoiceDetails(row.ref_no)}
                                 style={{
                                   height: '28px',
-                                  padding: '0 12px',
+                                  padding: '0 10px',
                                   border: '1px solid #E5E7EB',
                                   borderRadius: '6px',
                                   fontSize: '12px',
@@ -852,10 +939,10 @@ export default function Customers() {
               </div>
             </div>
 
-            {/* FIX 6: MODAL FOOTER */}
+            {/* MODAL FOOTER */}
             <div style={{
               borderTop: '1px solid #F3F4F6',
-              padding: '16px 24px',
+              padding: '14px 22px',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -864,7 +951,7 @@ export default function Customers() {
               background: '#FFFFFF'
             }}>
               <div style={{ fontSize: '12px', color: '#6B7280' }}>
-                {ledgerData.ledger.length} transactions  •  Total Billed: <strong style={{ color: '#111827' }}>{formatPKR(ledgerData.summary.total_purchased || ledgerData.summary.total_debit || 0)}</strong>  •  Total Paid: <strong style={{ color: '#16A34A' }}>{formatPKR(ledgerData.summary.total_paid || ledgerData.summary.total_credit || 0)}</strong>  •  Balance: <strong style={{ color: ledgerData.summary.closing_balance > 0 ? '#DC2626' : '#16A34A' }}>{formatPKR(ledgerData.summary.closing_balance)}</strong>
+                {ledgerData.ledger.length} transactions  •  Total Billed: <strong style={{ color: '#111827' }}>{formatPKR(ledgerData.summary.total_purchased || ledgerData.summary.total_debit || 0)}</strong>  •  Total Paid: <strong style={{ color: '#16A34A' }}>{formatPKR(ledgerData.summary.total_paid || ledgerData.summary.total_credit || 0)}</strong>  •  Total Pending Udhaar: <strong style={{ color: ledgerData.summary.closing_balance > 0 ? '#DC2626' : '#16A34A' }}>{formatPKR(ledgerData.summary.closing_balance)}</strong>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button

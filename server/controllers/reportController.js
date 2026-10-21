@@ -682,20 +682,20 @@ exports.getProductSalesReport = (req, res) => {
         COALESCE(AVG(si.unit_price), 0) as avg_sale_rate,
         COALESCE(SUM(si.quantity * si.cost_price), 0) as total_cost,
         COALESCE(SUM(si.total_price - (si.quantity * si.cost_price)), 0) as total_profit
-      FROM products p
-      LEFT JOIN categories c ON p.category_id = c.id AND c.tenant_id = p.tenant_id
-      LEFT JOIN sale_items si ON p.id = si.product_id AND si.tenant_id = p.tenant_id
-      LEFT JOIN sales s ON si.sale_id = s.id AND s.sale_date >= ? AND s.sale_date <= ? AND s.tenant_id = p.tenant_id
-      WHERE p.tenant_id = ?
+      FROM sale_items si
+      JOIN sales s ON si.sale_id = s.id AND s.sale_date >= ? AND s.sale_date <= ? AND COALESCE(s.tenant_id, 'latif_001') = ?
+      JOIN products p ON si.product_id = p.id
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE COALESCE(p.tenant_id, 'latif_001') = ?
       GROUP BY p.id
       HAVING total_qty_sold > 0
       ORDER BY total_revenue DESC
-    `).all(sDate, eDate, tenantId);
+    `).all(sDate, eDate, tenantId, tenantId);
 
     const summary = {
-      total_revenue: report.reduce((sum, r) => sum + r.total_revenue, 0),
-      total_profit: report.reduce((sum, r) => sum + r.total_profit, 0),
-      total_units: report.reduce((sum, r) => sum + r.total_qty_sold, 0),
+      total_revenue: report.reduce((sum, r) => sum + Number(r.total_revenue || 0), 0),
+      total_profit: report.reduce((sum, r) => sum + Number(r.total_profit || 0), 0),
+      total_units: report.reduce((sum, r) => sum + Number(r.total_qty_sold || 0), 0),
       product_count: report.length
     };
 

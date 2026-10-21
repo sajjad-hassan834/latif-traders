@@ -11,6 +11,7 @@ router.post('/customers', requireRoles('sales', 'accountant'), partyController.c
 router.put('/customers/:id', requireRoles('sales', 'accountant'), partyController.updateCustomer);
 router.delete('/customers/:id', requireRoles('admin'), partyController.deleteCustomer);
 router.get('/customers/:id/ledger', partyController.getCustomerLedger);
+router.post('/customers/recalculate-balances', requireRoles('admin'), partyController.recalculateCustomerBalances);
 
 // Suppliers
 router.get('/suppliers', requireRoles('inventory', 'accountant'), partyController.getSuppliers);

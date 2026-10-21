@@ -52,6 +52,8 @@ export default function Purchases() {
   const [stagePurchasePrice, setStagePurchasePrice] = useState('');
   const [stageSalePrice, setStageSalePrice] = useState('');
   const [stageWholesalePrice, setStageWholesalePrice] = useState('');
+  const [showAllProducts, setShowAllProducts] = useState(true);
+  const [lastAddedItemName, setLastAddedItemName] = useState('');
 
   const generateAutoBillNo = () => {
     const now = new Date();
@@ -68,6 +70,7 @@ export default function Purchases() {
     setErrorMsg('');
     setActiveStockPreview(null);
     setStagedProductId('');
+    setLastAddedItemName('');
     setShowNewModal(true);
   };
 
@@ -123,24 +126,42 @@ export default function Purchases() {
     const prod = products.find(p => p.id === Number(stagedProductId));
     if (!prod) return;
 
-    setItems([...items, {
-      product_id: prod.id,
-      name: prod.name,
-      brand: prod.brand || '',
-      unit: prod.unit || 'pkt',
-      batch_no: `LOT-${Date.now().toString().slice(-5)}`,
-      expiry_date: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
-      quantity: Number(stageQty) || 1,
-      unit_price: Number(stagePurchasePrice) || 0,
-      wholesale_price: Number(stageWholesalePrice) || Number(stageSalePrice) || 0,
-      sale_price: Number(stageSalePrice) || 0,
-      discount: 0
-    }]);
+    const qty = Number(stageQty) || 1;
+    const cost = Number(stagePurchasePrice) || 0;
+    const sPrice = Number(stageSalePrice) || 0;
+    const wPrice = Number(stageWholesalePrice) || sPrice || 0;
 
+    const existingIndex = items.findIndex(it => it.product_id === prod.id);
+    if (existingIndex >= 0) {
+      const updated = [...items];
+      updated[existingIndex].quantity = Number(updated[existingIndex].quantity) + qty;
+      updated[existingIndex].unit_price = cost;
+      updated[existingIndex].sale_price = sPrice;
+      updated[existingIndex].wholesale_price = wPrice;
+      setItems(updated);
+    } else {
+      setItems([...items, {
+        product_id: prod.id,
+        name: prod.name,
+        brand: prod.brand || '',
+        unit: prod.unit || 'pkt',
+        batch_no: `LOT-${Date.now().toString().slice(-5)}`,
+        expiry_date: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
+        quantity: qty,
+        unit_price: cost,
+        wholesale_price: wPrice,
+        sale_price: sPrice,
+        discount: 0
+      }]);
+    }
+
+    setLastAddedItemName(prod.name);
     setStagedProductId('');
+    setStageQty('10');
     setStagePurchasePrice('');
     setStageSalePrice('');
     setStageWholesalePrice('');
+    setActiveStockPreview(null);
   };
 
   const addItemToBill = (productId) => {
@@ -596,21 +617,58 @@ export default function Purchases() {
 
                 {/* ADD PRODUCT TO BILL WITH PRICING CONTROLS */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <label className="form-label" style={{ fontWeight: 700, margin: 0, color: '#0f172a' }}>
+                      Add Products to This Bill *
+                    </label>
+                    <label style={{ fontSize: '0.75rem', color: '#475569', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 500 }}>
+                      <input
+                        type="checkbox"
+                        checked={showAllProducts}
+                        onChange={(e) => setShowAllProducts(e.target.checked)}
+                      />
+                      <span>Show all inventory products (not only supplier linked)</span>
+                    </label>
+                  </div>
+
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 320px' }}>
-                      <label className="form-label" style={{ fontWeight: 600 }}>Add Product to Shipment *</label>
                       <SearchableSelect
                         options={products
-                          .filter(p => !supplierId || String(p.supplier_id) === String(supplierId) || p.supplier_id === null)
-                          .map(p => ({ value: p.id, label: `${p.name} ${p.brand ? `[${p.brand}]` : ''}` }))}
+                          .filter(p => {
+                            if (showAllProducts) return true;
+                            return !supplierId || String(p.supplier_id) === String(supplierId) || p.supplier_id === null;
+                          })
+                          .sort((a, b) => {
+                            const aIsSupplier = supplierId && String(a.supplier_id) === String(supplierId);
+                            const bIsSupplier = supplierId && String(b.supplier_id) === String(supplierId);
+                            if (aIsSupplier && !bIsSupplier) return -1;
+                            if (!aIsSupplier && bIsSupplier) return 1;
+                            return a.name.localeCompare(b.name);
+                          })
+                          .map(p => {
+                            const isLinked = supplierId && String(p.supplier_id) === String(supplierId);
+                            return {
+                              value: p.id,
+                              label: `${isLinked ? '★ ' : ''}${p.name} ${p.brand ? `[${p.brand}]` : ''}${isLinked ? ' (Supplier Linked)' : ''}`
+                            };
+                          })}
                         value={stagedProductId}
                         onChange={(val) => {
                           if (val) handleSelectProduct(val);
                         }}
-                        placeholder="-- Choose Product to Add --"
+                        placeholder="-- Choose Product to Add to Bill --"
                       />
                     </div>
                   </div>
+
+                  {/* SUCCESS FLASH WHEN ITEM IS ADDED */}
+                  {lastAddedItemName && !stagedProductId && (
+                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', padding: '6px 12px', borderRadius: '6px', fontSize: '0.78rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>✅ Added <strong>"{lastAddedItemName}"</strong> to this bill! You can pick another product from the dropdown above to add more items.</span>
+                      <button type="button" onClick={() => setLastAddedItemName('')} style={{ background: 'none', border: 'none', color: '#047857', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>✕</button>
+                    </div>
+                  )}
 
                   {/* STAGED PRODUCT PRICING CONFIGURATION */}
                   {stagedProductId && (() => {
@@ -619,7 +677,7 @@ export default function Purchases() {
                       <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '8px', padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
                           <strong style={{ color: '#166534', fontSize: '0.875rem' }}>
-                            Configure Prices & Quantity for This Shipment
+                            Configure Prices & Quantity for This Product
                           </strong>
                           <span style={{ fontSize: '0.75rem', color: '#15803d', fontWeight: 600 }}>
                             {selectedProd?.name} ({selectedProd?.unit || 'pkt'})
@@ -716,11 +774,18 @@ export default function Purchases() {
 
                 {/* LINE ITEMS TABLE HEADER & NOTIFICATION */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.25rem' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
-                    Products In Shipment ({items.length})
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>
+                      📦 Products In This Shipment ({items.length})
+                    </div>
+                    {items.length > 0 && (
+                      <span style={{ fontSize: '0.75rem', color: '#0369a1', background: '#e0f2fe', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                        Bill Total: {formatPKR(grandTotal)}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: '0.72rem', color: '#0284c7', background: '#e0f2fe', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bae6fd' }}>
-                    💡 Setting Purchase Cost and Retail Sale updates your active catalog and batch FIFO rates
+                    💡 You can add multiple supplier products here into a single bill before saving
                   </div>
                 </div>
 
@@ -735,7 +800,7 @@ export default function Purchases() {
                         <th style={{ width: '85px' }}>Quantity</th>
                         <th style={{ width: '115px', color: '#0369a1' }}>Purchase Cost (₨)</th>
                         <th style={{ width: '115px', color: '#15803d' }}>Retail Sale (₨)</th>
-                        <th style={{ width: '105px' }}>Wholesale (₨)</th>
+                        <th style={{ width: '105px', color: '#475569' }}>Wholesale (₨)</th>
                         <th>Batch / Lot #</th>
                         <th>Expiry Date</th>
                         <th style={{ textAlign: 'right' }}>Total (PKR)</th>
@@ -744,7 +809,7 @@ export default function Purchases() {
                     </thead>
                     <tbody>
                       {items.length === 0 ? (
-                        <tr><td colSpan="11" style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem' }}>No products added to bill yet. Select a product above.</td></tr>
+                        <tr><td colSpan="11" style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem' }}>No products added to bill yet. Select a product from the dropdown above to add multiple items to this bill.</td></tr>
                       ) : (
                         items.map((it, idx) => (
                           <tr key={idx}>
