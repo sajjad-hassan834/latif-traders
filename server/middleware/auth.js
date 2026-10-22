@@ -22,6 +22,7 @@ function authenticate(req, res, next) {
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = db.prepare(`
       SELECT u.id, u.username, u.email, u.full_name, u.role, u.status, u.tenant_id,
+             COALESCE(u.theme, 'classic') as theme,
              COALESCE(t.business_name, 'ShopOS Business') as business_name,
              COALESCE(t.business_type, 'retail_general') as business_type,
              COALESCE(t.plan, 'free') as plan,

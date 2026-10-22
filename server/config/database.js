@@ -26,6 +26,7 @@ function initializeDatabase() {
       role TEXT NOT NULL DEFAULT 'sales',
       status TEXT NOT NULL DEFAULT 'active',
       permissions_json TEXT,
+      theme TEXT DEFAULT 'classic',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -647,6 +648,16 @@ function initializeDatabase() {
   try {
     db.prepare("ALTER TABLE sales ADD COLUMN order_status TEXT NOT NULL DEFAULT 'Completed'").run();
   } catch (_) {}
+
+  // Safe migration for user theme preferences
+  try {
+    const userCols = db.prepare("PRAGMA table_info(users)").all();
+    if (!userCols.some(c => c.name === 'theme')) {
+      db.prepare("ALTER TABLE users ADD COLUMN theme TEXT DEFAULT 'classic'").run();
+    }
+  } catch (err) {
+    console.error('Migration error for users theme:', err.message);
+  }
 
   // Seed default frozen food brands if empty
   const brandCount = db.prepare('SELECT COUNT(*) as count FROM brands').get().count;

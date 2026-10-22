@@ -143,6 +143,7 @@ exports.register = (req, res) => {
         business_name: businessName.trim(),
         business_type: bType,
         plan: chosenPlan,
+        theme: 'classic',
         is_first_login: true
       }
     });
@@ -229,6 +230,7 @@ exports.login = (req, res) => {
         business_name: user.role === 'superowner' ? 'ShopOS SuperOwner' : user.business_name,
         business_type: user.business_type,
         plan: user.role === 'superowner' ? 'enterprise' : user.plan,
+        theme: user.theme || 'classic',
         logo_url: user.logo_url
       }
     });

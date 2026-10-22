@@ -13,6 +13,8 @@ import {
   Check,
   X
 } from 'lucide-react';
+import PublicThemeToggle from '../components/common/PublicThemeToggle';
+import { getSavedPublicTheme, applyPublicTheme } from '../utils/theme';
 
 const BUSINESS_TYPES = [
   {
@@ -245,6 +247,10 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
   const [fadeState, setFadeState] = useState(true);
 
   useEffect(() => {
+    applyPublicTheme(getSavedPublicTheme());
+  }, []);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       setFadeState(false);
       setTimeout(() => {
@@ -323,8 +329,9 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
             <a href="#testimonials" style={{ color: '#475569', fontSize: '14px', textDecoration: 'none', fontWeight: 500, transition: 'color 0.15s' }}>Testimonials</a>
           </nav>
 
-          {/* Top Navbar Actions: Sign In & Sign Up Buttons */}
+          {/* Top Navbar Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <PublicThemeToggle />
             <button
               onClick={onNavigateLogin}
               style={{

@@ -1,0 +1,90 @@
+/* ShopOS Public Site Theme System (Scope A - Landing, Login, Register)
+   2 Allowed Themes: light, dark
+   LocalStorage Key: shopos-public-theme (default: light)
+*/
+
+/* 1. PUBLIC LIGHT */
+html[data-public-theme="light"],
+[data-public-theme="light"] {
+  color-scheme: light;
+  --pub-bg-page: #FFFFFF;
+  --pub-bg-alt: #F8FAFC;
+  --pub-bg-card: #FFFFFF;
+  --pub-border: #E5E7EB;
+  --pub-text: #0F172A;
+  --pub-text-muted: #64748B;
+  --pub-cta-blue: #2563EB;
+  --pub-accent-teal: #0F766E;
+  --pub-os-word: #2563EB;
+  --pub-footer-bg: #111827;
+  --pub-footer-text: #94A3B8;
+
+  /* Form & Card helpers */
+  --pub-input-bg: #FFFFFF;
+  --pub-input-border: #CBD5E1;
+  --pub-input-text: #0F172A;
+  --pub-input-placeholder: #94A3B8;
+  --pub-focus-ring: rgba(15, 118, 110, 0.25);
+  --pub-card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+}
+
+/* 2. PUBLIC DARK */
+html[data-public-theme="dark"],
+[data-public-theme="dark"] {
+  color-scheme: dark;
+  --pub-bg-page: #0A0F1A;
+  --pub-bg-alt: #0D1424;
+  --pub-bg-card: #111A2E;
+  --pub-border: #1E293B;
+  --pub-text: #F1F5F9;
+  --pub-text-muted: #94A3B8;
+  --pub-cta-blue: #2563EB;
+  --pub-accent-teal: #2DD4BF;
+  --pub-os-word: #38BDF8;
+  --pub-footer-bg: #060A12;
+  --pub-footer-text: #94A3B8;
+
+  /* Form & Card helpers */
+  --pub-input-bg: #0F172A;
+  --pub-input-border: #1E293B;
+  --pub-input-text: #F1F5F9;
+  --pub-input-placeholder: #64748B;
+  --pub-focus-ring: rgba(45, 212, 191, 0.35);
+  --pub-card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+}
+
+/* Smooth 200ms transitions for public elements */
+html[data-public-theme] {
+  background-color: var(--pub-bg-page);
+  color: var(--pub-text);
+}
+
+html[data-public-theme] body,
+html[data-public-theme] .public-container,
+html[data-public-theme] .landing-page,
+html[data-public-theme] .auth-card,
+html[data-public-theme] .auth-container,
+html[data-public-theme] header,
+html[data-public-theme] nav,
+html[data-public-theme] section,
+html[data-public-theme] div,
+html[data-public-theme] input,
+html[data-public-theme] button {
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-public-theme] body,
+  html[data-public-theme] .public-container,
+  html[data-public-theme] .landing-page,
+  html[data-public-theme] .auth-card,
+  html[data-public-theme] .auth-container,
+  html[data-public-theme] header,
+  html[data-public-theme] nav,
+  html[data-public-theme] section,
+  html[data-public-theme] div,
+  html[data-public-theme] input,
+  html[data-public-theme] button {
+    transition: none !important;
+  }
+}

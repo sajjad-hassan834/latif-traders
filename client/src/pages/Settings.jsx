@@ -26,7 +26,6 @@ import {
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
-import { applyTheme as applyThemeHelper } from '../utils/theme';
 import { useAuth } from '../context/AuthContext';
 import UsersTab from './Users';
 

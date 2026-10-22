@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../utils/api';
+import { applyAppTheme, applyPublicTheme, getSavedAppTheme, getSavedPublicTheme } from '../utils/theme';
 
 const AuthContext = createContext(null);
 
@@ -87,6 +88,7 @@ export function AuthProvider({ children }) {
       const token = localStorage.getItem('lt_token');
       if (!token) {
         setUser(null);
+        applyPublicTheme(getSavedPublicTheme());
         setLoading(false);
         return;
       }
@@ -96,13 +98,16 @@ export function AuthProvider({ children }) {
         if (res && res.success && res.user) {
           setUser(res.user);
           localStorage.setItem('lt_user', JSON.stringify(res.user));
+          applyAppTheme(res.user.theme || getSavedAppTheme());
         } else {
           setUser(null);
+          applyPublicTheme(getSavedPublicTheme());
         }
       } catch (err) {
         setUser(null);
         localStorage.removeItem('lt_token');
         localStorage.removeItem('lt_user');
+        applyPublicTheme(getSavedPublicTheme());
       } finally {
         setLoading(false);
       }
@@ -117,6 +122,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem('lt_token', res.token);
       localStorage.setItem('lt_user', JSON.stringify(res.user));
       setUser(res.user);
+      applyAppTheme(res.user?.theme || getSavedAppTheme());
       return res.user;
     }
     throw new Error(res?.message || 'Login failed');
@@ -128,6 +134,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem('lt_token', res.token);
       localStorage.setItem('lt_user', JSON.stringify(res.user));
       setUser(res.user);
+      applyAppTheme(res.user?.theme || getSavedAppTheme());
       return res.user;
     }
     throw new Error(res?.message || 'Registration failed');
@@ -144,6 +151,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('lt_superowner_tenant_id');
     localStorage.removeItem('lt_superowner_tenant_name');
     setUser(null);
+    applyPublicTheme(getSavedPublicTheme());
   };
 
   const [activeImpersonatedTenant, setActiveImpersonatedTenant] = useState(() => {

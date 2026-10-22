@@ -32,7 +32,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../utils/api';
 import { formatDate } from '../../utils/formatters';
-import { toggleTheme as toggleThemeHelper, applyTheme as applyThemeHelper, AVAILABLE_THEMES } from '../../utils/theme';
+import { applyAppTheme, getSavedAppTheme, APP_THEMES } from '../../utils/theme';
 import UserProfileModal from '../common/UserProfileModal';
 import NotificationCenter from '../common/NotificationCenter';
 import Modal from '../common/Modal';
@@ -63,7 +63,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
   const [contactSubmitted, setContactSubmitted] = useState(false);
   const [billingUsage, setBillingUsage] = useState({ productsUsed: 1, productsLimit: 50 });
   const [planExpiresAt, setPlanExpiresAt] = useState(null);
-  const [theme, setTheme] = useState(() => localStorage.getItem('lt_theme') || 'light');
+  const [theme, setTheme] = useState(() => getSavedAppTheme());
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
 
   const superOwnerMenuRef = useRef(null);
@@ -81,14 +81,13 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
     const handleThemeSync = (e) => {
       if (e?.detail) setTheme(e.detail);
     };
+    window.addEventListener('app_theme_changed', handleThemeSync);
     window.addEventListener('theme_changed', handleThemeSync);
-    return () => window.removeEventListener('theme_changed', handleThemeSync);
+    return () => {
+      window.removeEventListener('app_theme_changed', handleThemeSync);
+      window.removeEventListener('theme_changed', handleThemeSync);
+    };
   }, []);
-
-  const toggleTheme = () => {
-    const nextTheme = toggleThemeHelper(theme);
-    setTheme(nextTheme);
-  };
 
   const userMenuRef = useRef(null);
 
@@ -262,84 +261,105 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
         <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
           {/* 4-Theme Selector Dropdown */}
           <div style={{ position: 'relative' }} ref={themeMenuRef}>
-            <button
-              type="button"
-              onClick={() => setThemeMenuOpen(!themeMenuOpen)}
-              className="btn btn-secondary btn-sm"
-              title={`Theme: ${(AVAILABLE_THEMES.find(t => t.id === theme) || AVAILABLE_THEMES[0]).name}. Click to switch theme.`}
-              aria-label="Toggle visual theme"
-              style={{
-                padding: '0 8px',
-                height: '30px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                borderRadius: '7px',
-                background: theme === 'dark' ? '#1e293b' : '#ffffff',
-                border: theme === 'dark' ? '1px solid #334155' : '1px solid #e2e8f0',
-                cursor: 'pointer',
-                fontSize: '0.8rem'
-              }}
-            >
-              <span>{(AVAILABLE_THEMES.find(t => t.id === theme) || AVAILABLE_THEMES[0]).icon}</span>
-              <ChevronDown size={11} color="#64748b" />
-            </button>
+            {(() => {
+              const currentTh = APP_THEMES.find(t => t.id === theme) || APP_THEMES[0];
+              return (
+                <button
+                  type="button"
+                  onClick={() => setThemeMenuOpen(!themeMenuOpen)}
+                  className="btn btn-secondary btn-sm"
+                  title={`Theme: ${currentTh.name}. Click to switch theme.`}
+                  aria-label="Toggle visual theme"
+                  style={{
+                    padding: '0 10px',
+                    height: '32px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    borderRadius: '8px',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-value)',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '11px',
+                      height: '11px',
+                      borderRadius: '50%',
+                      background: currentTh.color,
+                      display: 'inline-block',
+                      flexShrink: 0,
+                      boxShadow: '0 0 0 1.5px rgba(0,0,0,0.1)'
+                    }}
+                  />
+                  <ChevronDown size={12} color="var(--text-muted)" />
+                </button>
+              );
+            })()}
 
             {themeMenuOpen && (
               <div style={{
                 position: 'absolute',
                 right: 0,
                 top: 'calc(100% + 6px)',
-                background: theme === 'dark' ? '#1e293b' : '#ffffff',
-                border: theme === 'dark' ? '1px solid #334155' : '1px solid #cbd5e1',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
                 borderRadius: '10px',
-                boxShadow: '0 12px 28px -4px rgba(0, 0, 0, 0.2)',
-                width: '190px',
+                boxShadow: 'var(--shadow-card)',
+                width: '235px',
                 padding: '6px',
                 zIndex: 1200,
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '3px'
               }}>
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', padding: '4px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', padding: '4px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Choose Theme
                 </div>
-                {AVAILABLE_THEMES.map(th => {
+                {APP_THEMES.map(th => {
                   const isActive = th.id === theme;
                   return (
                     <button
                       key={th.id}
                       type="button"
                       onClick={() => {
-                        applyThemeHelper(th.id);
+                        applyAppTheme(th.id);
                         setTheme(th.id);
                         setThemeMenuOpen(false);
-                        const token = localStorage.getItem('lt_token');
-                        if (token) {
-                          api.post('/settings', { theme: th.id }).catch(() => {});
-                        }
                       }}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '6px 8px',
+                        padding: '7px 8px',
                         borderRadius: '6px',
                         border: isActive ? `1.5px solid ${th.color}` : '1px solid transparent',
-                        background: isActive ? (theme === 'dark' ? 'rgba(56, 189, 248, 0.15)' : '#f0fdf4') : 'transparent',
+                        background: isActive ? 'var(--bg-sidebar-active)' : 'transparent',
+                        color: isActive ? 'var(--text-sidebar-active)' : 'var(--text-value)',
                         cursor: 'pointer',
                         textAlign: 'left',
                         width: '100%',
                         transition: 'background 0.12s'
                       }}
-                      onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = theme === 'dark' ? 'rgba(255,255,255,0.06)' : '#f1f5f9'; }}
+                      onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--bg-table-head)'; }}
                       onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '1.05rem' }}>{th.icon}</span>
+                        <span style={{
+                          width: '12px',
+                          height: '12px',
+                          borderRadius: '50%',
+                          background: th.color,
+                          display: 'inline-block',
+                          flexShrink: 0,
+                          boxShadow: '0 0 0 1px rgba(0,0,0,0.1)'
+                        }} />
                         <div>
-                          <div style={{ fontSize: '0.8rem', fontWeight: isActive ? 700 : 500, color: theme === 'dark' ? '#f8fafc' : '#0f172a' }}>{th.name}</div>
-                          <div style={{ fontSize: '0.67rem', color: '#64748b' }}>{th.desc}</div>
+                          <div style={{ fontSize: '0.8rem', fontWeight: isActive ? 700 : 600 }}>{th.name}</div>
+                          <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)' }}>{th.desc}</div>
                         </div>
                       </div>
                       {isActive && <span style={{ color: th.color, fontWeight: 800, fontSize: '0.85rem' }}>✓</span>}

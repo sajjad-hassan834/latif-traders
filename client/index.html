@@ -1,14 +1,38 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="color-scheme" content="light" />
-    <meta name="theme-color" content="#ffffff" />
-    <link rel="icon" type="image/png" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ShopOS – Business Management & POS</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <script>
+      /* Pre-mount zero-flash theme initialization */
+      (function() {
+        try {
+          var token = localStorage.getItem('lt_token');
+          var path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+          var isExplicitPublic = path === '/login' || path === '/register' || (!token && path === '');
+          
+          if (isExplicitPublic || !token) {
+            var pubTheme = localStorage.getItem('shopos-public-theme') || 'light';
+            if (pubTheme !== 'dark') pubTheme = 'light';
+            document.documentElement.removeAttribute('data-app-theme');
+            document.documentElement.setAttribute('data-public-theme', pubTheme);
+            document.documentElement.style.colorScheme = pubTheme;
+          } else {
+            var appTheme = localStorage.getItem('shopos-app-theme') || localStorage.getItem('lt_theme') || 'classic';
+            if (appTheme === 'light') appTheme = 'classic';
+            if (appTheme === 'emerald') appTheme = 'green';
+            if (['classic', 'dark', 'green', 'indigo'].indexOf(appTheme) === -1) appTheme = 'classic';
+            document.documentElement.removeAttribute('data-public-theme');
+            document.documentElement.setAttribute('data-app-theme', appTheme);
+            document.documentElement.style.colorScheme = (appTheme === 'dark' ? 'dark' : 'light');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
-  <body class="theme-light">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

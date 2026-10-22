@@ -1,0 +1,255 @@
+/* ShopOS App Theme System (Scope B - Shop App)
+   4 Allowed Themes: classic, dark, green, indigo
+*/
+
+/* 1. CLASSIC LIGHT (Default) */
+html[data-app-theme="classic"],
+[data-app-theme="classic"] {
+  color-scheme: light;
+  --bg-page: #F4F6F9;
+  --bg-sidebar: #FFFFFF;
+  --text-sidebar: #475569;
+  --text-sidebar-section: #94A3B8;
+  --bg-sidebar-active: #E0F2FE;
+  --text-sidebar-active: #0369A1;
+  --bg-card: #FFFFFF;
+  --border: #E5E7EB;
+  --text-title: #0F172A;
+  --text-value: #0F172A;
+  --text-muted: #64748B;
+  --primary: #0284C7;
+  --primary-text: #FFFFFF;
+  --bg-table: #FFFFFF;
+  --bg-table-head: #F8FAFC;
+  --text-table: #334155;
+  --money-green: #059669;
+  --money-purple: #7C3AED;
+  --money-red: #DC2626;
+  --pill-green-bg: #D1FAE5;
+  --pill-green-text: #065F46;
+  --logo-text: #0F172A;
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+
+  /* Ancillary helper tokens */
+  --input-bg: #FFFFFF;
+  --input-border: #CBD5E1;
+  --input-text: #0F172A;
+  --focus-ring: rgba(2, 132, 199, 0.25);
+  --modal-overlay: rgba(15, 23, 42, 0.55);
+  --header-bg: #FFFFFF;
+  --dropdown-bg: #FFFFFF;
+  --hover-bg: #F1F5F9;
+}
+
+/* 2. MIDNIGHT DARK */
+html[data-app-theme="dark"],
+[data-app-theme="dark"] {
+  color-scheme: dark;
+  --bg-page: #0B1220;
+  --bg-sidebar: #0F172A;
+  --text-sidebar: #94A3B8;
+  --text-sidebar-section: #475569;
+  --bg-sidebar-active: #1E3A5F;
+  --text-sidebar-active: #7DD3FC;
+  --bg-card: #111B2E;
+  --border: #1E293B;
+  --text-title: #F1F5F9;
+  --text-value: #F8FAFC;
+  --text-muted: #94A3B8;
+  --primary: #0EA5E9;
+  --primary-text: #FFFFFF;
+  --bg-table: #111B2E;
+  --bg-table-head: #0F172A;
+  --text-table: #CBD5E1;
+  --money-green: #34D399;
+  --money-purple: #A78BFA;
+  --money-red: #F87171;
+  --pill-green-bg: #064E3B;
+  --pill-green-text: #6EE7B7;
+  --logo-text: #F1F5F9;
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+
+  /* Ancillary helper tokens */
+  --input-bg: #0B1220;
+  --input-border: #1E293B;
+  --input-text: #F8FAFC;
+  --focus-ring: rgba(14, 165, 233, 0.35);
+  --modal-overlay: rgba(0, 0, 0, 0.75);
+  --header-bg: #0F172A;
+  --dropdown-bg: #111B2E;
+  --hover-bg: #1E293B;
+}
+
+/* 3. EMERALD GREEN */
+html[data-app-theme="green"],
+[data-app-theme="green"] {
+  color-scheme: light;
+  --bg-page: #F0FAF5;
+  --bg-sidebar: #064E3B;
+  --text-sidebar: #A7F3D0;
+  --text-sidebar-section: #34D399;
+  --bg-sidebar-active: #059669; /* Ensured >=4.5:1 contrast against white */
+  --text-sidebar-active: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --border: #D1FAE5;
+  --text-title: #0F2A20;
+  --text-value: #0F2A20;
+  --text-muted: #4B6B5C;
+  --primary: #059669;
+  --primary-text: #FFFFFF;
+  --bg-table: #FFFFFF;
+  --bg-table-head: #ECFDF5;
+  --text-table: #1F3D30;
+  --money-green: #047857;
+  --money-purple: #6D28D9;
+  --money-red: #DC2626;
+  --pill-green-bg: #D1FAE5;
+  --pill-green-text: #065F46;
+  --logo-text: #0F2A20;
+  --shadow-card: 0 1px 3px 0 rgba(6, 78, 59, 0.08), 0 1px 2px -1px rgba(6, 78, 59, 0.05);
+
+  /* Ancillary helper tokens */
+  --input-bg: #FFFFFF;
+  --input-border: #A7F3D0;
+  --input-text: #0F2A20;
+  --focus-ring: rgba(5, 150, 105, 0.25);
+  --modal-overlay: rgba(6, 78, 59, 0.45);
+  --header-bg: #FFFFFF;
+  --dropdown-bg: #FFFFFF;
+  --hover-bg: #ECFDF5;
+}
+
+/* 4. ROYAL INDIGO */
+html[data-app-theme="indigo"],
+[data-app-theme="indigo"] {
+  color-scheme: light;
+  --bg-page: #F5F3FF;
+  --bg-sidebar: #1E1B4B;
+  --text-sidebar: #C7D2FE;
+  --text-sidebar-section: #818CF8;
+  --bg-sidebar-active: #4F46E5;
+  --text-sidebar-active: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --border: #E0E7FF;
+  --text-title: #1E1B4B;
+  --text-value: #1E1B4B;
+  --text-muted: #6B7280;
+  --primary: #4F46E5;
+  --primary-text: #FFFFFF;
+  --bg-table: #FFFFFF;
+  --bg-table-head: #EEF2FF;
+  --text-table: #312E81;
+  --money-green: #059669;
+  --money-purple: #7C3AED;
+  --money-red: #DC2626;
+  --pill-green-bg: #D1FAE5;
+  --pill-green-text: #065F46;
+  --logo-text: #1E1B4B;
+  --shadow-card: 0 1px 3px 0 rgba(30, 27, 75, 0.08), 0 1px 2px -1px rgba(30, 27, 75, 0.05);
+
+  /* Ancillary helper tokens */
+  --input-bg: #FFFFFF;
+  --input-border: #C7D2FE;
+  --input-text: #1E1B4B;
+  --focus-ring: rgba(79, 70, 229, 0.25);
+  --modal-overlay: rgba(30, 27, 75, 0.45);
+  --header-bg: #FFFFFF;
+  --dropdown-bg: #FFFFFF;
+  --hover-bg: #EEF2FF;
+}
+
+/* Smooth 200ms theme color transition */
+html[data-app-theme] {
+  background-color: var(--bg-page);
+  color: var(--text-value);
+}
+
+html[data-app-theme] body,
+html[data-app-theme] .app-container,
+html[data-app-theme] .sidebar,
+html[data-app-theme] .header,
+html[data-app-theme] .main-content,
+html[data-app-theme] .card,
+html[data-app-theme] .modal-container,
+html[data-app-theme] .modal-box,
+html[data-app-theme] .table-container,
+html[data-app-theme] input,
+html[data-app-theme] select,
+html[data-app-theme] textarea,
+html[data-app-theme] button {
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-app-theme] body,
+  html[data-app-theme] .app-container,
+  html[data-app-theme] .sidebar,
+  html[data-app-theme] .header,
+  html[data-app-theme] .main-content,
+  html[data-app-theme] .card,
+  html[data-app-theme] .modal-container,
+  html[data-app-theme] .modal-box,
+  html[data-app-theme] .table-container,
+  html[data-app-theme] input,
+  html[data-app-theme] select,
+  html[data-app-theme] textarea,
+  html[data-app-theme] button {
+    transition: none !important;
+  }
+}
+
+/* ══════════════════════════════════════════════
+   INVOICES & RECEIPTS: ALWAYS LIGHT & PRINTABLE
+   ══════════════════════════════════════════════ */
+.invoice-print,
+.receipt-print,
+.print-paper,
+.printable-area,
+.invoice-preview-container,
+.invoice-sheet,
+.receipt-sheet,
+[data-theme-ignore="true"] {
+  --bg-page: #FFFFFF !important;
+  --bg-card: #FFFFFF !important;
+  --bg-table: #FFFFFF !important;
+  --bg-table-head: #F8FAFC !important;
+  --border: #E5E7EB !important;
+  --text-title: #0F172A !important;
+  --text-value: #0F172A !important;
+  --text-table: #334155 !important;
+  --text-muted: #64748B !important;
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  color-scheme: light !important;
+}
+
+.invoice-print *,
+.receipt-print *,
+.print-paper *,
+.printable-area *,
+.invoice-preview-container *,
+.invoice-sheet *,
+.receipt-sheet * {
+  color-scheme: light !important;
+}
+
+@media print {
+  html,
+  body,
+  html[data-app-theme],
+  body[data-app-theme] {
+    --bg-page: #FFFFFF !important;
+    --bg-card: #FFFFFF !important;
+    --bg-table: #FFFFFF !important;
+    --bg-table-head: #F8FAFC !important;
+    --border: #D1D5DB !important;
+    --text-title: #000000 !important;
+    --text-value: #000000 !important;
+    --text-table: #000000 !important;
+    --text-muted: #4B5563 !important;
+    background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    color-scheme: light !important;
+  }
+}

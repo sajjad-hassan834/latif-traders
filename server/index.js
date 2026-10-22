@@ -56,7 +56,7 @@ app.use(cors({
     return callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'X-Requested-With', 'x-tenant-id', 'X-Tenant-Id']
 }));
 
@@ -78,6 +78,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/me', require('./routes/me'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/purchases', require('./routes/purchases'));

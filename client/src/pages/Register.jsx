@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { toggleTheme as toggleThemeHelper } from '../utils/theme';
+import { getSavedPublicTheme, applyPublicTheme } from '../utils/theme';
 import {
   Store,
   User,
@@ -40,8 +40,23 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
   const [step, setStep] = useState(1); // 1: Account, 2: Business, 3: Done
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [theme, setTheme] = useState(() => localStorage.getItem('lt_theme') || 'light');
+  const [theme, setTheme] = useState(() => getSavedPublicTheme());
   const isDark = theme === 'dark';
+
+  useEffect(() => {
+    applyPublicTheme(getSavedPublicTheme());
+    const handleThemeSync = (e) => {
+      if (e?.detail) setTheme(e.detail);
+    };
+    window.addEventListener('public_theme_changed', handleThemeSync);
+    return () => window.removeEventListener('public_theme_changed', handleThemeSync);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    applyPublicTheme(next);
+    setTheme(next);
+  };
 
   // Form Fields
   const [formData, setFormData] = useState({
@@ -71,19 +86,6 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
     customer: false,
     invoice: false
   });
-
-  useEffect(() => {
-    const handleThemeSync = (e) => {
-      if (e?.detail) setTheme(e.detail);
-    };
-    window.addEventListener('theme_changed', handleThemeSync);
-    return () => window.removeEventListener('theme_changed', handleThemeSync);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = toggleThemeHelper(theme);
-    setTheme(next);
-  };
 
   const t = {
     pageBg: isDark ? '#0b1120' : '#f0f4f8',

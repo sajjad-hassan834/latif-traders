@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
-import { toggleTheme as toggleThemeHelper } from '../utils/theme';
+import { getSavedPublicTheme, applyPublicTheme } from '../utils/theme';
 
 export default function Login({ onNavigateRegister, onNavigateLanding }) {
   const { login } = useAuth();
@@ -33,19 +33,21 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
   const [focusedField, setFocusedField] = useState(null);
 
   // Theme Sync
-  const [theme, setTheme] = useState(() => localStorage.getItem('lt_theme') || 'light');
+  const [theme, setTheme] = useState(() => getSavedPublicTheme());
   const isDark = theme === 'dark';
 
   useEffect(() => {
+    applyPublicTheme(getSavedPublicTheme());
     const handleThemeSync = (e) => {
       if (e?.detail) setTheme(e.detail);
     };
-    window.addEventListener('theme_changed', handleThemeSync);
-    return () => window.removeEventListener('theme_changed', handleThemeSync);
+    window.addEventListener('public_theme_changed', handleThemeSync);
+    return () => window.removeEventListener('public_theme_changed', handleThemeSync);
   }, []);
 
   const toggleTheme = () => {
-    const next = toggleThemeHelper(theme);
+    const next = theme === 'dark' ? 'light' : 'dark';
+    applyPublicTheme(next);
     setTheme(next);
   };
 
