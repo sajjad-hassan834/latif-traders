@@ -167,12 +167,17 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
     }}>
       {/* ═════════ TOP NAVBAR (Identical to Register page) ═════════ */}
       <header style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
         padding: '16px 32px',
         borderBottom: `1px solid ${t.headerBorder}`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         background: t.headerBg,
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
         boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
       }}>
         <div
