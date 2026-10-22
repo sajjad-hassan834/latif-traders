@@ -486,10 +486,10 @@ function DashboardContent({ setTab }) {
         padding: '0.25rem 0'
       }}>
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#111827', margin: 0, letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-title)', margin: 0, letterSpacing: '-0.02em' }}>
             Dashboard
           </h1>
-          <p style={{ fontSize: '13px', color: '#6B7280', margin: '4px 0 0' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
             Welcome back, {user?.full_name || 'User'} • Today's business overview for {tenant?.business_name || 'Latif Traders'}
           </p>
         </div>
@@ -502,15 +502,15 @@ function DashboardContent({ setTab }) {
               alignItems: 'center',
               gap: '6px',
               padding: '6px 12px',
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
               borderRadius: '8px',
               fontSize: '0.775rem',
-              color: '#475569',
+              color: 'var(--text-muted)',
               fontWeight: 500
             }}
           >
-            <Calendar size={14} color="#64748b" />
+            <Calendar size={14} color="var(--text-muted)" />
             <span>Today: {formatDate(new Date())}</span>
           </div>
 
@@ -529,70 +529,70 @@ function DashboardContent({ setTab }) {
       {/* 2. FOUR KUKUMO STAT METRIC CARDS (Issue 2) */}
       <div className="form-grid-4">
         {/* CARD 1: TODAY'S SALES */}
-        <div className="kukumo-stat-card" style={{ borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        <div className="kukumo-stat-card" style={{ borderRadius: '12px', boxShadow: 'var(--shadow-card)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Today's Sales
             </span>
-            <ArrowUpRight size={16} color="#94a3b8" />
+            <ArrowUpRight size={16} color="var(--text-muted)" />
           </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a', marginTop: '0.35rem', letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-value)', marginTop: '0.35rem', letterSpacing: '-0.02em' }}>
             {formatPKR(metrics?.today_sales || 0)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '0.25rem' }}>
             <span style={{
               fontSize: '0.7rem',
               fontWeight: 700,
-              color: metrics?.today_invoices > 0 ? '#15803d' : '#64748b',
-              background: metrics?.today_invoices > 0 ? '#ecfdf5' : '#f8fafc',
-              border: `1px solid ${metrics?.today_invoices > 0 ? '#a7f3d0' : '#e2e8f0'}`,
+              color: metrics?.today_invoices > 0 ? '#15803d' : 'var(--text-muted)',
+              background: metrics?.today_invoices > 0 ? '#ecfdf5' : 'var(--bg-page)',
+              border: `1px solid ${metrics?.today_invoices > 0 ? '#a7f3d0' : 'var(--border)'}`,
               borderRadius: '20px',
               padding: '2px 7px'
             }}>
               {metrics?.today_invoices > 0 ? `↑ ${metrics?.today_invoices} Invoices` : '0 Invoices Cleared'}
             </span>
-            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>today</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>today</span>
           </div>
           <MiniBarSparkline color="#f97316" heights={salesMiniBars} />
         </div>
 
         {/* CARD 2: STOCK VALUE */}
-        <div className="kukumo-stat-card" style={{ borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        <div className="kukumo-stat-card" style={{ borderRadius: '12px', boxShadow: 'var(--shadow-card)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Stock Value
             </span>
-            <ArrowUpRight size={16} color="#94a3b8" />
+            <ArrowUpRight size={16} color="var(--text-muted)" />
           </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a', marginTop: '0.35rem', letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-value)', marginTop: '0.35rem', letterSpacing: '-0.02em' }}>
             {formatPKR(metrics?.inventory_valuation?.total_cost_value || 0)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '0.25rem' }}>
             <span style={{
               fontSize: '0.7rem',
               fontWeight: 700,
-              color: '#0284c7',
-              background: '#f0f9ff',
-              border: '1px solid #bae6fd',
+              color: 'var(--primary)',
+              background: 'var(--bg-page)',
+              border: '1px solid var(--border)',
               borderRadius: '20px',
               padding: '2px 7px'
             }}>
               ↑ {metrics?.inventory_valuation?.total_items_stock || 0} Units
             </span>
-            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>in cold room</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>in cold room</span>
           </div>
           <MiniBarSparkline color="#06b6d4" heights={stockMiniBars} />
         </div>
 
         {/* CARD 3: RECEIVABLES */}
-        <div className="kukumo-stat-card" style={{ borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        <div className="kukumo-stat-card" style={{ borderRadius: '12px', boxShadow: 'var(--shadow-card)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Receivables
             </span>
-            <ArrowUpRight size={16} color="#94a3b8" />
+            <ArrowUpRight size={16} color="var(--text-muted)" />
           </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a', marginTop: '0.35rem', letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-value)', marginTop: '0.35rem', letterSpacing: '-0.02em' }}>
             {formatPKR(metrics?.total_receivables || 0)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '0.25rem' }}>
@@ -614,21 +614,21 @@ function DashboardContent({ setTab }) {
         {/* CARD 4: NET RESULT */}
         <div
           className="kukumo-stat-card"
-          style={{ borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', cursor: 'help' }}
-          title="Negative result because purchase cost (Rs 5,000) exceeds today's sales (Rs 270). Add more sales or check expenses."
+          style={{ borderRadius: '12px', boxShadow: 'var(--shadow-card)', cursor: 'help' }}
+          title="Negative result because purchase cost exceeds sales. Add more sales or check expenses."
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Net Result
             </span>
-            <ArrowUpRight size={16} color="#94a3b8" />
+            <ArrowUpRight size={16} color="var(--text-muted)" />
           </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: isProfit ? '#15803d' : '#dc2626', marginTop: '0.35rem', letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: '1.65rem', fontWeight: 800, color: isProfit ? 'var(--money-green)' : 'var(--money-red)', marginTop: '0.35rem', letterSpacing: '-0.02em' }}>
             {formatPKR(netProfit)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '0.25rem' }}>
-            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
-              Gross: <strong style={{ color: '#0f172a' }}>{formatPKR(metrics?.estimated_gross_profit || 0)}</strong>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              Gross: <strong style={{ color: 'var(--text-value)' }}>{formatPKR(metrics?.estimated_gross_profit || 0)}</strong>
             </span>
           </div>
           <MiniBarSparkline color="#10b981" heights={netProfitBars} />
@@ -638,7 +638,7 @@ function DashboardContent({ setTab }) {
       {/* 3. MIDDLE SECTION: SALES TREND & RECENT CUSTOMERS (Issue 5 & 6) */}
       <div className="kukumo-middle-grid" style={{ gap: '24px' }}>
         {/* LEFT CARD (~65%): SALES TREND */}
-        <div className="card" style={{ padding: '1.25rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        <div className="card" style={{ padding: '1.25rem', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
           {/* CARD HEADER */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -646,16 +646,16 @@ function DashboardContent({ setTab }) {
                 width: '32px',
                 height: '32px',
                 borderRadius: '8px',
-                background: '#f0f9ff',
+                background: 'var(--bg-page)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: '1px solid #e0f2fe'
+                border: '1px solid var(--border)'
               }}>
-                <TrendingUp size={16} color="#0284c7" />
+                <TrendingUp size={16} color="var(--primary)" />
               </div>
               <div>
-                <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#111827', margin: 0 }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-title)', margin: 0 }}>
                   Sales Trend
                 </h3>
               </div>
@@ -663,14 +663,14 @@ function DashboardContent({ setTab }) {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
               {/* Period Switcher Pills (Weekly | Monthly) */}
-              <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '6px', padding: '2px' }}>
+              <div style={{ display: 'flex', background: 'var(--bg-page)', borderRadius: '6px', padding: '2px', border: '1px solid var(--border)' }}>
                 <button
                   type="button"
                   onClick={() => setPeriodTab('weekly')}
                   style={{
                     border: 'none',
-                    background: periodTab === 'weekly' ? '#ffffff' : 'transparent',
-                    color: periodTab === 'weekly' ? '#0f172a' : '#64748b',
+                    background: periodTab === 'weekly' ? 'var(--bg-card)' : 'transparent',
+                    color: periodTab === 'weekly' ? 'var(--text-title)' : 'var(--text-muted)',
                     fontWeight: periodTab === 'weekly' ? 700 : 500,
                     padding: '3px 8px',
                     borderRadius: '4px',
@@ -686,8 +686,8 @@ function DashboardContent({ setTab }) {
                   onClick={() => setPeriodTab('monthly')}
                   style={{
                     border: 'none',
-                    background: periodTab === 'monthly' ? '#ffffff' : 'transparent',
-                    color: periodTab === 'monthly' ? '#0f172a' : '#64748b',
+                    background: periodTab === 'monthly' ? 'var(--bg-card)' : 'transparent',
+                    color: periodTab === 'monthly' ? 'var(--text-title)' : 'var(--text-muted)',
                     fontWeight: periodTab === 'monthly' ? 700 : 500,
                     padding: '3px 8px',
                     borderRadius: '4px',
@@ -732,16 +732,16 @@ function DashboardContent({ setTab }) {
 
           {/* LARGE METRIC & BADGE */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginTop: '0.85rem' }}>
-            <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.025em' }}>
+            <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-value)', letterSpacing: '-0.025em' }}>
               {formatPKR(pipelineTotal)}
             </div>
             <span
               style={{
                 fontSize: '0.725rem',
                 fontWeight: 700,
-                color: pipelineTotal > 0 ? '#15803d' : '#64748b',
-                background: pipelineTotal > 0 ? '#ecfdf5' : '#f8fafc',
-                border: `1px solid ${pipelineTotal > 0 ? '#a7f3d0' : '#e2e8f0'}`,
+                color: pipelineTotal > 0 ? 'var(--money-green)' : 'var(--text-muted)',
+                background: 'var(--bg-page)',
+                border: '1px solid var(--border)',
                 padding: '2px 8px',
                 borderRadius: '12px'
               }}
@@ -751,7 +751,7 @@ function DashboardContent({ setTab }) {
           </div>
 
           {/* DUAL LINE LEGEND */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginTop: '0.4rem', fontSize: '12px', color: '#64748b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginTop: '0.4rem', fontSize: '12px', color: 'var(--text-muted)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: '#0d9488' }} />
               <span>Sales Volume</span>
@@ -772,7 +772,7 @@ function DashboardContent({ setTab }) {
         </div>
 
         {/* RIGHT CARD (~35%): RECENT CUSTOMERS (Issue 5) */}
-        <div className="card" style={{ padding: '1.25rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column' }}>
+        <div className="card" style={{ padding: '1.25rem', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)', display: 'flex', flexDirection: 'column' }}>
           {/* HEADER */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -780,15 +780,15 @@ function DashboardContent({ setTab }) {
                 width: '32px',
                 height: '32px',
                 borderRadius: '8px',
-                background: '#f0f9ff',
+                background: 'var(--bg-page)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                border: '1px solid #e0f2fe'
+                border: '1px solid var(--border)'
               }}>
-                <Users size={16} color="#0284c7" />
+                <Users size={16} color="var(--primary)" />
               </div>
-              <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#111827', margin: 0 }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-title)', margin: 0 }}>
                 Recent Customers
               </h3>
             </div>
@@ -808,8 +808,9 @@ function DashboardContent({ setTab }) {
                 paddingLeft: '32px',
                 fontSize: '0.8rem',
                 borderRadius: '8px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
+                background: 'var(--bg-page)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-value)',
                 width: '100%'
               }}
             />
@@ -818,7 +819,7 @@ function DashboardContent({ setTab }) {
           {/* CONTACT LIST WITH OUTSTANDING BALANCE BADGES */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', flex: 1, minHeight: '260px' }}>
             {filteredCustomers.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#94a3b8', fontSize: '0.825rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)', fontSize: '0.825rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                 {contactSearch.trim() ? (
                   <span>No customer contacts match "{contactSearch}".</span>
                 ) : (
@@ -828,9 +829,9 @@ function DashboardContent({ setTab }) {
                       type="button"
                       onClick={() => setTab('customers')}
                       style={{
-                        background: '#f0fdf4',
-                        color: '#15803d',
-                        border: '1px solid #bbf7d0',
+                        background: 'var(--bg-page)',
+                        color: 'var(--primary)',
+                        border: '1px solid var(--border)',
                         borderRadius: '6px',
                         padding: '4px 12px',
                         fontSize: '12px',
@@ -858,8 +859,8 @@ function DashboardContent({ setTab }) {
                       justifyContent: 'space-between',
                       padding: '0.45rem 0.5rem',
                       borderRadius: '8px',
-                      background: '#ffffff',
-                      border: '1px solid #f1f5f9',
+                      background: 'var(--bg-page)',
+                      border: '1px solid var(--border)',
                       transition: 'background 0.12s ease'
                     }}
                   >
@@ -882,10 +883,10 @@ function DashboardContent({ setTab }) {
                         {initial}
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: '0.825rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-title)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {c.name}
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                           {c.phone || 'No phone'}
                         </div>
                       </div>
@@ -971,7 +972,7 @@ function DashboardContent({ setTab }) {
       </div>
 
       {/* 4. BOTTOM SECTION: ORDERS TABLE (Issue 3) */}
-      <div className="card" style={{ padding: '1.25rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+      <div className="card" style={{ padding: '1.25rem', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         {/* TOOLBAR */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -979,15 +980,15 @@ function DashboardContent({ setTab }) {
               width: '32px',
               height: '32px',
               borderRadius: '8px',
-              background: '#f0f9ff',
+              background: 'var(--bg-page)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '1px solid #e0f2fe'
+              border: '1px solid var(--border)'
             }}>
-              <Receipt size={16} color="#0284c7" />
+              <Receipt size={16} color="var(--primary)" />
             </div>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#111827', margin: 0 }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-title)', margin: 0 }}>
               Orders
             </h3>
           </div>
@@ -995,7 +996,7 @@ function DashboardContent({ setTab }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap' }}>
             {/* Search Input */}
             <div style={{ position: 'relative' }}>
-              <Search size={13} color="#94a3b8" style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)' }} />
+              <Search size={13} color="var(--text-muted)" style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
                 placeholder="Search flow..."
@@ -1007,22 +1008,23 @@ function DashboardContent({ setTab }) {
                   paddingRight: '10px',
                   fontSize: '0.775rem',
                   borderRadius: '6px',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--bg-page)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-value)',
                   width: '180px'
                 }}
               />
             </div>
 
             {/* Filter Pills */}
-            <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '6px', padding: '2px' }}>
+            <div style={{ display: 'flex', background: 'var(--bg-page)', borderRadius: '6px', padding: '2px', border: '1px solid var(--border)' }}>
               <button
                 type="button"
                 onClick={() => setInvoiceFilter('all')}
                 style={{
                   border: 'none',
-                  background: invoiceFilter === 'all' ? '#ffffff' : 'transparent',
-                  color: invoiceFilter === 'all' ? '#0f172a' : '#64748b',
+                  background: invoiceFilter === 'all' ? 'var(--bg-card)' : 'transparent',
+                  color: invoiceFilter === 'all' ? 'var(--text-title)' : 'var(--text-muted)',
                   fontWeight: invoiceFilter === 'all' ? 700 : 500,
                   padding: '3px 8px',
                   borderRadius: '4px',
@@ -1037,8 +1039,8 @@ function DashboardContent({ setTab }) {
                 onClick={() => setInvoiceFilter('paid')}
                 style={{
                   border: 'none',
-                  background: invoiceFilter === 'paid' ? '#ffffff' : 'transparent',
-                  color: invoiceFilter === 'paid' ? '#0f172a' : '#64748b',
+                  background: invoiceFilter === 'paid' ? 'var(--bg-card)' : 'transparent',
+                  color: invoiceFilter === 'paid' ? 'var(--text-title)' : 'var(--text-muted)',
                   fontWeight: invoiceFilter === 'paid' ? 700 : 500,
                   padding: '3px 8px',
                   borderRadius: '4px',
@@ -1053,8 +1055,8 @@ function DashboardContent({ setTab }) {
                 onClick={() => setInvoiceFilter('due')}
                 style={{
                   border: 'none',
-                  background: invoiceFilter === 'due' ? '#ffffff' : 'transparent',
-                  color: invoiceFilter === 'due' ? '#0f172a' : '#64748b',
+                  background: invoiceFilter === 'due' ? 'var(--bg-card)' : 'transparent',
+                  color: invoiceFilter === 'due' ? 'var(--text-title)' : 'var(--text-muted)',
                   fontWeight: invoiceFilter === 'due' ? 700 : 500,
                   padding: '3px 8px',
                   borderRadius: '4px',
@@ -1088,21 +1090,21 @@ function DashboardContent({ setTab }) {
         </div>
 
         {/* INVOICES TABLE WITH COLUMNS MATCHING ORDERS PAGE */}
-        <div className="table-responsive" style={{ margin: 0, boxShadow: 'none', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+        <div className="table-responsive" style={{ margin: 0, boxShadow: 'none', borderRadius: '8px', border: '1px solid var(--border)' }}>
           <table className="sadax-table" style={{ width: '100%', margin: 0 }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: 'var(--bg-table-head)', borderBottom: '1px solid var(--border)' }}>
                 <th style={{ width: '36px', textAlign: 'center', padding: '10px 12px' }}>
                   <input type="checkbox" disabled style={{ borderRadius: '3px' }} />
                 </th>
-                <th style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>ORDER ID</th>
-                <th style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>CUSTOMER NAME</th>
-                <th style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>PRODUCT</th>
-                <th style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>STATUS</th>
-                <th style={{ textAlign: 'right', padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>AMOUNT</th>
-                <th style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>PAYMENT METHOD</th>
-                <th style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>DATE</th>
-                <th style={{ width: '70px', textAlign: 'center', padding: '10px 12px', fontSize: '12px', fontWeight: 600, color: '#6b7280', whiteSpace: 'nowrap' }}>ACTIONS</th>
+                <th style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>ORDER ID</th>
+                <th style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>CUSTOMER NAME</th>
+                <th style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>PRODUCT</th>
+                <th style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>STATUS</th>
+                <th style={{ textAlign: 'right', padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>AMOUNT</th>
+                <th style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>PAYMENT METHOD</th>
+                <th style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>DATE</th>
+                <th style={{ width: '70px', textAlign: 'center', padding: '10px 12px', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
@@ -1119,7 +1121,7 @@ function DashboardContent({ setTab }) {
                   const displayInv = fullInv.length > 20 ? `${fullInv.slice(0, 10)}...${fullInv.slice(-4)}` : fullInv;
 
                   return (
-                    <tr key={inv.id} style={{ borderBottom: '1px solid #f1f5f9', height: '54px' }}>
+                    <tr key={inv.id} style={{ borderBottom: '1px solid var(--border)', height: '54px' }}>
                       <td style={{ textAlign: 'center', padding: '10px 12px' }}>
                         <input type="checkbox" style={{ borderRadius: '3px' }} />
                       </td>
@@ -1134,7 +1136,7 @@ function DashboardContent({ setTab }) {
                           style={{
                             fontWeight: 600,
                             fontSize: '12px',
-                            color: '#0F766E',
+                            color: 'var(--primary)',
                             textDecoration: 'none',
                             whiteSpace: 'nowrap',
                             cursor: 'pointer'
@@ -1144,7 +1146,7 @@ function DashboardContent({ setTab }) {
                           {displayInv}
                         </a>
                       </td>
-                      <td style={{ fontWeight: 600, color: '#0f172a', padding: '10px 14px', fontSize: '13px' }}>
+                      <td style={{ fontWeight: 600, color: 'var(--text-title)', padding: '10px 14px', fontSize: '13px' }}>
                         {inv.customer_name}
                       </td>
                       <td style={{ padding: '10px 14px' }}>
@@ -1153,19 +1155,19 @@ function DashboardContent({ setTab }) {
                             width: '28px',
                             height: '28px',
                             borderRadius: '6px',
-                            background: '#f3f4f6',
-                            border: '1px solid #e5e7eb',
+                            background: 'var(--bg-page)',
+                            border: '1px solid var(--border)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0
                           }}>
-                            <Package size={14} color="#64748b" />
+                            <Package size={14} color="var(--text-muted)" />
                           </div>
                           <span style={{
                             fontWeight: 600,
                             fontSize: '13px',
-                            color: '#111827',
+                            color: 'var(--text-title)',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -1198,8 +1200,8 @@ function DashboardContent({ setTab }) {
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              background: '#D1FAE5',
-                              color: '#065F46',
+                              background: 'var(--pill-green-bg)',
+                              color: 'var(--pill-green-text)',
                               borderRadius: '20px',
                               padding: '3px 10px',
                               fontSize: '11px',
@@ -1212,16 +1214,16 @@ function DashboardContent({ setTab }) {
                           </span>
                         )}
                       </td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a', padding: '10px 14px', fontSize: '13px' }}>
+                      <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text-value)', padding: '10px 14px', fontSize: '13px' }}>
                         {formatPKR(inv.grand_total)}
                       </td>
-                      <td style={{ padding: '10px 14px', color: '#475569', fontSize: '13px' }}>
+                      <td style={{ padding: '10px 14px', color: 'var(--text-table)', fontSize: '13px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Banknote size={14} color="#64748b" />
+                          <Banknote size={14} color="var(--text-muted)" />
                           <span>{inv.payment_method || 'Cash'}</span>
                         </div>
                       </td>
-                      <td style={{ color: '#64748b', padding: '10px 14px', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                      <td style={{ color: 'var(--text-muted)', padding: '10px 14px', fontSize: '12px', whiteSpace: 'nowrap' }}>
                         {formatDate(inv.sale_date)}
                       </td>
                       <td style={{ textAlign: 'center', verticalAlign: 'middle', padding: '10px 12px' }}>

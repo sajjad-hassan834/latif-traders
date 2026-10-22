@@ -494,8 +494,9 @@ function MainApp() {
               margin: '0 0 1.25rem 0',
               padding: '1.25rem',
               borderRadius: '12px',
-              background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)',
-              border: '1px solid #bbf7d0',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-card)',
               position: 'relative'
             }}>
               <button
@@ -509,19 +510,19 @@ function MainApp() {
                   right: '12px',
                   background: 'none',
                   border: 'none',
-                  color: '#64748b',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer'
                 }}
               >
                 <X size={16} />
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <Sparkles size={18} className="text-emerald-600" />
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                <Sparkles size={18} style={{ color: 'var(--primary)' }} />
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-title)' }}>
                   Welcome to ShopOS, {tenant?.business_name}! 🎉
                 </h3>
               </div>
-              <p style={{ margin: '0 0 12px 0', fontSize: '0.825rem', color: '#475569', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 12px 0', fontSize: '0.825rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 Your isolated tenant database is ready. Follow this quick checklist to begin operating:
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
@@ -530,9 +531,9 @@ function MainApp() {
                   style={{
                     padding: '6px 12px',
                     borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: '#fff',
-                    color: '#0f172a',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-page)',
+                    color: 'var(--text-title)',
                     fontSize: '0.785rem',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -541,7 +542,7 @@ function MainApp() {
                     gap: '6px'
                   }}
                 >
-                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  <CheckCircle2 size={14} style={{ color: 'var(--money-green)' }} />
                   1. Add your first product
                 </button>
                 <button
@@ -549,9 +550,9 @@ function MainApp() {
                   style={{
                     padding: '6px 12px',
                     borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: '#fff',
-                    color: '#0f172a',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-page)',
+                    color: 'var(--text-title)',
                     fontSize: '0.785rem',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -560,7 +561,7 @@ function MainApp() {
                     gap: '6px'
                   }}
                 >
-                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  <CheckCircle2 size={14} style={{ color: 'var(--money-green)' }} />
                   2. Make your first POS sale
                 </button>
                 <button
@@ -568,9 +569,9 @@ function MainApp() {
                   style={{
                     padding: '6px 12px',
                     borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: '#fff',
-                    color: '#0f172a',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-page)',
+                    color: 'var(--text-title)',
                     fontSize: '0.785rem',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -579,7 +580,7 @@ function MainApp() {
                     gap: '6px'
                   }}
                 >
-                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  <CheckCircle2 size={14} style={{ color: 'var(--money-green)' }} />
                   3. Add a customer
                 </button>
                 <button
@@ -587,9 +588,9 @@ function MainApp() {
                   style={{
                     padding: '6px 12px',
                     borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: '#fff',
-                    color: '#0f172a',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-page)',
+                    color: 'var(--text-title)',
                     fontSize: '0.785rem',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -598,7 +599,7 @@ function MainApp() {
                     gap: '6px'
                   }}
                 >
-                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  <CheckCircle2 size={14} style={{ color: 'var(--money-green)' }} />
                   4. Setup business profile & logo
                 </button>
               </div>

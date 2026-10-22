@@ -105,7 +105,7 @@ html[data-app-theme="green"],
   --money-red: #DC2626;
   --pill-green-bg: #D1FAE5;
   --pill-green-text: #065F46;
-  --logo-text: #0F2A20;
+  --logo-text: #FFFFFF;
   --shadow-card: 0 1px 3px 0 rgba(6, 78, 59, 0.08), 0 1px 2px -1px rgba(6, 78, 59, 0.05);
 
   /* Ancillary helper tokens */
@@ -144,7 +144,7 @@ html[data-app-theme="indigo"],
   --money-red: #DC2626;
   --pill-green-bg: #D1FAE5;
   --pill-green-text: #065F46;
-  --logo-text: #1E1B4B;
+  --logo-text: #FFFFFF;
   --shadow-card: 0 1px 3px 0 rgba(30, 27, 75, 0.08), 0 1px 2px -1px rgba(30, 27, 75, 0.05);
 
   /* Ancillary helper tokens */
@@ -252,4 +252,37 @@ html[data-app-theme] button {
     color: #000000 !important;
     color-scheme: light !important;
   }
+}
+
+/* ══════════════════════════════════════════════
+   UNIVERSAL THEME ADAPTATION
+   ══════════════════════════════════════════════ */
+html[data-app-theme] .card,
+html[data-app-theme] .kukumo-stat-card,
+html[data-app-theme] .stat-card {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--text-value) !important;
+}
+
+html[data-app-theme] .page-title,
+html[data-app-theme] .stat-value {
+  color: var(--text-title) !important;
+}
+
+html[data-app-theme] table.sadax-table,
+html[data-app-theme] .table-responsive {
+  background-color: var(--bg-table) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-app-theme] table.sadax-table th {
+  background-color: var(--bg-table-head) !important;
+  color: var(--text-muted) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-app-theme] table.sadax-table td {
+  border-color: var(--border) !important;
+  color: var(--text-table) !important;
 }

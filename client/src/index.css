@@ -864,7 +864,7 @@ body:not(.sidebar-collapsed) .sidebar:not(.collapsed) .nav-item::before {
 /* Header - Rock Solid Sticky Pinned Across Entire App */
 .top-header {
   height: var(--header-height);
-  background: var(--bg-sidebar);
+  background: var(--bg-card);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
