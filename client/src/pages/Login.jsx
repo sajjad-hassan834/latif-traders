@@ -541,25 +541,6 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
               Sign Up
             </button>
           </div>
-
-          {/* 6. SECURITY NOTICE (bottom of card) */}
-          <div style={{
-            marginTop: '20px',
-            borderRadius: '8px',
-            background: t.noticeBg,
-            border: `1px solid ${t.noticeBorder}`,
-            padding: '12px 16px',
-            textAlign: 'center',
-            fontSize: '11px',
-            color: '#9CA3AF',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px'
-          }}>
-            <Lock size={12} />
-            <span>TLS 1.3 Encrypted • ShopOS Security</span>
-          </div>
         </div>
       </main>
 
