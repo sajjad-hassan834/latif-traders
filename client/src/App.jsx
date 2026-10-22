@@ -21,6 +21,7 @@ import SuperOwnerDashboard from './pages/SuperOwnerDashboard';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Sparkles, CheckCircle2, X } from 'lucide-react';
 import { api } from './utils/api';
+import { applyAppTheme as applyThemeHelper } from './utils/theme';
 
 // Map URLs to active workspace tabs
 const ROUTE_TAB_MAP = {
