@@ -14,62 +14,64 @@ import {
   X,
   ChevronDown
 } from 'lucide-react';
-import LtLogo from '../common/LtLogo';
+import TenantLogo from '../common/TenantLogo';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../utils/api';
-
-const MENU_SECTIONS = [
-  {
-    title: 'MAIN NAVIGATION',
-    roles: ['admin', 'sales', 'inventory', 'accountant'],
-    items: [
-      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'inventory', 'accountant', 'sales'] },
-      { id: 'pos', label: 'POS', icon: ShoppingCart, roles: ['admin', 'sales'] },
-      { id: 'sales', label: 'Orders', icon: Receipt, roles: ['admin', 'sales', 'accountant'] }
-    ]
-  },
-  {
-    title: 'INVENTORY & WAREHOUSE',
-    roles: ['admin', 'inventory', 'sales', 'accountant'],
-    items: [
-      { id: 'inventory', label: 'Products', icon: Package, roles: ['admin', 'inventory', 'sales'] },
-      { id: 'stock-adjust', label: 'Adjustments', icon: Sliders, roles: ['admin', 'inventory'] },
-      { id: 'purchases', label: 'Purchases', icon: ArrowDownToLine, roles: ['admin', 'inventory', 'accountant'] }
-    ]
-  },
-  {
-    title: 'PARTIES & LEDGERS',
-    roles: ['admin', 'sales', 'accountant', 'inventory'],
-    items: [
-      { id: 'customers', label: 'Customers', icon: Users, roles: ['admin', 'sales', 'accountant'] },
-      { id: 'suppliers', label: 'Suppliers', icon: Building2, roles: ['admin', 'inventory', 'accountant'] }
-    ]
-  },
-  {
-    title: 'FINANCE & AUDIT',
-    roles: ['admin', 'accountant', 'sales', 'inventory'],
-    items: [
-      { id: 'expenses', label: 'Expenses', icon: Wallet, roles: ['admin', 'accountant'] },
-      { id: 'cashflow', label: 'Cashbook', icon: DollarSign, roles: ['admin', 'accountant'] },
-      { id: 'reports', label: 'Analytics', icon: BarChart3, roles: ['admin', 'sales', 'inventory', 'accountant'] }
-    ]
-  },
-  {
-    title: 'SYSTEM & SETTINGS',
-    roles: ['admin'],
-    items: [
-      { id: 'settings', label: 'Settings', icon: Sliders, roles: ['admin'] }
-    ]
-  }
-];
+import { getTerminology } from '../../utils/terminology';
 
 export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isCollapsed, toggleCollapse }) {
   const { role, roleLabel, isAdmin, tenant, plan } = useAuth();
   const userRole = role || 'sales';
+  const term = getTerminology(tenant?.business_type);
+
+  const menuSections = [
+    {
+      title: 'MAIN NAVIGATION',
+      roles: ['admin', 'sales', 'inventory', 'accountant'],
+      items: [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'inventory', 'accountant', 'sales'] },
+        { id: 'pos', label: 'POS', icon: ShoppingCart, roles: ['admin', 'sales'] },
+        { id: 'sales', label: 'Orders', icon: Receipt, roles: ['admin', 'sales', 'accountant'] }
+      ]
+    },
+    {
+      title: term.inventorySection.toUpperCase(),
+      roles: ['admin', 'inventory', 'sales', 'accountant'],
+      items: [
+        { id: 'inventory', label: term.products, icon: Package, roles: ['admin', 'inventory', 'sales'] },
+        { id: 'stock-adjust', label: 'Adjustments', icon: Sliders, roles: ['admin', 'inventory'] },
+        { id: 'purchases', label: term.purchases, icon: ArrowDownToLine, roles: ['admin', 'inventory', 'accountant'] }
+      ]
+    },
+    {
+      title: 'PARTIES & LEDGERS',
+      roles: ['admin', 'sales', 'accountant', 'inventory'],
+      items: [
+        { id: 'customers', label: 'Customers', icon: Users, roles: ['admin', 'sales', 'accountant'] },
+        { id: 'suppliers', label: 'Suppliers', icon: Building2, roles: ['admin', 'inventory', 'accountant'] }
+      ]
+    },
+    {
+      title: 'FINANCE & AUDIT',
+      roles: ['admin', 'accountant', 'sales', 'inventory'],
+      items: [
+        { id: 'expenses', label: 'Expenses', icon: Wallet, roles: ['admin', 'accountant'] },
+        { id: 'cashflow', label: 'Cashbook', icon: DollarSign, roles: ['admin', 'accountant'] },
+        { id: 'reports', label: 'Analytics', icon: BarChart3, roles: ['admin', 'sales', 'inventory', 'accountant'] }
+      ]
+    },
+    {
+      title: 'SYSTEM & SETTINGS',
+      roles: ['admin'],
+      items: [
+        { id: 'settings', label: 'Settings', icon: Sliders, roles: ['admin'] }
+      ]
+    }
+  ];
 
   const [brandInfo, setBrandInfo] = useState({
-    name: tenant?.business_name || localStorage.getItem('lt_shop_name') || 'Latif Traders',
-    tagline: localStorage.getItem('lt_shop_tagline') || 'ShopOS SaaS'
+    name: tenant?.business_name || '',
+    tagline: ''
   });
 
   // Track collapsed state for sections with localStorage persistence
@@ -83,14 +85,11 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
   });
 
   useEffect(() => {
-    // Fetch live shop branding directly from server on mount
     api.get('/settings').then(res => {
       if (res?.success && res.settings) {
-        if (res.settings.shop_name) localStorage.setItem('lt_shop_name', res.settings.shop_name);
-        if (res.settings.tagline) localStorage.setItem('lt_shop_tagline', res.settings.tagline);
         setBrandInfo({
-          name: res.settings.shop_name || 'Latif Traders',
-          tagline: res.settings.tagline || 'CHICKEN SUPPLIER'
+          name: res.settings.shop_name || res.settings.business_name || tenant?.business_name || 'My Shop',
+          tagline: res.settings.tagline || ''
         });
       }
     }).catch(() => {});
@@ -98,16 +97,16 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
     const handleSettingsUpdate = (e) => {
       const detail = e?.detail;
       setBrandInfo({
-        name: detail?.shop_name || localStorage.getItem('lt_shop_name') || 'Latif Traders',
-        tagline: detail?.tagline || localStorage.getItem('lt_shop_tagline') || 'CHICKEN SUPPLIER'
+        name: detail?.shop_name || detail?.business_name || tenant?.business_name || 'My Shop',
+        tagline: detail?.tagline || ''
       });
     };
     window.addEventListener('settings_updated', handleSettingsUpdate);
     return () => window.removeEventListener('settings_updated', handleSettingsUpdate);
-  }, []);
+  }, [tenant]);
 
   // Filter sections that have at least one visible item for this role
-  const visibleSections = MENU_SECTIONS.map(section => {
+  const visibleSections = menuSections.map(section => {
     const visibleItems = section.items.filter(item => {
       if (isAdmin) return true;
       return item.roles.includes(userRole);
@@ -143,17 +142,19 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
     }
   };
 
+  const shopDisplayName = tenant?.business_name || brandInfo.name || 'My Shop';
+
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
       {/* BRAND LOGO HEADER */}
       <div className="sidebar-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: 1, minWidth: 0 }}>
           <div className="brand-icon" style={{ flexShrink: 0, background: 'transparent', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <LtLogo size={32} />
+            <TenantLogo tenant={tenant} size={32} />
           </div>
           <div className="brand-text" style={{ minWidth: 0, overflow: 'hidden' }}>
-            <h2 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.95rem', margin: 0 }} title={tenant?.business_name || brandInfo.name}>
-              {tenant?.business_name || brandInfo.name}
+            <h2 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.95rem', margin: 0 }} title={shopDisplayName}>
+              {shopDisplayName}
             </h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
               <span style={{
@@ -166,7 +167,7 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
                 color: plan === 'pro' ? '#38bdf8' : (plan === 'enterprise' ? '#c084fc' : '#94a3b8'),
                 border: `1px solid ${plan === 'pro' ? 'rgba(56, 189, 248, 0.4)' : (plan === 'enterprise' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(148, 163, 184, 0.3)')}`
               }}>
-                ShopOS {plan || 'Free'}
+                ShopOS {plan === 'enterprise' ? 'Enterprise' : (plan === 'pro' ? 'Pro' : 'Free')}
               </span>
             </div>
           </div>

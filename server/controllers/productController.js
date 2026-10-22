@@ -439,8 +439,8 @@ exports.deleteProduct = (req, res) => {
       }
 
       db.prepare('DELETE FROM inventory_movements WHERE product_id = ?').run(id);
-      db.prepare('DELETE FROM batches WHERE product_id = ?').run(id);
-      db.prepare('DELETE FROM products WHERE id = ?').run(id);
+      db.prepare('DELETE FROM batches WHERE product_id = ? AND tenant_id = ?').run(id, tenantId);
+      db.prepare('DELETE FROM products WHERE id = ? AND tenant_id = ?').run(id, tenantId);
 
       logAudit(req.user.id, req.user.full_name, 'DELETE', 'PRODUCT', id, `Deleted product #${id}: ${product.name} (${product.sku})`, req);
     });
@@ -461,6 +461,7 @@ exports.deleteProduct = (req, res) => {
 exports.adjustStock = (req, res) => {
   const transaction = db.transaction(() => {
     const { product_id, batch_id, type, quantity, reason } = req.body;
+    const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
 
     if (!product_id || !type || !quantity || !reason) {
       throw new Error('Product, adjustment type, quantity, and reason are required.');
@@ -471,16 +472,16 @@ exports.adjustStock = (req, res) => {
       throw new Error('Adjustment quantity must be greater than 0.');
     }
 
-    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(product_id);
+    const product = db.prepare('SELECT * FROM products WHERE id = ? AND tenant_id = ?').get(product_id, tenantId);
     if (!product) {
       throw new Error('Product not found.');
     }
 
     let targetBatch = null;
     if (batch_id) {
-      targetBatch = db.prepare('SELECT * FROM batches WHERE id = ? AND product_id = ?').get(batch_id, product_id);
+      targetBatch = db.prepare('SELECT * FROM batches WHERE id = ? AND product_id = ? AND tenant_id = ?').get(batch_id, product_id, tenantId);
     } else {
-      targetBatch = db.prepare("SELECT * FROM batches WHERE product_id = ? AND status = 'active' ORDER BY expiry_date ASC LIMIT 1").get(product_id);
+      targetBatch = db.prepare("SELECT * FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ? ORDER BY expiry_date ASC LIMIT 1").get(product_id, tenantId);
     }
 
     if (!targetBatch) {
@@ -497,7 +498,6 @@ exports.adjustStock = (req, res) => {
     }
 
     const newBatchQty = targetBatch.quantity + delta;
-    const tenantId = req.tenant_id || 'latif_001';
     db.prepare('UPDATE batches SET quantity = ? WHERE id = ? AND tenant_id = ?').run(newBatchQty, targetBatch.id, tenantId);
 
     // Calculate new total stock

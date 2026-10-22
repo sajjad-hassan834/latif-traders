@@ -157,7 +157,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
 
   const currentMeta = currentTab === 'settings'
     ? { section: 'System', title: getSettingsSubTitle() }
-    : (tabMetadata[currentTab] || { section: 'App', title: tenant?.business_name || 'Latif Traders' });
+    : (tabMetadata[currentTab] || { section: 'App', title: tenant?.business_name || 'Dashboard' });
 
   const openAccountModal = (tab) => {
     setProfileModalTab(tab);
@@ -178,8 +178,8 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
   };
 
   const userInitial = user?.full_name?.charAt(0) || user?.username?.charAt(0) || 'U';
-  const userEmail = user?.email || `${user?.username || 'user'}@${(tenant?.business_name || 'shop').toLowerCase().replace(/[^a-z0-9]/g, '')}.com`;
-  const businessType = tenant?.business_type || 'frozen_food';
+  const userEmail = user?.email || (user?.username ? `${user.username}@shop.local` : '');
+  const businessType = tenant?.business_type || 'retail_general';
   const businessTypeLabel = BUSINESS_TYPE_NAMES[businessType] || 'Retail & Trade';
   const currentPlan = plan || 'free';
 
@@ -187,7 +187,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
   const usagePercent = Math.min(100, Math.round(((billingUsage.productsUsed || 1) / (billingUsage.productsLimit || 50)) * 100));
 
   // Renewal / Expiry text
-  const renewalText = planExpiresAt ? formatDate(planExpiresAt) : '18 Nov 2026';
+  const renewalText = planExpiresAt ? formatDate(planExpiresAt) : 'Monthly';
 
   return (
     <>
@@ -633,7 +633,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                           lineHeight: 1.25
                         }}
                       >
-                        {user?.full_name || user?.username || 'Mudassir Arif'}
+                        {user?.full_name || user?.username || 'User'}
                       </div>
                       <div
                         style={{
@@ -687,7 +687,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                     </span>
                   </div>
 
-                  {/* Business row: 🏪 "Latif Traders" 12px #374151 + "Frozen Food" teal badge */}
+                  {/* Business row: 🏪 Shop Name + business type chip */}
                   <div
                     style={{
                       marginTop: '8px',
@@ -711,7 +711,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                           textOverflow: 'ellipsis'
                         }}
                       >
-                        {tenant?.business_name || 'Latif Traders'}
+                        {tenant?.business_name || 'My Shop'}
                       </span>
                     </div>
 
@@ -731,7 +731,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                     </span>
                   </div>
 
-                  {/* PLAN STATUS: "● Active • Renews 18 Nov 2026" */}
+                  {/* PLAN STATUS: "● Free plan" OR "● Active • Renews <date>" */}
                   <div
                     style={{
                       marginTop: '6px',
@@ -743,7 +743,11 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                     }}
                   >
                     <span style={{ color: '#10B981', fontSize: '9px' }}>●</span>
-                    <span>Active • Renews {renewalText}</span>
+                    {currentPlan === 'free' ? (
+                      <span>Free plan</span>
+                    ) : (
+                      <span>Active • Renews {renewalText}</span>
+                    )}
                   </div>
                 </div>
 

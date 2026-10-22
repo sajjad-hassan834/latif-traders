@@ -146,10 +146,12 @@ export function AuthProvider({ children }) {
     } catch (e) {
       // Ignore network failure on logout
     }
-    localStorage.removeItem('lt_token');
-    localStorage.removeItem('lt_user');
-    localStorage.removeItem('lt_superowner_tenant_id');
-    localStorage.removeItem('lt_superowner_tenant_name');
+    const savedPublicTheme = localStorage.getItem('shopos-public-theme');
+    localStorage.clear();
+    sessionStorage.clear();
+    if (savedPublicTheme) {
+      localStorage.setItem('shopos-public-theme', savedPublicTheme);
+    }
     setUser(null);
     applyPublicTheme(getSavedPublicTheme());
   };
@@ -180,7 +182,14 @@ export function AuthProvider({ children }) {
     setUser(prev => {
       if (!prev) return prev;
       const updatedTenant = { ...(prev.tenant || {}), ...updatedFields };
-      const updatedUser = { ...prev, tenant: updatedTenant, plan: updatedFields.plan || prev.plan };
+      const updatedUser = {
+        ...prev,
+        business_name: updatedFields.business_name || prev.business_name,
+        business_type: updatedFields.business_type || prev.business_type,
+        plan: updatedFields.plan || prev.plan,
+        logo_url: updatedFields.logo_url !== undefined ? updatedFields.logo_url : prev.logo_url,
+        tenant: updatedTenant
+      };
       localStorage.setItem('lt_user', JSON.stringify(updatedUser));
       return updatedUser;
     });
@@ -208,10 +217,11 @@ export function AuthProvider({ children }) {
     business_type: 'retail_general',
     plan: 'enterprise'
   } : (user?.tenant || {
-    id: user?.tenant_id || 'latif_001',
-    business_name: 'Latif Traders',
-    business_type: 'frozen_food',
-    plan: 'enterprise'
+    id: user?.tenant_id || '',
+    business_name: user?.business_name || 'My Shop',
+    business_type: user?.business_type || 'retail_general',
+    plan: user?.plan || 'free',
+    logo_url: user?.logo_url || null
   });
   const plan = tenant.plan || user?.plan || 'free';
   const businessType = tenant.business_type || 'retail_general';

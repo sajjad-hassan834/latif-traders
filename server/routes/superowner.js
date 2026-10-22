@@ -19,4 +19,11 @@ router.post('/tenants/:id/status', superownerController.updateTenantStatus);
 router.post('/tenants/:id/plan', superownerController.updateTenantPlan);
 router.delete('/tenants/:id', superownerController.deleteTenant);
 
+// Full system database backup and recovery (SuperOwner only)
+router.post('/backup/create', superownerController.createFullDatabaseBackup);
+router.get('/backup', superownerController.listFullDatabaseBackups);
+router.get('/backup/download/:filename', superownerController.downloadFullDatabaseBackup);
+router.post('/backup/restore', superownerController.restoreFullDatabaseBackup);
+
 module.exports = router;
+

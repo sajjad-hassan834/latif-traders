@@ -810,6 +810,30 @@ function seedInitialData() {
     `);
     insertCust.run('Counter Walk-in Customer', '', 'Retail Counter', 'Retail', 0, 0, 0, 'Default retail counter sales');
   }
+
+  // ════════════════════════════════════════════════════════
+  // MULTI-TENANCY HARDENING: BACKFILL & COMPOSITE INDEXES
+  // ════════════════════════════════════════════════════════
+  try {
+    const businessTables = [
+      'products', 'batches', 'categories', 'brands', 'units', 'customers',
+      'suppliers', 'sales', 'sale_items', 'purchases', 'purchase_items',
+      'payments', 'expenses', 'expense_categories', 'inventory_movements',
+      'stock_adjustments', 'audit_logs', 'tenant_settings'
+    ];
+    for (const t of businessTables) {
+      try {
+        db.prepare(`UPDATE ${t} SET tenant_id = 'latif_001' WHERE tenant_id IS NULL`).run();
+        db.prepare(`CREATE INDEX IF NOT EXISTS idx_${t}_tenant ON ${t}(tenant_id)`).run();
+      } catch (_) {}
+    }
+    db.prepare("UPDATE users SET tenant_id = 'latif_001' WHERE tenant_id IS NULL AND role != 'superowner'").run();
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id)").run();
+    db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_adjustments_tenant_no ON stock_adjustments(tenant_id, adjustment_no)").run();
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_customers_tenant_phone ON customers(tenant_id, phone)").run();
+  } catch (mErr) {
+    console.warn('Multi-tenancy auto-migration notice:', mErr.message);
+  }
 }
 
 initializeDatabase();

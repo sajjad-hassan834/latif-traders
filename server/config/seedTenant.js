@@ -62,22 +62,24 @@ function seedNewTenant(tenantId, businessType, businessName, email = '', phone =
       allow_negative_stock: 'false',
       invoice_footer: `Thank you for choosing ${businessName || 'our shop'}! For queries or exchanges, please retain your bill.`,
       print_thermal_width: '80mm',
-      print_default_format: 'thermal'
+      print_default_format: 'thermal',
+      theme: 'classic',
+      onboarding_dismissed: 'false'
     };
 
     for (const [k, v] of Object.entries(defaultSettings)) {
       insertSetting.run(tenantId, k, String(v));
     }
 
-    // 5. Seed Default Walk-in Customer
+    // 5. Seed ONE Default Walk-in Customer (Retail, NO phone, NO address)
     const insertCustomer = db.prepare(`
       INSERT OR IGNORE INTO customers (name, phone, address, customer_type, opening_balance, credit_limit, current_balance, notes, tenant_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     insertCustomer.run(
-      'Counter Walk-in Customer',
-      phone || '',
-      address || 'Retail Counter',
+      'Walk-in Customer',
+      null,
+      null,
       'Retail',
       0,
       0,

@@ -54,8 +54,9 @@ exports.register = (req, res) => {
     }
 
     const bType = businessType || 'retail_general';
-    const chosenPlan = ['free', 'pro', 'enterprise'].includes(plan) ? plan : 'free';
-    const planPrice = chosenPlan === 'enterprise' ? 6999 : (chosenPlan === 'pro' ? 2999 : 0);
+    // Priority 2: New registrations start on the FREE plan. Only Latif Traders & superowner-upgraded accounts may be Enterprise.
+    const chosenPlan = 'free';
+    const planPrice = 0;
 
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(password, salt);
@@ -129,6 +130,14 @@ exports.register = (req, res) => {
 
     logAudit(newUserId, fullName.trim(), 'REGISTER', 'TENANT', newUserId, `Registered new ${chosenPlan} tenant: ${businessName}`, req);
 
+    const tenantObj = {
+      id: tenantId,
+      business_name: businessName.trim(),
+      business_type: bType,
+      plan: chosenPlan,
+      logo_url: null
+    };
+
     return res.status(201).json({
       success: true,
       message: `Welcome to ShopOS, ${businessName}! Your business environment is ready.`,
@@ -144,7 +153,8 @@ exports.register = (req, res) => {
         business_type: bType,
         plan: chosenPlan,
         theme: 'classic',
-        is_first_login: true
+        is_first_login: true,
+        tenant: tenantObj
       }
     });
   } catch (err) {
@@ -166,6 +176,7 @@ exports.login = (req, res) => {
              COALESCE(t.business_name, 'ShopOS Business') as business_name,
              COALESCE(t.business_type, 'retail_general') as business_type,
              COALESCE(t.plan, 'free') as plan,
+             COALESCE(t.plan_expires_at, null) as plan_expires_at,
              COALESCE(t.is_active, 1) as tenant_active,
              t.logo_url
       FROM users u
@@ -181,8 +192,13 @@ exports.login = (req, res) => {
       return res.status(403).json({ success: false, message: 'User account is deactivated. Please contact your administrator.' });
     }
 
-    if (user.tenant_active === 0 && user.role !== 'superowner') {
-      return res.status(403).json({ success: false, message: 'Your business account is suspended or inactive. Please contact support.' });
+    if (user.role !== 'superowner') {
+      if (!user.tenant_id) {
+        return res.status(401).json({ success: false, message: 'No valid business tenant associated with this account.' });
+      }
+      if (user.tenant_active === 0) {
+        return res.status(403).json({ success: false, message: 'Your business account is suspended or inactive. Please contact support.' });
+      }
     }
 
     const isMatch = bcrypt.compareSync(password, user.password_hash);
@@ -190,14 +206,15 @@ exports.login = (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials. Please check your username/email and password.' });
     }
 
+    const tokenTenantId = user.role === 'superowner' ? null : user.tenant_id;
     const token = jwt.sign(
       {
         id: user.id,
         username: user.username,
         role: user.role,
-        tenantId: user.tenant_id || (user.role === 'superowner' ? null : 'latif_001'),
+        tenantId: tokenTenantId,
         businessType: user.business_type || 'retail_general',
-        plan: user.plan || (user.role === 'superowner' ? 'enterprise' : 'free')
+        plan: user.role === 'superowner' ? 'enterprise' : (user.plan || 'free')
       },
       JWT_SECRET,
       { expiresIn: '7d' }
@@ -217,6 +234,21 @@ exports.login = (req, res) => {
       logAudit(user.id, user.full_name, 'LOGIN', 'USER', user.id, `User logged in to tenant ${user.tenant_id}`, req);
     }
 
+    const tenantObj = user.role === 'superowner' ? {
+      id: 'superowner',
+      business_name: 'ShopOS SuperOwner',
+      business_type: 'retail_general',
+      plan: 'enterprise',
+      logo_url: null
+    } : {
+      id: user.tenant_id,
+      business_name: user.business_name,
+      business_type: user.business_type,
+      plan: user.plan || 'free',
+      plan_expires_at: user.plan_expires_at,
+      logo_url: user.logo_url
+    };
+
     return res.json({
       success: true,
       token,
@@ -226,12 +258,13 @@ exports.login = (req, res) => {
         email: user.email,
         full_name: user.full_name,
         role: user.role,
-        tenant_id: user.tenant_id || (user.role === 'superowner' ? null : 'latif_001'),
-        business_name: user.role === 'superowner' ? 'ShopOS SuperOwner' : user.business_name,
-        business_type: user.business_type,
-        plan: user.role === 'superowner' ? 'enterprise' : user.plan,
+        tenant_id: tokenTenantId,
+        business_name: tenantObj.business_name,
+        business_type: tenantObj.business_type,
+        plan: tenantObj.plan,
         theme: user.theme || 'classic',
-        logo_url: user.logo_url
+        logo_url: user.logo_url,
+        tenant: tenantObj
       }
     });
   } catch (err) {

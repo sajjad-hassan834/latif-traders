@@ -408,8 +408,8 @@ function DashboardContent({ setTab }) {
     return (
       <div style={{ padding: '4rem 2rem', textAlign: 'center', color: '#64748b' }}>
         <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 1rem', color: '#0284c7' }} />
-        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Loading Business Operations Dashboard...</div>
-        <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>Syncing cold storage inventory and ledgers</p>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-title)' }}>Loading Business Operations Dashboard...</div>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Syncing business inventory and ledgers</p>
       </div>
     );
   }
@@ -490,7 +490,7 @@ function DashboardContent({ setTab }) {
             Dashboard
           </h1>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
-            Welcome back, {user?.full_name || 'User'} • Today's business overview for {tenant?.business_name || 'Latif Traders'}
+            Welcome back, {user?.full_name || 'User'} • Today's business overview for {tenant?.business_name || 'your shop'}
           </p>
         </div>
 
@@ -1308,10 +1308,10 @@ function DashboardContent({ setTab }) {
               {lowStockCount > 0 || nearExpiryCount > 0 ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
             </div>
             <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#111827', margin: 0 }}>
-                Inventory & Cold Storage Quality Control
+              <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-title)', margin: 0 }}>
+                Inventory & Stock Quality Control
               </h3>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 Buffer stock replenishment triggers & FIFO batch freshness surveillance
               </div>
             </div>
@@ -1444,7 +1444,7 @@ function DashboardContent({ setTab }) {
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                      <strong style={{ fontSize: '0.875rem', color: '#065f46' }}>Cold Storage Inventory Healthy</strong>
+                      <strong style={{ fontSize: '0.875rem', color: '#065f46' }}>Inventory Stock Healthy</strong>
                       <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '1px 6px', borderRadius: '9999px', background: '#dcfce7', color: '#15803d' }}>
                         ● 100% Stocked
                       </span>
@@ -1680,7 +1680,7 @@ function DashboardContent({ setTab }) {
                       </span>
                     </div>
                     <p style={{ fontSize: '0.75rem', color: '#166534', margin: 0, lineHeight: 1.4 }}>
-                      All cold storage chicken and frozen food batches have valid shelf-life exceeding 30-day safety limit.
+                      All tracked batches and products have valid shelf-life exceeding 30-day safety limit.
                     </p>
                   </div>
                 </div>

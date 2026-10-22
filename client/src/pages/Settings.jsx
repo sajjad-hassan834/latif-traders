@@ -22,7 +22,8 @@ import {
   ArrowRight,
   Sparkles,
   Users as UsersIcon,
-  Receipt
+  Receipt,
+  Upload
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
@@ -31,14 +32,12 @@ import { useAuth } from '../context/AuthContext';
 import UsersTab from './Users';
 
 const BUSINESS_TYPE_LABELS = {
-  frozen_food: { name: 'Frozen Food', icon: '🧊' },
-  retail_general: { name: 'General Retail', icon: '🛒' },
-  clothing: { name: 'Clothing & Apparel', icon: '👕' },
-  pharmacy: { name: 'Pharmacy & Medical', icon: '💊' },
-  restaurant: { name: 'Restaurant / Food', icon: '🍕' },
-  hardware: { name: 'Hardware & Tools', icon: '🔧' },
-  electronics: { name: 'Electronics & Mobiles', icon: '📱' },
-  wholesale: { name: 'Wholesale Distributor', icon: '📦' }
+  frozen_food: { name: 'Frozen Food & Poultry', icon: '🍗' },
+  grocery: { name: 'Kirana & Grocery', icon: '🛒' },
+  pharmacy: { name: 'Pharmacy', icon: '💊' },
+  bakery: { name: 'Bakery', icon: '🥐' },
+  retail_general: { name: 'General Retail', icon: '🏬' },
+  wholesale: { name: 'Wholesale', icon: '📦' }
 };
 
 export default function Settings({ initialTab: propInitialTab }) {
@@ -101,7 +100,7 @@ export default function Settings({ initialTab: propInitialTab }) {
   };
 
   const [settings, setSettings] = useState({
-    shop_name: tenant?.business_name || 'Latif Traders',
+    shop_name: tenant?.business_name || 'My Shop',
     tagline: 'Business Management',
     phone: '',
     email: '',
@@ -116,6 +115,7 @@ export default function Settings({ initialTab: propInitialTab }) {
     theme: localStorage.getItem('lt_theme') || 'light'
   });
 
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [billingInfo, setBillingInfo] = useState(null);
   const [loadingBilling, setLoadingBilling] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -195,7 +195,7 @@ export default function Settings({ initialTab: propInitialTab }) {
         }
         if (settings.shop_name) {
           localStorage.setItem('lt_shop_name', settings.shop_name);
-          document.title = `${settings.shop_name} - ShopOS Business Management`;
+          document.title = `${settings.shop_name} - ShopOS`;
           updateTenantInfo({ business_name: settings.shop_name, logo_url: settings.logo_url, business_type: settings.business_type });
         } else if (settings.business_type) {
           updateTenantInfo({ business_type: settings.business_type });
@@ -230,6 +230,42 @@ export default function Settings({ initialTab: propInitialTab }) {
     } finally {
       setUpgradingPlan(false);
     }
+  };
+
+  const handleLogoFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) {
+      alert('Logo file size exceeds the 1 MB limit. Please select a smaller image.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        setUploadingLogo(true);
+        const base64Data = event.target?.result;
+        const res = await api.post('/settings/logo-upload', {
+          data: base64Data,
+          filename: file.name
+        });
+        if (res.success && res.logo_url) {
+          setSettings(prev => ({ ...prev, logo_url: res.logo_url }));
+          updateTenantInfo({ logo_url: res.logo_url });
+          window.dispatchEvent(new CustomEvent('settings_updated', { detail: { ...settings, logo_url: res.logo_url } }));
+          setSaveSuccess('Logo uploaded and applied successfully.');
+          setTimeout(() => setSaveSuccess(''), 4000);
+        } else {
+          alert(res.message || 'Failed to upload logo.');
+        }
+      } catch (err) {
+        alert('Upload failed: ' + err.message);
+      } finally {
+        setUploadingLogo(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleCreateBackup = async () => {
@@ -284,23 +320,31 @@ export default function Settings({ initialTab: propInitialTab }) {
     }
   };
 
-  const formatBackupDisplayName = (filename, createdAt) => {
-    if (!filename) return '-';
+  const formatBackupDisplayName = (filename, createdAt, storedDisplayName) => {
+    if (storedDisplayName) return storedDisplayName;
+    const shopName = tenant?.business_name || settings.business_name || 'Shop';
+    if (!filename) return `${shopName} backup`;
     if (createdAt) {
       const d = new Date(createdAt);
       if (!isNaN(d.getTime())) {
-        const dd = String(d.getDate()).padStart(2, '0');
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const yyyy = d.getFullYear();
-        const hh = String(d.getHours()).padStart(2, '0');
-        const min = String(d.getMinutes()).padStart(2, '0');
-        return `Backup — ${dd}/${mm}/${yyyy} at ${hh}:${min}`;
+        const day = d.getDate();
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[d.getMonth()] || 'Jan';
+        const year = d.getFullYear();
+        let hours = d.getHours();
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${shopName} backup - ${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
       }
     }
     return filename;
   };
 
-  const lastBackup = backups.length > 0 ? formatBackupDisplayName(backups[0].filename, backups[0].created_at).replace(/^Backup — /, '') : 'Never';
+  const lastBackup = backups.length > 0
+    ? (backups[0].display_name || formatBackupDisplayName(backups[0].filename, backups[0].created_at))
+    : 'Never';
   const totalBackupSizeKb = backups.reduce((acc, b) => acc + (Number(b.size_kb) || 0), 0);
   const totalBackupSizeFormatted = totalBackupSizeKb >= 1024
     ? `${(totalBackupSizeKb / 1024).toFixed(1)} MB`
@@ -311,10 +355,10 @@ export default function Settings({ initialTab: propInitialTab }) {
 
   // SaaS Tab definitions (REORDERED per user specification)
   const tabList = [
-    { id: 'business-profile', label: 'Business Profile', icon: '🏪' },
+    { id: 'business-profile', label: 'Shop Profile', icon: '🏪' },
     { id: 'invoice', label: 'Invoice & Receipts', icon: '🖨️' },
     { id: 'inventory', label: 'Inventory Policy', icon: '📦' },
-    { id: 'staff', label: 'Staff & Access', icon: '👥' },
+    { id: 'staff', label: 'Team & Roles', icon: '👥' },
     { id: 'billing', label: 'My Plan & Billing', icon: '💳' },
     { id: 'backup', label: 'Backup & Recovery', icon: '💾' }
   ];
@@ -512,7 +556,12 @@ export default function Settings({ initialTab: propInitialTab }) {
                   className="form-control"
                   style={{ height: '34px', fontSize: '12px', borderRadius: '6px', padding: '0 8px', background: '#ffffff', minWidth: '170px' }}
                   value={settings.business_type || tenant?.business_type || 'frozen_food'}
-                  onChange={(e) => setSettings({ ...settings, business_type: e.target.value })}
+                  onChange={(e) => {
+                    const newType = e.target.value;
+                    setSettings(prev => ({ ...prev, business_type: newType }));
+                    updateTenantInfo({ business_type: newType });
+                    window.dispatchEvent(new CustomEvent('settings_updated', { detail: { ...settings, business_type: newType } }));
+                  }}
                 >
                   {Object.entries(BUSINESS_TYPE_LABELS).map(([key, val]) => (
                     <option key={key} value={key}>{val.icon} {val.name}</option>
@@ -554,16 +603,69 @@ export default function Settings({ initialTab: propInitialTab }) {
 
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
-                  Logo URL / Image Link
+                  Shop Logo
                 </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
-                  placeholder="https://example.com/logo.png"
-                  value={settings.logo_url || ''}
-                  onChange={(e) => setSettings({ ...settings, logo_url: e.target.value })}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    background: '#f8fafc',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
+                    flexShrink: 0
+                  }}>
+                    {settings.logo_url ? (
+                      <img
+                        src={settings.logo_url}
+                        alt="Logo"
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    ) : (
+                      <ImageIcon size={18} color="#94a3b8" />
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    className="form-control"
+                    style={{ height: '38px', fontSize: '13px', borderRadius: '8px', flex: 1 }}
+                    placeholder="https://... or upload"
+                    value={settings.logo_url || ''}
+                    onChange={(e) => setSettings({ ...settings, logo_url: e.target.value })}
+                  />
+                  <label
+                    className="btn btn-secondary btn-sm"
+                    style={{
+                      height: '38px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '0 10px',
+                      cursor: uploadingLogo ? 'wait' : 'pointer',
+                      whiteSpace: 'nowrap',
+                      margin: 0,
+                      borderRadius: '8px',
+                      fontSize: '12px'
+                    }}
+                  >
+                    <Upload size={14} />
+                    <span>{uploadingLogo ? '...' : 'Upload'}</span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      style={{ display: 'none' }}
+                      disabled={uploadingLogo}
+                      onChange={handleLogoFileUpload}
+                    />
+                  </label>
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748B', marginTop: '3px' }}>
+                  PNG, JPG, or WEBP (max 1 MB) for receipt headers and invoices.
+                </div>
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
@@ -634,6 +736,47 @@ export default function Settings({ initialTab: propInitialTab }) {
               </div>
             </div>
           </form>
+
+          {/* Read-only workspace info */}
+          <div style={{
+            marginTop: '1.5rem',
+            padding: '1.15rem 1.25rem',
+            borderRadius: '10px',
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0'
+          }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Database size={14} color="#0284c7" />
+              <span>Workspace Infrastructure</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.85rem' }}>
+              <div>
+                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Tenant ID</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>
+                  {tenant?.id || 'tenant_001'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Plan</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', textTransform: 'capitalize' }}>
+                  {plan || tenant?.plan || 'Free'} Plan
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Member Since</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                  {tenant?.created_at ? formatDate(tenant.created_at) : 'Active'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Database Status</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <CheckCircle size={14} color="#059669" />
+                  Connected, Healthy
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1000,15 +1143,15 @@ export default function Settings({ initialTab: propInitialTab }) {
                   <HardDrive size={20} color="#10B981" />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '1.15rem', margin: 0, fontWeight: 700, color: '#0F172A' }}>
-                    Database Backup & Recovery
+                  <h3 style={{ fontSize: '1.15rem', margin: 0, fontWeight: 700, color: 'var(--text-title)' }}>
+                    Backup & Recovery
                   </h3>
-                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px', lineHeight: 1.4 }}>
-                    <div>Last backup: <strong style={{ color: '#0F172A' }}>{lastBackup}</strong></div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.4 }}>
+                    <div>Last backup: <strong style={{ color: 'var(--text-title)' }}>{lastBackup}</strong></div>
                     <div style={{ marginTop: '2px' }}>
-                      <span>Total backups: <strong style={{ color: '#0F172A' }}>{backups.length}</strong></span>
+                      <span>Total backups: <strong style={{ color: 'var(--text-title)' }}>{backups.length}</strong></span>
                       <span style={{ margin: '0 6px' }}>•</span>
-                      <span>Total size: <strong style={{ color: '#0F172A' }}>{totalBackupSizeFormatted}</strong></span>
+                      <span>Total size: <strong style={{ color: 'var(--text-title)' }}>{totalBackupSizeFormatted}</strong></span>
                     </div>
                   </div>
                 </div>
@@ -1029,7 +1172,7 @@ export default function Settings({ initialTab: propInitialTab }) {
             <div className="table-responsive" style={{ maxHeight: '350px', overflowY: 'auto' }}>
               <table className="table" style={{ fontSize: '13px' }}>
                 <thead>
-                  <tr style={{ background: '#f8fafc' }}>
+                  <tr style={{ background: 'var(--bg-table-head)' }}>
                     <th>Backup Snapshot</th>
                     <th>Created At</th>
                     <th>Size</th>
@@ -1039,16 +1182,16 @@ export default function Settings({ initialTab: propInitialTab }) {
                 <tbody>
                   {backups.length === 0 ? (
                     <tr>
-                      <td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem' }}>
+                      <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                         No backup files found yet. Click "Create Live Backup Now" above.
                       </td>
                     </tr>
                   ) : (
                     backups.map((b, idx) => (
                       <tr key={idx}>
-                        <td style={{ fontWeight: 600, color: '#0f172a' }}>{b.filename}</td>
-                        <td style={{ color: '#64748b' }}>{formatDateTime(b.created_at)}</td>
-                        <td style={{ color: '#64748b' }}>{b.size_kb} KB</td>
+                        <td style={{ fontWeight: 600, color: 'var(--text-title)' }}>{b.display_name || b.filename}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{formatDateTime(b.created_at)}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{b.size_kb} KB</td>
                         <td style={{ textAlign: 'right' }}>
                           <button
                             type="button"

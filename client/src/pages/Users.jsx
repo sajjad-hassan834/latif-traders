@@ -3,8 +3,10 @@ import { ShieldCheck, Plus, History, UserCheck, Lock, Edit, KeyRound, Check, XCi
 import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import ActionMenu from '../components/common/ActionMenu';
+import { useAuth } from '../context/AuthContext';
 
 export default function Users() {
+  const { plan } = useAuth();
   const [users, setUsers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [resetRequests, setResetRequests] = useState([]);
@@ -191,10 +193,29 @@ export default function Users() {
         </div>
 
         {activeTab === 'users' && (
-          <button onClick={() => setShowAddModal(true)} className="btn btn-primary btn-sm">
-            <Plus size={16} />
-            <span>Create Staff Account</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {plan === 'free' && users.length >= 1 && (
+              <span style={{ fontSize: '11px', color: '#b45309', background: '#fef3c7', padding: '4px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                Free limit: 1 user
+              </span>
+            )}
+            <button
+              onClick={() => {
+                if (plan === 'free' && users.length >= 1) return;
+                setShowAddModal(true);
+              }}
+              disabled={plan === 'free' && users.length >= 1}
+              title={plan === 'free' && users.length >= 1 ? 'Upgrade to Pro to add up to 5 team members' : 'Add new staff user'}
+              className="btn btn-primary btn-sm"
+              style={{
+                opacity: plan === 'free' && users.length >= 1 ? 0.6 : 1,
+                cursor: plan === 'free' && users.length >= 1 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <Plus size={16} />
+              <span>Create Staff Account</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -667,7 +688,7 @@ export default function Users() {
                   <input
                     type="email"
                     className="form-control"
-                    placeholder="e.g. tariq@latiftraders.com"
+                    placeholder="e.g. staff@example.com"
                     value={formData.email || ''}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />

@@ -42,38 +42,57 @@ function authenticate(req, res, next) {
       const targetTenantId = req.headers['x-tenant-id'] || req.query.tenant_id || (req.body && req.body.tenant_id) || 'latif_001';
       const tenantRow = db.prepare('SELECT * FROM tenants WHERE id = ?').get(targetTenantId);
       
-      req.user = {
-        ...user,
-        role: 'superowner',
-        tenant_id: targetTenantId,
-        business_name: tenantRow?.business_name || user.business_name || 'ShopOS SuperOwner',
-        business_type: tenantRow?.business_type || user.business_type || 'retail_general',
-        plan: tenantRow?.plan || 'enterprise'
-      };
-      req.tenant_id = targetTenantId;
-      req.tenant = {
+      const tenantObj = {
         id: targetTenantId,
-        business_name: tenantRow?.business_name || 'ShopOS Business',
+        business_name: tenantRow?.business_name || 'ShopOS SuperOwner View',
         business_type: tenantRow?.business_type || 'retail_general',
         plan: tenantRow?.plan || 'enterprise',
         logo_url: tenantRow?.logo_url || null
       };
+
+      req.user = {
+        ...user,
+        role: 'superowner',
+        tenant_id: targetTenantId,
+        business_name: tenantObj.business_name,
+        business_type: tenantObj.business_type,
+        plan: tenantObj.plan,
+        tenant: tenantObj
+      };
+      req.tenant_id = targetTenantId;
+      req.tenant = tenantObj;
       return next();
     }
 
-    if (user.tenant_active === 0) {
+    // For regular users, tenant_id MUST exist and be active in database
+    if (!user.tenant_id) {
+      return res.status(401).json({ success: false, message: 'No valid business tenant associated with this user. Access denied.' });
+    }
+
+    const tenantRow = db.prepare('SELECT id, business_name, business_type, plan, plan_expires_at, logo_url, is_active FROM tenants WHERE id = ?').get(user.tenant_id);
+    if (!tenantRow || tenantRow.is_active === 0) {
       return res.status(403).json({ success: false, message: 'Your business account is suspended or inactive. Please contact support.' });
     }
 
-    req.user = user;
-    req.tenant_id = user.tenant_id || 'latif_001';
-    req.tenant = {
-      id: user.tenant_id || 'latif_001',
-      business_name: user.business_name,
-      business_type: user.business_type,
-      plan: user.plan,
-      logo_url: user.logo_url
+    const tenantObj = {
+      id: tenantRow.id,
+      business_name: tenantRow.business_name,
+      business_type: tenantRow.business_type,
+      plan: tenantRow.plan || 'free',
+      plan_expires_at: tenantRow.plan_expires_at,
+      logo_url: tenantRow.logo_url
     };
+
+    req.user = {
+      ...user,
+      business_name: tenantRow.business_name,
+      business_type: tenantRow.business_type,
+      plan: tenantRow.plan || 'free',
+      logo_url: tenantRow.logo_url,
+      tenant: tenantObj
+    };
+    req.tenant_id = user.tenant_id;
+    req.tenant = tenantObj;
     next();
   } catch (err) {
     return res.status(401).json({ success: false, message: 'Invalid or expired session. Please sign in again.' });

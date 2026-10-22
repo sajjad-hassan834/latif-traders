@@ -19,7 +19,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import SuperOwnerDashboard from './pages/SuperOwnerDashboard';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Sparkles, CheckCircle2, X } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Sparkles, CheckCircle2, Circle, X } from 'lucide-react';
 import { api } from './utils/api';
 import { applyAppTheme as applyThemeHelper } from './utils/theme';
 
@@ -186,9 +186,25 @@ function MainApp() {
   const [quotaNotice, setQuotaNotice] = useState(null);
 
   // First-time onboarding checklist
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    return localStorage.getItem('shopos_onboarding_dismissed') !== 'true';
-  });
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStatus, setOnboardingStatus] = useState(null);
+
+  useEffect(() => {
+    if (user && currentTab === 'dashboard') {
+      api.get('/settings/onboarding-status').then(res => {
+        if (res?.success && res.onboarding) {
+          setOnboardingStatus(res.onboarding);
+          if (!res.onboarding.dismissed && !res.onboarding.allDone) {
+            setShowOnboarding(true);
+          } else {
+            setShowOnboarding(false);
+          }
+        }
+      }).catch(() => {});
+    } else {
+      setShowOnboarding(false);
+    }
+  }, [user, currentTab]);
 
   const toggleSidebarCollapse = () => {
     setSidebarCollapsed(prev => {
@@ -200,7 +216,7 @@ function MainApp() {
 
   // Theme initialization & event listeners
   useEffect(() => {
-    applyThemeHelper(localStorage.getItem('lt_theme') || 'light');
+    applyThemeHelper(localStorage.getItem('lt_theme') || 'classic');
   }, []);
 
   // When user loads or changes, ensure currentTab is an allowed tab
@@ -217,9 +233,9 @@ function MainApp() {
     const syncSettings = () => {
       api.get('/settings').then(res => {
         if (res && res.success && res.settings) {
-          const shopName = res.settings.shop_name || tenant?.business_name || 'Latif Traders';
+          const shopName = res.settings.shop_name || res.settings.business_name || tenant?.business_name || 'Shop';
           localStorage.setItem('lt_shop_name', shopName);
-          document.title = `${shopName} - ShopOS Business Management`;
+          document.title = `${shopName} - ShopOS`;
           if (res.settings.tagline) localStorage.setItem('lt_shop_tagline', res.settings.tagline);
           if (res.settings.phone) localStorage.setItem('lt_phone', res.settings.phone);
           if (res.settings.email) localStorage.setItem('lt_email', res.settings.email);
@@ -386,7 +402,7 @@ function MainApp() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <AlertTriangle size={15} color="#D97706" />
-              <span>⚠️ Viewing as: <strong>{tenant?.business_name || 'Latif Traders'}</strong> (SuperOwner)</span>
+              <span>⚠️ Viewing as: <strong>{tenant?.business_name || 'Selected Tenant'}</strong> (SuperOwner)</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
@@ -488,8 +504,8 @@ function MainApp() {
             </div>
           )}
 
-          {/* Welcome Onboarding Checklist for newly registered tenants */}
-          {showOnboarding && tenant?.id !== 'latif_001' && (
+          {/* Welcome Onboarding Checklist for newly registered tenants (Dashboard only) */}
+          {showOnboarding && currentTab === 'dashboard' && tenant?.id !== 'latif_001' && (
             <div style={{
               margin: '0 0 1.25rem 0',
               padding: '1.25rem',
@@ -502,7 +518,7 @@ function MainApp() {
               <button
                 onClick={() => {
                   setShowOnboarding(false);
-                  localStorage.setItem('shopos_onboarding_dismissed', 'true');
+                  api.post('/settings', { onboarding_dismissed: 'true' }).catch(() => {});
                 }}
                 style={{
                   position: 'absolute',
@@ -513,17 +529,18 @@ function MainApp() {
                   color: 'var(--text-muted)',
                   cursor: 'pointer'
                 }}
+                title="Dismiss onboarding banner"
               >
                 <X size={16} />
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                 <Sparkles size={18} style={{ color: 'var(--primary)' }} />
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-title)' }}>
-                  Welcome to ShopOS, {tenant?.business_name}! 🎉
+                  Welcome to ShopOS, {tenant?.business_name || 'Partner'}! 🎉
                 </h3>
               </div>
               <p style={{ margin: '0 0 12px 0', fontSize: '0.825rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                Your isolated tenant database is ready. Follow this quick checklist to begin operating:
+                Your shop workspace is ready. Follow this quick checklist to begin operating:
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                 <button
@@ -542,8 +559,14 @@ function MainApp() {
                     gap: '6px'
                   }}
                 >
-                  <CheckCircle2 size={14} style={{ color: 'var(--money-green)' }} />
-                  1. Add your first product
+                  {onboardingStatus?.hasProduct ? (
+                    <CheckCircle2 size={14} style={{ color: 'var(--money-green)' }} />
+                  ) : (
+                    <Circle size={14} style={{ color: 'var(--text-muted)' }} />
+                  )}
+                  <span style={{ textDecoration: onboardingStatus?.hasProduct ? 'line-through' : 'none', opacity: onboardingStatus?.hasProduct ? 0.75 : 1 }}>
+                    1. Add your first product
+                  </span>
                 </button>
                 <button
                   onClick={() => setTab('pos')}
@@ -561,8 +584,14 @@ function MainApp() {
                     gap: '6px'
                   }}
                 >
-                  <CheckCircle2 size={14} style={{ color: 'var(--money-green)' }} />
-                  2. Make your first POS sale
+                  {onboardingStatus?.hasSale ? (
+                    <CheckCircle2 size={14} style={{ color: 'var(--money-green)' }} />
+                  ) : (
+                    <Circle size={14} style={{ color: 'var(--text-muted)' }} />
+                  )}
+                  <span style={{ textDecoration: onboardingStatus?.hasSale ? 'line-through' : 'none', opacity: onboardingStatus?.hasSale ? 0.75 : 1 }}>
+                    2. Make your first POS sale
+                  </span>
                 </button>
                 <button
                   onClick={() => setTab('customers')}
@@ -580,8 +609,14 @@ function MainApp() {
                     gap: '6px'
                   }}
                 >
-                  <CheckCircle2 size={14} style={{ color: 'var(--money-green)' }} />
-                  3. Add a customer
+                  {onboardingStatus?.hasCustomer ? (
+                    <CheckCircle2 size={14} style={{ color: 'var(--money-green)' }} />
+                  ) : (
+                    <Circle size={14} style={{ color: 'var(--text-muted)' }} />
+                  )}
+                  <span style={{ textDecoration: onboardingStatus?.hasCustomer ? 'line-through' : 'none', opacity: onboardingStatus?.hasCustomer ? 0.75 : 1 }}>
+                    3. Add a customer
+                  </span>
                 </button>
                 <button
                   onClick={() => setTab('settings')}
@@ -599,8 +634,14 @@ function MainApp() {
                     gap: '6px'
                   }}
                 >
-                  <CheckCircle2 size={14} style={{ color: 'var(--money-green)' }} />
-                  4. Setup business profile & logo
+                  {onboardingStatus?.hasProfileAndLogo ? (
+                    <CheckCircle2 size={14} style={{ color: 'var(--money-green)' }} />
+                  ) : (
+                    <Circle size={14} style={{ color: 'var(--text-muted)' }} />
+                  )}
+                  <span style={{ textDecoration: onboardingStatus?.hasProfileAndLogo ? 'line-through' : 'none', opacity: onboardingStatus?.hasProfileAndLogo ? 0.75 : 1 }}>
+                    4. Setup business profile & logo
+                  </span>
                 </button>
               </div>
             </div>
