@@ -57,7 +57,9 @@ export function applyAppTheme(themeId, skipServerSync = false) {
   root.setAttribute('data-app-theme', active);
   root.style.colorScheme = active === 'dark' ? 'dark' : 'light';
 
-  document.body.className = `app-theme-${active}`;
+  if (document.body) {
+    document.body.className = `app-theme-${active}`;
+  }
 
   // Sync with backend preferences if logged in
   if (!skipServerSync) {
@@ -88,7 +90,9 @@ export function applyPublicTheme(themeId) {
   root.setAttribute('data-public-theme', active);
   root.style.colorScheme = active === 'dark' ? 'dark' : 'light';
 
-  document.body.className = `public-theme-${active}`;
+  if (document.body) {
+    document.body.className = `public-theme-${active}`;
+  }
 
   window.dispatchEvent(new CustomEvent('public_theme_changed', { detail: active }));
   return active;
@@ -101,6 +105,16 @@ export function togglePublicTheme() {
   const current = getSavedPublicTheme();
   const next = current === 'dark' ? 'light' : 'dark';
   return applyPublicTheme(next);
+}
+
+/**
+ * Toggle between App Themes (Classic -> Dark -> Green -> Indigo -> Classic)
+ */
+export function toggleAppTheme() {
+  const current = getSavedAppTheme();
+  const themeIds = APP_THEMES.map(t => t.id);
+  const nextIndex = (themeIds.indexOf(current) + 1) % themeIds.length;
+  return applyAppTheme(themeIds[nextIndex]);
 }
 
 /**
