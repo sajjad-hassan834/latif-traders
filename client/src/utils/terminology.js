@@ -15,6 +15,20 @@ export const BUSINESS_TYPES_LIST = [
   { id: 'other', icon: '⚙️', label: 'Other (specify)' }
 ];
 
+export const BUSINESS_TYPE_LABELS = {
+  frozen_food: { name: 'Frozen Food', icon: '🧊' },
+  retail_general: { name: 'General Retail', icon: '🛒' },
+  clothing: { name: 'Clothing & Apparel', icon: '👕' },
+  pharmacy: { name: 'Pharmacy & Medical', icon: '💊' },
+  restaurant: { name: 'Restaurant / Food', icon: '🍕' },
+  hardware: { name: 'Hardware & Tools', icon: '🔧' },
+  electronics: { name: 'Electronics & Mobiles', icon: '📱' },
+  wholesale: { name: 'Wholesale Distributor', icon: '📦' },
+  grocery: { name: 'Grocery & Supermarket', icon: '🛒' },
+  bakery: { name: 'Bakery & Sweets', icon: '🥐' },
+  other: { name: 'Other Business', icon: '⚙️' }
+};
+
 export const TERMINOLOGY_MAP = {
   frozen_food: {
     products: 'Products',
