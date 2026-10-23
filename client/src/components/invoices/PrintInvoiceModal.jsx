@@ -57,29 +57,35 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
         iframe.remove();
       }
 
-      // Create isolated invisible iframe for 100% clean printer rendering
+      // Create isolated invisible iframe with real layout dimensions for printer drivers
       iframe = document.createElement('iframe');
       iframe.id = 'pos-print-frame';
       iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
+      iframe.style.top = '-9999px';
+      iframe.style.left = '-9999px';
+      iframe.style.width = printFormat === 'thermal' ? '80mm' : '210mm';
+      iframe.style.height = '1200px';
       iframe.style.border = '0';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      iframe.style.zIndex = '-9999';
       document.body.appendChild(iframe);
 
       const doc = iframe.contentWindow.document;
       const contentHtml = printableElement.innerHTML;
 
+      // Note: Do NOT use "size: 80mm auto" because Windows Xprinter/ESC-POS drivers reject auto height and cancel the job.
+      // Setting "@page { margin: 0; }" lets the thermal printer roll feed and cut naturally.
       const thermalStyles = `
         @page {
-          size: 80mm auto;
           margin: 0mm;
         }
         * {
           box-sizing: border-box;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
+          color: #000000 !important;
+          border-color: #000000 !important;
         }
         html, body {
           margin: 0 !important;
@@ -87,18 +93,20 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
           background: #ffffff !important;
           color: #000000 !important;
           font-family: 'Courier New', Courier, monospace !important;
-          font-size: 11px !important;
-          line-height: 1.3 !important;
+          font-size: 12px !important;
+          line-height: 1.35 !important;
+          width: 100% !important;
         }
         .thermal-receipt {
           width: 76mm !important;
+          max-width: 78mm !important;
           margin: 0 auto !important;
-          padding: 3mm 2mm !important;
+          padding: 3mm 2mm 8mm 2mm !important;
         }
         .center { text-align: center !important; }
         .divider {
           border-top: 1px dashed #000000 !important;
-          margin: 5px 0 !important;
+          margin: 6px 0 !important;
         }
         table {
           width: 100% !important;
@@ -106,7 +114,7 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
           font-size: 11px !important;
         }
         th, td {
-          color: #000 !important;
+          color: #000000 !important;
         }
       `;
 
@@ -152,7 +160,7 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
       );
       doc.close();
 
-      setTimeout(() => {
+      const triggerPrint = () => {
         try {
           iframe.contentWindow.focus();
           iframe.contentWindow.print();
@@ -160,7 +168,14 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
           console.error('Iframe print error, falling back to window.print():', e);
           window.print();
         }
-      }, 250);
+      };
+
+      if (doc.readyState === 'complete') {
+        setTimeout(triggerPrint, 200);
+      } else {
+        iframe.contentWindow.addEventListener('load', triggerPrint);
+        setTimeout(triggerPrint, 350);
+      }
     } catch (err) {
       console.error('Printing error:', err);
       window.print();
