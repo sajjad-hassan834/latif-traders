@@ -114,6 +114,13 @@ export function AuthProvider({ children }) {
     }
 
     checkAuth();
+
+    const handleExpired = () => {
+      setUser(null);
+      applyPublicTheme(getSavedPublicTheme());
+    };
+    window.addEventListener('auth_expired', handleExpired);
+    return () => window.removeEventListener('auth_expired', handleExpired);
   }, []);
 
   const login = async (username, password) => {

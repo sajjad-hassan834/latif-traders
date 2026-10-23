@@ -140,10 +140,21 @@ function MainApp() {
 
   // Public navigation views: 'landing' (default), 'login', 'register'
   const [publicView, setPublicView] = useState(() => {
-    if (window.location.pathname === '/login' || window.location.hash === '#login') return 'login';
-    if (window.location.pathname === '/register' || window.location.hash === '#register') return 'register';
+    const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+    if (path === '/login' || window.location.hash === '#login') return 'login';
+    if (path === '/register' || window.location.hash === '#register') return 'register';
     return 'landing';
   });
+
+  const navigatePublic = (view) => {
+    setPublicView(view);
+    try {
+      const targetPath = view === 'login' ? '/login' : (view === 'register' ? '/register' : '/');
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({}, '', targetPath);
+      }
+    } catch (_) {}
+  };
 
   useEffect(() => {
     const handleLocation = () => {
@@ -159,6 +170,14 @@ function MainApp() {
         }
       } else {
         setSuperOwnerView(false);
+      }
+
+      if (path === '/login') {
+        setPublicView('login');
+      } else if (path === '/register') {
+        setPublicView('register');
+      } else if (path === '/' || path === '') {
+        setPublicView('landing');
       }
 
       if (path === '/staff' || path === '/settings/staff') {
@@ -179,6 +198,14 @@ function MainApp() {
       try {
         window.history.replaceState({}, '', '/');
       } catch (_) {}
+    } else if (!user) {
+      const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+      if (path !== '/' && path !== '/login' && path !== '/register') {
+        try {
+          window.history.replaceState({}, '', '/login');
+          setPublicView('login');
+        } catch (_) {}
+      }
     }
   }, [user]);
 
@@ -230,6 +257,7 @@ function MainApp() {
 
   // Load shop branding settings on mount, login, and window focus
   useEffect(() => {
+    if (!user) return;
     const syncSettings = () => {
       api.get('/settings').then(res => {
         if (res && res.success && res.settings) {
@@ -343,23 +371,23 @@ function MainApp() {
     if (publicView === 'register') {
       return (
         <Register
-          onNavigateLogin={() => setPublicView('login')}
-          onNavigateLanding={() => setPublicView('landing')}
+          onNavigateLogin={() => navigatePublic('login')}
+          onNavigateLanding={() => navigatePublic('landing')}
         />
       );
     }
     if (publicView === 'login') {
       return (
         <Login
-          onNavigateRegister={() => setPublicView('register')}
-          onNavigateLanding={() => setPublicView('landing')}
+          onNavigateRegister={() => navigatePublic('register')}
+          onNavigateLanding={() => navigatePublic('landing')}
         />
       );
     }
     return (
       <LandingPage
-        onNavigateLogin={() => setPublicView('login')}
-        onNavigateRegister={() => setPublicView('register')}
+        onNavigateLogin={() => navigatePublic('login')}
+        onNavigateRegister={() => navigatePublic('register')}
       />
     );
   }

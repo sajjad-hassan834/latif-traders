@@ -77,9 +77,12 @@ export async function request(endpoint, options = {}) {
 
       if (!res.ok) {
         if (res.status === 401 && !endpoint.includes('/auth/login')) {
-          localStorage.removeItem('lt_token');
-          localStorage.removeItem('lt_user');
-          window.location.reload();
+          const hadToken = !!localStorage.getItem('lt_token');
+          if (hadToken) {
+            localStorage.removeItem('lt_token');
+            localStorage.removeItem('lt_user');
+            window.dispatchEvent(new CustomEvent('auth_expired'));
+          }
         }
         throw new Error(data.message || 'Request failed');
       }
