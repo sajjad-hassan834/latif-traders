@@ -30,6 +30,7 @@ import { formatDate, formatDateTime } from '../utils/formatters';
 import { applyAppTheme as applyThemeHelper } from '../utils/theme';
 import { useAuth } from '../context/AuthContext';
 import { BUSINESS_TYPES_LIST, BUSINESS_TYPE_LABELS } from '../utils/terminology';
+import UsersTab from './Users';
 
 export default function Settings({ initialTab: propInitialTab }) {
   const { role, isAdmin, isSuperOwner, tenant, plan, updateTenantInfo } = useAuth();
