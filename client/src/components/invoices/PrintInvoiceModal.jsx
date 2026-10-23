@@ -1,21 +1,176 @@
-import React, { useState } from 'react';
-import { Printer, X, FileText, Share2, MessageSquare, Check } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Printer, X, FileText, Share2, MessageSquare, Check, RefreshCw } from 'lucide-react';
 import { formatPKR, formatDate, formatDateTime } from '../../utils/formatters';
+import { api } from '../../utils/api';
 
-export default function PrintInvoiceModal({ sale, items = [], settings = {}, onClose }) {
+export default function PrintInvoiceModal({ sale: rawSale, items: propItems = [], settings: propSettings = {}, onClose }) {
   const [printFormat, setPrintFormat] = useState('thermal');
   const [whatsappCopied, setWhatsappCopied] = useState(false);
+  const printContainerRef = useRef(null);
 
-  if (!sale) return null;
+  const sale = rawSale?.sale || rawSale || {};
+  const initialItems = (propItems && propItems.length > 0) ? propItems : (rawSale?.items || rawSale?.sale_items || []);
+  const initialSettings = (propSettings && Object.keys(propSettings).length > 0) ? propSettings : (rawSale?.settings || {});
+
+  const [items, setItems] = useState(initialItems);
+  const [settings, setSettings] = useState(initialSettings);
+  const [loadingDetails, setLoadingDetails] = useState(!initialItems || initialItems.length === 0);
+
+  // If items were omitted by the caller, auto-fetch full sale details seamlessly
+  useEffect(() => {
+    let isMounted = true;
+    const hasItems = (propItems && propItems.length > 0) || (rawSale?.items && rawSale.items.length > 0) || (rawSale?.sale_items && rawSale.sale_items.length > 0);
+    if (!hasItems && sale?.id) {
+      setLoadingDetails(true);
+      api.get(`/sales/${sale.id}`)
+        .then(res => {
+          if (isMounted && res && res.success) {
+            if (res.items && Array.isArray(res.items)) setItems(res.items);
+            if (res.settings && typeof res.settings === 'object') setSettings(res.settings);
+          }
+        })
+        .catch(err => console.error('Failed to load invoice items:', err))
+        .finally(() => {
+          if (isMounted) setLoadingDetails(false);
+        });
+    } else {
+      setItems(initialItems);
+      setSettings(initialSettings);
+      setLoadingDetails(false);
+    }
+    return () => { isMounted = false; };
+  }, [sale?.id, propItems, rawSale]);
+
+  if (!sale || !sale.id) return null;
 
   const handlePrint = () => {
-    window.print();
+    try {
+      const printableElement = printContainerRef.current;
+      if (!printableElement) {
+        window.print();
+        return;
+      }
+
+      // Remove any lingering print iframe
+      let iframe = document.getElementById('pos-print-frame');
+      if (iframe) {
+        iframe.remove();
+      }
+
+      // Create isolated invisible iframe for 100% clean printer rendering
+      iframe = document.createElement('iframe');
+      iframe.id = 'pos-print-frame';
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentWindow.document;
+      const contentHtml = printableElement.innerHTML;
+
+      const thermalStyles = `
+        @page {
+          size: 80mm auto;
+          margin: 0mm;
+        }
+        * {
+          box-sizing: border-box;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #ffffff !important;
+          color: #000000 !important;
+          font-family: 'Courier New', Courier, monospace !important;
+          font-size: 11px !important;
+          line-height: 1.3 !important;
+        }
+        .thermal-receipt {
+          width: 76mm !important;
+          margin: 0 auto !important;
+          padding: 3mm 2mm !important;
+        }
+        .center { text-align: center !important; }
+        .divider {
+          border-top: 1px dashed #000000 !important;
+          margin: 5px 0 !important;
+        }
+        table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          font-size: 11px !important;
+        }
+        th, td {
+          color: #000 !important;
+        }
+      `;
+
+      const a4Styles = `
+        @page {
+          size: A4 portrait;
+          margin: 8mm;
+        }
+        * {
+          box-sizing: border-box;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #ffffff !important;
+          color: #1e293b !important;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+          font-size: 12px !important;
+        }
+        table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+        }
+      `;
+
+      const selectedStyles = printFormat === 'thermal' ? thermalStyles : a4Styles;
+
+      doc.open();
+      doc.write(
+        '<!DOCTYPE html>' +
+        '<html>' +
+        '<head>' +
+        '<title>Invoice - ' + (sale.invoice_no || 'Receipt') + '</title>' +
+        '<meta charset="utf-8" />' +
+        '<style>' + selectedStyles + '</style>' +
+        '</head>' +
+        '<body>' +
+        contentHtml +
+        '</body>' +
+        '</html>'
+      );
+      doc.close();
+
+      setTimeout(() => {
+        try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } catch (e) {
+          console.error('Iframe print error, falling back to window.print():', e);
+          window.print();
+        }
+      }, 250);
+    } catch (err) {
+      console.error('Printing error:', err);
+      window.print();
+    }
   };
 
-  const shopName = settings.shop_name || 'LATIF TRADERS';
+  const shopName = settings.company_name || settings.shop_name || 'LATIF TRADERS';
   const tagline = settings.tagline || 'Frozen Food Wholesalers & Retailers';
-  const phone = settings.phone || '+92 300 1234567';
-  const address = settings.address || 'Shop # 14-16, Commercial Market, Frozen Food Market, Lahore';
+  const phone = settings.company_phone || settings.phone || '+92 300 1234567';
+  const address = settings.company_address || settings.address || 'Shop # 14-16, Commercial Market, Frozen Food Market, Lahore';
   const footerNote = settings.invoice_footer || 'Thank you for shopping at Latif Traders! Keep frozen at -18°C.';
 
   const hasCustomerBalance = Boolean(sale.customer_id && sale.customer_id > 1);
@@ -123,7 +278,13 @@ export default function PrintInvoiceModal({ sale, items = [], settings = {}, onC
         </div>
 
         <div className="modal-body" style={{ background: '#f8fafc', padding: '1rem' }}>
-          <div className="printable-area">
+          {loadingDetails && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', fontSize: '12px', color: '#64748b', background: '#e0f2fe', borderRadius: '6px', marginBottom: '8px' }}>
+              <RefreshCw size={14} className="animate-spin" />
+              <span>Loading invoice line items...</span>
+            </div>
+          )}
+          <div className="printable-area" ref={printContainerRef}>
             {printFormat === 'thermal' ? (
               /* THERMAL RECEIPT LAYOUT */
               <div className="thermal-receipt">

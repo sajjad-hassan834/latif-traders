@@ -325,7 +325,7 @@ export default function SalesList({ setTab }) {
     try {
       const res = await api.get(`/sales/${id}`);
       if (res.success) {
-        setPrintInvoiceData(res.sale);
+        setPrintInvoiceData(res);
       }
     } catch (err) {
       alert('Failed to load invoice for printing');
@@ -1408,7 +1408,7 @@ export default function SalesList({ setTab }) {
               <button
                 type="button"
                 onClick={() => {
-                  setPrintInvoiceData(selectedSale.sale);
+                  setPrintInvoiceData(selectedSale);
                   setSelectedSale(null);
                 }}
                 className="btn btn-secondary btn-sm"
@@ -1866,7 +1866,9 @@ export default function SalesList({ setTab }) {
       {/* PRINT INVOICE MODAL */}
       {printInvoiceData && (
         <PrintInvoiceModal
-          sale={printInvoiceData}
+          sale={printInvoiceData.sale || printInvoiceData}
+          items={printInvoiceData.items || []}
+          settings={printInvoiceData.settings || {}}
           onClose={() => setPrintInvoiceData(null)}
         />
       )}

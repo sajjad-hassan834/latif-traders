@@ -397,7 +397,7 @@ function DashboardContent({ setTab }) {
     try {
       const res = await api.get(`/sales/${invoiceId}`);
       if (res?.success) {
-        setPrintInvoiceData(res.data);
+        setPrintInvoiceData(res);
       }
     } catch (err) {
       console.error('Failed to load invoice for print:', err);
@@ -1864,7 +1864,9 @@ function DashboardContent({ setTab }) {
       {/* QUICK INVOICE PRINT MODAL */}
       {printInvoiceData && (
         <PrintInvoiceModal
-          sale={printInvoiceData}
+          sale={printInvoiceData.sale || printInvoiceData}
+          items={printInvoiceData.items || []}
+          settings={printInvoiceData.settings || {}}
           onClose={() => setPrintInvoiceData(null)}
         />
       )}

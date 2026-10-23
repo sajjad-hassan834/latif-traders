@@ -2666,7 +2666,7 @@ select.form-control option {
 @media print {
   @page {
     size: auto;
-    margin: 10mm 12mm 12mm 12mm;
+    margin: 5mm;
   }
 
   body {
@@ -2693,6 +2693,54 @@ select.form-control option {
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
+  }
+
+  /* Prevent modal containers from clipping print content */
+  .modal-overlay {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    inset: auto !important;
+    z-index: auto !important;
+  }
+
+  .modal-content {
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    background: transparent !important;
+  }
+
+  .modal-body {
+    overflow: visible !important;
+    max-height: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+  }
+
+  .modal-header,
+  .modal-footer,
+  .modal-close-btn,
+  .btn,
+  header,
+  aside,
+  nav,
+  .hide-print {
+    display: none !important;
   }
 
   .report-print-container {
