@@ -142,21 +142,36 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
     settings: { section: 'System', title: 'Shop Settings' }
   };
 
-  const getSettingsSubTitle = () => {
+  const getSettingsSubTitle = (overrideTab = null) => {
     try {
-      const tab = new URLSearchParams(window.location.search).get('tab');
+      const tab = overrideTab || new URLSearchParams(window.location.search).get('tab');
       if (tab === 'staff' || tab === 'users') return 'Staff & Access';
       if (tab === 'billing' || tab === 'plan') return 'My Plan & Billing';
-      if (tab === 'business-profile' || tab === 'profile') return 'Business Profile';
-      if (tab === 'invoice') return 'Invoice & Receipts';
+      if (tab === 'business-profile' || tab === 'profile') return 'Shop Profile';
+      if (tab === 'invoice' || tab === 'invoices') return 'Invoice & Receipts';
       if (tab === 'inventory') return 'Inventory Policy';
-      if (tab === 'backup') return 'Backup & Recovery';
+      if (tab === 'backup' || tab === 'backups') return 'Backup & Recovery';
     } catch (_) {}
     return 'Shop Settings';
   };
 
+  const [settingsTitle, setSettingsTitle] = useState(getSettingsSubTitle);
+
+  useEffect(() => {
+    const handleTabChange = (e) => {
+      const detail = e?.detail;
+      setSettingsTitle(getSettingsSubTitle(detail));
+    };
+    window.addEventListener('settings_tab_change', handleTabChange);
+    window.addEventListener('popstate', handleTabChange);
+    return () => {
+      window.removeEventListener('settings_tab_change', handleTabChange);
+      window.removeEventListener('popstate', handleTabChange);
+    };
+  }, []);
+
   const currentMeta = currentTab === 'settings'
-    ? { section: 'System', title: getSettingsSubTitle() }
+    ? { section: 'System', title: settingsTitle }
     : (tabMetadata[currentTab] || { section: 'App', title: tenant?.business_name || 'Dashboard' });
 
   const openAccountModal = (tab) => {

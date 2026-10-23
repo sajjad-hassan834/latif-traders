@@ -21,8 +21,134 @@ function getTenantBackupDir(tenantId) {
   return tenantDir;
 }
 
+// Automatically detect and migrate legacy pre-multitenancy backups into tenant folders
+function migrateLegacyBackups() {
+  try {
+    if (!fs.existsSync(BACKUP_DIR)) return;
+
+    let tenants = [];
+    try {
+      tenants = db.prepare('SELECT id, business_name FROM tenants').all();
+    } catch (_) {}
+
+    const tenantIds = new Set(tenants.map(t => t.id));
+    tenantIds.add('latif_001');
+
+    // 1. Scan root BACKUP_DIR for loose backup files
+    const rootEntries = fs.readdirSync(BACKUP_DIR, { withFileTypes: true });
+    for (const entry of rootEntries) {
+      if (entry.isDirectory()) continue;
+      const file = entry.name;
+      if (file === '.gitkeep' || file.startsWith('.')) continue;
+
+      // Only process backup file extensions
+      if (!file.endsWith('.json') && !file.endsWith('.db') && !file.endsWith('.db-shm') && !file.endsWith('.db-wal')) {
+        continue;
+      }
+
+      const fullSourcePath = path.join(BACKUP_DIR, file);
+      let targetTenantId = null;
+
+      // Check if JSON file has explicit tenant_id
+      if (file.endsWith('.json')) {
+        try {
+          const content = JSON.parse(fs.readFileSync(fullSourcePath, 'utf8'));
+          if (content.tenant_id && tenantIds.has(content.tenant_id)) {
+            targetTenantId = content.tenant_id;
+          }
+        } catch (_) {}
+      }
+
+      // Check matching by tenant slug or ID
+      if (!targetTenantId) {
+        for (const t of tenants) {
+          const slug = (t.business_name || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 20);
+          if (slug && file.toLowerCase().startsWith(slug)) {
+            targetTenantId = t.id;
+            break;
+          }
+          if (t.id && file.includes(t.id)) {
+            targetTenantId = t.id;
+            break;
+          }
+        }
+      }
+
+      // Default to primary legacy tenant 'latif_001' for all pre-multitenancy backups
+      if (!targetTenantId) {
+        targetTenantId = 'latif_001';
+      }
+
+      const targetDir = path.join(BACKUP_DIR, targetTenantId);
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
+      const targetPath = path.join(targetDir, file);
+      if (!fs.existsSync(targetPath)) {
+        try {
+          fs.renameSync(fullSourcePath, targetPath);
+        } catch (moveErr) {
+          try {
+            fs.copyFileSync(fullSourcePath, targetPath);
+            fs.unlinkSync(fullSourcePath);
+          } catch (_) {}
+        }
+      } else {
+        // If exact same file already in target, remove redundant root file
+        try {
+          const s1 = fs.statSync(fullSourcePath);
+          const s2 = fs.statSync(targetPath);
+          if (s1.size === s2.size) {
+            fs.unlinkSync(fullSourcePath);
+          }
+        } catch (_) {}
+      }
+    }
+
+    // 2. Also check DATA_DIR root for legacy snapshots left outside backups directory
+    if (fs.existsSync(DATA_DIR)) {
+      const dataEntries = fs.readdirSync(DATA_DIR, { withFileTypes: true });
+      for (const entry of dataEntries) {
+        if (entry.isDirectory()) continue;
+        const file = entry.name;
+        if (
+          (file.includes('safety_backup') || file.includes('pre_multitenancy_fix_backup')) &&
+          (file.endsWith('.db') || file.endsWith('.json'))
+        ) {
+          const fullSourcePath = path.join(DATA_DIR, file);
+          const targetDir = path.join(BACKUP_DIR, 'latif_001');
+          if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+          const targetPath = path.join(targetDir, file);
+          if (!fs.existsSync(targetPath)) {
+            try {
+              fs.copyFileSync(fullSourcePath, targetPath);
+            } catch (_) {}
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('Backup legacy auto-migration notice:', err.message);
+  }
+}
+
+// Run migration immediately on module load
+migrateLegacyBackups();
+
 // Format display name: "<Shop Name> backup - 19 Sep 2026, 12:19 PM"
-function formatBackupDisplayName(shopName, date) {
+function formatBackupDisplayName(shopName, date, filename = '') {
+  if (filename) {
+    if (filename.startsWith('backup_before_client_delivery')) {
+      return `${shopName} - Delivery Snapshot`;
+    }
+    if (filename.includes('initial')) {
+      return `${shopName} - Initial System Backup`;
+    }
+    if (filename.startsWith('latif_traders_safety_backup') || filename.startsWith('pre_restore_safety') || filename.startsWith('pre_multitenancy')) {
+      return `${shopName} - Safety Snapshot`;
+    }
+  }
   const d = new Date(date);
   const day = d.getDate();
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -93,7 +219,7 @@ exports.createBackup = async (req, res) => {
       business_type: tenant?.business_type || 'retail_general',
       plan: tenant?.plan || 'free',
       exported_at: now.toISOString(),
-      display_name: formatBackupDisplayName(shopName, now),
+      display_name: formatBackupDisplayName(shopName, now, filename),
       tables: {}
     };
 
@@ -146,39 +272,63 @@ exports.listBackups = (req, res) => {
       return res.status(401).json({ success: false, message: 'Tenant context required.' });
     }
 
+    // Ensure any legacy backups on disk are migrated
+    migrateLegacyBackups();
+
     const tenantDir = getTenantBackupDir(tenantId);
     const tenant = db.prepare('SELECT business_name FROM tenants WHERE id = ?').get(tenantId);
     const shopName = tenant?.business_name || req.tenant?.business_name || 'Shop';
 
-    const files = fs.readdirSync(tenantDir)
-      .filter(f => f.endsWith('.json') || f.endsWith('.db'))
-      .map(file => {
-        const filePath = path.join(tenantDir, file);
-        const stats = fs.statSync(filePath);
-        let displayName = formatBackupDisplayName(shopName, stats.mtime || stats.birthtime);
+    const fileMap = new Map();
 
-        // If JSON file, try to extract accurate stored display_name
-        if (file.endsWith('.json')) {
-          try {
-            const preview = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-            if (preview.display_name) {
-              displayName = preview.display_name;
-            }
-          } catch (e) {
-            // Ignore preview read error
+    const processFile = (dir, file) => {
+      if (fileMap.has(file)) return;
+      const filePath = path.join(dir, file);
+      if (!fs.existsSync(filePath)) return;
+      const stats = fs.statSync(filePath);
+      let displayName = formatBackupDisplayName(shopName, stats.mtime || stats.birthtime, file);
+
+      // If JSON file, try to extract accurate stored display_name
+      if (file.endsWith('.json')) {
+        try {
+          const preview = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          if (preview.display_name) {
+            displayName = preview.display_name;
           }
+        } catch (e) {
+          // Ignore preview read error
         }
+      }
 
-        return {
-          filename: file,
-          display_name: displayName,
-          size_kb: (stats.size / 1024).toFixed(1),
-          created_at: stats.mtime || stats.birthtime
-        };
-      })
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      fileMap.set(file, {
+        filename: file,
+        display_name: displayName,
+        size_kb: (stats.size / 1024).toFixed(1),
+        created_at: stats.mtime || stats.birthtime
+      });
+    };
 
-    return res.json({ success: true, backups: files });
+    // 1. Read files inside tenant directory
+    if (fs.existsSync(tenantDir)) {
+      const files = fs.readdirSync(tenantDir).filter(f => f.endsWith('.json') || f.endsWith('.db'));
+      for (const f of files) {
+        processFile(tenantDir, f);
+      }
+    }
+
+    // 2. If primary legacy tenant 'latif_001', also include any unmigrated files in root BACKUP_DIR
+    if (tenantId === 'latif_001' && fs.existsSync(BACKUP_DIR)) {
+      const rootFiles = fs.readdirSync(BACKUP_DIR, { withFileTypes: true });
+      for (const entry of rootFiles) {
+        if (!entry.isDirectory() && (entry.name.endsWith('.json') || entry.name.endsWith('.db'))) {
+          processFile(BACKUP_DIR, entry.name);
+        }
+      }
+    }
+
+    const result = Array.from(fileMap.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    return res.json({ success: true, backups: result });
   } catch (err) {
     console.error('List backups error:', err);
     return res.status(500).json({ success: false, message: 'Failed to list backups.' });
@@ -199,15 +349,26 @@ exports.downloadBackup = (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid file parameter.' });
     }
 
-    const tenantDir = getTenantBackupDir(tenantId);
-    const filePath = path.join(tenantDir, filename);
+    migrateLegacyBackups();
 
-    // Verify tenant ownership - file MUST reside inside this tenant's directory
-    const resolvedPath = path.resolve(filePath);
+    const tenantDir = getTenantBackupDir(tenantId);
+    let filePath = path.join(tenantDir, filename);
+
+    // Verify tenant ownership - file must reside inside tenantDir, or in root BACKUP_DIR for latif_001
+    let resolvedPath = path.resolve(filePath);
     const resolvedTenantDir = path.resolve(tenantDir);
 
     if (!resolvedPath.startsWith(resolvedTenantDir) || !fs.existsSync(resolvedPath)) {
-      return res.status(404).json({ success: false, message: 'Backup file not found.' });
+      if (tenantId === 'latif_001') {
+        const rootPath = path.join(BACKUP_DIR, filename);
+        if (fs.existsSync(rootPath)) {
+          resolvedPath = path.resolve(rootPath);
+        } else {
+          return res.status(404).json({ success: false, message: 'Backup file not found.' });
+        }
+      } else {
+        return res.status(404).json({ success: false, message: 'Backup file not found.' });
+      }
     }
 
     logAudit(req.user.id, req.user.full_name, 'DOWNLOAD', 'BACKUP', null, `Downloaded tenant backup ${filename}`, req);
@@ -231,8 +392,23 @@ exports.restoreBackup = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Filename is required for restore.' });
     }
 
+    migrateLegacyBackups();
+
     const tenantDir = getTenantBackupDir(tenantId);
-    const filePath = path.join(tenantDir, filename);
+    let filePath = path.join(tenantDir, filename);
+
+    if (!fs.existsSync(filePath)) {
+      if (tenantId === 'latif_001') {
+        const rootPath = path.join(BACKUP_DIR, filename);
+        if (fs.existsSync(rootPath)) {
+          filePath = rootPath;
+        } else {
+          return res.status(404).json({ success: false, message: 'Backup file does not exist.' });
+        }
+      } else {
+        return res.status(404).json({ success: false, message: 'Backup file does not exist.' });
+      }
+    }
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ success: false, message: 'Backup file does not exist.' });

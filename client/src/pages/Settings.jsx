@@ -67,10 +67,21 @@ export default function Settings({ initialTab: propInitialTab }) {
         else if (d === 'inventory') setActiveTab('inventory');
         else if (d === 'staff' || d === 'users') setActiveTab('staff');
         else if (d === 'billing' || d === 'plan') setActiveTab('billing');
-        else if (d === 'backup' || d === 'backups') setActiveTab('backup');
+        else if (d === 'backup' || d === 'backups') {
+          setActiveTab('backup');
+          api.get('/backups').then(bRes => {
+            if (bRes?.success && Array.isArray(bRes.backups)) setBackups(bRes.backups);
+          }).catch(() => {});
+        }
         return;
       }
-      setActiveTab(parseTabFromLocation());
+      const parsed = parseTabFromLocation();
+      setActiveTab(parsed);
+      if (parsed === 'backup') {
+        api.get('/backups').then(bRes => {
+          if (bRes?.success && Array.isArray(bRes.backups)) setBackups(bRes.backups);
+        }).catch(() => {});
+      }
     };
 
     window.addEventListener('settings_tab_change', syncTab);
@@ -88,7 +99,13 @@ export default function Settings({ initialTab: propInitialTab }) {
       url.pathname = '/settings';
       url.searchParams.set('tab', tabId);
       window.history.replaceState({}, '', url.toString());
+      window.dispatchEvent(new CustomEvent('settings_tab_change', { detail: tabId }));
     } catch (_) {}
+    if (tabId === 'backup') {
+      api.get('/backups').then(bRes => {
+        if (bRes?.success && Array.isArray(bRes.backups)) setBackups(bRes.backups);
+      }).catch(err => console.error('Failed to load backups:', err));
+    }
   };
 
   const [settings, setSettings] = useState({
