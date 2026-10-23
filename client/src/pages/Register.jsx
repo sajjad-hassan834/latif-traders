@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getSavedPublicTheme, applyPublicTheme } from '../utils/theme';
+import PublicThemeToggle from '../components/common/PublicThemeToggle';
 import {
   Store,
   User,
@@ -22,17 +23,9 @@ import {
   Users,
   ReceiptText
 } from 'lucide-react';
+import { BUSINESS_TYPES_LIST } from '../utils/terminology';
 
-const BUSINESS_TYPES = [
-  { id: 'frozen_food', icon: '🧊', label: 'Frozen Food' },
-  { id: 'retail_general', icon: '🛒', label: 'Retail / General Shop' },
-  { id: 'pharmacy', icon: '💊', label: 'Pharmacy' },
-  { id: 'clothing', icon: '👕', label: 'Clothing & Fashion' },
-  { id: 'restaurant', icon: '🍕', label: 'Restaurant / Food' },
-  { id: 'hardware', icon: '🔧', label: 'Hardware & Construction' },
-  { id: 'wholesale', icon: '📦', label: 'Wholesale / Distribution' },
-  { id: 'other', icon: '⚙️', label: 'Other (specify)' }
-];
+const BUSINESS_TYPES = BUSINESS_TYPES_LIST;
 
 export default function Register({ onNavigateLogin, onNavigateLanding }) {
   const { register } = useAuth();
@@ -267,24 +260,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '14px' }}>
-          <button
-            onClick={toggleTheme}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              border: `1px solid ${t.headerBorder}`,
-              background: isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
-              color: t.textColor,
-              cursor: 'pointer'
-            }}
-            title={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-          >
-            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-          </button>
+          <PublicThemeToggle />
           {step < 3 && (
             <button
               onClick={onNavigateLogin}

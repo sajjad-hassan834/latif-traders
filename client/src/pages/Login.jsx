@@ -16,6 +16,7 @@ import {
   Send,
   Loader2
 } from 'lucide-react';
+import PublicThemeToggle from '../components/common/PublicThemeToggle';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../utils/api';
 import { getSavedPublicTheme, applyPublicTheme } from '../utils/theme';
@@ -201,24 +202,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '14px' }}>
-          <button
-            onClick={toggleTheme}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              border: `1px solid ${t.headerBorder}`,
-              background: isDark ? 'rgba(255,255,255,0.05)' : '#ffffff',
-              color: t.textColor,
-              cursor: 'pointer'
-            }}
-            title={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-          >
-            {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-          </button>
+          <PublicThemeToggle />
           <button
             onClick={onNavigateRegister}
             style={{

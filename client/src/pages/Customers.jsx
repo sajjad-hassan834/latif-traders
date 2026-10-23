@@ -203,10 +203,15 @@ export default function Customers() {
     }
   };
 
-  const allCount = customers.length;
-  const dueCount = customers.filter(c => Number(c.current_balance) > 0).length;
-  const retailCount = customers.filter(c => c.customer_type === 'Retail').length;
-  const wholesaleCount = customers.filter(c => c.customer_type === 'Wholesale').length;
+  const isWalkIn = (c) => {
+    const n = (c?.name || '').toLowerCase();
+    return n.includes('walk-in') || n.includes('counter');
+  };
+  const regularCustomers = customers.filter(c => !isWalkIn(c));
+  const allCount = regularCustomers.length;
+  const dueCount = regularCustomers.filter(c => Number(c.current_balance) > 0).length;
+  const retailCount = regularCustomers.filter(c => c.customer_type === 'Retail').length;
+  const wholesaleCount = regularCustomers.filter(c => c.customer_type === 'Wholesale').length;
 
   const filteredCustomers = customers.filter(c => {
     if (selectedFilter === 'due') return Number(c.current_balance) > 0;

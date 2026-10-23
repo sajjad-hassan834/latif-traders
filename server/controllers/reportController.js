@@ -38,9 +38,11 @@ exports.getDashboardMetrics = (req, res) => {
       WHERE expense_date = ? AND tenant_id = ?
     `).get(today, tenantId);
 
-    // Outstanding Receivables from this tenant's customers
+    // Outstanding Receivables from this tenant's customers (excluding walk-in counter customer)
     const totalReceivables = db.prepare(`
-      SELECT COALESCE(SUM(current_balance), 0) as balance FROM customers WHERE tenant_id = ?
+      SELECT COALESCE(SUM(current_balance), 0) as balance 
+      FROM customers 
+      WHERE tenant_id = ? AND LOWER(name) NOT LIKE '%walk-in%' AND LOWER(name) NOT LIKE '%counter%'
     `).get(tenantId).balance;
 
     // Outstanding Payables to this tenant's suppliers

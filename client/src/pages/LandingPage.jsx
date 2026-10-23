@@ -330,32 +330,8 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
           </nav>
 
           {/* Top Navbar Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <PublicThemeToggle />
-            <button
-              onClick={onNavigateLogin}
-              style={{
-                background: 'transparent',
-                color: '#1e293b',
-                borderRadius: '8px',
-                padding: '8px 18px',
-                fontWeight: 600,
-                fontSize: '14px',
-                border: '1px solid #cbd5e1',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#0266FE';
-                e.currentTarget.style.color = '#0266FE';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = '#cbd5e1';
-                e.currentTarget.style.color = '#1e293b';
-              }}
-            >
-              Sign In
-            </button>
             <button
               onClick={onNavigateRegister}
               style={{
@@ -381,7 +357,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                 e.currentTarget.style.boxShadow = '0 2px 8px rgba(2, 102, 254, 0.25)';
               }}
             >
-              Sign Up
+              Start Free Today
             </button>
           </div>
         </div>

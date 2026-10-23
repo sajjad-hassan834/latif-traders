@@ -4,6 +4,17 @@
  * while keeping internal routes and API names identical.
  */
 
+export const BUSINESS_TYPES_LIST = [
+  { id: 'frozen_food', icon: '🧊', label: 'Frozen Food' },
+  { id: 'retail_general', icon: '🛒', label: 'Retail / General Shop' },
+  { id: 'pharmacy', icon: '💊', label: 'Pharmacy' },
+  { id: 'clothing', icon: '👕', label: 'Clothing & Fashion' },
+  { id: 'restaurant', icon: '🍕', label: 'Restaurant / Food' },
+  { id: 'hardware', icon: '🔧', label: 'Hardware & Construction' },
+  { id: 'wholesale', icon: '📦', label: 'Wholesale / Distribution' },
+  { id: 'other', icon: '⚙️', label: 'Other (specify)' }
+];
+
 export const TERMINOLOGY_MAP = {
   frozen_food: {
     products: 'Products',
@@ -19,6 +30,21 @@ export const TERMINOLOGY_MAP = {
     productTableHeader: 'PRODUCT',
     hasBatches: true,
     hasExpiry: true
+  },
+  retail_general: {
+    products: 'Products',
+    productSingular: 'Product',
+    addProduct: 'Add Product',
+    productsSubtitle: 'Store inventory, retail merchandise and catalog items',
+    inventorySection: 'Inventory & Warehouse',
+    purchases: 'Purchases',
+    purchaseSingular: 'Purchase',
+    newPurchase: 'New Purchase',
+    purchasesSubtitle: 'Supplier invoices and incoming inventory stock',
+    stockTitle: 'Stock Value',
+    productTableHeader: 'PRODUCT',
+    hasBatches: false,
+    hasExpiry: false
   },
   grocery: {
     products: 'Items',
@@ -65,36 +91,6 @@ export const TERMINOLOGY_MAP = {
     hasBatches: true,
     hasExpiry: true
   },
-  retail_general: {
-    products: 'Products',
-    productSingular: 'Product',
-    addProduct: 'Add Product',
-    productsSubtitle: 'Store inventory, retail merchandise and catalog items',
-    inventorySection: 'Inventory & Warehouse',
-    purchases: 'Purchases',
-    purchaseSingular: 'Purchase',
-    newPurchase: 'New Purchase',
-    purchasesSubtitle: 'Supplier invoices and incoming inventory stock',
-    stockTitle: 'Stock Value',
-    productTableHeader: 'PRODUCT',
-    hasBatches: false,
-    hasExpiry: false
-  },
-  wholesale: {
-    products: 'Goods & SKU Catalog',
-    productSingular: 'SKU Item',
-    addProduct: 'Add SKU',
-    productsSubtitle: 'Bulk inventory cartons, lots and warehouse trade inventory',
-    inventorySection: 'Warehouse & Logistics',
-    purchases: 'Procurement Purchases',
-    purchaseSingular: 'Procurement Order',
-    newPurchase: 'New Procurement',
-    purchasesSubtitle: 'Factory & importer consignments and trade goods',
-    stockTitle: 'Stock Value',
-    productTableHeader: 'SKU / ITEM',
-    hasBatches: true,
-    hasExpiry: true
-  },
   restaurant: {
     products: 'Menu Items',
     productSingular: 'Menu Item',
@@ -103,8 +99,8 @@ export const TERMINOLOGY_MAP = {
     inventorySection: 'Menu & Stock',
     purchases: 'Ingredient Purchases',
     purchaseSingular: 'Ingredient Purchase',
-    newPurchase: 'Add Ingredient Purchase',
-    purchasesSubtitle: 'Manage kitchen raw materials and ingredient bills',
+    newPurchase: 'New Purchase',
+    purchasesSubtitle: 'Kitchen raw materials and ingredient bills',
     stockTitle: 'Stock Value',
     productTableHeader: 'MENU ITEM',
     hasBatches: false,
@@ -124,6 +120,51 @@ export const TERMINOLOGY_MAP = {
     productTableHeader: 'ITEM',
     hasBatches: false,
     hasExpiry: false
+  },
+  hardware: {
+    products: 'Items',
+    productSingular: 'Item',
+    addProduct: 'Add Item',
+    productsSubtitle: 'Tools, building materials, sanitary and hardware inventory',
+    inventorySection: 'Inventory & Warehouse',
+    purchases: 'Purchases',
+    purchaseSingular: 'Purchase',
+    newPurchase: 'New Purchase',
+    purchasesSubtitle: 'Supplier orders and construction materials receiving',
+    stockTitle: 'Stock Value',
+    productTableHeader: 'ITEM',
+    hasBatches: false,
+    hasExpiry: false
+  },
+  wholesale: {
+    products: 'Goods & SKU Catalog',
+    productSingular: 'SKU Item',
+    addProduct: 'Add SKU',
+    productsSubtitle: 'Bulk inventory cartons, lots and warehouse trade inventory',
+    inventorySection: 'Warehouse & Logistics',
+    purchases: 'Procurement Purchases',
+    purchaseSingular: 'Procurement Order',
+    newPurchase: 'New Procurement',
+    purchasesSubtitle: 'Factory & importer consignments and trade goods',
+    stockTitle: 'Stock Value',
+    productTableHeader: 'SKU / ITEM',
+    hasBatches: true,
+    hasExpiry: true
+  },
+  other: {
+    products: 'Products',
+    productSingular: 'Product',
+    addProduct: 'Add Product',
+    productsSubtitle: 'General catalog, items and stock inventory',
+    inventorySection: 'Inventory & Stock',
+    purchases: 'Purchases',
+    purchaseSingular: 'Purchase',
+    newPurchase: 'New Purchase',
+    purchasesSubtitle: 'Supplier bills and stock intake',
+    stockTitle: 'Stock Value',
+    productTableHeader: 'PRODUCT',
+    hasBatches: false,
+    hasExpiry: false
   }
 };
 
@@ -132,10 +173,12 @@ export function getTerminology(businessType) {
   const key = String(businessType).toLowerCase().trim();
   if (key === 'restaurant' || key === 'food' || key === 'cafe') return TERMINOLOGY_MAP.restaurant;
   if (key === 'pharmacy' || key === 'medical') return TERMINOLOGY_MAP.pharmacy;
-  if (key === 'bakery' || key === 'baker') return TERMINOLOGY_MAP.bakery;
-  if (key === 'grocery' || key === 'kirana') return TERMINOLOGY_MAP.grocery;
-  if (key === 'wholesale' || key === 'distributor') return TERMINOLOGY_MAP.wholesale;
   if (key === 'clothing' || key === 'apparel' || key === 'boutique') return TERMINOLOGY_MAP.clothing;
+  if (key === 'hardware' || key === 'sanitary' || key === 'construction') return TERMINOLOGY_MAP.hardware;
+  if (key === 'wholesale' || key === 'distributor') return TERMINOLOGY_MAP.wholesale;
   if (key === 'frozen_food' || key === 'meat' || key === 'poultry') return TERMINOLOGY_MAP.frozen_food;
+  if (key === 'grocery' || key === 'kirana') return TERMINOLOGY_MAP.grocery;
+  if (key === 'bakery' || key === 'baker') return TERMINOLOGY_MAP.bakery;
+  if (key === 'other' || key === 'custom') return TERMINOLOGY_MAP.other;
   return TERMINOLOGY_MAP.retail_general;
 }

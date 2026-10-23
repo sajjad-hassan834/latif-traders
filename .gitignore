@@ -9,11 +9,16 @@ dist-ssr/
 
 # SQLite Database & Backups
 *.db
+*.sqlite
+*.sqlite3
 data/*.db
+data/*.sqlite
 data/*_backup*
 data/*.db-wal
 data/*.db-shm
 data/*.db-journal
+server/*.sqlite
+server/*.db
 data/backups/*
 !data/backups/.gitkeep
 data/uploads/*

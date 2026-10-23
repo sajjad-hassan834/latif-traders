@@ -503,8 +503,20 @@ exports.adjustStock = (req, res) => {
     // Calculate new total stock
     const totalStock = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ?").get(product_id, tenantId).s;
 
-    // Record adjustment
-    const adjNo = `ADJ-${Date.now().toString().slice(-7)}`;
+    // Record adjustment: per-tenant ADJ-YYYYMMDD-XXXX (starts at 0001)
+    const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const existingAdjustments = db.prepare('SELECT adjustment_no FROM stock_adjustments WHERE adjustment_no LIKE ? AND tenant_id = ?').all(`ADJ-${dateStr}-%`, tenantId);
+    let maxSuffix = 0;
+    for (const adj of existingAdjustments) {
+      const parts = adj.adjustment_no.split('-');
+      if (parts.length === 3) {
+        const suffix = parseInt(parts[2], 10);
+        if (!isNaN(suffix) && suffix > maxSuffix) {
+          maxSuffix = suffix;
+        }
+      }
+    }
+    const adjNo = `ADJ-${dateStr}-${String(maxSuffix + 1).padStart(4, '0')}`;
     db.prepare(`
       INSERT INTO stock_adjustments (tenant_id, adjustment_no, product_id, batch_id, type, quantity, unit_cost, reason, user_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)

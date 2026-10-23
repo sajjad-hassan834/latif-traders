@@ -29,19 +29,10 @@ import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { applyAppTheme as applyThemeHelper } from '../utils/theme';
 import { useAuth } from '../context/AuthContext';
-import UsersTab from './Users';
-
-const BUSINESS_TYPE_LABELS = {
-  frozen_food: { name: 'Frozen Food & Poultry', icon: '🍗' },
-  grocery: { name: 'Kirana & Grocery', icon: '🛒' },
-  pharmacy: { name: 'Pharmacy', icon: '💊' },
-  bakery: { name: 'Bakery', icon: '🥐' },
-  retail_general: { name: 'General Retail', icon: '🏬' },
-  wholesale: { name: 'Wholesale', icon: '📦' }
-};
+import { BUSINESS_TYPES_LIST } from '../utils/terminology';
 
 export default function Settings({ initialTab: propInitialTab }) {
-  const { role, isAdmin, tenant, plan, updateTenantInfo } = useAuth();
+  const { role, isAdmin, isSuperOwner, tenant, plan, updateTenantInfo } = useAuth();
 
   const parseTabFromLocation = () => {
     try {
@@ -603,6 +594,27 @@ export default function Settings({ initialTab: propInitialTab }) {
 
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                  Industry / Business Type
+                </label>
+                <select
+                  className="form-control"
+                  style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
+                  value={settings.business_type || tenant?.business_type || 'retail_general'}
+                  onChange={(e) => setSettings({ ...settings, business_type: e.target.value })}
+                >
+                  {BUSINESS_TYPES_LIST.map(bt => (
+                    <option key={bt.id} value={bt.id}>
+                      {bt.icon} {bt.label}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ fontSize: '11px', color: '#64748B', marginTop: '3px' }}>
+                  Adapts terminology, batch tracking, and headers across the application.
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
                   Shop Logo
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -750,12 +762,14 @@ export default function Settings({ initialTab: propInitialTab }) {
               <span>Workspace Infrastructure</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.85rem' }}>
-              <div>
-                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Tenant ID</div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>
-                  {tenant?.id || 'tenant_001'}
+              {isSuperOwner && (
+                <div>
+                  <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Tenant ID</div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>
+                    {tenant?.id || 'tenant_001'}
+                  </div>
                 </div>
-              </div>
+              )}
               <div>
                 <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Plan</div>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', textTransform: 'capitalize' }}>
@@ -768,13 +782,15 @@ export default function Settings({ initialTab: propInitialTab }) {
                   {tenant?.created_at ? formatDate(tenant.created_at) : 'Active'}
                 </div>
               </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Database Status</div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <CheckCircle size={14} color="#059669" />
-                  Connected, Healthy
+              {isSuperOwner && (
+                <div>
+                  <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Database Status</div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <CheckCircle size={14} color="#059669" />
+                    Connected, Healthy
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -976,7 +992,7 @@ export default function Settings({ initialTab: propInitialTab }) {
                 </div>
                 <p style={{ margin: '6px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
                   {plan === 'free' ? 'Single user account with basic limits' : 'Full-featured multi-user cloud workspace'}
-                  {billingInfo?.plan_expires_at ? ` • Valid until ${formatDate(billingInfo.plan_expires_at)}` : ''}
+                  {plan !== 'free' && (billingInfo?.plan_expires_at || billingInfo?.planExpiresAt) ? ` • Renews ${formatDate(billingInfo.plan_expires_at || billingInfo.planExpiresAt)}` : ''}
                 </p>
               </div>
 
