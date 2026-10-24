@@ -1,5 +1,6 @@
 const { db } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
+const ledgerService = require('../services/ledgerService');
 
 // Customers CRUD
 exports.getCustomers = (req, res) => {
@@ -126,156 +127,29 @@ exports.deleteCustomer = (req, res) => {
   }
 };
 
-// Customer Ledger (Date-wise statement)
+// Customer Ledger (Date-wise statement using Single Source of Truth ledgerService)
 exports.getCustomerLedger = (req, res) => {
   try {
     const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
     const { start_date, end_date } = req.query;
 
-    const customer = db.prepare('SELECT * FROM customers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
-    if (!customer) return res.status(404).json({ success: false, message: 'Customer not found.' });
-
-    let salesQuery = "SELECT id, invoice_no as ref_no, sale_date as date, 'SALE' as type, grand_total as amount, paid_amount, balance_due, notes FROM sales WHERE customer_id = ? AND tenant_id = ?";
-    let paymentsQuery = "SELECT id, reference_no as ref_no, payment_date as date, 'RECEIPT' as type, amount, 0 as paid_amount, 0 as balance_due, notes, payment_method FROM payments WHERE party_type = 'CUSTOMER' AND party_id = ? AND tenant_id = ?";
-    let returnsQuery = "SELECT id, return_no as ref_no, created_at as date, 'RETURN' as type, total_amount as amount, 0 as paid_amount, 0 as balance_due, reason as notes FROM returns WHERE type = 'SALE_RETURN' AND party_id = ? AND tenant_id = ?";
-
-    const sParams = [id, tenantId];
-    const pParams = [id, tenantId];
-    const rParams = [id, tenantId];
-
-    if (start_date) {
-      salesQuery += ' AND sale_date >= ?';
-      paymentsQuery += ' AND payment_date >= ?';
-      returnsQuery += ' AND date(created_at) >= ?';
-      sParams.push(start_date);
-      pParams.push(start_date);
-      rParams.push(start_date);
-    }
-
-    if (end_date) {
-      salesQuery += ' AND sale_date <= ?';
-      paymentsQuery += ' AND payment_date <= ?';
-      returnsQuery += ' AND date(created_at) <= ?';
-      sParams.push(end_date);
-      pParams.push(end_date);
-      rParams.push(end_date);
-    }
-
-    const sales = db.prepare(salesQuery).all(...sParams);
-    const payments = db.prepare(paymentsQuery).all(...pParams);
-    const returns = db.prepare(returnsQuery).all(...rParams);
-
-    const allEntries = [];
-
-    // Opening balance
-    const opnBal = Number(customer.opening_balance) || 0;
-    allEntries.push({
-      date: customer.created_at ? customer.created_at.split(' ')[0] : '2026-01-01',
-      ref_no: 'OPN-BAL',
-      type: 'OPENING',
-      bill_amount: opnBal > 0 ? opnBal : 0,
-      paid_amount: opnBal < 0 ? Math.abs(opnBal) : 0,
-      balance_due: opnBal > 0 ? opnBal : 0,
-      debit: opnBal > 0 ? opnBal : 0,
-      credit: opnBal < 0 ? Math.abs(opnBal) : 0,
-      notes: 'Initial account starting balance'
+    const result = ledgerService.calculateCustomerLedger(id, tenantId, {
+      startDate: start_date,
+      endDate: end_date,
+      reverse: true
     });
-
-    for (const s of sales) {
-      const billTotal = Number(s.amount) || 0;
-      const paidOnBill = Number(s.paid_amount) || 0;
-      const unpaidDue = Number(s.balance_due) || 0;
-
-      allEntries.push({
-        id: s.id,
-        date: s.date,
-        ref_no: s.ref_no,
-        type: 'SALE_INVOICE',
-        bill_amount: billTotal,
-        paid_amount: paidOnBill,
-        balance_due: unpaidDue,
-        debit: billTotal,
-        credit: paidOnBill,
-        notes: unpaidDue > 0
-          ? `Bill: ${s.ref_no} (Paid: ₨ ${paidOnBill}, Debt Left: ₨ ${unpaidDue})`
-          : `Bill: ${s.ref_no} (Paid in Full in Cash)`
-      });
-    }
-
-    for (const p of payments) {
-      const pAmt = Number(p.amount) || 0;
-      allEntries.push({
-        id: p.id,
-        date: p.date,
-        ref_no: p.ref_no,
-        type: 'PAYMENT_RECEIPT',
-        bill_amount: 0,
-        paid_amount: pAmt,
-        balance_due: 0,
-        debit: 0,
-        credit: pAmt,
-        notes: p.notes || `Direct Payment Received (${p.payment_method || 'Cash'})`
-      });
-    }
-
-    for (const r of returns) {
-      const rAmt = Number(r.amount) || 0;
-      allEntries.push({
-        id: r.id,
-        date: r.date ? r.date.split('T')[0] : '',
-        ref_no: r.ref_no,
-        type: 'SALE_RETURN',
-        bill_amount: 0,
-        paid_amount: rAmt,
-        balance_due: 0,
-        debit: 0,
-        credit: rAmt,
-        notes: r.notes || 'Returned Products Credit'
-      });
-    }
-
-    allEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    let running = 0;
-    const chronologicalLedger = allEntries.map(entry => {
-      running += (entry.debit - entry.credit);
-      return {
-        ...entry,
-        balance: running,
-        invoice_due: entry.balance_due !== undefined ? entry.balance_due : (entry.bill_amount > 0 ? Math.max(0, entry.bill_amount - entry.paid_amount) : 0)
-      };
-    });
-
-    const totalPurchased = chronologicalLedger.reduce((acc, l) => acc + (l.bill_amount || 0), 0);
-    const totalPaid = chronologicalLedger.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
-    const closingBalance = running;
-
-    // Cross-verify and keep customers.current_balance synchronized
-    if (!start_date && !end_date && Math.abs((Number(customer.current_balance) || 0) - closingBalance) > 0.01) {
-      db.prepare('UPDATE customers SET current_balance = ? WHERE id = ? AND tenant_id = ?').run(closingBalance, customer.id, tenantId);
-      customer.current_balance = closingBalance;
-    }
-
-    // Return newest-first so outstanding recent bills appear at the top of the modal
-    const ledger = [...chronologicalLedger].reverse();
 
     return res.json({
       success: true,
-      customer,
-      ledger,
-      chronological_ledger: chronologicalLedger,
-      summary: {
-        total_purchased: totalPurchased,
-        total_paid: totalPaid,
-        total_debit: totalPurchased,
-        total_credit: totalPaid,
-        closing_balance: closingBalance
-      }
+      customer: result.customer,
+      ledger: result.ledger,
+      chronological_ledger: result.chronological_ledger,
+      summary: result.summary
     });
   } catch (err) {
     console.error('Customer ledger error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to generate customer ledger.' });
+    return res.status(500).json({ success: false, message: err.message || 'Failed to generate customer ledger.' });
   }
 };
 
@@ -394,200 +268,119 @@ exports.deleteSupplier = (req, res) => {
   }
 };
 
-// Supplier Ledger (Date-wise statement)
+// Supplier Ledger (Date-wise statement using Single Source of Truth ledgerService)
 exports.getSupplierLedger = (req, res) => {
   try {
     const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
     const { start_date, end_date } = req.query;
 
-    const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
-    if (!supplier) return res.status(404).json({ success: false, message: 'Supplier not found.' });
-
-    let purchasesQuery = "SELECT id, invoice_no as ref_no, purchase_date as date, 'PURCHASE' as type, grand_total as amount, paid_amount, balance_due, notes FROM purchases WHERE supplier_id = ? AND tenant_id = ?";
-    let paymentsQuery = "SELECT id, reference_no as ref_no, payment_date as date, 'PAYMENT' as type, amount, notes FROM payments WHERE party_type = 'SUPPLIER' AND party_id = ? AND tenant_id = ?";
-    let returnsQuery = "SELECT id, return_no as ref_no, created_at as date, 'RETURN' as type, total_amount as amount, reason as notes FROM returns WHERE type = 'PURCHASE_RETURN' AND party_id = ? AND tenant_id = ?";
-
-    const purParams = [id, tenantId];
-    const payParams = [id, tenantId];
-    const retParams = [id, tenantId];
-
-    if (start_date) {
-      purchasesQuery += ' AND purchase_date >= ?';
-      paymentsQuery += ' AND payment_date >= ?';
-      returnsQuery += ' AND date(created_at) >= ?';
-      purParams.push(start_date);
-      payParams.push(start_date);
-      retParams.push(start_date);
-    }
-
-    if (end_date) {
-      purchasesQuery += ' AND purchase_date <= ?';
-      paymentsQuery += ' AND payment_date <= ?';
-      returnsQuery += ' AND date(created_at) <= ?';
-      purParams.push(end_date);
-      payParams.push(end_date);
-      retParams.push(end_date);
-    }
-
-    const purchases = db.prepare(purchasesQuery).all(...purParams);
-    const payments = db.prepare(paymentsQuery).all(...payParams);
-    const returns = db.prepare(returnsQuery).all(...retParams);
-
-    const allEntries = [];
-
-    allEntries.push({
-      date: supplier.created_at ? supplier.created_at.split(' ')[0] : '2026-01-01',
-      ref_no: 'OPN-BAL',
-      type: 'OPENING',
-      debit: 0,
-      credit: supplier.opening_balance,
-      notes: 'Initial opening payable'
-    });
-
-    for (const p of purchases) {
-      allEntries.push({
-        id: p.id,
-        date: p.date,
-        ref_no: p.ref_no,
-        type: 'PURCHASE_BILL',
-        debit: 0,
-        credit: p.amount,
-        notes: `Purchase Bill ${p.ref_no} (Paid: ₨ ${p.paid_amount})`
-      });
-    }
-
-    for (const pay of payments) {
-      allEntries.push({
-        id: pay.id,
-        date: pay.date,
-        ref_no: pay.ref_no,
-        type: 'SUPPLIER_PAYMENT',
-        debit: pay.amount,
-        credit: 0,
-        notes: pay.notes || 'Payment to supplier'
-      });
-    }
-
-    for (const r of returns) {
-      allEntries.push({
-        id: r.id,
-        date: r.date ? r.date.split('T')[0] : '',
-        ref_no: r.ref_no,
-        type: 'PURCHASE_RETURN',
-        debit: r.amount,
-        credit: 0,
-        notes: r.notes || 'Purchase return to supplier'
-      });
-    }
-
-    allEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    let running = 0;
-    const ledger = allEntries.map(entry => {
-      running += (entry.credit - entry.debit);
-      return {
-        ...entry,
-        balance: running
-      };
+    const result = ledgerService.calculateSupplierLedger(id, tenantId, {
+      startDate: start_date,
+      endDate: end_date,
+      reverse: true
     });
 
     return res.json({
       success: true,
-      supplier,
-      ledger,
-      summary: {
-        total_credit: ledger.reduce((acc, l) => acc + l.credit, 0),
-        total_debit: ledger.reduce((acc, l) => acc + l.debit, 0),
-        closing_balance: running
-      }
+      supplier: result.supplier,
+      ledger: result.ledger,
+      chronological_ledger: result.chronological_ledger,
+      summary: result.summary
     });
   } catch (err) {
     console.error('Supplier ledger error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to generate supplier ledger.' });
+    return res.status(500).json({ success: false, message: err.message || 'Failed to generate supplier ledger.' });
   }
 };
 
-// Recalculate supplier balances for current tenant
-exports.recalculateSupplierBalances = (req, res) => {
+// Customer Balances Audit (Read-Only Diff Preview)
+exports.auditCustomerBalances = (req, res) => {
   try {
     const tenantId = req.tenant_id || 'latif_001';
-    const suppliers = db.prepare('SELECT * FROM suppliers WHERE tenant_id = ?').all(tenantId);
-    let fixed = 0;
-
-    const recalcTransaction = db.transaction(() => {
-      for (const sup of suppliers) {
-        const purchaseCredit = db.prepare(`
-          SELECT COALESCE(SUM(balance_due), 0) as total FROM purchases WHERE supplier_id = ? AND tenant_id = ?
-        `).get(sup.id, tenantId).total;
-
-        const paymentsMade = db.prepare(`
-          SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE party_type = 'SUPPLIER' AND party_id = ? AND tenant_id = ?
-        `).get(sup.id, tenantId).total;
-
-        const returnsMade = db.prepare(`
-          SELECT COALESCE(SUM(total_amount), 0) as total FROM returns WHERE type = 'PURCHASE_RETURN' AND party_id = ? AND tenant_id = ?
-        `).get(sup.id, tenantId).total;
-
-        const correctBalance = (Number(sup.opening_balance) || 0) + purchaseCredit - paymentsMade - returnsMade;
-        const oldBalance = Number(sup.current_balance) || 0;
-
-        if (Math.abs(correctBalance - oldBalance) > 0.01) {
-          db.prepare('UPDATE suppliers SET current_balance = ? WHERE id = ? AND tenant_id = ?').run(correctBalance, sup.id, tenantId);
-          fixed++;
-        }
-      }
-    });
-
-    recalcTransaction();
-
-    logAudit(req.user.id, req.user.full_name, 'RECALCULATE', 'SUPPLIER', null, `Recalculated all supplier balances. Fixed ${fixed} suppliers.`, req);
-    return res.json({ success: true, message: `Recalculated supplier balances. ${fixed} supplier(s) were corrected.`, fixed });
+    const audit = ledgerService.auditCustomerBalances(tenantId);
+    return res.json({ success: true, ...audit });
   } catch (err) {
-    console.error('Recalculate supplier balances error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to recalculate supplier balances.' });
+    console.error('Audit customer balances error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to audit customer balances.' });
   }
 };
 
-// Automated Cross-Verification & Recalculation for Customer Balances
+// Customer Balances Sync (Admin-Confirmed Action)
+exports.syncCustomerBalances = (req, res) => {
+  try {
+    const tenantId = req.tenant_id || 'latif_001';
+    const { customer_ids } = req.body;
+    const syncRes = ledgerService.syncCustomerBalances(tenantId, customer_ids);
+
+    logAudit(
+      req.user.id,
+      req.user.full_name,
+      'SYNC',
+      'CUSTOMER_BALANCES',
+      null,
+      `Audited & synchronized balances for ${syncRes.updated_count} customer(s).`,
+      req
+    );
+
+    return res.json({
+      success: true,
+      message: `Synchronized ${syncRes.updated_count} customer balance(s) with verified ledger entries.`,
+      ...syncRes
+    });
+  } catch (err) {
+    console.error('Sync customer balances error:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to sync customer balances.' });
+  }
+};
+
+// Supplier Balances Audit (Read-Only Diff Preview)
+exports.auditSupplierBalances = (req, res) => {
+  try {
+    const tenantId = req.tenant_id || 'latif_001';
+    const audit = ledgerService.auditSupplierBalances(tenantId);
+    return res.json({ success: true, ...audit });
+  } catch (err) {
+    console.error('Audit supplier balances error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to audit supplier balances.' });
+  }
+};
+
+// Supplier Balances Sync (Admin-Confirmed Action)
+exports.syncSupplierBalances = (req, res) => {
+  try {
+    const tenantId = req.tenant_id || 'latif_001';
+    const { supplier_ids } = req.body;
+    const syncRes = ledgerService.syncSupplierBalances(tenantId, supplier_ids);
+
+    logAudit(
+      req.user.id,
+      req.user.full_name,
+      'SYNC',
+      'SUPPLIER_BALANCES',
+      null,
+      `Audited & synchronized balances for ${syncRes.updated_count} supplier(s).`,
+      req
+    );
+
+    return res.json({
+      success: true,
+      message: `Synchronized ${syncRes.updated_count} supplier balance(s) with verified ledger entries.`,
+      ...syncRes
+    });
+  } catch (err) {
+    console.error('Sync supplier balances error:', err);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to sync supplier balances.' });
+  }
+};
+
+// Backwards-compatible endpoints for recalculate buttons
 exports.recalculateCustomerBalances = (req, res) => {
-  try {
-    const tenantId = req.tenant_id || 'latif_001';
-    const customers = db.prepare('SELECT id, name, opening_balance, current_balance FROM customers WHERE tenant_id = ?').all(tenantId);
-    let fixed = 0;
-
-    const recalcTransaction = db.transaction(() => {
-      for (const cust of customers) {
-        const salesStats = db.prepare(`
-          SELECT COALESCE(SUM(grand_total), 0) as total_sales, COALESCE(SUM(paid_amount), 0) as total_paid
-          FROM sales WHERE customer_id = ? AND tenant_id = ?
-        `).get(cust.id, tenantId);
-
-        const directPayments = db.prepare(`
-          SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE party_type = 'CUSTOMER' AND party_id = ? AND tenant_id = ?
-        `).get(cust.id, tenantId).total;
-
-        const returnsMade = db.prepare(`
-          SELECT COALESCE(SUM(total_amount), 0) as total FROM returns WHERE type = 'SALE_RETURN' AND party_id = ? AND tenant_id = ?
-        `).get(cust.id, tenantId).total;
-
-        const correctBalance = (Number(cust.opening_balance) || 0) + (Number(salesStats.total_sales) || 0) - (Number(salesStats.total_paid) || 0) - directPayments - returnsMade;
-        const oldBalance = Number(cust.current_balance) || 0;
-
-        if (Math.abs(correctBalance - oldBalance) > 0.01) {
-          db.prepare('UPDATE customers SET current_balance = ? WHERE id = ? AND tenant_id = ?').run(correctBalance, cust.id, tenantId);
-          fixed++;
-        }
-      }
-    });
-
-    recalcTransaction();
-
-    logAudit(req.user.id, req.user.full_name, 'RECALCULATE', 'CUSTOMER', null, `Recalculated all customer balances. Fixed ${fixed} customers.`, req);
-    return res.json({ success: true, message: `Recalculated customer balances. ${fixed} customer(s) were corrected.`, fixed });
-  } catch (err) {
-    console.error('Recalculate customer balances error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to recalculate customer balances.' });
-  }
+  return exports.syncCustomerBalances(req, res);
 };
+
+exports.recalculateSupplierBalances = (req, res) => {
+  return exports.syncSupplierBalances(req, res);
+};
+
 

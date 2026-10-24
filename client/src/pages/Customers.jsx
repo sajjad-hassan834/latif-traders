@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown, Trash2, ArrowUpRight, RefreshCw } from 'lucide-react';
+import { Users, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown, Trash2, ArrowUpRight, RefreshCw, MessageCircle, Eye, CheckCircle2, AlertCircle, X, ShieldAlert } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
 import Pagination from '../components/common/Pagination';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
 import ActionMenu from '../components/common/ActionMenu';
+import CustomDatePicker from '../components/common/CustomDatePicker';
 
 export default function Customers() {
   const { user, isAdmin: authIsAdmin } = useAuth();
@@ -24,11 +25,25 @@ export default function Customers() {
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [auditData, setAuditData] = useState(null);
+  const [auditing, setAuditing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
   const [customerToDelete, setCustomerToDelete] = useState(null);
   const [selectedCust, setSelectedCust] = useState(null);
   const [ledgerData, setLedgerData] = useState(null);
   const [viewingSale, setViewingSale] = useState(null);
+  const [viewingReceipt, setViewingReceipt] = useState(null);
   const [actionMenuId, setActionMenuId] = useState(null);
+
+  // In-modal ledger filters
+  const [ledgerSearch, setLedgerSearch] = useState('');
+  const [ledgerTypeFilter, setLedgerTypeFilter] = useState('ALL');
+  const [ledgerStatusFilter, setLedgerStatusFilter] = useState('ALL');
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const LEDGER_PER_PAGE = 25;
+
 
   const handleViewInvoiceDetails = async (invoiceNo) => {
     try {
@@ -43,9 +58,25 @@ export default function Customers() {
 
   useEffect(() => {
     const handleOutsideClick = () => setActionMenuId(null);
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (showLedgerModal) setShowLedgerModal(false);
+        if (showAuditModal) setShowAuditModal(false);
+        if (viewingReceipt) setViewingReceipt(null);
+        if (showAddModal) setShowAddModal(false);
+        if (showEditModal) setShowEditModal(false);
+        if (showPayModal) setShowPayModal(false);
+        if (showDeleteModal) setShowDeleteModal(false);
+      }
+    };
     window.addEventListener('click', handleOutsideClick);
-    return () => window.removeEventListener('click', handleOutsideClick);
-  }, []);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('click', handleOutsideClick);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showLedgerModal, showAuditModal, viewingReceipt, showAddModal, showEditModal, showPayModal, showDeleteModal]);
+
 
   // Add Customer Form
   const [formData, setFormData] = useState({
@@ -188,20 +219,73 @@ export default function Customers() {
     }
   };
 
-  const handleSyncCustomerBalances = async () => {
+  const handleOpenAuditModal = async () => {
     try {
-      setSyncingBalances(true);
-      const res = await api.post('/customers/recalculate-balances');
+      setAuditing(true);
+      const res = await api.get('/parties/customers/audit-balances');
+      if (res.success) {
+        setAuditData(res);
+        setShowAuditModal(true);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to audit customer balances.');
+    } finally {
+      setAuditing(false);
+    }
+  };
+
+  const handleConfirmSync = async () => {
+    try {
+      setSyncing(true);
+      const res = await api.post('/parties/customers/sync-balances', {});
       if (res.success) {
         alert(res.message);
+        setShowAuditModal(false);
+        setAuditData(null);
         loadCustomers();
       }
     } catch (err) {
-      alert(err.message || 'Failed to recalculate customer balances.');
+      alert(err.message || 'Failed to synchronize customer balances.');
     } finally {
-      setSyncingBalances(false);
+      setSyncing(false);
     }
   };
+
+  const sendWhatsAppReminder = (customer, balance) => {
+    const phone = customer?.phone || '';
+    if (!phone || phone === 'None' || phone.trim().length < 6) {
+      alert('This customer does not have a valid phone number recorded.');
+      return;
+    }
+    let clean = phone.replace(/[^0-9]/g, '');
+    if (clean.startsWith('03')) clean = '92' + clean.slice(1);
+    else if (!clean.startsWith('92')) clean = '92' + clean;
+
+    const msg = `Assalam-o-Alaikum ${customer.name},\nThis is a friendly reminder that your outstanding udhaar balance with Latif Traders is ${formatPKR(balance)}.\nKindly settle your pending dues at your earliest convenience.\nThank you!`;
+    window.open(`https://wa.me/${clean}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  const applyDatePreset = (preset) => {
+    const now = new Date();
+    if (preset === 'THIS_MONTH') {
+      const first = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const today = now.toISOString().split('T')[0];
+      setLedgerStartDate(first);
+      setLedgerEndDate(today);
+      openLedger(selectedCust, first, today);
+    } else if (preset === 'LAST_3_MONTHS') {
+      const threeAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().split('T')[0];
+      const today = now.toISOString().split('T')[0];
+      setLedgerStartDate(threeAgo);
+      setLedgerEndDate(today);
+      openLedger(selectedCust, threeAgo, today);
+    } else if (preset === 'ALL') {
+      setLedgerStartDate('');
+      setLedgerEndDate('');
+      openLedger(selectedCust, '', '');
+    }
+  };
+
 
   const isWalkIn = (c) => {
     const n = (c?.name || '').toLowerCase();
@@ -225,8 +309,8 @@ export default function Customers() {
       {/* PAGE HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Customers</h2>
-          <p style={{ fontSize: '0.825rem', color: '#64748b', margin: '3px 0 0 0' }}>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-title)', margin: 0, letterSpacing: '-0.02em' }}>Customers</h2>
+          <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
             {allCount} total customers · {dueCount} with outstanding balance
           </p>
         </div>
@@ -234,14 +318,14 @@ export default function Customers() {
           {isAdmin && (
             <button
               type="button"
-              onClick={handleSyncCustomerBalances}
-              disabled={syncingBalances}
+              onClick={handleOpenAuditModal}
+              disabled={auditing}
               className="btn btn-secondary btn-sm"
-              title="Audit and re-calculate all customer balances from verified invoices & receipts"
+              title="Audit and review discrepancies between stored balances and verified invoices & receipts"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '36px' }}
             >
-              <RefreshCw size={14} className={syncingBalances ? 'spin' : ''} />
-              <span>{syncingBalances ? 'Auditing...' : 'Audit & Sync Balances'}</span>
+              <RefreshCw size={14} className={auditing ? 'spin' : ''} />
+              <span>{auditing ? 'Auditing...' : 'Audit & Sync Balances'}</span>
             </button>
           )}
           <button onClick={() => setShowAddModal(true)} className="btn btn-primary" style={{ height: '36px' }}>
@@ -322,9 +406,9 @@ export default function Customers() {
                 filteredCustomers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(c => (
                   <tr key={c.id}>
                     <td style={{ minWidth: '180px' }}>
-                      <div style={{ fontWeight: 600, color: '#0f172a' }}>{c.name}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-title)' }}>{c.name}</div>
                       {c.address && (
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                           {c.address}
                         </div>
                       )}
@@ -334,9 +418,9 @@ export default function Customers() {
                         {c.customer_type}
                       </span>
                     </td>
-                    <td style={{ whiteSpace: 'nowrap', color: '#334155', fontWeight: 500 }}>{c.phone || '-'}</td>
-                    <td><span style={{ fontSize: '0.8rem', color: '#64748b' }}>{c.address || '-'}</span></td>
-                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: '#64748b' }}>{c.credit_limit > 0 ? formatPKR(c.credit_limit) : 'No Limit'}</td>
+                    <td style={{ whiteSpace: 'nowrap', color: 'var(--text-table)', fontWeight: 500 }}>{c.phone || '-'}</td>
+                    <td><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{c.address || '-'}</span></td>
+                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{c.credit_limit > 0 ? formatPKR(c.credit_limit) : 'No Limit'}</td>
                     <td style={{ textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>
                       {c.current_balance > 0 ? (
                         <span style={{ color: '#ef4444' }}>{formatPKR(c.current_balance)}</span>
@@ -412,7 +496,7 @@ export default function Customers() {
           <div className="modal-content" style={{ maxWidth: '580px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Add New Customer</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Add New Customer</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Create a new retail or wholesale customer account.
                 </div>
@@ -508,478 +592,715 @@ export default function Customers() {
       )}
 
       {/* CUSTOMER LEDGER / STATEMENT MODAL */}
-      {/* CUSTOMER LEDGER / STATEMENT MODAL */}
-      {showLedgerModal && ledgerData && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '980px', width: '96%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
-            {/* MODAL HEADER: TWO ROWS PREVENTING ANY BUTTON COLLISION */}
-            <div className="modal-header" style={{
-              padding: '16px 22px',
-              borderBottom: '1px solid #E5E7EB',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              background: '#FFFFFF'
-            }}>
-              {/* Row 1: Identity & Action Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '42px',
-                    height: '42px',
-                    borderRadius: '50%',
-                    background: '#0F766E',
-                    color: '#FFFFFF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '18px',
-                    fontWeight: 700,
-                    flexShrink: 0
-                  }}>
-                    {(ledgerData.customer.name || 'C').charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '19px', fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>
-                      {ledgerData.customer.name}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
-                      {ledgerData.customer.customer_type ? `${ledgerData.customer.customer_type} Customer` : 'Retail Customer'}
-                      {ledgerData.customer.phone && ledgerData.customer.phone !== 'None' && (
-                        <span> • 📞 {ledgerData.customer.phone}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+      {showLedgerModal && ledgerData && (() => {
+        // Apply client-side in-modal filters
+        const rawList = ledgerData.ledger || [];
+        const filteredEntries = rawList.filter(item => {
+          // Search box filter
+          if (ledgerSearch.trim()) {
+            const q = ledgerSearch.toLowerCase().trim();
+            const ref = (item.ref_no || '').toLowerCase();
+            const desc = (item.notes || '').toLowerCase();
+            if (!ref.includes(q) && !desc.includes(q)) return false;
+          }
+          // Type filter
+          if (ledgerTypeFilter === 'INVOICES' && item.type !== 'SALE_INVOICE') return false;
+          if (ledgerTypeFilter === 'PAYMENTS' && item.type !== 'PAYMENT_RECEIPT' && item.type !== 'CUSTOMER_REFUND' && item.type !== 'SALE_RETURN') return false;
+          // Status filter
+          if (ledgerStatusFilter === 'PAID') {
+            if (item.type === 'SALE_INVOICE' && item.status_chip !== 'PAID') return false;
+            if (item.type !== 'SALE_INVOICE') return false;
+          } else if (ledgerStatusFilter === 'PARTIAL') {
+            if (item.type === 'SALE_INVOICE' && item.status_chip !== 'PARTIAL') return false;
+            if (item.type !== 'SALE_INVOICE') return false;
+          } else if (ledgerStatusFilter === 'UNPAID') {
+            if (item.type === 'SALE_INVOICE' && item.status_chip !== 'UNPAID') return false;
+            if (item.type !== 'SALE_INVOICE') return false;
+          }
+          return true;
+        });
 
-                {/* Top-Right Action Controls: Dedicated container with zero collision */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                  <button
-                    type="button"
-                    onClick={() => window.print()}
-                    style={{
-                      height: '34px',
-                      padding: '0 12px',
-                      background: '#FFFFFF',
-                      border: '1px solid #D1D5DB',
-                      borderRadius: '8px',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      color: '#374151',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
+        const totalFiltered = filteredEntries.length;
+        const totalPages = Math.ceil(totalFiltered / LEDGER_PER_PAGE) || 1;
+        const paginatedEntries = filteredEntries.slice((ledgerPage - 1) * LEDGER_PER_PAGE, ledgerPage * LEDGER_PER_PAGE);
+
+        const hasValidPhone = ledgerData.customer.phone && ledgerData.customer.phone !== 'None' && ledgerData.customer.phone.trim().length >= 7;
+
+        return (
+          <div className="modal-overlay" style={{ zIndex: 1000 }} onClick={() => setShowLedgerModal(false)}>
+            <div
+              className="modal-content"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: '1060px',
+                width: '96%',
+                maxHeight: '92vh',
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                background: 'var(--bg-card, #FFFFFF)',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                border: '1px solid var(--border)'
+              }}
+            >
+              {/* MODAL HEADER: Clean layout, avatar, identity, status chips, dedicated close button */}
+              <div
+                className="modal-header"
+                style={{
+                  padding: '16px 24px',
+                  borderBottom: '1px solid var(--border)',
+                  background: 'var(--bg-card, #FFFFFF)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{
+                      width: '46px',
+                      height: '46px',
+                      borderRadius: '50%',
+                      background: 'var(--primary, #0F766E)',
+                      color: '#FFFFFF',
+                      display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      whiteSpace: 'nowrap'
-                    }}
-                    title="Print customer ledger statement"
-                  >
-                    <Printer size={15} />
-                    <span>Print Statement</span>
-                  </button>
+                      justifyContent: 'center',
+                      fontSize: '20px',
+                      fontWeight: 700,
+                      flexShrink: 0
+                    }}>
+                      {(ledgerData.customer.name || 'C').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-title)', lineHeight: 1.2 }}>
+                        {ledgerData.customer.name}
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{ledgerData.customer.customer_type ? `${ledgerData.customer.customer_type} Customer` : 'Retail Customer'}</span>
+                        {hasValidPhone && (
+                          <span>• 📞 {ledgerData.customer.phone}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
+                  {/* Top-Right: Sole Close Button with proper touch area & no overlapping controls */}
                   <button
                     type="button"
                     className="modal-close-btn"
                     onClick={() => setShowLedgerModal(false)}
                     aria-label="Close"
                     style={{
-                      width: '34px',
-                      height: '34px',
+                      width: '36px',
+                      height: '36px',
                       borderRadius: '8px',
-                      border: '1px solid #D1D5DB',
-                      background: '#F3F4F6',
+                      border: '1px solid var(--border, #D1D5DB)',
+                      background: 'var(--bg-hover, #F3F4F6)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
-                      color: '#4B5563',
+                      color: 'var(--text-title, #374151)',
                       fontSize: '16px',
                       fontWeight: 700,
-                      flexShrink: 0
+                      flexShrink: 0,
+                      transition: 'all 0.15s ease'
                     }}
-                    title="Close ledger"
+                    title="Close ledger (Esc)"
                   >
                     ✕
                   </button>
                 </div>
-              </div>
 
-              {/* Row 2: Customer Status Chips */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <div style={{ background: '#F3F4F6', color: '#374151', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <span>📅</span> Customer since: {ledgerData.customer.created_at ? formatDate(ledgerData.customer.created_at) : 'Active'}
-                </div>
-                <div style={{ background: '#F3F4F6', color: '#374151', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <span>💰</span> Total Purchases: {formatPKR(ledgerData.summary.total_purchased || ledgerData.summary.total_debit || 0)}
-                </div>
-                {Number(ledgerData.summary.closing_balance || 0) <= 0 ? (
-                  <div style={{ background: '#D1FAE5', color: '#065F46', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    ✓ Fully Settled (No Pending Udhaar)
+                {/* Status Chips Row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <div style={{ background: 'var(--bg-hover, #F3F4F6)', color: 'var(--text-title)', fontSize: '12px', padding: '4px 12px', borderRadius: '20px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border)' }}>
+                    <span>📅</span> Since: {ledgerData.customer.created_at ? formatDate(ledgerData.customer.created_at) : 'Active'}
                   </div>
-                ) : (
-                  <div style={{ background: '#FEE2E2', color: '#991B1B', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    ⚠️ Total Pending Udhaar: {formatPKR(ledgerData.summary.closing_balance)}
+                  <div style={{ background: 'var(--bg-hover, #F3F4F6)', color: 'var(--text-title)', fontSize: '12px', padding: '4px 12px', borderRadius: '20px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border)' }}>
+                    <span>💰</span> Total Purchases: {formatPKR(ledgerData.summary.total_billed)}
                   </div>
-                )}
-              </div>
-            </div>
-
-            <div className="modal-body" style={{ padding: '18px 22px' }}>
-              {/* DATE FILTER BAR */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>Filter by date:</span>
-                  <input
-                    type="date"
-                    style={{
-                      height: '34px',
-                      border: '1px solid #E5E7EB',
-                      borderRadius: '7px',
-                      padding: '0 10px',
-                      fontSize: '13px',
-                      color: '#111827',
-                      background: '#FFFFFF'
-                    }}
-                    value={ledgerStartDate}
-                    onChange={(e) => setLedgerStartDate(e.target.value)}
-                  />
-                  <input
-                    type="date"
-                    style={{
-                      height: '34px',
-                      border: '1px solid #E5E7EB',
-                      borderRadius: '7px',
-                      padding: '0 10px',
-                      fontSize: '13px',
-                      color: '#111827',
-                      background: '#FFFFFF'
-                    }}
-                    value={ledgerEndDate}
-                    onChange={(e) => setLedgerEndDate(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => openLedger(selectedCust, ledgerStartDate, ledgerEndDate)}
-                    style={{
-                      height: '34px',
-                      padding: '0 14px',
-                      background: '#0F766E',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      borderRadius: '7px',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    Apply Filter →
-                  </button>
-                  {(ledgerStartDate || ledgerEndDate) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLedgerStartDate('');
-                        setLedgerEndDate('');
-                        openLedger(selectedCust, '', '');
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#6B7280',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        padding: '0 8px',
-                        textDecoration: 'underline'
-                      }}
-                    >
-                      Clear
-                    </button>
+                  {Number(ledgerData.summary.closing_balance || 0) <= 0 ? (
+                    <div style={{ background: '#D1FAE5', color: '#065F46', fontSize: '12px', padding: '4px 12px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #A7F3D0' }}>
+                      <CheckCircle2 size={13} />
+                      <span>Fully Settled (No Pending Udhaar)</span>
+                    </div>
+                  ) : (
+                    <div style={{ background: '#FEE2E2', color: '#991B1B', fontSize: '12px', padding: '4px 12px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #FECACA' }}>
+                      <AlertCircle size={13} />
+                      <span>Total Pending Udhaar: {formatPKR(ledgerData.summary.closing_balance)}</span>
+                    </div>
                   )}
                 </div>
+              </div>
 
-                <div style={{ fontSize: '11px', color: '#64748B', background: '#F1F5F9', padding: '3px 8px', borderRadius: '6px', fontWeight: 600 }}>
-                  ⚡ Sorted: Newest Invoices First
+              {/* FILTER CONTROLS BAR: Date presets, custom dd/mm/yyyy pickers, search box, type & status filters */}
+              <div
+                style={{
+                  padding: '12px 24px',
+                  background: 'var(--bg-hover, #F9FAFB)',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}
+              >
+                {/* Row 1: Date Range & Presets */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>Date Range:</span>
+                    <CustomDatePicker
+                      value={ledgerStartDate}
+                      onChange={(v) => { setLedgerStartDate(v); openLedger(selectedCust, v, ledgerEndDate); }}
+                      placeholder="From (dd/mm/yyyy)"
+                    />
+                    <span style={{ color: 'var(--text-muted)' }}>–</span>
+                    <CustomDatePicker
+                      value={ledgerEndDate}
+                      onChange={(v) => { setLedgerEndDate(v); openLedger(selectedCust, ledgerStartDate, v); }}
+                      placeholder="To (dd/mm/yyyy)"
+                    />
+                    {(ledgerStartDate || ledgerEndDate) && (
+                      <button
+                        type="button"
+                        onClick={() => applyDatePreset('ALL')}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12px', textDecoration: 'underline', cursor: 'pointer', padding: '0 4px' }}
+                      >
+                        Reset Dates
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset('THIS_MONTH')}
+                      className="btn btn-secondary btn-sm"
+                      style={{ height: '30px', fontSize: '12px', padding: '0 10px' }}
+                    >
+                      This Month
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset('LAST_3_MONTHS')}
+                      className="btn btn-secondary btn-sm"
+                      style={{ height: '30px', fontSize: '12px', padding: '0 10px' }}
+                    >
+                      Last 3 Months
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyDatePreset('ALL')}
+                      className="btn btn-secondary btn-sm"
+                      style={{ height: '30px', fontSize: '12px', padding: '0 10px' }}
+                    >
+                      All Time
+                    </button>
+                  </div>
+                </div>
+
+                {/* Row 2: Search Box, Type Filter, Status Filter */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                  <div style={{ position: 'relative', flex: '1', minWidth: '220px', maxWidth: '360px' }}>
+                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Search invoice #, description..."
+                      value={ledgerSearch}
+                      onChange={(e) => { setLedgerSearch(e.target.value); setLedgerPage(1); }}
+                      style={{ height: '32px', paddingLeft: '32px', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <select
+                      className="form-control"
+                      value={ledgerTypeFilter}
+                      onChange={(e) => { setLedgerTypeFilter(e.target.value); setLedgerPage(1); }}
+                      style={{ height: '32px', fontSize: '12px', padding: '0 10px', width: 'auto', minWidth: '125px' }}
+                    >
+                      <option value="ALL">All Types</option>
+                      <option value="INVOICES">Invoices Only</option>
+                      <option value="PAYMENTS">Payments Only</option>
+                    </select>
+
+                    <select
+                      className="form-control"
+                      value={ledgerStatusFilter}
+                      onChange={(e) => { setLedgerStatusFilter(e.target.value); setLedgerPage(1); }}
+                      style={{ height: '32px', fontSize: '12px', padding: '0 10px', width: 'auto', minWidth: '125px' }}
+                    >
+                      <option value="ALL">All Status</option>
+                      <option value="UNPAID">Unpaid (Credit)</option>
+                      <option value="PARTIAL">Partial Dues</option>
+                      <option value="PAID">Fully Paid</option>
+                    </select>
+
+                    {(ledgerSearch || ledgerTypeFilter !== 'ALL' || ledgerStatusFilter !== 'ALL') && (
+                      <button
+                        type="button"
+                        onClick={() => { setLedgerSearch(''); setLedgerTypeFilter('ALL'); setLedgerStatusFilter('ALL'); setLedgerPage(1); }}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12px', textDecoration: 'underline', cursor: 'pointer', padding: '0 4px' }}
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* DUAL-BALANCE LEDGER TABLE */}
-              <div className="table-responsive" style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: '10px' }}>
-                <table style={{ width: '100%', minWidth: '820px', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E5E7EB' }}>
-                      <th style={{ width: '95px', padding: '10px 14px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Date</th>
-                      <th style={{ width: '135px', padding: '10px 14px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Invoice #</th>
-                      <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Description</th>
-                      <th style={{ width: '105px', padding: '10px 14px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Bill Total</th>
-                      <th style={{ width: '105px', padding: '10px 14px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Paid</th>
-                      <th style={{ width: '115px', padding: '10px 14px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#DC2626', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Bill Due</th>
-                      <th style={{ width: '125px', padding: '10px 14px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#0F766E', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Account Balance</th>
-                      <th style={{ width: '75px', padding: '10px 14px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Action</th>
+              {/* TABLE CONTAINER: Sticky Header, 7 Clean Columns, No Confusing Double Balances */}
+              <div style={{ flex: '1', overflowY: 'auto', maxHeight: '52vh', position: 'relative' }}>
+                <table style={{ width: '100%', minWidth: '820px', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg-card, #FFFFFF)' }}>
+                    <tr style={{ background: 'var(--bg-hover, #F8FAFC)', borderBottom: '2px solid var(--border)' }}>
+                      <th style={{ width: '100px', padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Date</th>
+                      <th style={{ width: '140px', padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Reference</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Description</th>
+                      <th style={{ width: '120px', padding: '10px 16px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Bill</th>
+                      <th style={{ width: '120px', padding: '10px 16px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: '#16A34A', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Received</th>
+                      <th style={{ width: '140px', padding: '10px 16px', textAlign: 'right', fontSize: '11px', fontWeight: 700, color: 'var(--text-title)', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Running Balance</th>
+                      <th style={{ width: '85px', padding: '10px 16px', textAlign: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {ledgerData.ledger.map((row, idx) => {
-                      const isOpening = row.type === 'OPENING' || row.ref_no === 'OPN-BAL';
-                      const isSale = row.ref_no && row.ref_no.startsWith('INV-');
+                    {paginatedEntries.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          No ledger transactions match the selected filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedEntries.map((row, idx) => {
+                        const isOpening = row.type === 'OPENING' || row.ref_no === 'OPN-BAL';
+                        const isSale = row.type === 'SALE_INVOICE';
+                        const isPayment = row.type === 'PAYMENT_RECEIPT';
+                        const isReturn = row.type === 'SALE_RETURN';
+                        const isRefund = row.type === 'CUSTOMER_REFUND';
 
-                      let dot = '•';
-                      let descText = row.notes || 'Transaction';
-                      let descColor = '#374151';
-
-                      if (isOpening) {
-                        dot = '⚫';
-                        descText = 'Account Opening Balance';
-                        descColor = '#6B7280';
-                      } else if (row.type === 'PAYMENT_RECEIPT' || row.type === 'RECEIPT' || (!row.bill_amount && row.paid_amount > 0)) {
-                        dot = '🔵';
-                        const isBank = (row.notes && row.notes.toLowerCase().includes('bank')) || row.payment_method === 'Bank Transfer';
-                        descText = isBank ? 'Payment Received — Bank' : 'Payment Received';
-                        descColor = '#0F766E';
-                      } else if (row.bill_amount > 0) {
-                        if (row.paid_amount >= row.bill_amount) {
-                          const isBank = (row.notes && row.notes.toLowerCase().includes('bank'));
-                          dot = '🟢';
-                          descText = isBank ? 'Paid in Full — Bank' : 'Paid in Full — Cash';
-                          descColor = '#16A34A';
-                        } else if (row.paid_amount > 0) {
-                          dot = '🟡';
-                          descText = 'Partial Payment';
-                          descColor = '#D97706';
-                        } else {
-                          dot = '🔴';
-                          descText = 'Credit Sale';
-                          descColor = '#DC2626';
+                        // Status chip for invoice
+                        let chip = null;
+                        if (isSale) {
+                          if (row.status_chip === 'PAID') {
+                            chip = (
+                              <span style={{ background: '#D1FAE5', color: '#065F46', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontWeight: 700, whiteSpace: 'nowrap', border: '1px solid #A7F3D0' }}>
+                                ✓ Paid in Full
+                              </span>
+                            );
+                          } else if (row.status_chip === 'PARTIAL') {
+                            chip = (
+                              <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontWeight: 700, whiteSpace: 'nowrap', border: '1px solid #FDE68A' }}>
+                                Partial (₨ {(row.invoice_due || 0).toLocaleString()} due)
+                              </span>
+                            );
+                          } else if (row.status_chip === 'UNPAID') {
+                            chip = (
+                              <span style={{ background: '#FEE2E2', color: '#991B1B', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontWeight: 700, whiteSpace: 'nowrap', border: '1px solid #FECACA' }}>
+                                Credit Sale (₨ {(row.invoice_due || 0).toLocaleString()} due)
+                              </span>
+                            );
+                          } else if (row.status_chip === 'OVERPAID') {
+                            chip = (
+                              <span style={{ background: '#DBEAFE', color: '#1E40AF', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontWeight: 700, whiteSpace: 'nowrap', border: '1px solid #BFDBFE' }}>
+                                Overpaid (Credit)
+                              </span>
+                            );
+                          }
                         }
-                      }
 
-                      if (isOpening) {
+                        // Extra payment badge if overpayment was applied to account
+                        let extraBadge = null;
+                        if (isPayment && row.is_extra_payment && row.extra_amount > 0) {
+                          extraBadge = (
+                            <span style={{ background: '#EDE9FE', color: '#5B21B6', fontSize: '11px', padding: '2px 8px', borderRadius: '12px', fontWeight: 600, whiteSpace: 'nowrap', border: '1px solid #DDD6FE' }}>
+                              +₨ {row.extra_amount.toLocaleString()} extra applied to account
+                            </span>
+                          );
+                        }
+
                         return (
                           <tr
-                            key={idx}
+                            key={row.id || idx}
                             style={{
-                              height: '48px',
-                              background: '#FFFBEB',
-                              borderBottom: '1px solid #F3F4F6',
-                              verticalAlign: 'middle'
+                              borderBottom: '1px solid var(--border)',
+                              height: '46px',
+                              background: isOpening ? 'rgba(254, 243, 199, 0.25)' : 'transparent',
+                              transition: 'background 0.12s ease'
                             }}
                           >
-                            <td style={{ padding: '0 14px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '0 16px', color: 'var(--text-title)', whiteSpace: 'nowrap' }}>
                               {formatDate(row.date)}
                             </td>
-                            <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                              {isSale ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewInvoiceDetails(row.ref_no)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--primary, #0F766E)',
+                                    fontFamily: 'monospace',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    textDecoration: 'underline'
+                                  }}
+                                  title="Click to view full sale invoice"
+                                >
+                                  {row.ref_no}
+                                </button>
+                              ) : isPayment ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingReceipt(row)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#2563EB',
+                                    fontFamily: 'monospace',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    textDecoration: 'underline'
+                                  }}
+                                  title="Click to view payment receipt details"
+                                >
+                                  {row.ref_no || 'RECEIPT'}
+                                </button>
+                              ) : (
+                                <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                                  {row.ref_no || '—'}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: '0 16px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 500, color: 'var(--text-title)' }}>
+                                  {isOpening ? 'Account Opening Balance' : row.notes}
+                                </span>
+                                {chip}
+                                {extraBadge}
+                              </div>
+                            </td>
+                            <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap', color: 'var(--text-title)' }}>
+                              {row.bill_amount > 0 ? formatPKR(row.bill_amount) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                            </td>
+                            <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap', color: '#16A34A' }}>
+                              {row.received_amount > 0 ? formatPKR(row.received_amount) : (row.credit > 0 && isReturn ? formatPKR(row.credit) : <span style={{ color: 'var(--text-muted)' }}>—</span>)}
+                            </td>
+                            <td style={{ padding: '0 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <span style={{
-                                background: '#E5E7EB',
-                                color: '#374151',
-                                borderRadius: '12px',
-                                padding: '2px 8px',
-                                fontSize: '11px',
                                 fontWeight: 700,
-                                letterSpacing: '0.5px'
+                                color: (row.running_balance || 0) > 0 ? '#DC2626' : '#16A34A'
                               }}>
-                                OPENING
+                                {formatPKR(row.running_balance || 0)}
                               </span>
                             </td>
-                            <td style={{ padding: '0 14px', fontSize: '13px', color: '#6B7280' }}>
-                              <span style={{ marginRight: '6px' }}>⚫</span>
-                              <span>Account Opening Balance</span>
+                            <td style={{ padding: '0 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                              {isSale ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewInvoiceDetails(row.ref_no)}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ height: '26px', padding: '0 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                  title="View invoice"
+                                >
+                                  <Eye size={12} />
+                                  <span>View</span>
+                                </button>
+                              ) : isPayment ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingReceipt(row)}
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ height: '26px', padding: '0 8px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                  title="View receipt"
+                                >
+                                  <Eye size={12} />
+                                  <span>View</span>
+                                </button>
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)' }}>—</span>
+                              )}
                             </td>
-                            <td style={{ padding: '0 14px', textAlign: 'right', fontSize: '13px', color: '#9CA3AF' }}>—</td>
-                            <td style={{ padding: '0 14px', textAlign: 'right', fontSize: '13px', color: '#9CA3AF' }}>—</td>
-                            <td style={{ padding: '0 14px', textAlign: 'right', fontSize: '13px', color: '#9CA3AF' }}>—</td>
-                            <td style={{ padding: '0 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              <span style={{
-                                background: row.balance > 0 ? '#FEE2E2' : '#D1FAE5',
-                                color: row.balance > 0 ? '#991B1B' : '#065F46',
-                                borderRadius: '6px',
-                                padding: '2px 8px',
-                                fontWeight: 700,
-                                fontSize: '12px',
-                                display: 'inline-block'
-                              }}>
-                                {row.balance > 0 ? formatPKR(row.balance) : 'Rs 0 ✓'}
-                              </span>
-                            </td>
-                            <td style={{ padding: '0 14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>—</td>
                           </tr>
                         );
-                      }
-
-                      const dueAmount = row.invoice_due !== undefined ? Number(row.invoice_due) : Math.max(0, Number(row.bill_amount || 0) - Number(row.paid_amount || 0));
-
-                      return (
-                        <tr
-                          key={idx}
-                          style={{
-                            height: '50px',
-                            borderBottom: '1px solid #F3F4F6',
-                            verticalAlign: 'middle',
-                            transition: 'background 0.15s'
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = '#FFFFFF'; }}
-                        >
-                          <td style={{ padding: '0 14px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
-                            {formatDate(row.date)}
-                          </td>
-                          <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
-                            {isSale ? (
-                              <button
-                                type="button"
-                                onClick={() => handleViewInvoiceDetails(row.ref_no)}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: '#0F766E',
-                                  fontFamily: 'monospace',
-                                  fontSize: '12px',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  padding: 0,
-                                  textDecoration: 'none',
-                                  whiteSpace: 'nowrap'
-                                }}
-                                title="Click to view itemized invoice slip"
-                              >
-                                {row.ref_no}
-                              </button>
-                            ) : (
-                              <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#4B5563', whiteSpace: 'nowrap' }}>
-                                {row.ref_no || '—'}
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ padding: '0 14px', fontSize: '13px', color: descColor, whiteSpace: 'nowrap' }}>
-                            <span style={{ marginRight: '6px' }}>{dot}</span>
-                            <span style={{ fontWeight: 500 }}>{descText}</span>
-                          </td>
-                          <td style={{ padding: '0 14px', textAlign: 'right', fontWeight: 600, fontSize: '13px', color: '#111827', whiteSpace: 'nowrap' }}>
-                            {row.bill_amount > 0 ? formatPKR(row.bill_amount) : <span style={{ color: '#9CA3AF' }}>—</span>}
-                          </td>
-                          <td style={{ padding: '0 14px', textAlign: 'right', fontWeight: 600, fontSize: '13px', color: '#16A34A', whiteSpace: 'nowrap' }}>
-                            {row.paid_amount > 0 ? formatPKR(row.paid_amount) : <span style={{ color: '#9CA3AF' }}>—</span>}
-                          </td>
-                          {/* INVOICE DUE (SPECIFIC BILL OUTSTANDING) */}
-                          <td style={{ padding: '0 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            {row.bill_amount > 0 ? (
-                              dueAmount > 0 ? (
-                                <span style={{
-                                  background: '#FEE2E2',
-                                  color: '#991B1B',
-                                  borderRadius: '6px',
-                                  padding: '2px 8px',
-                                  fontSize: '12px',
-                                  fontWeight: 700,
-                                  display: 'inline-block'
-                                }}>
-                                  ⚠️ {formatPKR(dueAmount)}
-                                </span>
-                              ) : (
-                                <span style={{
-                                  background: '#D1FAE5',
-                                  color: '#065F46',
-                                  borderRadius: '6px',
-                                  padding: '2px 8px',
-                                  fontSize: '12px',
-                                  fontWeight: 600,
-                                  display: 'inline-block'
-                                }}>
-                                  Rs 0 ✓ Paid
-                                </span>
-                              )
-                            ) : (
-                              <span style={{ color: '#9CA3AF' }}>—</span>
-                            )}
-                          </td>
-                          {/* ACCOUNT BALANCE (RUNNING TOTAL AT THIS POINT) */}
-                          <td style={{ padding: '0 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            <span style={{
-                              fontWeight: 700,
-                              fontSize: '13px',
-                              color: row.balance > 0 ? '#991B1B' : '#065F46'
-                            }}>
-                              {row.balance > 0 ? formatPKR(row.balance) : 'Rs 0'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '0 14px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            {isSale ? (
-                              <button
-                                type="button"
-                                onClick={() => handleViewInvoiceDetails(row.ref_no)}
-                                style={{
-                                  height: '28px',
-                                  padding: '0 10px',
-                                  border: '1px solid #E5E7EB',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  fontWeight: 500,
-                                  color: '#374151',
-                                  background: '#FFFFFF',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.15s'
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.borderColor = '#0F766E';
-                                  e.currentTarget.style.color = '#0F766E';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.borderColor = '#E5E7EB';
-                                  e.currentTarget.style.color = '#374151';
-                                }}
-                              >
-                                View →
-                              </button>
-                            ) : (
-                              <span style={{ color: '#9CA3AF', fontSize: '13px' }}>—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
-            </div>
 
-            {/* MODAL FOOTER */}
-            <div style={{
-              borderTop: '1px solid #F3F4F6',
-              padding: '14px 22px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '12px',
-              background: '#FFFFFF'
-            }}>
-              <div style={{ fontSize: '12px', color: '#6B7280' }}>
-                {ledgerData.ledger.length} transactions  •  Total Billed: <strong style={{ color: '#111827' }}>{formatPKR(ledgerData.summary.total_purchased || ledgerData.summary.total_debit || 0)}</strong>  •  Total Paid: <strong style={{ color: '#16A34A' }}>{formatPKR(ledgerData.summary.total_paid || ledgerData.summary.total_credit || 0)}</strong>  •  Total Pending Udhaar: <strong style={{ color: ledgerData.summary.closing_balance > 0 ? '#DC2626' : '#16A34A' }}>{formatPKR(ledgerData.summary.closing_balance)}</strong>
+              {/* MODAL FOOTER: Sticky summary totals and distinct single actions */}
+              <div
+                style={{
+                  padding: '14px 24px',
+                  background: 'var(--bg-card, #FFFFFF)',
+                  borderTop: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '14px'
+                }}
+              >
+                {/* Synchronized Totals Bar */}
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <span>
+                    Total Billed: <strong style={{ color: 'var(--text-title)' }}>{formatPKR(ledgerData.summary.total_billed)}</strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Total Received: <strong style={{ color: '#16A34A' }}>{formatPKR(ledgerData.summary.total_received)}</strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Returns: <strong style={{ color: 'var(--text-title)' }}>{formatPKR(ledgerData.summary.total_returns || 0)}</strong>
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Balance: <strong style={{ color: (ledgerData.summary.closing_balance || 0) > 0 ? '#DC2626' : '#16A34A' }}>{formatPKR(ledgerData.summary.closing_balance)}</strong>
+                  </span>
+                </div>
+
+                {/* Footer Action Buttons */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLedgerModal(false);
+                      openPaymentModal(ledgerData.customer);
+                    }}
+                    className="btn btn-primary btn-sm"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px' }}
+                  >
+                    <DollarSign size={14} />
+                    <span>Receive Payment</span>
+                  </button>
+
+                  {hasValidPhone && (
+                    <button
+                      type="button"
+                      onClick={() => sendWhatsAppReminder(ledgerData.customer, ledgerData.summary.closing_balance)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', color: '#16A34A', borderColor: '#86EFAC' }}
+                      title="Send WhatsApp payment reminder with balance"
+                    >
+                      <MessageCircle size={14} />
+                      <span>WhatsApp Reminder</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="btn btn-secondary btn-sm"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px' }}
+                    title="Print verified customer ledger statement"
+                  >
+                    <Printer size={14} />
+                    <span>Print Statement</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowLedgerModal(false)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ height: '34px' }}
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* STANDALONE PAYMENT RECEIPT VIEW MODAL */}
+      {viewingReceipt && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={() => setViewingReceipt(null)}>
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '440px', width: '96%', borderRadius: '14px', overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+          >
+            <div className="modal-header" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => window.print()}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                >
-                  <Printer size={14} />
-                  <span>Print Statement</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => setShowLedgerModal(false)}
-                >
-                  Close
-                </button>
+                <CheckCircle2 size={18} style={{ color: '#16A34A' }} />
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>
+                  Payment Receipt
+                </h3>
               </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setViewingReceipt(null)}
+                style={{ width: '30px', height: '30px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-hover)', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Reference Number:</span>
+                <strong style={{ fontFamily: 'monospace' }}>{viewingReceipt.ref_no || 'RECEIPT'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Date:</span>
+                <span>{formatDate(viewingReceipt.date)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Payment Method:</span>
+                <span style={{ fontWeight: 600 }}>{viewingReceipt.payment_method || 'Cash'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Amount Received:</span>
+                <strong style={{ fontSize: '16px', color: '#16A34A' }}>{formatPKR(viewingReceipt.received_amount || viewingReceipt.credit || 0)}</strong>
+              </div>
+              {viewingReceipt.notes && (
+                <div style={{ marginTop: '4px' }}>
+                  <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Description / Notes:</span>
+                  <div style={{ background: 'var(--bg-hover)', padding: '8px 10px', borderRadius: '6px', color: 'var(--text-title)' }}>
+                    {viewingReceipt.notes}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer" style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button type="button" onClick={() => window.print()} className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <Printer size={13} />
+                <span>Print Receipt</span>
+              </button>
+              <button type="button" onClick={() => setViewingReceipt(null)} className="btn btn-secondary btn-sm">
+                Close
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* AUDIT & SYNC BALANCES BEFORE/AFTER DIFF MODAL */}
+      {showAuditModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={() => setShowAuditModal(false)}>
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '780px', width: '96%', borderRadius: '16px', overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}
+          >
+            <div className="modal-header" style={{ padding: '16px 22px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <ShieldAlert size={20} style={{ color: auditData?.discrepancies_count > 0 ? '#DC2626' : '#16A34A' }} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-title)' }}>
+                    Audit & Sync Customer Balances
+                  </h3>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Verified double-entry ledger calculation against stored database balances
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowAuditModal(false)}
+                style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-hover)', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px 22px', maxHeight: '60vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1', minWidth: '160px', padding: '12px', borderRadius: '8px', background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Customers Audited</div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-title)', marginTop: '2px' }}>{auditData?.total_checked || 0}</div>
+                </div>
+                <div style={{ flex: '1', minWidth: '160px', padding: '12px', borderRadius: '8px', background: auditData?.discrepancies_count > 0 ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${auditData?.discrepancies_count > 0 ? '#FECACA' : '#BBF7D0'}` }}>
+                  <div style={{ fontSize: '11px', color: auditData?.discrepancies_count > 0 ? '#991B1B' : '#166534', fontWeight: 600, textTransform: 'uppercase' }}>Discrepancies Found</div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: auditData?.discrepancies_count > 0 ? '#DC2626' : '#16A34A', marginTop: '2px' }}>{auditData?.discrepancies_count || 0}</div>
+                </div>
+              </div>
+
+              {auditData?.discrepancies_count === 0 ? (
+                <div style={{ padding: '30px 20px', textAlign: 'center', background: '#F0FDF4', borderRadius: '10px', border: '1px solid #BBF7D0' }}>
+                  <CheckCircle2 size={36} style={{ color: '#16A34A', margin: '0 auto 10px auto' }} />
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: '#166534' }}>All Balances 100% Synchronized!</div>
+                  <div style={{ fontSize: '13px', color: '#15803D', marginTop: '4px' }}>
+                    Every customer's stored balance perfectly matches the verified sum of their invoices, receipts, and returns.
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-title)', fontWeight: 600, marginBottom: '10px' }}>
+                    Discrepancy Preview (Before vs After):
+                  </div>
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: '10px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--bg-hover)', borderBottom: '1px solid var(--border)' }}>
+                          <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)' }}>Customer</th>
+                          <th style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)' }}>Stored Balance</th>
+                          <th style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 600, color: '#16A34A' }}>Verified True Balance</th>
+                          <th style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 600, color: '#DC2626' }}>Difference</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {auditData?.discrepancies.map((d) => (
+                          <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '10px 14px' }}>
+                              <strong style={{ color: 'var(--text-title)' }}>{d.name}</strong>
+                              {d.phone && d.phone !== 'None' && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>📞 {d.phone}</div>}
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace' }}>
+                              {formatPKR(d.stored_balance)}
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#16A34A' }}>
+                              {formatPKR(d.calculated_balance)}
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: d.diff > 0 ? '#DC2626' : '#2563EB' }}>
+                              {d.diff > 0 ? `+${formatPKR(d.diff)}` : formatPKR(d.diff)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer" style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setShowAuditModal(false)}
+                className="btn btn-secondary btn-sm"
+              >
+                Close
+              </button>
+              {auditData?.discrepancies_count > 0 && (
+                <button
+                  type="button"
+                  onClick={handleConfirmSync}
+                  disabled={syncing}
+                  className="btn btn-primary btn-sm"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <RefreshCw size={13} className={syncing ? 'spin' : ''} />
+                  <span>{syncing ? 'Synchronizing...' : 'Confirm & Synchronize Balances'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* RECEIVE PAYMENT MODAL */}
       {showPayModal && selectedCust && (
@@ -987,7 +1308,7 @@ export default function Customers() {
           <div className="modal-content" style={{ maxWidth: '480px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>
                   Receive Payment
                 </h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
@@ -1072,7 +1393,7 @@ export default function Customers() {
           <div className="modal-content" style={{ maxWidth: '580px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Edit Customer Account</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Edit Customer Account</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Update contact information, account type, and credit limits.
                 </div>
