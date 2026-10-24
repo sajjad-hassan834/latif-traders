@@ -1,10 +1,10 @@
 import { api } from './api';
 
 export const APP_THEMES = [
-  { id: 'classic', name: 'Classic Light', color: '#0284C7', desc: 'Clean business blue on crisp slate' },
-  { id: 'dark', name: 'Midnight Dark', color: '#0EA5E9', desc: 'Deep OLED navy slate with bright cyan' },
-  { id: 'green', name: 'Emerald Green', color: '#059669', desc: 'Rich forest green with mint highlights' },
-  { id: 'indigo', name: 'Royal Indigo', color: '#4F46E5', desc: 'Deep imperial indigo with lavender accents' }
+  { id: 'classic', name: 'Classic Light', icon: '☀️', color: '#0284C7' },
+  { id: 'dark', name: 'Midnight Dark', icon: '🌙', color: '#0EA5E9' },
+  { id: 'green', name: 'Emerald Green', icon: '🍃', color: '#059669' },
+  { id: 'indigo', name: 'Royal Indigo', icon: '🔮', color: '#4F46E5' }
 ];
 
 export const PUBLIC_THEMES = [
@@ -55,10 +55,14 @@ export function applyAppTheme(themeId, skipServerSync = false) {
   const root = document.documentElement;
   root.removeAttribute('data-public-theme');
   root.setAttribute('data-app-theme', active);
+  const legacyTheme = active === 'dark' ? 'dark' : (active === 'green' ? 'emerald' : (active === 'indigo' ? 'indigo' : 'light'));
+  root.setAttribute('data-theme', legacyTheme);
   root.style.colorScheme = active === 'dark' ? 'dark' : 'light';
 
   if (document.body) {
-    document.body.className = `app-theme-${active}`;
+    document.body.className = `app-theme-${active} theme-${legacyTheme} ${active === 'dark' ? 'dark dark-mode' : ''}`;
+    document.body.setAttribute('data-app-theme', active);
+    document.body.setAttribute('data-theme', legacyTheme);
   }
 
   // Sync with backend preferences if logged in

@@ -1,11 +1,64 @@
 const { db } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
 
-// List purchases with supplier info
+// List purchases with supplier info, search, filtering & pagination
 exports.getPurchases = (req, res) => {
   try {
     const tenantId = req.tenant_id || 'latif_001';
-    const { start_date, end_date, supplier_id } = req.query;
+    const { start_date, end_date, date_from, date_to, supplier_id, search, payment_status, page, limit } = req.query;
+
+    let baseWhere = ` WHERE p.tenant_id = ?`;
+    const params = [tenantId];
+
+    const fromDate = start_date || date_from;
+    const toDate = end_date || date_to;
+
+    if (fromDate) {
+      baseWhere += ` AND p.purchase_date >= ?`;
+      params.push(fromDate);
+    }
+    if (toDate) {
+      baseWhere += ` AND p.purchase_date <= ?`;
+      params.push(toDate);
+    }
+    if (supplier_id && supplier_id !== 'all') {
+      baseWhere += ` AND p.supplier_id = ?`;
+      params.push(supplier_id);
+    }
+    if (payment_status && payment_status !== 'all') {
+      const ps = String(payment_status).toUpperCase();
+      if (ps === 'PAID') {
+        baseWhere += ` AND (p.balance_due <= 0 OR p.paid_amount >= p.grand_total)`;
+      } else if (ps === 'PARTIAL') {
+        baseWhere += ` AND (p.paid_amount > 0 AND p.balance_due > 0 AND p.paid_amount < p.grand_total)`;
+      } else if (ps === 'UNPAID') {
+        baseWhere += ` AND (p.paid_amount <= 0)`;
+      }
+    }
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      baseWhere += ` AND (
+        p.invoice_no LIKE ?
+        OR p.supplier_invoice_no LIKE ?
+        OR s.name LIKE ?
+        OR EXISTS (
+          SELECT 1 FROM purchase_items pi
+          JOIN products pr ON pi.product_id = pr.id AND pr.tenant_id = pi.tenant_id
+          WHERE pi.purchase_id = p.id AND pi.tenant_id = p.tenant_id
+            AND (pr.name LIKE ? OR pr.sku LIKE ?)
+        )
+      )`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    const countQuery = `
+      SELECT COUNT(DISTINCT p.id) as total
+      FROM purchases p
+      JOIN suppliers s ON p.supplier_id = s.id AND s.tenant_id = p.tenant_id
+      ${baseWhere}
+    `;
+    const countRow = db.prepare(countQuery).get(...params);
+    const total = countRow ? countRow.total : 0;
 
     let query = `
       SELECT p.*, s.name as supplier_name, s.phone as supplier_phone, u.full_name as user_name,
@@ -14,27 +67,31 @@ exports.getPurchases = (req, res) => {
       FROM purchases p
       JOIN suppliers s ON p.supplier_id = s.id AND s.tenant_id = p.tenant_id
       LEFT JOIN users u ON p.user_id = u.id AND u.tenant_id = p.tenant_id
-      WHERE p.tenant_id = ?
+      ${baseWhere}
+      ORDER BY p.id DESC
     `;
-    const params = [tenantId];
 
-    if (start_date) {
-      query += ` AND p.purchase_date >= ?`;
-      params.push(start_date);
-    }
-    if (end_date) {
-      query += ` AND p.purchase_date <= ?`;
-      params.push(end_date);
-    }
-    if (supplier_id) {
-      query += ` AND p.supplier_id = ?`;
-      params.push(supplier_id);
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const queryParams = [...params];
+
+    if (!isNaN(pageNum) && !isNaN(limitNum) && limitNum > 0) {
+      const offset = (pageNum - 1) * limitNum;
+      query += ` LIMIT ? OFFSET ?`;
+      queryParams.push(limitNum, offset);
     }
 
-    query += ` ORDER BY p.id DESC`;
-    const purchases = db.prepare(query).all(...params);
+    const purchases = db.prepare(query).all(...queryParams);
+    const totalPages = (!isNaN(pageNum) && !isNaN(limitNum) && limitNum > 0) ? Math.ceil(total / limitNum) : 1;
 
-    return res.json({ success: true, purchases });
+    return res.json({
+      success: true,
+      purchases,
+      total,
+      page: pageNum || 1,
+      limit: limitNum || purchases.length,
+      totalPages
+    });
   } catch (err) {
     console.error('Error fetching purchases:', err);
     return res.status(500).json({ success: false, message: 'Failed to fetch purchases.' });
@@ -230,6 +287,14 @@ exports.createPurchase = (req, res) => {
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND tenant_id = ?
       `).run(rate, batchSalePrice, batchSalePrice, batchWholesalePrice, batchWholesalePrice, supplier_id, itemBrand, item.product_id, tenantId);
+
+      db.prepare(`
+        INSERT INTO supplier_products (tenant_id, supplier_id, product_id, last_purchase_price, last_purchased_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(tenant_id, supplier_id, product_id) DO UPDATE SET
+          last_purchase_price = excluded.last_purchase_price,
+          last_purchased_at = CURRENT_TIMESTAMP
+      `).run(tenantId, supplier_id, item.product_id, rate);
 
       const newTotal = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ?")
         .get(item.product_id, tenantId).s;
@@ -549,5 +614,79 @@ exports.getProductStockPreview = (req, res) => {
   } catch (err) {
     console.error('Error fetching stock preview:', err);
     return res.status(500).json({ success: false, message: 'Failed to fetch stock preview.' });
+  }
+};
+
+// Fetch supplier-linked products with fallback to full catalog
+exports.getSupplierProducts = (req, res) => {
+  try {
+    const tenantId = req.tenant_id || 'latif_001';
+    const { supplierId } = req.params;
+
+    // Safe check table exists
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS supplier_products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        last_purchase_price REAL DEFAULT 0,
+        last_purchased_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        tenant_id TEXT DEFAULT 'latif_001',
+        UNIQUE(tenant_id, supplier_id, product_id)
+      )
+    `).run();
+
+    // Query supplier mapped products (via supplier_products, products.supplier_id, or past purchases)
+    const mappedProducts = db.prepare(`
+      SELECT p.id, p.name, p.sku, p.barcode, p.brand, p.unit, p.sale_price, p.wholesale_price,
+        COALESCE(
+          (SELECT sp.last_purchase_price FROM supplier_products sp WHERE sp.product_id = p.id AND sp.supplier_id = ? AND sp.tenant_id = p.tenant_id),
+          (SELECT pi.unit_price FROM purchase_items pi JOIN purchases pu ON pi.purchase_id = pu.id WHERE pi.product_id = p.id AND pu.supplier_id = ? AND pu.tenant_id = p.tenant_id ORDER BY pu.id DESC LIMIT 1),
+          p.purchase_price,
+          0
+        ) as last_purchase_cost,
+        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.status = 'active' AND b.tenant_id = p.tenant_id), 0) as current_stock,
+        1 as is_mapped
+      FROM products p
+      WHERE p.tenant_id = ? AND p.status = 'active'
+        AND (
+          p.supplier_id = ?
+          OR EXISTS (SELECT 1 FROM supplier_products sp WHERE sp.product_id = p.id AND sp.supplier_id = ? AND sp.tenant_id = p.tenant_id)
+          OR EXISTS (SELECT 1 FROM purchase_items pi JOIN purchases pu ON pi.purchase_id = pu.id WHERE pi.product_id = p.id AND pu.supplier_id = ? AND pu.tenant_id = p.tenant_id)
+        )
+      ORDER BY p.name ASC
+    `).all(supplierId, supplierId, tenantId, supplierId, supplierId, supplierId);
+
+    // Query all catalog products
+    const allProducts = db.prepare(`
+      SELECT p.id, p.name, p.sku, p.barcode, p.brand, p.unit, p.sale_price, p.wholesale_price,
+        COALESCE(
+          (SELECT sp.last_purchase_price FROM supplier_products sp WHERE sp.product_id = p.id AND sp.supplier_id = ? AND sp.tenant_id = p.tenant_id),
+          (SELECT pi.unit_price FROM purchase_items pi JOIN purchases pu ON pi.purchase_id = pu.id WHERE pi.product_id = p.id AND pu.supplier_id = ? AND pu.tenant_id = p.tenant_id ORDER BY pu.id DESC LIMIT 1),
+          p.purchase_price,
+          0
+        ) as last_purchase_cost,
+        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.status = 'active' AND b.tenant_id = p.tenant_id), 0) as current_stock,
+        CASE WHEN (
+          p.supplier_id = ?
+          OR EXISTS (SELECT 1 FROM supplier_products sp WHERE sp.product_id = p.id AND sp.supplier_id = ? AND sp.tenant_id = p.tenant_id)
+          OR EXISTS (SELECT 1 FROM purchase_items pi JOIN purchases pu ON pi.purchase_id = pu.id WHERE pi.product_id = p.id AND pu.supplier_id = ? AND pu.tenant_id = p.tenant_id)
+        ) THEN 1 ELSE 0 END as is_mapped
+      FROM products p
+      WHERE p.tenant_id = ? AND p.status = 'active'
+      ORDER BY p.name ASC
+    `).all(supplierId, supplierId, supplierId, supplierId, supplierId, tenantId);
+
+    return res.json({
+      success: true,
+      supplier_id: Number(supplierId),
+      mapped_products: mappedProducts,
+      all_products: allProducts,
+      mapped_count: mappedProducts.length
+    });
+  } catch (err) {
+    console.error('Error fetching supplier products:', err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch supplier products.' });
   }
 };

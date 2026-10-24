@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown, Trash2, RefreshCw, ArrowUpRight } from 'lucide-react';
+import { Building2, Plus, FileText, DollarSign, Printer, Search, Edit, ChevronDown, Trash2, RefreshCw, ArrowUpRight, ShieldAlert, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
 import Pagination from '../components/common/Pagination';
 import ActionMenu from '../components/common/ActionMenu';
+import CustomDatePicker from '../components/common/CustomDatePicker';
 
 export default function Suppliers() {
   const { user, isAdmin: authIsAdmin } = useAuth();
@@ -21,6 +22,11 @@ export default function Suppliers() {
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [auditData, setAuditData] = useState(null);
+  const [auditing, setAuditing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
   const [supplierToDelete, setSupplierToDelete] = useState(null);
   const [selectedSup, setSelectedSup] = useState(null);
   const [ledgerData, setLedgerData] = useState(null);
@@ -196,19 +202,35 @@ export default function Suppliers() {
     }
   };
 
-  const handleRecalculateBalances = async () => {
-    if (!window.confirm('This will recalculate all supplier balances from actual purchase/payment/return data. Continue?')) return;
+  const handleOpenAuditModal = async () => {
     try {
-      setLoading(true);
-      const res = await api.post('/parties/suppliers/recalculate-balances');
+      setAuditing(true);
+      const res = await api.get('/parties/suppliers/audit-balances');
+      if (res.success) {
+        setAuditData(res);
+        setShowAuditModal(true);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to audit supplier balances.');
+    } finally {
+      setAuditing(false);
+    }
+  };
+
+  const handleConfirmSync = async () => {
+    try {
+      setSyncing(true);
+      const res = await api.post('/parties/suppliers/sync-balances', {});
       if (res.success) {
         alert(res.message);
+        setShowAuditModal(false);
+        setAuditData(null);
         loadSuppliers();
       }
     } catch (err) {
-      alert(err.message || 'Failed to recalculate balances');
+      alert(err.message || 'Failed to synchronize supplier balances.');
     } finally {
-      setLoading(false);
+      setSyncing(false);
     }
   };
 
@@ -229,9 +251,15 @@ export default function Suppliers() {
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {isAdmin && (
-            <button onClick={handleRecalculateBalances} className="btn btn-secondary" title="Admin: Recalculate all supplier balances from actual data">
-              <RefreshCw size={14} />
-              <span>Recalculate Balances</span>
+            <button
+              onClick={handleOpenAuditModal}
+              disabled={auditing}
+              className="btn btn-secondary"
+              title="Audit and review discrepancies between stored balances and verified purchase bills & payments"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <RefreshCw size={14} className={auditing ? 'spin' : ''} />
+              <span>{auditing ? 'Auditing...' : 'Recalculate Balances'}</span>
             </button>
           )}
           <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
@@ -264,16 +292,16 @@ export default function Suppliers() {
                 suppliers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(s => (
                   <tr key={s.id}>
                     <td style={{ minWidth: '180px' }}>
-                      <div style={{ fontWeight: 600, color: '#0f172a' }}>{s.name}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-title)' }}>{s.name}</div>
                       {s.address && (
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                           {s.address}
                         </div>
                       )}
                     </td>
-                    <td style={{ whiteSpace: 'nowrap', color: '#334155', fontWeight: 500 }}>{s.contact_person || '-'}</td>
-                    <td style={{ whiteSpace: 'nowrap', color: '#64748b' }}>{s.phone || '-'}</td>
-                    <td><span style={{ fontSize: '0.8rem', color: '#64748b' }}>{s.address || '-'}</span></td>
+                    <td style={{ whiteSpace: 'nowrap', color: 'var(--text-table)', fontWeight: 500 }}>{s.contact_person || '-'}</td>
+                    <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{s.phone || '-'}</td>
+                    <td><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{s.address || '-'}</span></td>
                     <td style={{ textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>
                       {s.current_balance > 0 ? (
                         <span style={{ color: '#ef4444' }}>{formatPKR(s.current_balance)}</span>
@@ -323,10 +351,10 @@ export default function Suppliers() {
                             }
                           ]}
                         />
-                    </div>
-                  </td>
-                </tr>
-              ))
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -432,7 +460,7 @@ export default function Suppliers() {
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '960px', width: '96%', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
             {/* FIX 1: MODAL HEADER */}
-            <div className="modal-header" style={{ padding: '16px 24px', borderBottom: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div className="modal-header" style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
                   width: '44px',
@@ -450,7 +478,7 @@ export default function Suppliers() {
                   {(ledgerData.supplier.name || 'S').charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontSize: '20px', fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-title)', lineHeight: 1.2 }}>
                     {ledgerData.supplier.name}
                   </div>
                   <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
@@ -482,31 +510,11 @@ export default function Suppliers() {
 
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  style={{
-                    height: '34px',
-                    padding: '0 12px',
-                    background: '#FFFFFF',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    color: '#374151',
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <Printer size={14} />
-                  <span>Print Statement</span>
-                </button>
-                <button
-                  type="button"
                   className="modal-close-btn"
                   onClick={() => setShowLedgerModal(false)}
                   aria-label="Close"
-                  style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E5E7EB', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6B7280' }}
+                  style={{ width: '34px', height: '34px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-title)', fontSize: '16px', fontWeight: 700 }}
+                  title="Close ledger"
                 >
                   ✕
                 </button>
@@ -514,57 +522,20 @@ export default function Suppliers() {
             </div>
 
             <div className="modal-body" style={{ padding: '20px 24px' }}>
-              {/* FIX 2: DATE FILTER BAR */}
+              {/* DATE FILTER BAR */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>Filter by date:</span>
-                <input
-                  type="date"
-                  style={{
-                    height: '36px',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                    padding: '0 12px',
-                    fontSize: '13px',
-                    color: '#111827',
-                    background: '#FFFFFF'
-                  }}
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>Filter by date:</span>
+                <CustomDatePicker
                   value={ledgerStartDate}
-                  onChange={(e) => setLedgerStartDate(e.target.value)}
+                  onChange={(v) => { setLedgerStartDate(v); openLedger(selectedSup, v, ledgerEndDate); }}
+                  placeholder="From (dd/mm/yyyy)"
                 />
-                <input
-                  type="date"
-                  style={{
-                    height: '36px',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                    padding: '0 12px',
-                    fontSize: '13px',
-                    color: '#111827',
-                    background: '#FFFFFF'
-                  }}
+                <span style={{ color: 'var(--text-muted)' }}>–</span>
+                <CustomDatePicker
                   value={ledgerEndDate}
-                  onChange={(e) => setLedgerEndDate(e.target.value)}
+                  onChange={(v) => { setLedgerEndDate(v); openLedger(selectedSup, ledgerStartDate, v); }}
+                  placeholder="To (dd/mm/yyyy)"
                 />
-                <button
-                  type="button"
-                  onClick={() => openLedger(selectedSup, ledgerStartDate, ledgerEndDate)}
-                  style={{
-                    height: '36px',
-                    padding: '0 16px',
-                    background: '#0F766E',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  Apply Filter →
-                </button>
                 {(ledgerStartDate || ledgerEndDate) && (
                   <button
                     type="button"
@@ -732,7 +703,7 @@ export default function Suppliers() {
                             <span style={{ marginRight: '6px' }}>{dot}</span>
                             <span style={{ fontWeight: 500 }}>{descText}</span>
                           </td>
-                          <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 700, fontSize: '14px', color: '#111827', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 700, fontSize: '14px', color: 'var(--text-title)', whiteSpace: 'nowrap' }}>
                             {row.credit > 0 ? formatPKR(row.credit) : <span style={{ color: '#9CA3AF' }}>—</span>}
                           </td>
                           <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 600, fontSize: '14px', color: '#16A34A', whiteSpace: 'nowrap' }}>
@@ -810,10 +781,11 @@ export default function Suppliers() {
               alignItems: 'center',
               flexWrap: 'wrap',
               gap: '12px',
-              background: '#FFFFFF'
+              background: 'var(--bg-card)',
+              borderTop: '1px solid var(--border)'
             }}>
-              <div style={{ fontSize: '12px', color: '#6B7280' }}>
-                {ledgerData.ledger.length} transactions  •  Total Purchases: <strong style={{ color: '#111827' }}>{formatPKR(ledgerData.summary.total_credit || 0)}</strong>  •  Total Paid: <strong style={{ color: '#16A34A' }}>{formatPKR(ledgerData.summary.total_debit || 0)}</strong>  •  Closing Payable: <strong style={{ color: ledgerData.summary.closing_balance > 0 ? '#DC2626' : '#16A34A' }}>{formatPKR(ledgerData.summary.closing_balance)}</strong>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                {ledgerData.ledger.length} transactions  •  Total Purchases: <strong style={{ color: 'var(--text-title)' }}>{formatPKR(ledgerData.summary.total_credit || 0)}</strong>  •  Total Paid: <strong style={{ color: '#16A34A' }}>{formatPKR(ledgerData.summary.total_debit || 0)}</strong>  •  Closing Payable: <strong style={{ color: ledgerData.summary.closing_balance > 0 ? '#DC2626' : '#16A34A' }}>{formatPKR(ledgerData.summary.closing_balance)}</strong>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
@@ -842,9 +814,9 @@ export default function Suppliers() {
       {viewingPurchase && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '640px', width: '96%', borderRadius: '16px', overflow: 'hidden' }}>
-            <div className="modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid #F3F4F6' }}>
+            <div className="modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#111827' }}>Purchase Voucher</h3>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-title)' }}>Purchase Voucher</h3>
                 <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
                   Ref #: <strong style={{ fontFamily: 'monospace' }}>{viewingPurchase.purchase.invoice_no}</strong> • Date: {formatDate(viewingPurchase.purchase.purchase_date)}
                 </div>
@@ -860,10 +832,10 @@ export default function Suppliers() {
               </div>
             </div>
             <div className="modal-body" style={{ padding: '20px' }}>
-              <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#6B7280', fontWeight: 600 }}>Supplier</div>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: '#111827' }}>{viewingPurchase.purchase.supplier_name || selectedSup?.name}</div>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Supplier</div>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-title)' }}>{viewingPurchase.purchase.supplier_name || selectedSup?.name}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#6B7280', fontWeight: 600 }}>Status</div>
@@ -886,8 +858,8 @@ export default function Suppliers() {
                     </thead>
                     <tbody>
                       {viewingPurchase.items.map((it, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                          <td style={{ padding: '8px 12px', fontWeight: 600, color: '#111827' }}>{it.product_name}</td>
+                        <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: 600, color: 'var(--text-title)' }}>{it.product_name}</td>
                           <td style={{ padding: '8px 12px', textAlign: 'center' }}>{it.quantity} {it.unit}</td>
                           <td style={{ padding: '8px 12px', textAlign: 'right' }}>{formatPKR(it.unit_price)}</td>
                           <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700 }}>{formatPKR(it.total_price)}</td>
@@ -1157,6 +1129,121 @@ export default function Suppliers() {
                 <Trash2 size={13} />
                 <span>Permanently Delete</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUPPLIER AUDIT & SYNC BALANCES BEFORE/AFTER DIFF MODAL */}
+      {showAuditModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={() => setShowAuditModal(false)}>
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '780px', width: '96%', borderRadius: '16px', overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}
+          >
+            <div className="modal-header" style={{ padding: '16px 22px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <ShieldAlert size={20} style={{ color: auditData?.discrepancies_count > 0 ? '#DC2626' : '#16A34A' }} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-title)' }}>
+                    Audit & Sync Supplier Balances
+                  </h3>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Verified double-entry ledger calculation against stored database balances
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowAuditModal(false)}
+                style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-hover)', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px 22px', maxHeight: '60vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1', minWidth: '160px', padding: '12px', borderRadius: '8px', background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Suppliers Audited</div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-title)', marginTop: '2px' }}>{auditData?.total_checked || 0}</div>
+                </div>
+                <div style={{ flex: '1', minWidth: '160px', padding: '12px', borderRadius: '8px', background: auditData?.discrepancies_count > 0 ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${auditData?.discrepancies_count > 0 ? '#FECACA' : '#BBF7D0'}` }}>
+                  <div style={{ fontSize: '11px', color: auditData?.discrepancies_count > 0 ? '#991B1B' : '#166534', fontWeight: 600, textTransform: 'uppercase' }}>Discrepancies Found</div>
+                  <div style={{ fontSize: '20px', fontWeight: 700, color: auditData?.discrepancies_count > 0 ? '#DC2626' : '#16A34A', marginTop: '2px' }}>{auditData?.discrepancies_count || 0}</div>
+                </div>
+              </div>
+
+              {auditData?.discrepancies_count === 0 ? (
+                <div style={{ padding: '30px 20px', textAlign: 'center', background: '#F0FDF4', borderRadius: '10px', border: '1px solid #BBF7D0' }}>
+                  <CheckCircle2 size={36} style={{ color: '#16A34A', margin: '0 auto 10px auto' }} />
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: '#166534' }}>All Balances 100% Synchronized!</div>
+                  <div style={{ fontSize: '13px', color: '#15803D', marginTop: '4px' }}>
+                    Every supplier's stored balance perfectly matches the verified sum of their purchase bills, payments, and returns.
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-title)', fontWeight: 600, marginBottom: '10px' }}>
+                    Discrepancy Preview (Before vs After):
+                  </div>
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: '10px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--bg-hover)', borderBottom: '1px solid var(--border)' }}>
+                          <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)' }}>Supplier</th>
+                          <th style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)' }}>Stored Balance</th>
+                          <th style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 600, color: '#16A34A' }}>Verified True Balance</th>
+                          <th style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 600, color: '#DC2626' }}>Difference</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {auditData?.discrepancies.map((d) => (
+                          <tr key={d.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '10px 14px' }}>
+                              <strong style={{ color: 'var(--text-title)' }}>{d.name}</strong>
+                              {d.phone && d.phone !== 'None' && <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>📞 {d.phone}</div>}
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace' }}>
+                              {formatPKR(d.stored_balance)}
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#16A34A' }}>
+                              {formatPKR(d.calculated_balance)}
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: d.diff > 0 ? '#DC2626' : '#2563EB' }}>
+                              {d.diff > 0 ? `+${formatPKR(d.diff)}` : formatPKR(d.diff)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer" style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setShowAuditModal(false)}
+                className="btn btn-secondary btn-sm"
+              >
+                Close
+              </button>
+              {auditData?.discrepancies_count > 0 && (
+                <button
+                  type="button"
+                  onClick={handleConfirmSync}
+                  disabled={syncing}
+                  className="btn btn-primary btn-sm"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <RefreshCw size={13} className={syncing ? 'spin' : ''} />
+                  <span>{syncing ? 'Synchronizing...' : 'Confirm & Synchronize Balances'}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

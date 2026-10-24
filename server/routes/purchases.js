@@ -6,6 +6,7 @@ const { authenticate, requireRoles } = require('../middleware/auth');
 router.use(authenticate);
 
 router.get('/', requireRoles('inventory', 'accountant'), purchaseController.getPurchases);
+router.get('/suppliers/:supplierId/products', requireRoles('inventory', 'accountant'), purchaseController.getSupplierProducts);
 router.get('/product-stock-preview/:productId', requireRoles('inventory', 'accountant'), purchaseController.getProductStockPreview);
 router.get('/:id', requireRoles('inventory', 'accountant'), purchaseController.getPurchaseById);
 router.post('/', requireRoles('inventory'), purchaseController.createPurchase);

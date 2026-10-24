@@ -509,8 +509,8 @@ export default function Inventory() {
             <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>/</span>
             <span style={{ color: '#10b981', fontWeight: 600, fontSize: '0.8125rem' }}>Products List</span>
           </div>
-          <h1 className="page-header-title" style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', margin: '0 0 2px 0' }}>Products List</h1>
-          <p className="page-header-subtitle" style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>Here you can find all of your products</p>
+          <h1 className="page-header-title" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-title)', margin: '0 0 2px 0' }}>Products List</h1>
+          <p className="page-header-subtitle" style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>Here you can find all of your products</p>
         </div>
 
         <div className="page-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -549,10 +549,10 @@ export default function Inventory() {
                   right: 0,
                   top: '100%',
                   marginTop: '6px',
-                  background: '#ffffff',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
                   borderRadius: '10px',
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                  boxShadow: 'var(--shadow-card)',
                   zIndex: 200,
                   width: '210px',
                   padding: '6px 0'
@@ -573,13 +573,13 @@ export default function Inventory() {
                     width: '100%',
                     padding: '8px 14px',
                     fontSize: '0.8rem',
-                    color: '#1e293b',
+                    color: 'var(--text-title)',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
                     textAlign: 'left'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                 >
                   <Download size={14} color="#0284c7" />
@@ -601,13 +601,13 @@ export default function Inventory() {
                       width: '100%',
                       padding: '8px 14px',
                       fontSize: '0.8rem',
-                      color: '#1e293b',
+                      color: 'var(--text-title)',
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
                       textAlign: 'left'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
                     onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                   >
                     <Layers size={14} color="#6366f1" />
@@ -629,13 +629,13 @@ export default function Inventory() {
                     width: '100%',
                     padding: '8px 14px',
                     fontSize: '0.8rem',
-                    color: '#1e293b',
+                    color: 'var(--text-title)',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
                     textAlign: 'left'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
                 >
                   <RefreshCw size={14} color="#10b981" />
@@ -740,22 +740,22 @@ export default function Inventory() {
                     right: 0,
                     top: '100%',
                     marginTop: '6px',
-                    background: '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
                     borderRadius: '10px',
-                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
                     zIndex: 200,
                     width: '280px',
                     padding: '1rem'
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#0f172a' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--text-title)' }}>
                     Select Date Range
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', marginBottom: '3px' }}>Start Date</label>
+                      <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '3px' }}>Start Date</label>
                       <input
                         type="date"
                         value={startDate}
@@ -766,7 +766,7 @@ export default function Inventory() {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', marginBottom: '3px' }}>End Date</label>
+                      <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '3px' }}>End Date</label>
                       <input
                         type="date"
                         value={endDate}
@@ -827,22 +827,22 @@ export default function Inventory() {
                     right: 0,
                     top: '100%',
                     marginTop: '6px',
-                    background: '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
                     borderRadius: '10px',
-                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
                     zIndex: 200,
                     width: '260px',
                     padding: '1rem'
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#0f172a' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--text-title)' }}>
                     Additional Filters
                   </div>
 
                   <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '4px', fontWeight: 600 }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
                       Category
                     </label>
                     <select
@@ -862,7 +862,7 @@ export default function Inventory() {
                   </div>
 
                   <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '4px', fontWeight: 600 }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
                       Brand
                     </label>
                     <select
@@ -882,7 +882,7 @@ export default function Inventory() {
                   </div>
 
                   <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', color: '#334155' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--text-title)' }}>
                       <input
                         type="checkbox"
                         checked={lowStockOnly}
@@ -975,7 +975,7 @@ export default function Inventory() {
                     <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#f1f5f9', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem' }}>
                       <Package size={24} />
                     </div>
-                    <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>No products found</strong>
+                    <strong style={{ fontSize: '0.95rem', color: 'var(--text-title)' }}>No products found</strong>
                     <p style={{ fontSize: '0.785rem', color: '#64748b', margin: '4px 0 1rem 0' }}>
                       {isFilterActive ? 'Try adjusting your search query, status filters, or date range.' : 'Click "+ Add Product" to add your first product.'}
                     </p>
@@ -1000,7 +1000,7 @@ export default function Inventory() {
                       key={p.id}
                       style={{
                         height: '72px',
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                         transition: 'background-color 0.1s ease'
                       }}
                     >
@@ -1011,20 +1011,20 @@ export default function Inventory() {
                             width: '32px',
                             height: '32px',
                             borderRadius: '6px',
-                            background: '#f3f4f6',
-                            border: '1px solid #e5e7eb',
+                            background: 'var(--hover-bg)',
+                            border: '1px solid var(--border)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0
                           }}>
-                            <Package size={16} color="#6b7280" />
+                            <Package size={16} color="var(--primary)" />
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <div style={{
                               fontWeight: 600,
                               fontSize: '14px',
-                              color: '#111827',
+                              color: 'var(--text-title)',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -1032,7 +1032,7 @@ export default function Inventory() {
                             }} title={p.name}>
                               {p.name}
                             </div>
-                            <div style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic', marginTop: '2px' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '2px' }}>
                               {p.category_name || 'General Product'}
                               {p.brand && ` • ${p.brand}`}
                             </div>
@@ -1042,30 +1042,30 @@ export default function Inventory() {
 
                       {/* Column 2: ID & Create Date */}
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
-                        <div style={{ fontWeight: 600, fontSize: '13px', color: '#111827' }}>
+                        <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-title)' }}>
                           #{p.sku || `ITM-${p.id}`}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                           {p.created_at ? formatDate(p.created_at) : '17/10/2026'}
                         </div>
                       </td>
 
                       {/* Column 3: Price */}
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
-                        <div style={{ fontWeight: 600, fontSize: '14px', color: '#111827' }}>
+                        <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-title)' }}>
                           {formatPKR(p.sale_price)}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                           Cost: {formatPKR(p.purchase_price)}
                         </div>
                       </td>
 
                       {/* Column 4: Stock */}
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
-                        <div style={{ fontWeight: 700, fontSize: '16px', color: isOut ? '#dc2626' : '#111827' }}>
+                        <div style={{ fontWeight: 700, fontSize: '16px', color: isOut ? '#dc2626' : 'var(--text-title)' }}>
                           {Number(p.current_stock).toLocaleString()}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                           {p.unit || 'pkt'}
                         </div>
                       </td>
@@ -1158,7 +1158,7 @@ export default function Inventory() {
           <div className="modal-content" style={{ maxWidth: '640px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>
                   Restock / Inward Stock Lot
                 </h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
@@ -1301,7 +1301,7 @@ export default function Inventory() {
           <div className="modal-content" style={{ maxWidth: '760px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Add Product</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Add Product</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Register a new inventory product, brand, unit, and stock alerts.
                 </div>
@@ -1473,12 +1473,12 @@ export default function Inventory() {
                 </div>
 
                 {/* OPENING STOCK (OPTIONAL) */}
-                <div style={{ background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '0.2rem' }}>
+                <div style={{ background: 'var(--hover-bg)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', marginTop: '0.2rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.825rem', color: '#0f172a' }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.825rem', color: 'var(--text-title)' }}>
                       📦 Opening Stock Lot (Optional)
                     </div>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Creates initial FIFO inventory batch</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Creates initial FIFO inventory batch</span>
                   </div>
                   <div className="form-grid-3">
                     <div className="form-group" style={{ margin: 0 }}>
@@ -1529,7 +1529,7 @@ export default function Inventory() {
           <div className="modal-content" style={{ maxWidth: '700px' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>{selectedProduct.name}</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>{selectedProduct.name}</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Item Code: {selectedProduct.sku} • Brand: <strong>{selectedProduct.brand || 'Frozen'}</strong> • Unit: <strong>{selectedProduct.unit}</strong>
                 </div>
@@ -1545,7 +1545,7 @@ export default function Inventory() {
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.4rem', color: '#0f172a' }}>Active Batches (FIFO Lot Tracking)</h4>
+                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.4rem', color: 'var(--text-title)' }}>Active Batches (FIFO Lot Tracking)</h4>
                 <div className="table-responsive">
                   <table className="table">
                     <thead>
@@ -1575,7 +1575,7 @@ export default function Inventory() {
               </div>
 
               <div>
-                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.4rem', color: '#0f172a' }}>Recent Stock Movements</h4>
+                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.4rem', color: 'var(--text-title)' }}>Recent Stock Movements</h4>
                 <div className="table-responsive" style={{ maxHeight: '180px', overflowY: 'auto' }}>
                   <table className="table">
                     <thead>
@@ -1617,7 +1617,7 @@ export default function Inventory() {
           <div className="modal-content" style={{ maxWidth: '760px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Edit Product</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Edit Product</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Update product details, pricing tiers, and inventory alert levels.
                 </div>
@@ -1838,7 +1838,7 @@ export default function Inventory() {
             <div className="modal-header">
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <Layers size={18} color="var(--primary)" />
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Brands, Categories & Units Manager</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Brands, Categories & Units Manager</h3>
               </div>
               <button
                 type="button"
@@ -2118,8 +2118,8 @@ export default function Inventory() {
             </div>
 
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>{productToDelete.name}</div>
+              <div style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.85rem' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-title)' }}>{productToDelete.name}</div>
                 <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '0.775rem', color: '#64748b', flexWrap: 'wrap' }}>
                   <span><strong>SKU:</strong> {productToDelete.sku}</span>
                   {productToDelete.brand && <span><strong>Brand:</strong> {productToDelete.brand}</span>}

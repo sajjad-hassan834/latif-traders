@@ -1,0 +1,126 @@
+/* ══════════════════════════════════════════════════════════════
+   THEME BUTTONS & ACTIVE PILLS  (all 4 app themes)
+   Midnight Dark uses the emerald-green action button the user likes;
+   every other theme gets a matching accent from its own palette.
+   ══════════════════════════════════════════════════════════════ */
+html[data-app-theme="dark"] {
+  --btn-bg: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --btn-bg-hover: linear-gradient(135deg, #059669 0%, #047857 100%);
+  --btn-text: #ffffff;
+  --btn-shadow: 0 4px 14px rgba(16, 185, 129, 0.28);
+  --btn-ghost-bg: rgba(16, 185, 129, 0.12);
+  --btn-ghost-text: #6ee7b7;
+  --btn-ghost-border: rgba(16, 185, 129, 0.35);
+}
+html[data-app-theme="classic"] {
+  --btn-bg: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  --btn-bg-hover: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  --btn-text: #ffffff;
+  --btn-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+  --btn-ghost-bg: #e0f2fe;
+  --btn-ghost-text: #0369a1;
+  --btn-ghost-border: #bae6fd;
+}
+html[data-app-theme="green"] {
+  --btn-bg: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --btn-bg-hover: linear-gradient(135deg, #059669 0%, #047857 100%);
+  --btn-text: #ffffff;
+  --btn-shadow: 0 4px 12px rgba(5, 150, 105, 0.28);
+  --btn-ghost-bg: #d1fae5;
+  --btn-ghost-text: #065f46;
+  --btn-ghost-border: #a7f3d0;
+}
+html[data-app-theme="indigo"] {
+  --btn-bg: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  --btn-bg-hover: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  --btn-text: #ffffff;
+  --btn-shadow: 0 4px 12px rgba(79, 70, 229, 0.28);
+  --btn-ghost-bg: #e0e7ff;
+  --btn-ghost-text: #3730a3;
+  --btn-ghost-border: #c7d2fe;
+}
+
+/* Primary / success / teal action buttons */
+html[data-app-theme] .btn-primary,
+html[data-app-theme] .btn-success,
+html[data-app-theme] .btn-sadax-teal {
+  background: var(--btn-bg) !important;
+  color: var(--btn-text) !important;
+  border: 1px solid transparent !important;
+  box-shadow: var(--btn-shadow) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+}
+html[data-app-theme] .btn-primary:hover,
+html[data-app-theme] .btn-success:hover,
+html[data-app-theme] .btn-sadax-teal:hover {
+  background: var(--btn-bg-hover) !important;
+  filter: none !important;
+  transform: translateY(-1px);
+}
+html[data-app-theme] .btn-primary:active,
+html[data-app-theme] .btn-success:active,
+html[data-app-theme] .btn-sadax-teal:active {
+  transform: translateY(0);
+}
+html[data-app-theme] .btn-primary:disabled,
+html[data-app-theme] .btn-success:disabled,
+html[data-app-theme] .btn-sadax-teal:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Active filter pills / tabs (report tabs, status pills) */
+html[data-app-theme] .filter-pill.active,
+html[data-app-theme] .pos-cat-pill.active {
+  background: var(--btn-bg) !important;
+  color: var(--btn-text) !important;
+  border-color: transparent !important;
+  box-shadow: var(--btn-shadow) !important;
+  font-weight: 700 !important;
+}
+html[data-app-theme] .filter-pill:not(.active):hover,
+html[data-app-theme] .pos-cat-pill:not(.active):hover {
+  background: var(--hover-bg) !important;
+  color: var(--text-title) !important;
+}
+
+/* Secondary / white / danger buttons keep readable in every theme */
+html[data-app-theme] .btn-secondary,
+html[data-app-theme] .btn-sadax-white {
+  background: var(--bg-card) !important;
+  color: var(--text-title) !important;
+  border: 1px solid var(--border) !important;
+  font-weight: 600;
+}
+html[data-app-theme] .btn-secondary:hover,
+html[data-app-theme] .btn-sadax-white:hover {
+  background: var(--hover-bg) !important;
+}
+html[data-app-theme="dark"] .btn-danger {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #fca5a5 !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+}
+html[data-app-theme="dark"] .btn-danger:hover {
+  background: rgba(239, 68, 68, 0.22) !important;
+}
+
+/* Inline green "Apply" style buttons: keep the same gradient look */
+html[data-app-theme="dark"] button[style*="background: rgb(16, 185, 129)"] {
+  background: var(--btn-bg) !important;
+  box-shadow: var(--btn-shadow);
+  font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Icons are removed from LABELLED action buttons (text + icon).
+   Icon-only buttons (close, refresh, three-dots) are never touched.
+   The marker attribute is set by src/utils/buttonLabels.js
+   ══════════════════════════════════════════════════════════════ */
+button[data-has-label="1"] > svg,
+button[data-has-label="1"] > span > svg,
+button[data-has-label="1"] > div > svg {
+  display: none !important;
+}

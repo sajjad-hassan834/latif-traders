@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, Eye, ArrowDownToLine, Trash2, RotateCcw, Printer, Download, Package, Edit, ChevronDown, FileText, ArrowUpRight } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import {
+  Search, Plus, Eye, ArrowDownToLine, Trash2, RotateCcw, Printer, Download,
+  Package, Edit, ChevronDown, FileText, ArrowUpRight, X, Filter, Calendar,
+  CheckCircle2, AlertTriangle, AlertCircle, Undo2, ArrowRight, CornerDownLeft, Sparkles
+} from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
@@ -7,6 +11,32 @@ import { useAuth } from '../context/AuthContext';
 import SearchableSelect from '../components/common/SearchableSelect';
 import Pagination from '../components/common/Pagination';
 import ActionMenu from '../components/common/ActionMenu';
+import CustomDatePicker from '../components/common/CustomDatePicker';
+
+const getDateRangeForPreset = (preset) => {
+  const now = new Date();
+  const toYMD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  if (preset === 'today') {
+    const today = toYMD(now);
+    return { date_from: today, date_to: today };
+  } else if (preset === 'this_week') {
+    const d = new Date(now);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d.setDate(diff));
+    return { date_from: toYMD(monday), date_to: toYMD(now) };
+  } else if (preset === 'this_month') {
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    return { date_from: toYMD(firstDay), date_to: toYMD(now) };
+  }
+  return { date_from: '', date_to: '' };
+};
 
 export default function Purchases() {
   const { canManageInventory } = useAuth();
@@ -14,8 +44,32 @@ export default function Purchases() {
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 15;
+
+  // Initial params parsed from URL query
+  const initialParams = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      search: params.get('search') || '',
+      supplier_id: params.get('supplier_id') || 'all',
+      date_preset: params.get('date_preset') || 'all',
+      date_from: params.get('date_from') || '',
+      date_to: params.get('date_to') || '',
+      payment_status: params.get('payment_status') || 'all',
+      page: parseInt(params.get('page') || '1', 10) || 1
+    };
+  }, []);
+
+  // Filter & Search states (persisted in URL)
+  const [searchTerm, setSearchTerm] = useState(initialParams.search);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialParams.search);
+  const [filterSupplier, setFilterSupplier] = useState(initialParams.supplier_id);
+  const [datePreset, setDatePreset] = useState(initialParams.date_preset);
+  const [dateFrom, setDateFrom] = useState(initialParams.date_from);
+  const [dateTo, setDateTo] = useState(initialParams.date_to);
+  const [paymentStatus, setPaymentStatus] = useState(initialParams.payment_status);
+  const [currentPage, setCurrentPage] = useState(initialParams.page);
+  const [totalPurchases, setTotalPurchases] = useState(0);
 
   // Modals
   const [showNewModal, setShowNewModal] = useState(false);
@@ -32,7 +86,7 @@ export default function Purchases() {
   // Edit Purchase Form
   const [editForm, setEditForm] = useState(null);
 
-  // New Purchase Form
+  // New Purchase Form (Rebuilt Priority 4)
   const [supplierId, setSupplierId] = useState('');
   const [supplierInvoiceNo, setSupplierInvoiceNo] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
@@ -46,14 +100,52 @@ export default function Purchases() {
   const [brands, setBrands] = useState([]);
   const [activeStockPreview, setActiveStockPreview] = useState(null);
 
+  // Supplier-Product Mapping
+  const [supplierProducts, setSupplierProducts] = useState([]);
+  const [supplierAllProducts, setSupplierAllProducts] = useState([]);
+  const [loadingSupplierProds, setLoadingSupplierProds] = useState(false);
+  const [showAllProducts, setShowAllProducts] = useState(false); // default unchecked as per spec!
+
   // Staging product configuration
   const [stagedProductId, setStagedProductId] = useState('');
   const [stageQty, setStageQty] = useState('10');
   const [stagePurchasePrice, setStagePurchasePrice] = useState('');
   const [stageSalePrice, setStageSalePrice] = useState('');
   const [stageWholesalePrice, setStageWholesalePrice] = useState('');
-  const [showAllProducts, setShowAllProducts] = useState(true);
+  const [stageBatchNo, setStageBatchNo] = useState('');
+  const [stageExpiryDate, setStageExpiryDate] = useState('');
+  const [stageBrand, setStageBrand] = useState('');
+  const [stageUnit, setStageUnit] = useState('pkt');
   const [lastAddedItemName, setLastAddedItemName] = useState('');
+
+  // 5-second Undo state
+  const [undoItem, setUndoItem] = useState(null);
+  const undoTimeoutRef = useRef(null);
+
+  // Debounce search input by 300ms
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Synchronize state to URL query string
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (filterSupplier && filterSupplier !== 'all') params.set('supplier_id', filterSupplier);
+    if (datePreset && datePreset !== 'all') params.set('date_preset', datePreset);
+    if (dateFrom) params.set('date_from', dateFrom);
+    if (dateTo) params.set('date_to', dateTo);
+    if (paymentStatus && paymentStatus !== 'all') params.set('payment_status', paymentStatus);
+    if (currentPage > 1) params.set('page', String(currentPage));
+
+    const qs = params.toString();
+    const newUrl = `${window.location.pathname}${qs ? '?' + qs : ''}`;
+    window.history.replaceState(null, '', newUrl);
+  }, [debouncedSearch, filterSupplier, datePreset, dateFrom, dateTo, paymentStatus, currentPage]);
 
   const generateAutoBillNo = () => {
     const now = new Date();
@@ -64,40 +156,106 @@ export default function Purchases() {
   const openNewPurchaseModal = () => {
     setSupplierInvoiceNo(generateAutoBillNo());
     setSupplierId('');
+    setSupplierProducts([]);
+    setSupplierAllProducts([]);
+    setShowAllProducts(false);
     setItems([]);
     setPaidAmount('');
+    setDiscount(0);
     setNotes('');
     setErrorMsg('');
     setActiveStockPreview(null);
     setStagedProductId('');
     setLastAddedItemName('');
+    setUndoItem(null);
     setShowNewModal(true);
   };
 
-  const loadData = async () => {
+  const loadSuppliersAndProducts = async () => {
     try {
-      setLoading(true);
-      const [purRes, supRes, prodRes, brandRes] = await Promise.all([
-        api.get('/purchases'),
+      const [supRes, prodRes, brandRes] = await Promise.all([
         api.get('/parties/suppliers'),
         api.get('/products'),
         api.get('/products/meta/brands').catch(() => ({ success: false, brands: [] }))
       ]);
 
-      if (purRes.success) setPurchases(purRes.purchases);
       if (supRes.success) setSuppliers(supRes.suppliers);
       if (prodRes.success) setProducts(prodRes.products);
       if (brandRes?.success) setBrands(brandRes.brands);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to load suppliers/products:', err);
+    }
+  };
+
+  const fetchPurchases = async () => {
+    try {
+      setLoading(true);
+      const queryParams = new URLSearchParams();
+      if (debouncedSearch) queryParams.set('search', debouncedSearch);
+      if (filterSupplier && filterSupplier !== 'all') queryParams.set('supplier_id', filterSupplier);
+      if (dateFrom) queryParams.set('date_from', dateFrom);
+      if (dateTo) queryParams.set('date_to', dateTo);
+      if (paymentStatus && paymentStatus !== 'all') queryParams.set('payment_status', paymentStatus);
+      queryParams.set('page', String(currentPage));
+      queryParams.set('limit', String(ITEMS_PER_PAGE));
+
+      const res = await api.get(`/purchases?${queryParams.toString()}`);
+      if (res.success) {
+        setPurchases(res.purchases || []);
+        setTotalPurchases(res.total !== undefined ? res.total : (res.purchases?.length || 0));
+      }
+    } catch (err) {
+      console.error('Failed to fetch purchases:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  const loadData = () => {
+    loadSuppliersAndProducts();
+    fetchPurchases();
+  };
+
   useEffect(() => {
-    loadData();
+    loadSuppliersAndProducts();
   }, []);
+
+  useEffect(() => {
+    fetchPurchases();
+  }, [debouncedSearch, filterSupplier, dateFrom, dateTo, paymentStatus, currentPage]);
+
+  const handleDatePresetClick = (preset) => {
+    setDatePreset(preset);
+    setCurrentPage(1);
+    if (preset === 'all') {
+      setDateFrom('');
+      setDateTo('');
+    } else {
+      const { date_from, date_to } = getDateRangeForPreset(preset);
+      setDateFrom(date_from);
+      setDateTo(date_to);
+    }
+  };
+
+  const isFiltered = Boolean(
+    debouncedSearch ||
+    (filterSupplier && filterSupplier !== 'all') ||
+    (datePreset && datePreset !== 'all') ||
+    dateFrom ||
+    dateTo ||
+    (paymentStatus && paymentStatus !== 'all')
+  );
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setDebouncedSearch('');
+    setFilterSupplier('all');
+    setDatePreset('all');
+    setDateFrom('');
+    setDateTo('');
+    setPaymentStatus('all');
+    setCurrentPage(1);
+  };
 
   const loadStockPreview = async (productId) => {
     try {
@@ -110,20 +268,68 @@ export default function Purchases() {
     }
   };
 
+  const handleSupplierChange = async (newSupId) => {
+    if (items.length > 0 && String(newSupId) !== String(supplierId)) {
+      const confirmed = window.confirm('Changing supplier will clear the items currently added to this bill. Do you want to proceed?');
+      if (!confirmed) {
+        return;
+      }
+      setItems([]);
+    }
+    setSupplierId(newSupId);
+    setStagedProductId('');
+    setActiveStockPreview(null);
+    setUndoItem(null);
+
+    if (!newSupId) {
+      setSupplierProducts([]);
+      setSupplierAllProducts([]);
+      return;
+    }
+
+    try {
+      setLoadingSupplierProds(true);
+      const res = await api.get(`/purchases/suppliers/${newSupId}/products`);
+      if (res.success) {
+        setSupplierProducts(res.mapped_products || []);
+        setSupplierAllProducts(res.all_products || []);
+      }
+    } catch (err) {
+      console.error('Failed to load supplier products:', err);
+    } finally {
+      setLoadingSupplierProds(false);
+    }
+  };
+
+  const activeProductCatalog = useMemo(() => {
+    if (showAllProducts || supplierProducts.length === 0) {
+      return supplierAllProducts.length > 0 ? supplierAllProducts : products;
+    }
+    return supplierProducts;
+  }, [showAllProducts, supplierProducts, supplierAllProducts, products]);
+
   const handleSelectProduct = (productId) => {
     setStagedProductId(productId);
-    const prod = products.find(p => p.id === Number(productId));
+    const prod = activeProductCatalog.find(p => String(p.id) === String(productId)) || products.find(p => String(p.id) === String(productId));
     if (prod) {
       setStageQty('10');
-      setStagePurchasePrice(prod.purchase_price !== undefined && prod.purchase_price !== null ? String(prod.purchase_price) : '0');
+      const cost = prod.last_purchase_cost !== undefined ? String(prod.last_purchase_cost) : (prod.purchase_price !== undefined ? String(prod.purchase_price) : '0');
+      setStagePurchasePrice(cost);
       setStageSalePrice(prod.sale_price !== undefined && prod.sale_price !== null ? String(prod.sale_price) : '0');
       setStageWholesalePrice(prod.wholesale_price !== undefined && prod.wholesale_price !== null ? String(prod.wholesale_price) : String(prod.sale_price || 0));
+      setStageBrand(prod.brand || '');
+      setStageUnit(prod.unit || 'pkt');
+      const now = new Date();
+      const yy = String(now.getFullYear()).slice(-2);
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      setStageBatchNo(`LOT-${yy}${mm}-${Date.now().toString().slice(-4)}`);
+      setStageExpiryDate(new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0]);
       loadStockPreview(prod.id);
     }
   };
 
   const handleAddStagedItem = () => {
-    const prod = products.find(p => p.id === Number(stagedProductId));
+    const prod = activeProductCatalog.find(p => String(p.id) === String(stagedProductId)) || products.find(p => String(p.id) === String(stagedProductId));
     if (!prod) return;
 
     const qty = Number(stageQty) || 1;
@@ -131,58 +337,43 @@ export default function Purchases() {
     const sPrice = Number(stageSalePrice) || 0;
     const wPrice = Number(stageWholesalePrice) || sPrice || 0;
 
-    const existingIndex = items.findIndex(it => it.product_id === prod.id);
+    // Check if identical item (same product_id, same cost, and same batch) already in bill -> merge quantity!
+    const existingIndex = items.findIndex(it =>
+      it.product_id === prod.id &&
+      Number(it.unit_price) === cost &&
+      (it.batch_no || '') === (stageBatchNo || '')
+    );
+
     if (existingIndex >= 0) {
       const updated = [...items];
       updated[existingIndex].quantity = Number(updated[existingIndex].quantity) + qty;
-      updated[existingIndex].unit_price = cost;
       updated[existingIndex].sale_price = sPrice;
       updated[existingIndex].wholesale_price = wPrice;
       setItems(updated);
+      setLastAddedItemName(`${prod.name} (Merged +${qty} ${prod.unit || 'pkt'})`);
     } else {
       setItems([...items, {
         product_id: prod.id,
         name: prod.name,
-        brand: prod.brand || '',
-        unit: prod.unit || 'pkt',
-        batch_no: `LOT-${Date.now().toString().slice(-5)}`,
-        expiry_date: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
+        brand: stageBrand || prod.brand || '',
+        unit: stageUnit || prod.unit || 'pkt',
+        batch_no: stageBatchNo || `LOT-${Date.now().toString().slice(-5)}`,
+        expiry_date: stageExpiryDate || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
         quantity: qty,
         unit_price: cost,
         wholesale_price: wPrice,
         sale_price: sPrice,
         discount: 0
       }]);
+      setLastAddedItemName(`${prod.name} (${qty} ${prod.unit || 'pkt'})`);
     }
 
-    setLastAddedItemName(prod.name);
     setStagedProductId('');
     setStageQty('10');
     setStagePurchasePrice('');
     setStageSalePrice('');
     setStageWholesalePrice('');
     setActiveStockPreview(null);
-  };
-
-  const addItemToBill = (productId) => {
-    const prod = products.find(p => p.id === Number(productId));
-    if (!prod) return;
-
-    setItems([...items, {
-      product_id: prod.id,
-      name: prod.name,
-      brand: prod.brand || '',
-      unit: prod.unit || 'pkt',
-      batch_no: `LOT-${Date.now().toString().slice(-5)}`,
-      expiry_date: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
-      quantity: 10,
-      unit_price: prod.purchase_price || 0,
-      wholesale_price: prod.wholesale_price || 0,
-      sale_price: prod.sale_price || 0,
-      discount: 0
-    }]);
-
-    loadStockPreview(prod.id);
   };
 
   const updateItem = (index, field, value) => {
@@ -192,22 +383,50 @@ export default function Purchases() {
   };
 
   const removeItem = (index) => {
-    setItems(items.filter((_, i) => i !== index));
+    const removed = items[index];
+    const newItems = items.filter((_, i) => i !== index);
+    setItems(newItems);
+
+    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+    setUndoItem({ item: removed, index });
+    undoTimeoutRef.current = setTimeout(() => {
+      setUndoItem(null);
+    }, 5000);
+  };
+
+  const handleUndoRemove = () => {
+    if (!undoItem) return;
+    const updated = [...items];
+    updated.splice(undoItem.index, 0, undoItem.item);
+    setItems(updated);
+    setUndoItem(null);
+    if (undoTimeoutRef.current) clearTimeout(undoTimeoutRef.current);
+  };
+
+  const handleCloseNewModal = () => {
+    if (items.length > 0) {
+      const confirmed = window.confirm('You have unsaved items in this purchase bill. Are you sure you want to discard them?');
+      if (!confirmed) return;
+    }
+    setShowNewModal(false);
+    setItems([]);
+    setSupplierId('');
+    setUndoItem(null);
   };
 
   const subtotal = items.reduce((sum, it) => sum + (Number(it.quantity) * Number(it.unit_price)) - (Number(it.discount) || 0), 0);
   const grandTotal = Math.max(0, subtotal - (Number(discount) || 0));
 
-  const handleSavePurchase = async (e) => {
-    e.preventDefault();
+  const handleSavePurchase = async (e, addAnother = false) => {
+    if (e) e.preventDefault();
     setErrorMsg('');
 
     if (!supplierId) {
-      setErrorMsg('Please select a supplier.');
+      setErrorMsg('Please select a supplier first.');
       return;
     }
     if (items.length === 0) {
-      setErrorMsg('Please add at least one product item.');
+      setErrorMsg('Please add at least one product item to the bill.');
       return;
     }
 
@@ -225,12 +444,26 @@ export default function Purchases() {
       });
 
       if (res.success) {
-        setShowNewModal(false);
-        setItems([]);
-        setSupplierInvoiceNo('');
-        setPaidAmount('');
-        setNotes('');
         loadData();
+        if (addAnother) {
+          setItems([]);
+          setPaidAmount('');
+          setDiscount(0);
+          setNotes('');
+          setSupplierInvoiceNo(generateAutoBillNo());
+          setLastAddedItemName('');
+          setStagedProductId('');
+          setUndoItem(null);
+          // Re-fetch supplier products to get refreshed last purchase costs
+          handleSupplierChange(supplierId);
+        } else {
+          setShowNewModal(false);
+          setItems([]);
+          setSupplierInvoiceNo('');
+          setPaidAmount('');
+          setNotes('');
+          setUndoItem(null);
+        }
       }
     } catch (err) {
       setErrorMsg(err.message || 'Failed to record purchase.');
@@ -398,11 +631,12 @@ export default function Purchases() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* PAGE HEADER */}
       <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <h3 style={{ fontSize: '1.2rem' }}>Purchases</h3>
-          <p style={{ fontSize: '0.85rem', color: '#64748b' }}>
-            Record cold-chain supplier shipments, batch expiration dates, and payable balances.
+          <h3 style={{ fontSize: '1.2rem', color: 'var(--text-title)', margin: 0 }}>Purchases</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
+            Manage supplier purchase bills, incoming inventory shipments, and payable settlements.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -414,6 +648,210 @@ export default function Purchases() {
             <button onClick={openNewPurchaseModal} className="btn btn-primary btn-sm">
               <Plus size={14} />
               <span>New Purchase Bill</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* FILTER & SEARCH TOOLBAR */}
+      <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px', alignItems: 'center' }}>
+          {/* Search Box */}
+          <div style={{ position: 'relative', minWidth: '220px' }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input
+              type="text"
+              placeholder="Search bill #, supplier, or product name/SKU..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                height: '38px',
+                padding: '0 32px 0 36px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: 'var(--input-bg)',
+                color: 'var(--text-title)',
+                fontSize: '13px',
+                outline: 'none'
+              }}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => { setSearchTerm(''); setDebouncedSearch(''); setCurrentPage(1); }}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                title="Clear search"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          {/* Supplier Dropdown */}
+          <div style={{ minWidth: '180px' }}>
+            <select
+              value={filterSupplier}
+              onChange={(e) => { setFilterSupplier(e.target.value); setCurrentPage(1); }}
+              style={{
+                width: '100%',
+                height: '38px',
+                padding: '0 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: 'var(--input-bg)',
+                color: 'var(--text-title)',
+                fontSize: '13px',
+                outline: 'none'
+              }}
+            >
+              <option value="all">All Suppliers</option>
+              {suppliers.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Payment Status Dropdown */}
+          <div style={{ minWidth: '150px' }}>
+            <select
+              value={paymentStatus}
+              onChange={(e) => { setPaymentStatus(e.target.value); setCurrentPage(1); }}
+              style={{
+                width: '100%',
+                height: '38px',
+                padding: '0 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: 'var(--input-bg)',
+                color: 'var(--text-title)',
+                fontSize: '13px',
+                outline: 'none'
+              }}
+            >
+              <option value="all">All Statuses</option>
+              <option value="PAID">Paid / Settled</option>
+              <option value="PARTIAL">Partial Due</option>
+              <option value="UNPAID">Unpaid</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Date Presets and Custom Range */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginRight: '4px' }}>Date:</span>
+            {[
+              { id: 'all', label: 'All Time' },
+              { id: 'today', label: 'Today' },
+              { id: 'this_week', label: 'This Week' },
+              { id: 'this_month', label: 'This Month' },
+              { id: 'custom', label: 'Custom' }
+            ].map(p => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handleDatePresetClick(p.id)}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: '16px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: datePreset === p.id ? '1px solid var(--primary)' : '1px solid var(--border)',
+                  background: datePreset === p.id ? 'var(--primary)' : 'var(--bg-card)',
+                  color: datePreset === p.id ? '#ffffff' : 'var(--text-muted)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom Date Pickers */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ width: '145px' }}>
+              <CustomDatePicker
+                value={dateFrom}
+                onChange={(d) => { setDateFrom(d); setDatePreset('custom'); setCurrentPage(1); }}
+                placeholder="From date"
+                allowClear
+              />
+            </div>
+            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>to</span>
+            <div style={{ width: '145px' }}>
+              <CustomDatePicker
+                value={dateTo}
+                onChange={(d) => { setDateTo(d); setDatePreset('custom'); setCurrentPage(1); }}
+                placeholder="To date"
+                allowClear
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Active Filters Bar & Count */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', paddingTop: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Showing <strong style={{ color: 'var(--text-title)' }}>{purchases.length}</strong> of <strong style={{ color: 'var(--text-title)' }}>{totalPurchases}</strong> purchases
+            </span>
+
+            {debouncedSearch && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-value)', fontSize: '11px', padding: '2px 8px', borderRadius: '12px' }}>
+                Search: "{debouncedSearch}"
+                <button type="button" onClick={() => { setSearchTerm(''); setDebouncedSearch(''); setCurrentPage(1); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-muted)' }}>✕</button>
+              </span>
+            )}
+
+            {filterSupplier !== 'all' && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-value)', fontSize: '11px', padding: '2px 8px', borderRadius: '12px' }}>
+                Supplier: {suppliers.find(s => String(s.id) === String(filterSupplier))?.name || filterSupplier}
+                <button type="button" onClick={() => { setFilterSupplier('all'); setCurrentPage(1); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-muted)' }}>✕</button>
+              </span>
+            )}
+
+            {paymentStatus !== 'all' && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-value)', fontSize: '11px', padding: '2px 8px', borderRadius: '12px' }}>
+                Status: {paymentStatus}
+                <button type="button" onClick={() => { setPaymentStatus('all'); setCurrentPage(1); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-muted)' }}>✕</button>
+              </span>
+            )}
+
+            {(dateFrom || dateTo || (datePreset !== 'all' && datePreset !== 'custom')) && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-value)', fontSize: '11px', padding: '2px 8px', borderRadius: '12px' }}>
+                Date: {datePreset !== 'all' && datePreset !== 'custom' ? datePreset.replace('_', ' ') : `${dateFrom || 'start'} to ${dateTo || 'now'}`}
+                <button type="button" onClick={() => { setDatePreset('all'); setDateFrom(''); setDateTo(''); setCurrentPage(1); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-muted)' }}>✕</button>
+              </span>
+            )}
+          </div>
+
+          {isFiltered && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--primary)',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: '2px 6px'
+              }}
+            >
+              Clear all filters
             </button>
           )}
         </div>
@@ -437,27 +875,77 @@ export default function Purchases() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>Loading purchases...</td></tr>
+                <tr>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '3rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <div className="spinner" style={{ width: '24px', height: '24px', border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Loading purchases...</span>
+                    </div>
+                  </td>
+                </tr>
               ) : purchases.length === 0 ? (
-                <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No purchases recorded yet.</td></tr>
+                <tr>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '3.5rem 1rem' }}>
+                    {isFiltered ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--hover-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                          <Search size={24} />
+                        </div>
+                        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-title)' }}>No purchases match your filters</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '380px' }}>
+                          Try adjusting your search terms, date range, or supplier filters.
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleClearFilters}
+                          className="btn btn-secondary btn-sm"
+                          style={{ marginTop: '6px' }}
+                        >
+                          Clear All Filters
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--hover-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                          <Package size={24} />
+                        </div>
+                        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-title)' }}>No purchases recorded yet</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '380px' }}>
+                          Record your first supplier purchase bill to start tracking incoming inventory and payables.
+                        </div>
+                        {canManageInventory && (
+                          <button
+                            type="button"
+                            onClick={openNewPurchaseModal}
+                            className="btn btn-primary btn-sm"
+                            style={{ marginTop: '6px' }}
+                          >
+                            <Plus size={14} />
+                            <span>New Purchase Bill</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                </tr>
               ) : (
-                purchases.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(p => {
+                purchases.map(p => {
                   const netTotal = p.grand_total - (p.returned_amount || 0);
                   const isFullyReturned = netTotal <= 0 && p.returned_amount > 0;
                   
                   return (
                   <tr key={p.id} style={{ opacity: isFullyReturned ? 0.6 : 1 }}>
                     <td style={{ verticalAlign: 'middle' }}>
-                      <div className="mono" style={{ fontWeight: 700, color: '#0284c7', fontSize: '13px' }}>
+                      <div className="mono" style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '13px' }}>
                         {p.invoice_no}
                       </div>
                       {p.supplier_invoice_no && (
-                        <div className="mono" style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                        <div className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                           Bill: {p.supplier_invoice_no}
                         </div>
                       )}
                       {p.returned_amount > 0 && (
-                        <div style={{ fontSize: '0.65rem', color: '#ef4444', marginTop: '2px', fontWeight: 700, background: '#fee2e2', padding: '1px 4px', borderRadius: '4px', display: 'inline-block' }}>
+                        <div style={{ fontSize: '0.65rem', color: '#ef4444', marginTop: '2px', fontWeight: 700, background: 'rgba(239, 68, 68, 0.15)', padding: '1px 6px', borderRadius: '4px', display: 'inline-block' }}>
                           {isFullyReturned ? 'FULLY RETURNED' : 'PARTIAL RETURN'}
                         </div>
                       )}
@@ -478,7 +966,7 @@ export default function Purchases() {
                     <td style={{ textAlign: 'right' }}>{formatPKR(p.paid_amount)}</td>
                     <td style={{ textAlign: 'right' }}>
                       {isFullyReturned ? (
-                        <span style={{ color: '#64748b', fontWeight: 600 }}>Returned</span>
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Returned</span>
                       ) : p.balance_due > 0 ? (
                         <span style={{ color: '#ef4444', fontWeight: 700 }}>{formatPKR(p.balance_due)}</span>
                       ) : (
@@ -538,452 +1026,565 @@ export default function Purchases() {
         </div>
         <Pagination
           currentPage={currentPage}
-          totalItems={purchases.length}
+          totalItems={totalPurchases}
           itemsPerPage={ITEMS_PER_PAGE}
           onPageChange={setCurrentPage}
         />
       </div>
 
-      {/* NEW PURCHASE BILL MODAL */}
+      {/* NEW PURCHASE BILL MODAL (REBUILT PRIORITY 4) */}
       {showNewModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '920px', width: '96%' }}>
-            <div className="modal-header">
+        <div className="modal-overlay" style={{ zIndex: 1050 }} onClick={handleCloseNewModal}>
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '1100px',
+              width: '95vw',
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 0,
+              overflow: 'hidden',
+              borderRadius: '16px',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+            }}
+          >
+            {/* MODAL HEADER */}
+            <div className="modal-header" style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Create Purchase Shipment</h3>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                  Record new incoming supplier stock, batch lots, and payable settlement.
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-title)' }}>Create Purchase Bill</h3>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Record incoming inventory shipment, configure purchase prices, and track supplier payables.
                 </div>
               </div>
               <button
                 type="button"
                 className="modal-close-btn"
-                onClick={() => setShowNewModal(false)}
+                onClick={handleCloseNewModal}
                 aria-label="Close"
               >
                 ✕
               </button>
             </div>
 
+            {/* ERROR BANNER */}
             {errorMsg && (
-              <div style={{ margin: '1rem 1.5rem 0', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: '6px' }}>
-                ⚠️ {errorMsg}
+              <div style={{ margin: '12px 24px 0', padding: '10px 14px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', borderRadius: '8px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertCircle size={16} />
+                <span>{errorMsg}</span>
               </div>
             )}
 
-            <form onSubmit={handleSavePurchase}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div className="form-grid-3">
-                  <div className="form-group">
-                    <label className="form-label">Supplier *</label>
-                    <SearchableSelect
-                      options={suppliers.map(s => ({ value: s.id, label: `${s.name} (Payable: ₨ ${s.current_balance})` }))}
-                      value={supplierId}
-                      onChange={(val) => setSupplierId(val)}
-                      placeholder="-- Choose Supplier --"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <label className="form-label" style={{ margin: 0 }}>Supplier Bill #</label>
-                      <span style={{ fontSize: '0.68rem', color: '#0284c7', background: '#e0f2fe', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                        ⚡ Auto-Generated
-                      </span>
-                    </div>
-                    <input
-                      type="text"
-                      className="form-control mono"
-                      placeholder="Auto: BILL-YYYYMMDD-XXXX"
-                      value={supplierInvoiceNo}
-                      onChange={(e) => setSupplierInvoiceNo(e.target.value)}
-                    />
-                    <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>
-                      Auto-assigned to prevent human errors or duplicates.
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Purchase Date *</label>
-                    <input
-                      type="date"
-                      className="form-control"
-                      value={purchaseDate}
-                      onChange={(e) => setPurchaseDate(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* ADD PRODUCT TO BILL WITH PRICING CONTROLS */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <label className="form-label" style={{ fontWeight: 700, margin: 0, color: '#0f172a' }}>
-                      Add Products to This Bill *
-                    </label>
-                    <label style={{ fontSize: '0.75rem', color: '#475569', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 500 }}>
-                      <input
-                        type="checkbox"
-                        checked={showAllProducts}
-                        onChange={(e) => setShowAllProducts(e.target.checked)}
-                      />
-                      <span>Show all inventory products (not only supplier linked)</span>
-                    </label>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 320px' }}>
-                      <SearchableSelect
-                        options={products
-                          .filter(p => {
-                            if (showAllProducts) return true;
-                            return !supplierId || String(p.supplier_id) === String(supplierId) || p.supplier_id === null;
-                          })
-                          .sort((a, b) => {
-                            const aIsSupplier = supplierId && String(a.supplier_id) === String(supplierId);
-                            const bIsSupplier = supplierId && String(b.supplier_id) === String(supplierId);
-                            if (aIsSupplier && !bIsSupplier) return -1;
-                            if (!aIsSupplier && bIsSupplier) return 1;
-                            return a.name.localeCompare(b.name);
-                          })
-                          .map(p => {
-                            const isLinked = supplierId && String(p.supplier_id) === String(supplierId);
-                            return {
-                              value: p.id,
-                              label: `${isLinked ? '★ ' : ''}${p.name} ${p.brand ? `[${p.brand}]` : ''}${isLinked ? ' (Supplier Linked)' : ''}`
-                            };
-                          })}
-                        value={stagedProductId}
-                        onChange={(val) => {
-                          if (val) handleSelectProduct(val);
-                        }}
-                        placeholder="-- Choose Product to Add to Bill --"
-                      />
-                    </div>
-                  </div>
-
-                  {/* SUCCESS FLASH WHEN ITEM IS ADDED */}
-                  {lastAddedItemName && !stagedProductId && (
-                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', padding: '6px 12px', borderRadius: '6px', fontSize: '0.78rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>✅ Added <strong>"{lastAddedItemName}"</strong> to this bill! You can pick another product from the dropdown above to add more items.</span>
-                      <button type="button" onClick={() => setLastAddedItemName('')} style={{ background: 'none', border: 'none', color: '#047857', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>✕</button>
-                    </div>
-                  )}
-
-                  {/* STAGED PRODUCT PRICING CONFIGURATION */}
-                  {stagedProductId && (() => {
-                    const selectedProd = products.find(p => p.id === Number(stagedProductId));
-                    return (
-                      <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '8px', padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
-                          <strong style={{ color: '#166534', fontSize: '0.875rem' }}>
-                            Configure Prices & Quantity for This Product
-                          </strong>
-                          <span style={{ fontSize: '0.75rem', color: '#15803d', fontWeight: 600 }}>
-                            {selectedProd?.name} ({selectedProd?.unit || 'pkt'})
-                          </span>
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem', alignItems: 'flex-end' }}>
-                          <div>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '3px' }}>
-                              Quantity ({selectedProd?.unit || 'pkt'}) *
-                            </label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              style={{ height: '36px', fontSize: '0.85rem', fontWeight: 600 }}
-                              min="0.1"
-                              step="any"
-                              value={stageQty}
-                              onChange={(e) => setStageQty(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0369a1', display: 'block', marginBottom: '3px' }}>
-                              Purchase Cost (₨) *
-                            </label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              style={{ height: '36px', fontSize: '0.85rem', fontWeight: 700, borderColor: '#38bdf8' }}
-                              min="0"
-                              step="any"
-                              value={stagePurchasePrice}
-                              onChange={(e) => setStagePurchasePrice(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', display: 'block', marginBottom: '3px' }}>
-                              Retail Sale Price (₨) *
-                            </label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              style={{ height: '36px', fontSize: '0.85rem', fontWeight: 700, borderColor: '#4ade80' }}
-                              min="0"
-                              step="any"
-                              value={stageSalePrice}
-                              onChange={(e) => setStageSalePrice(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '3px' }}>
-                              Wholesale Price (₨)
-                            </label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              style={{ height: '36px', fontSize: '0.85rem' }}
-                              min="0"
-                              step="any"
-                              value={stageWholesalePrice}
-                              onChange={(e) => setStageWholesalePrice(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <button
-                              type="button"
-                              onClick={handleAddStagedItem}
-                              className="btn btn-primary btn-sm"
-                              style={{ height: '36px', width: '100%', fontWeight: 700, background: '#16a34a', borderColor: '#15803d' }}
-                            >
-                              + Add to Bill
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* COMPACT STOCK PREVIEW */}
-                  {activeStockPreview && (
-                    <div style={{ background: '#ffffff', border: '1px solid #bae6fd', borderRadius: '6px', padding: '0.5rem 0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', fontSize: '0.8rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Package size={15} color="#0284c7" />
-                        <span style={{ color: '#0369a1', fontWeight: 600 }}>{activeStockPreview.product?.name}</span>
-                        <span style={{ color: '#64748b' }}>• Total In-Stock: <strong style={{ color: '#0284c7' }}>{activeStockPreview.current_stock} {activeStockPreview.product?.unit}</strong></span>
-                      </div>
-                      {activeStockPreview.batches?.length > 0 && (
-                        <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>
-                          Active Batches: {activeStockPreview.batches.slice(0, 3).map(b => `${b.batch_no} (₨${b.purchase_price})`).join(', ')}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* LINE ITEMS TABLE HEADER & NOTIFICATION */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>
-                      📦 Products In This Shipment ({items.length})
-                    </div>
-                    {items.length > 0 && (
-                      <span style={{ fontSize: '0.75rem', color: '#0369a1', background: '#e0f2fe', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
-                        Bill Total: {formatPKR(grandTotal)}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#0284c7', background: '#e0f2fe', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bae6fd' }}>
-                    💡 You can add multiple supplier products here into a single bill before saving
-                  </div>
-                </div>
-
-                {/* LINE ITEMS TABLE */}
-                <div className="table-responsive" style={{ maxHeight: '280px', overflowY: 'auto' }}>
-                  <table className="table" style={{ width: '100%', minWidth: '780px' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ minWidth: '150px' }}>Product</th>
-                        <th style={{ minWidth: '100px' }}>Brand</th>
-                        <th style={{ minWidth: '75px' }}>Unit</th>
-                        <th style={{ width: '85px' }}>Quantity</th>
-                        <th style={{ width: '115px', color: '#0369a1' }}>Purchase Cost (₨)</th>
-                        <th style={{ width: '115px', color: '#15803d' }}>Retail Sale (₨)</th>
-                        <th style={{ width: '105px', color: '#475569' }}>Wholesale (₨)</th>
-                        <th>Batch / Lot #</th>
-                        <th>Expiry Date</th>
-                        <th style={{ textAlign: 'right' }}>Total (PKR)</th>
-                        <th style={{ width: '40px' }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.length === 0 ? (
-                        <tr><td colSpan="11" style={{ textAlign: 'center', color: '#64748b', padding: '1.5rem' }}>No products added to bill yet. Select a product from the dropdown above to add multiple items to this bill.</td></tr>
-                      ) : (
-                        items.map((it, idx) => (
-                          <tr key={idx}>
-                            <td style={{ fontWeight: 600 }}>
-                              <button
-                                type="button"
-                                onClick={() => loadStockPreview(it.product_id)}
-                                style={{ background: 'none', border: 'none', color: '#0284c7', fontWeight: 600, cursor: 'pointer', textAlign: 'left', padding: 0 }}
-                                title="Click to view existing stock & batches"
-                              >
-                                {it.name}
-                              </button>
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                list={`brands-list-${idx}`}
-                                className="form-control"
-                                style={{ padding: '3px 6px', fontSize: '0.775rem' }}
-                                placeholder="Brand"
-                                value={it.brand || ''}
-                                onChange={(e) => updateItem(idx, 'brand', e.target.value)}
-                              />
-                              <datalist id={`brands-list-${idx}`}>
-                                {brands.map(b => (
-                                  <option key={b.id} value={b.name} />
-                                ))}
-                              </datalist>
-                            </td>
-                            <td>
-                              <select
-                                className="form-control"
-                                style={{ padding: '3px 6px', fontSize: '0.775rem' }}
-                                value={it.unit || 'pkt'}
-                                onChange={(e) => updateItem(idx, 'unit', e.target.value)}
-                              >
-                                <option value="KG">KG</option>
-                                <option value="Packet">Packet</option>
-                                <option value="pkt">pkt</option>
-                                <option value="box">box</option>
-                                <option value="piece">piece</option>
-                              </select>
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control"
-                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '75px', fontWeight: 600 }}
-                                min="0.1"
-                                step="any"
-                                value={it.quantity}
-                                onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control"
-                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '105px', borderColor: '#38bdf8', fontWeight: 700, color: '#0369a1' }}
-                                min="0"
-                                value={it.unit_price}
-                                onChange={(e) => updateItem(idx, 'unit_price', e.target.value)}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control"
-                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '105px', borderColor: '#4ade80', fontWeight: 700, color: '#15803d' }}
-                                min="0"
-                                value={it.sale_price}
-                                onChange={(e) => updateItem(idx, 'sale_price', e.target.value)}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control"
-                                style={{ padding: '4px 6px', fontSize: '0.8rem', width: '95px' }}
-                                min="0"
-                                value={it.wholesale_price}
-                                onChange={(e) => updateItem(idx, 'wholesale_price', e.target.value)}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                className="form-control"
-                                style={{ padding: '4px 6px', fontSize: '0.75rem', width: '100px' }}
-                                placeholder="Auto Lot"
-                                value={it.batch_no}
-                                onChange={(e) => updateItem(idx, 'batch_no', e.target.value)}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="date"
-                                className="form-control"
-                                style={{ padding: '4px 6px', fontSize: '0.75rem' }}
-                                value={it.expiry_date}
-                                onChange={(e) => updateItem(idx, 'expiry_date', e.target.value)}
-                              />
-                            </td>
-                            <td style={{ textAlign: 'right', fontWeight: 700 }}>
-                              {formatPKR(Number(it.quantity) * Number(it.unit_price))}
-                            </td>
-                            <td style={{ textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                onClick={() => removeItem(idx)}
-                                style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}
-                                title="Remove item"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* PAYMENT & SETTLEMENT */}
-                <div className="form-grid-3" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Grand Total (PKR)</label>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0284c7' }}>
-                      {formatPKR(grandTotal)}
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Paid Amount (PKR)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      placeholder={String(grandTotal)}
-                      value={paidAmount}
-                      onChange={(e) => setPaidAmount(e.target.value)}
-                    />
-                    <div style={{ fontSize: '0.75rem', marginTop: '4px', fontWeight: 600 }}>
-                      {Number(paidAmount || 0) < grandTotal ? (
-                        <span style={{ color: '#ef4444' }}>
-                          Credit / Outstanding: {formatPKR(grandTotal - Number(paidAmount || 0))} (Vendor Ledger)
-                        </span>
-                      ) : (
-                        <span style={{ color: '#10b981' }}>Full Payment (No Udhaar)</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Payment Method</label>
-                    <select
-                      className="form-control"
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                    >
-                      <option value="Cash">Cash</option>
-                      <option value="Bank Transfer">Bank Transfer</option>
-                      <option value="Cheque">Cheque</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowNewModal(false)}>Cancel</button>
-                <button type="submit" disabled={submitting} className="btn btn-primary btn-sm" style={{ minWidth: '150px' }}>
-                  {submitting ? 'Saving...' : 'Save & Increase Stock'}
+            {/* UNDO TOAST NOTIFICATION */}
+            {undoItem && (
+              <div style={{ margin: '12px 24px 0', padding: '8px 16px', background: 'var(--hover-bg)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                <span style={{ color: 'var(--text-title)' }}>
+                  Removed <strong>"{undoItem.item.name}"</strong> from bill.
+                </span>
+                <button
+                  type="button"
+                  onClick={handleUndoRemove}
+                  style={{
+                    background: 'var(--primary)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '4px 12px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Undo2 size={13} />
+                  <span>Undo (5s)</span>
                 </button>
               </div>
-            </form>
+            )}
+
+            {/* MODAL BODY (SCROLLABLE 2-COLUMN DESKTOP GRID) */}
+            <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px', alignItems: 'start' }}>
+
+                {/* LEFT COLUMN: SUPPLIER, BILL DETAILS & ADD ITEM FORM */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                  {/* BOX 1: SUPPLIER & BILL HEADER */}
+                  <div style={{ background: 'var(--hover-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      1. Supplier & Bill Details
+                    </div>
+
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontWeight: 600 }}>Supplier *</label>
+                      <SearchableSelect
+                        options={suppliers.map(s => ({
+                          value: s.id,
+                          label: `${s.name} (Payable: ₨ ${s.current_balance || 0})`
+                        }))}
+                        value={supplierId}
+                        onChange={handleSupplierChange}
+                        placeholder="-- Choose Supplier --"
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <label className="form-label" style={{ margin: 0, fontSize: '12px' }}>Supplier Bill #</label>
+                          <span style={{ fontSize: '10px', color: 'var(--primary)', background: 'var(--hover-bg)', padding: '1px 5px', borderRadius: '4px', fontWeight: 600, border: '1px solid var(--border)' }}>
+                            ⚡ Auto
+                          </span>
+                        </div>
+                        <input
+                          type="text"
+                          className="form-control mono"
+                          style={{ height: '36px', fontSize: '12px' }}
+                          value={supplierInvoiceNo}
+                          onChange={(e) => setSupplierInvoiceNo(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontSize: '12px', marginBottom: '4px' }}>Bill Date *</label>
+                        <CustomDatePicker
+                          value={purchaseDate}
+                          onChange={setPurchaseDate}
+                          placeholder="DD/MM/YYYY"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* BOX 2: PRODUCT SELECTION & ADD ITEM FORM (SUPPLIER GATED) */}
+                  <div style={{ background: 'var(--bg-card)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px', opacity: !supplierId ? 0.7 : 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        2. Add Product to Bill
+                      </div>
+
+                      {supplierId && (
+                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 500 }}>
+                          <input
+                            type="checkbox"
+                            checked={showAllProducts}
+                            onChange={(e) => setShowAllProducts(e.target.checked)}
+                          />
+                          <span>Show all catalog products</span>
+                        </label>
+                      )}
+                    </div>
+
+                    {!supplierId ? (
+                      <div style={{ padding: '20px 14px', background: 'var(--hover-bg)', borderRadius: '8px', border: '1px dashed var(--border)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                        ⚠️ Choose a supplier above first to load and select products.
+                      </div>
+                    ) : (
+                      <>
+                        {/* Supplier mapping status notice */}
+                        {!showAllProducts && supplierProducts.length === 0 && !loadingSupplierProds && (
+                          <div style={{ padding: '6px 10px', background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '6px', fontSize: '11px', color: 'var(--primary)' }}>
+                            ℹ️ No products mapped to this supplier yet. Showing all catalog products.
+                          </div>
+                        )}
+
+                        {/* Searchable Product Picker */}
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <SearchableSelect
+                            options={activeProductCatalog.map(p => {
+                              const isLinked = p.is_mapped || (supplierId && String(p.supplier_id) === String(supplierId));
+                              return {
+                                value: p.id,
+                                label: `${isLinked ? '★ ' : ''}${p.name} ${p.brand ? `[${p.brand}]` : ''} • Stock: ${p.current_stock || 0} ${p.unit || 'pkt'} • Cost: ₨${p.last_purchase_cost || p.purchase_price || 0}`
+                              };
+                            })}
+                            value={stagedProductId}
+                            onChange={handleSelectProduct}
+                            placeholder="-- Search by Name, SKU, Brand or Barcode --"
+                          />
+                        </div>
+
+                        {/* Staged Product Configuration */}
+                        {stagedProductId && (() => {
+                          const selectedProd = activeProductCatalog.find(p => String(p.id) === String(stagedProductId)) || products.find(p => String(p.id) === String(stagedProductId));
+                          const costNum = Number(stagePurchasePrice) || 0;
+                          const saleNum = Number(stageSalePrice) || 0;
+                          const isNegativeMargin = saleNum > 0 && saleNum < costNum;
+                          const marginPct = saleNum > 0 ? (((saleNum - costNum) / saleNum) * 100).toFixed(1) : '0';
+
+                          return (
+                            <div style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)' }}>
+                                  {selectedProd?.name}
+                                </span>
+                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                  In Stock: <strong>{selectedProd?.current_stock || 0} {stageUnit}</strong>
+                                </span>
+                              </div>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                                <div>
+                                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>
+                                    Quantity ({stageUnit}) *
+                                  </label>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    style={{ height: '34px', fontSize: '13px', fontWeight: 700 }}
+                                    min="0.1"
+                                    step="any"
+                                    value={stageQty}
+                                    onChange={(e) => setStageQty(e.target.value)}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary)', display: 'block', marginBottom: '2px' }}>
+                                    Purchase Cost (₨) *
+                                  </label>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    style={{ height: '34px', fontSize: '13px', fontWeight: 700 }}
+                                    min="0"
+                                    step="any"
+                                    value={stagePurchasePrice}
+                                    onChange={(e) => setStagePurchasePrice(e.target.value)}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#16a34a', display: 'block', marginBottom: '2px' }}>
+                                    Retail Price (₨)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    style={{ height: '34px', fontSize: '13px' }}
+                                    min="0"
+                                    step="any"
+                                    value={stageSalePrice}
+                                    onChange={(e) => setStageSalePrice(e.target.value)}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>
+                                    Wholesale Price (₨)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    style={{ height: '34px', fontSize: '13px' }}
+                                    min="0"
+                                    step="any"
+                                    value={stageWholesalePrice}
+                                    onChange={(e) => setStageWholesalePrice(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* LIVE MARGIN INDICATOR */}
+                              {saleNum > 0 && (
+                                <div style={{ fontSize: '11px', borderRadius: '6px', padding: '6px 10px', background: isNegativeMargin ? 'rgba(239, 68, 68, 0.1)' : 'rgba(22, 163, 74, 0.1)', color: isNegativeMargin ? '#ef4444' : '#16a34a', border: isNegativeMargin ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(22, 163, 74, 0.3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {isNegativeMargin ? <AlertTriangle size={14} /> : <CheckCircle2 size={14} />}
+                                  <span>
+                                    {isNegativeMargin
+                                      ? `⚠️ Negative Margin! Retail price (Rs ${saleNum}) is lower than purchase cost (Rs ${costNum}). Loss of Rs ${(costNum - saleNum).toFixed(1)}/unit.`
+                                      : `Margin: ${marginPct}% (Profit: Rs ${(saleNum - costNum).toFixed(1)} / ${stageUnit})`}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* BATCH & EXPIRY ROW */}
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', paddingTop: '4px' }}>
+                                <div>
+                                  <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Batch / Lot #</label>
+                                  <input
+                                    type="text"
+                                    className="form-control mono"
+                                    style={{ height: '30px', fontSize: '11px' }}
+                                    value={stageBatchNo}
+                                    onChange={(e) => setStageBatchNo(e.target.value)}
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Expiry Date</label>
+                                  <input
+                                    type="date"
+                                    className="form-control"
+                                    style={{ height: '30px', fontSize: '11px' }}
+                                    value={stageExpiryDate}
+                                    onChange={(e) => setStageExpiryDate(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={handleAddStagedItem}
+                                className="btn btn-primary btn-sm"
+                                style={{ height: '36px', marginTop: '4px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                              >
+                                <Plus size={15} />
+                                <span>Add to Bill</span>
+                              </button>
+                            </div>
+                          );
+                        })()}
+
+                        {/* SUCCESS FEEDBACK */}
+                        {lastAddedItemName && !stagedProductId && (
+                          <div style={{ padding: '8px 12px', background: 'rgba(22, 163, 74, 0.1)', border: '1px solid rgba(22, 163, 74, 0.3)', color: '#16a34a', borderRadius: '6px', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>✅ Added <strong>"{lastAddedItemName}"</strong> to bill. Select another product above to continue.</span>
+                            <button type="button" onClick={() => setLastAddedItemName('')} style={{ background: 'none', border: 'none', color: '#16a34a', cursor: 'pointer', padding: 0 }}>✕</button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* RIGHT COLUMN: LIVE BILL ITEMS TABLE & SETTLEMENT */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                  {/* BOX 3: LIVE BILL ITEMS LIST (ALWAYS VISIBLE) */}
+                  <div style={{ background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ padding: '12px 16px', background: 'var(--hover-bg)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>3. Bill Items</span>
+                        <span style={{ fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-muted)' }}>
+                          {items.length} {items.length === 1 ? 'item' : 'items'}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--primary)' }}>
+                        Subtotal: {formatPKR(subtotal)}
+                      </span>
+                    </div>
+
+                    <div className="table-responsive" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                      <table className="table" style={{ width: '100%', minWidth: '500px', fontSize: '12px' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--bg-table-head)' }}>
+                            <th style={{ width: '30px' }}>#</th>
+                            <th>Product</th>
+                            <th style={{ width: '80px' }}>Qty</th>
+                            <th style={{ width: '90px' }}>Cost</th>
+                            <th style={{ width: '90px', textAlign: 'right' }}>Total</th>
+                            <th style={{ width: '40px', textAlign: 'center' }}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.length === 0 ? (
+                            <tr>
+                              <td colSpan="6" style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                                  <Package size={24} style={{ opacity: 0.5 }} />
+                                  <span style={{ fontWeight: 600 }}>No items in bill yet</span>
+                                  <span style={{ fontSize: '11px' }}>Select a supplier and pick products on the left to add items.</span>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            items.map((it, idx) => (
+                              <tr key={idx}>
+                                <td style={{ color: 'var(--text-muted)' }}>{idx + 1}</td>
+                                <td>
+                                  <div style={{ fontWeight: 600, color: 'var(--text-title)' }}>{it.name}</div>
+                                  <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                                    {it.brand ? `${it.brand} • ` : ''}Lot: {it.batch_no || 'Auto'}
+                                  </div>
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    style={{ height: '28px', padding: '2px 6px', fontSize: '12px', fontWeight: 600, width: '70px' }}
+                                    min="0.1"
+                                    step="any"
+                                    value={it.quantity}
+                                    onChange={(e) => updateItem(idx, 'quantity', e.target.value)}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    style={{ height: '28px', padding: '2px 6px', fontSize: '12px', fontWeight: 600, width: '80px', color: 'var(--primary)' }}
+                                    min="0"
+                                    step="any"
+                                    value={it.unit_price}
+                                    onChange={(e) => updateItem(idx, 'unit_price', e.target.value)}
+                                  />
+                                </td>
+                                <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-title)' }}>
+                                  {formatPKR(Number(it.quantity) * Number(it.unit_price))}
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeItem(idx)}
+                                    style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
+                                    title="Remove item"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* BOX 4: TOTALS & SETTLEMENT SUMMARY */}
+                  <div style={{ background: 'var(--hover-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      4. Totals & Settlement
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Bill Subtotal</label>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-title)' }}>
+                          {formatPKR(subtotal)}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Bill Discount (₨)</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          style={{ height: '34px', fontSize: '13px' }}
+                          min="0"
+                          value={discount}
+                          onChange={(e) => setDiscount(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '10px 14px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)' }}>Grand Bill Total:</span>
+                      <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>
+                        {formatPKR(grandTotal)}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                          <label style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>Paid Now (₨)</label>
+                          <button
+                            type="button"
+                            onClick={() => setPaidAmount(String(grandTotal))}
+                            style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '11px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                          >
+                            Pay Full
+                          </button>
+                        </div>
+                        <input
+                          type="number"
+                          className="form-control"
+                          style={{ height: '34px', fontSize: '13px', fontWeight: 700 }}
+                          placeholder={String(grandTotal)}
+                          value={paidAmount}
+                          onChange={(e) => setPaidAmount(e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Payment Method</label>
+                        <select
+                          className="form-control"
+                          style={{ height: '34px', fontSize: '13px' }}
+                          value={paymentMethod}
+                          onChange={(e) => setPaymentMethod(e.target.value)}
+                        >
+                          <option value="Cash">Cash</option>
+                          <option value="Bank Transfer">Bank Transfer</option>
+                          <option value="Cheque">Cheque</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Payable Status Chip */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', padding: '6px 10px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Payable Due to Supplier:</span>
+                      {Number(paidAmount || 0) >= grandTotal && grandTotal > 0 ? (
+                        <span style={{ color: '#16a34a', fontWeight: 700 }}>Settled (₨ 0)</span>
+                      ) : Number(paidAmount || 0) > 0 ? (
+                        <span style={{ color: '#d97706', fontWeight: 700 }}>Partial Due: {formatPKR(Math.max(0, grandTotal - Number(paidAmount || 0)))}</span>
+                      ) : (
+                        <span style={{ color: '#ef4444', fontWeight: 700 }}>Unpaid / Credit: {formatPKR(grandTotal)}</span>
+                      )}
+                    </div>
+
+                    <div>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Optional notes or supplier remarks..."
+                        style={{ height: '32px', fontSize: '12px' }}
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* STICKY MODAL FOOTER */}
+            <div className="modal-footer" style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleCloseNewModal}
+              >
+                Discard / Cancel
+              </button>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  disabled={submitting || items.length === 0}
+                  onClick={(e) => handleSavePurchase(e, true)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Sparkles size={14} />
+                  <span>Save & Add Another</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={submitting || items.length === 0}
+                  onClick={(e) => handleSavePurchase(e, false)}
+                  className="btn btn-primary btn-sm"
+                  style={{ minWidth: '150px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  {submitting ? (
+                    <>
+                      <div className="spinner" style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#ffffff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={15} />
+                      <span>Save Purchase Bill</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -994,7 +1595,7 @@ export default function Purchases() {
           <div className="modal-content" style={{ maxWidth: '750px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Purchase Bill: {selectedPurchase.purchase.invoice_no}</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Purchase Bill: {selectedPurchase.purchase.invoice_no}</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Supplier: {selectedPurchase.purchase.supplier_name} • Date: {formatDate(selectedPurchase.purchase.purchase_date)}
                 </div>
@@ -1077,7 +1678,7 @@ export default function Purchases() {
           <div className="modal-content" style={{ maxWidth: '850px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <RotateCcw size={18} color="#ef4444" />
                   <span>Return Goods to Supplier</span>
                 </h3>
@@ -1193,7 +1794,7 @@ export default function Purchases() {
           <div className="modal-content" style={{ maxWidth: '600px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Edit Purchase: {editForm.invoice_no}</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Edit Purchase: {editForm.invoice_no}</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Update vendor, bill reference, and recorded payments.
                 </div>

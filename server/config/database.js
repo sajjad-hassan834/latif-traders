@@ -156,6 +156,17 @@ function initializeDatabase() {
       total_price REAL NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS supplier_products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      last_purchase_price REAL DEFAULT 0,
+      last_purchased_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      tenant_id TEXT DEFAULT 'latif_001',
+      UNIQUE(tenant_id, supplier_id, product_id)
+    );
+
     CREATE TABLE IF NOT EXISTS sales (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       invoice_no TEXT NOT NULL,

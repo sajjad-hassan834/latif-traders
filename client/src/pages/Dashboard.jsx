@@ -285,14 +285,14 @@ function SalesPipelineCurveChart({ trendData = [], period = 'weekly', todaySales
           top: '42%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          background: 'rgba(255, 255, 255, 0.94)',
-          border: '1px solid #e2e8f0',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
           borderRadius: '8px',
           padding: '6px 14px',
           fontSize: '0.75rem',
-          color: '#64748b',
+          color: 'var(--text-muted)',
           fontWeight: 600,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          boxShadow: 'var(--shadow-card)',
           pointerEvents: 'none'
         }}>
           No commercial sales in this cycle • Realtime pipeline ready
@@ -307,21 +307,21 @@ function SalesPipelineCurveChart({ trendData = [], period = 'weekly', todaySales
             top: '8px',
             left: `${Math.min(Math.max((hoveredIndex / Math.max(1, points.length - 1)) * 100, 14), 86)}%`,
             transform: 'translateX(-50%)',
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
             borderRadius: '8px',
             padding: '6px 12px',
-            boxShadow: '0 4px 14px rgba(15, 23, 42, 0.12)',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.35)',
             pointerEvents: 'none',
             fontSize: '0.725rem',
             zIndex: 10,
             whiteSpace: 'nowrap'
           }}
         >
-          <div style={{ fontWeight: 800, color: '#475569', fontSize: '0.675rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <div style={{ fontWeight: 800, color: 'var(--text-title)', fontSize: '0.675rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             {formatDate(activePoint.sale_date)}
           </div>
-          <div style={{ fontSize: '0.65rem', color: '#94a3b8', textTransform: 'uppercase', marginTop: '1px' }}>
+          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: '1px' }}>
             TURNOVER
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
@@ -952,9 +952,9 @@ function DashboardContent({ setTab }) {
               marginTop: '0.85rem',
               width: '100%',
               padding: '0.55rem',
-              background: '#ecfdf5',
-              border: '1px solid #a7f3d0',
-              color: '#059669',
+              background: 'var(--bg-page)',
+              border: '1px solid var(--border)',
+              color: 'var(--money-green)',
               fontWeight: 700,
               fontSize: '0.775rem',
               borderRadius: '8px',
@@ -1265,7 +1265,7 @@ function DashboardContent({ setTab }) {
             style={{
               background: 'none',
               border: 'none',
-              color: '#0F766E',
+              color: 'var(--money-green)',
               fontWeight: 600,
               fontSize: '13px',
               cursor: 'pointer',
@@ -1281,15 +1281,15 @@ function DashboardContent({ setTab }) {
       </div>
 
       {/* 5. OPERATIONAL ALERTS CENTER (LOW STOCK WARNINGS & EXPIRY QC) */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+      <div className="card" style={{ padding: 0, overflow: 'hidden', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '0.75rem',
-          background: '#ffffff',
-          borderBottom: '1px solid #f1f5f9',
+          background: 'var(--bg-card)',
+          borderBottom: '1px solid var(--border)',
           padding: '1rem 1.25rem'
         }}>
           {/* Section Title with Badge */}
@@ -1298,8 +1298,8 @@ function DashboardContent({ setTab }) {
               width: '32px',
               height: '32px',
               borderRadius: '8px',
-              background: lowStockCount > 0 || nearExpiryCount > 0 ? '#fff7ed' : '#ecfdf5',
-              color: lowStockCount > 0 || nearExpiryCount > 0 ? '#f97316' : '#059669',
+              background: lowStockCount > 0 || nearExpiryCount > 0 ? 'rgba(249, 115, 22, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+              color: lowStockCount > 0 || nearExpiryCount > 0 ? '#f97316' : '#10b981',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1319,7 +1319,7 @@ function DashboardContent({ setTab }) {
 
           {/* Filter Pills & Shortcuts */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-            <div className="filter-pills-bar" style={{ background: '#f8fafc', padding: '3px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', gap: '4px' }}>
+            <div className="filter-pills-bar" style={{ background: 'var(--bg-page)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', gap: '4px' }}>
               <button
                 type="button"
                 onClick={() => setAlertTab('low_stock')}
@@ -1329,9 +1329,15 @@ function DashboardContent({ setTab }) {
                   height: '28px',
                   borderRadius: '20px',
                   border: '1px solid',
-                  background: lowStockCount > 0 ? '#FEF3C7' : '#F3F4F6',
-                  borderColor: lowStockCount > 0 ? '#FDE68A' : '#E5E7EB',
-                  color: lowStockCount > 0 ? '#B45309' : '#4B5563',
+                  background: alertTab === 'low_stock'
+                    ? (lowStockCount > 0 ? 'rgba(245, 158, 11, 0.2)' : 'var(--bg-card)')
+                    : 'transparent',
+                  borderColor: alertTab === 'low_stock'
+                    ? (lowStockCount > 0 ? '#f59e0b' : 'var(--border)')
+                    : 'transparent',
+                  color: alertTab === 'low_stock'
+                    ? (lowStockCount > 0 ? '#f59e0b' : 'var(--text-title)')
+                    : 'var(--text-muted)',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1339,12 +1345,12 @@ function DashboardContent({ setTab }) {
                   fontWeight: 600
                 }}
               >
-                <AlertTriangle size={13} color={lowStockCount > 0 ? '#D97706' : '#6B7280'} />
+                <AlertTriangle size={13} color={lowStockCount > 0 ? '#f59e0b' : 'var(--text-muted)'} />
                 <span>Low Stock Alerts</span>
                 <span
                   style={{
-                    background: lowStockCount > 0 ? '#F59E0B' : '#E5E7EB',
-                    color: lowStockCount > 0 ? '#FFFFFF' : '#374151',
+                    background: lowStockCount > 0 ? '#f59e0b' : 'var(--border)',
+                    color: lowStockCount > 0 ? '#ffffff' : 'var(--text-muted)',
                     fontWeight: 700,
                     padding: '1px 6px',
                     borderRadius: '10px',
@@ -1364,9 +1370,15 @@ function DashboardContent({ setTab }) {
                   height: '28px',
                   borderRadius: '20px',
                   border: '1px solid',
-                  background: nearExpiryCount > 0 ? '#FEE2E2' : '#F3F4F6',
-                  borderColor: nearExpiryCount > 0 ? '#FECACA' : '#E5E7EB',
-                  color: nearExpiryCount > 0 ? '#B91C1C' : '#4B5563',
+                  background: alertTab === 'expiry'
+                    ? (nearExpiryCount > 0 ? 'rgba(239, 68, 68, 0.2)' : 'var(--bg-card)')
+                    : 'transparent',
+                  borderColor: alertTab === 'expiry'
+                    ? (nearExpiryCount > 0 ? '#ef4444' : 'var(--border)')
+                    : 'transparent',
+                  color: alertTab === 'expiry'
+                    ? (nearExpiryCount > 0 ? '#ef4444' : 'var(--text-title)')
+                    : 'var(--text-muted)',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1374,12 +1386,12 @@ function DashboardContent({ setTab }) {
                   fontWeight: 600
                 }}
               >
-                <Clock size={13} color={nearExpiryCount > 0 ? '#DC2626' : '#6B7280'} />
+                <Clock size={13} color={nearExpiryCount > 0 ? '#ef4444' : 'var(--text-muted)'} />
                 <span>Near Expiry Batches</span>
                 <span
                   style={{
-                    background: nearExpiryCount > 0 ? '#EF4444' : '#E5E7EB',
-                    color: nearExpiryCount > 0 ? '#FFFFFF' : '#374151',
+                    background: nearExpiryCount > 0 ? '#ef4444' : 'var(--border)',
+                    color: nearExpiryCount > 0 ? '#ffffff' : 'var(--text-muted)',
                     fontWeight: 700,
                     padding: '1px 6px',
                     borderRadius: '10px',
@@ -1397,7 +1409,7 @@ function DashboardContent({ setTab }) {
               style={{ fontSize: '0.725rem', padding: '4px 9px', height: '30px', borderRadius: '7px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               title="Stock Audit & Adjustments"
             >
-              <Sliders size={12} color="#0284c7" />
+              <Sliders size={12} color="var(--primary)" />
               <span>Stock Audit</span>
             </button>
 
@@ -1421,9 +1433,9 @@ function DashboardContent({ setTab }) {
                 <div style={{
                   padding: '1.1rem 1.25rem',
                   borderRadius: '10px',
-                  background: '#F0FDF4',
-                  border: '1px solid #BBF7D0',
-                  borderLeft: '4px solid #10B981',
+                  background: 'var(--bg-table-head)',
+                  border: '1px solid var(--border)',
+                  borderLeft: '4px solid #10b981',
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: '0.85rem'
@@ -1432,24 +1444,25 @@ function DashboardContent({ setTab }) {
                     width: '36px',
                     height: '36px',
                     borderRadius: '50%',
-                    background: '#ffffff',
+                    background: 'var(--bg-card)',
                     color: '#10b981',
+                    border: '1px solid var(--border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 2px 4px rgba(16, 185, 129, 0.15)',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                     flexShrink: 0
                   }}>
                     <CheckCircle2 size={20} />
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                      <strong style={{ fontSize: '0.875rem', color: '#065f46' }}>Inventory Stock Healthy</strong>
-                      <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '1px 6px', borderRadius: '9999px', background: '#dcfce7', color: '#15803d' }}>
+                      <strong style={{ fontSize: '0.875rem', color: 'var(--text-title)' }}>Inventory Stock Healthy</strong>
+                      <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '1px 6px', borderRadius: '9999px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
                         ● 100% Stocked
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.75rem', color: '#166534', margin: 0, lineHeight: 1.4 }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
                       All product catalog items are operating above assigned minimum safety buffers. No emergency purchase restocks needed.
                     </p>
                   </div>
@@ -1459,9 +1472,9 @@ function DashboardContent({ setTab }) {
                 <div style={{
                   padding: '1.1rem 1.25rem',
                   borderRadius: '10px',
-                  background: '#EFF6FF',
-                  border: '1px solid #BFDBFE',
-                  borderLeft: '4px solid #3B82F6',
+                  background: 'var(--bg-table-head)',
+                  border: '1px solid var(--border)',
+                  borderLeft: '4px solid #3b82f6',
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: '0.85rem'
@@ -1470,24 +1483,25 @@ function DashboardContent({ setTab }) {
                     width: '36px',
                     height: '36px',
                     borderRadius: '50%',
-                    background: '#ffffff',
+                    background: 'var(--bg-card)',
                     color: '#0284c7',
+                    border: '1px solid var(--border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 2px 4px rgba(2, 132, 199, 0.15)',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                     flexShrink: 0
                   }}>
                     <PackageCheck size={20} />
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                      <strong style={{ fontSize: '0.875rem', color: '#0369a1' }}>Order Fulfillment Ready</strong>
-                      <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '1px 6px', borderRadius: '9999px', background: '#e0f2fe', color: '#0284c7' }}>
+                      <strong style={{ fontSize: '0.875rem', color: 'var(--text-title)' }}>Order Fulfillment Ready</strong>
+                      <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '1px 6px', borderRadius: '9999px', background: 'rgba(2, 132, 199, 0.15)', color: '#38bdf8' }}>
                         Active Reserves
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.75rem', color: '#075985', margin: 0, lineHeight: 1.4 }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
                       Zero SKU shortages detected. Counter POS and walk-in sales terminals have unrestricted inventory available for instant dispatch.
                     </p>
                   </div>
@@ -1497,14 +1511,14 @@ function DashboardContent({ setTab }) {
                 <div style={{
                   padding: '1rem 1.15rem',
                   borderRadius: '10px',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--bg-table-head)',
+                  border: '1px solid var(--border)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   gap: '0.6rem'
                 }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Warehouse Shortcuts
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -1512,9 +1526,9 @@ function DashboardContent({ setTab }) {
                       type="button"
                       onClick={() => setTab('purchases')}
                       style={{
-                        background: '#ffffff',
-                        color: '#0F766E',
-                        border: '1px solid #0F766E',
+                        background: 'var(--bg-card)',
+                        color: 'var(--money-green)',
+                        border: '1px solid var(--border)',
                         borderRadius: '6px',
                         padding: '6px 10px',
                         fontSize: '0.75rem',
@@ -1530,9 +1544,9 @@ function DashboardContent({ setTab }) {
                       type="button"
                       onClick={() => setTab('reports')}
                       style={{
-                        background: '#ffffff',
-                        color: '#4B5563',
-                        border: '1px solid #D1D5DB',
+                        background: 'var(--bg-card)',
+                        color: 'var(--text-title)',
+                        border: '1px solid var(--border)',
                         borderRadius: '6px',
                         padding: '6px 10px',
                         fontSize: '0.75rem',
@@ -1548,9 +1562,9 @@ function DashboardContent({ setTab }) {
                       type="button"
                       onClick={() => setTab('stock-adjust')}
                       style={{
-                        background: '#ffffff',
-                        color: '#D97706',
-                        border: '1px solid #F59E0B',
+                        background: 'var(--bg-card)',
+                        color: '#f59e0b',
+                        border: '1px solid var(--border)',
                         borderRadius: '6px',
                         padding: '6px 10px',
                         fontSize: '0.75rem',
@@ -1566,9 +1580,9 @@ function DashboardContent({ setTab }) {
                       type="button"
                       onClick={() => setTab('reports')}
                       style={{
-                        background: '#ffffff',
-                        color: '#7C3AED',
-                        border: '1px solid #8B5CF6',
+                        background: 'var(--bg-card)',
+                        color: 'var(--money-purple)',
+                        border: '1px solid var(--border)',
                         borderRadius: '6px',
                         padding: '6px 10px',
                         fontSize: '0.75rem',
@@ -1593,14 +1607,14 @@ function DashboardContent({ setTab }) {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '0.75rem 0.9rem',
-                      background: item.current_stock === 0 ? '#fff1f2' : '#fffbeb',
-                      border: `1px solid ${item.current_stock === 0 ? '#fecdd3' : '#fde68a'}`,
+                      background: item.current_stock === 0 ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                      border: `1px solid ${item.current_stock === 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
                       borderRadius: '10px'
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a' }}>{item.name}</div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-title)' }}>{item.name}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                         Min Threshold: <strong>{item.min_stock_level} {item.unit}</strong>
                       </div>
                     </div>
@@ -1610,13 +1624,13 @@ function DashboardContent({ setTab }) {
                         <span style={{
                           fontSize: '0.9rem',
                           fontWeight: 800,
-                          color: item.current_stock === 0 ? '#dc2626' : '#d97706'
+                          color: item.current_stock === 0 ? '#ef4444' : '#f59e0b'
                         }}>
                           {item.current_stock} {item.unit}
                         </span>
                         <div style={{
                           fontSize: '0.65rem',
-                          color: item.current_stock === 0 ? '#dc2626' : '#b45309',
+                          color: item.current_stock === 0 ? '#ef4444' : '#f59e0b',
                           fontWeight: 700,
                           textTransform: 'uppercase'
                         }}>
@@ -1651,9 +1665,9 @@ function DashboardContent({ setTab }) {
                 <div style={{
                   padding: '1.1rem 1.25rem',
                   borderRadius: '10px',
-                  background: '#F0FDF4',
-                  border: '1px solid #BBF7D0',
-                  borderLeft: '4px solid #10B981',
+                  background: 'var(--bg-table-head)',
+                  border: '1px solid var(--border)',
+                  borderLeft: '4px solid #10b981',
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: '0.85rem'
@@ -1662,24 +1676,25 @@ function DashboardContent({ setTab }) {
                     width: '36px',
                     height: '36px',
                     borderRadius: '50%',
-                    background: '#ffffff',
+                    background: 'var(--bg-card)',
                     color: '#10b981',
+                    border: '1px solid var(--border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 2px 4px rgba(16, 185, 129, 0.15)',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                     flexShrink: 0
                   }}>
                     <CheckCircle2 size={20} />
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                      <strong style={{ fontSize: '0.875rem', color: '#065f46' }}>No Lots Expiring Soon</strong>
-                      <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '1px 6px', borderRadius: '9999px', background: '#dcfce7', color: '#15803d' }}>
+                      <strong style={{ fontSize: '0.875rem', color: 'var(--text-title)' }}>No Lots Expiring Soon</strong>
+                      <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '1px 6px', borderRadius: '9999px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
                         ● FIFO Fresh
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.75rem', color: '#166534', margin: 0, lineHeight: 1.4 }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
                       All tracked batches and products have valid shelf-life exceeding 30-day safety limit.
                     </p>
                   </div>
@@ -1689,9 +1704,9 @@ function DashboardContent({ setTab }) {
                 <div style={{
                   padding: '1.1rem 1.25rem',
                   borderRadius: '10px',
-                  background: '#EFF6FF',
-                  border: '1px solid #BFDBFE',
-                  borderLeft: '4px solid #3B82F6',
+                  background: 'var(--bg-table-head)',
+                  border: '1px solid var(--border)',
+                  borderLeft: '4px solid #3b82f6',
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: '0.85rem'
@@ -1700,24 +1715,25 @@ function DashboardContent({ setTab }) {
                     width: '36px',
                     height: '36px',
                     borderRadius: '50%',
-                    background: '#ffffff',
+                    background: 'var(--bg-card)',
                     color: '#0284c7',
+                    border: '1px solid var(--border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 2px 4px rgba(2, 132, 199, 0.15)',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
                     flexShrink: 0
                   }}>
                     <PackageCheck size={20} />
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                      <strong style={{ fontSize: '0.875rem', color: '#0369a1' }}>FIFO Batch Traceability Active</strong>
-                      <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '1px 6px', borderRadius: '9999px', background: '#e0f2fe', color: '#0284c7' }}>
+                      <strong style={{ fontSize: '0.875rem', color: 'var(--text-title)' }}>FIFO Batch Traceability Active</strong>
+                      <span style={{ fontSize: '0.675rem', fontWeight: 700, padding: '1px 6px', borderRadius: '9999px', background: 'rgba(2, 132, 199, 0.15)', color: '#38bdf8' }}>
                         Strict First-Out
                       </span>
                     </div>
-                    <p style={{ fontSize: '0.75rem', color: '#075985', margin: 0, lineHeight: 1.4 }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
                       Sales invoices automatically prioritize oldest active lot batches, protecting margins and preventing spoilage losses.
                     </p>
                   </div>
@@ -1727,14 +1743,14 @@ function DashboardContent({ setTab }) {
                 <div style={{
                   padding: '1rem 1.15rem',
                   borderRadius: '10px',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--bg-table-head)',
+                  border: '1px solid var(--border)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   gap: '0.6rem'
                 }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Warehouse Shortcuts
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -1742,9 +1758,9 @@ function DashboardContent({ setTab }) {
                       type="button"
                       onClick={() => setTab('purchases')}
                       style={{
-                        background: '#ffffff',
-                        color: '#0F766E',
-                        border: '1px solid #0F766E',
+                        background: 'var(--bg-card)',
+                        color: 'var(--money-green)',
+                        border: '1px solid var(--border)',
                         borderRadius: '6px',
                         padding: '6px 10px',
                         fontSize: '0.75rem',
@@ -1760,9 +1776,9 @@ function DashboardContent({ setTab }) {
                       type="button"
                       onClick={() => setTab('reports')}
                       style={{
-                        background: '#ffffff',
-                        color: '#4B5563',
-                        border: '1px solid #D1D5DB',
+                        background: 'var(--bg-card)',
+                        color: 'var(--text-title)',
+                        border: '1px solid var(--border)',
                         borderRadius: '6px',
                         padding: '6px 10px',
                         fontSize: '0.75rem',
@@ -1778,9 +1794,9 @@ function DashboardContent({ setTab }) {
                       type="button"
                       onClick={() => setTab('stock-adjust')}
                       style={{
-                        background: '#ffffff',
-                        color: '#D97706',
-                        border: '1px solid #F59E0B',
+                        background: 'var(--bg-card)',
+                        color: '#f59e0b',
+                        border: '1px solid var(--border)',
                         borderRadius: '6px',
                         padding: '6px 10px',
                         fontSize: '0.75rem',
@@ -1796,9 +1812,9 @@ function DashboardContent({ setTab }) {
                       type="button"
                       onClick={() => setTab('reports')}
                       style={{
-                        background: '#ffffff',
-                        color: '#7C3AED',
-                        border: '1px solid #8B5CF6',
+                        background: 'var(--bg-card)',
+                        color: 'var(--money-purple)',
+                        border: '1px solid var(--border)',
                         borderRadius: '6px',
                         padding: '6px 10px',
                         fontSize: '0.75rem',
@@ -1823,24 +1839,24 @@ function DashboardContent({ setTab }) {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '0.75rem 0.9rem',
-                      background: '#fef2f2',
-                      border: '1px solid #fecaca',
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
                       borderRadius: '10px'
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a' }}>{b.product_name}</div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-title)' }}>{b.product_name}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                         Lot: <span className="mono" style={{ fontWeight: 700 }}>{b.batch_no}</span> • {b.quantity} {b.unit}
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#dc2626' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#ef4444' }}>
                           {formatDate(b.expiry_date)}
                         </span>
-                        <div style={{ fontSize: '0.675rem', fontWeight: 700, color: '#b91c1c' }}>
+                        <div style={{ fontSize: '0.675rem', fontWeight: 700, color: '#ef4444' }}>
                           {b.days_remaining <= 0 ? 'EXPIRED' : `${b.days_remaining}d left`}
                         </div>
                       </div>

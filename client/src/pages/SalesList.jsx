@@ -587,10 +587,10 @@ export default function SalesList({ setTab }) {
             <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>/</span>
             <span style={{ fontSize: '0.8125rem', color: '#00a389', fontWeight: 600 }}>Orders List</span>
           </nav>
-          <h1 className="page-header-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: '0 0 2px 0' }}>
+          <h1 className="page-header-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-title)', margin: '0 0 2px 0' }}>
             Orders List
           </h1>
-          <p className="page-header-subtitle" style={{ fontSize: '0.8125rem', color: '#64748b', margin: 0 }}>
+          <p className="page-header-subtitle" style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }}>
             Here you can find all of your Orders
           </p>
         </div>
@@ -790,17 +790,17 @@ export default function SalesList({ setTab }) {
                     right: 0,
                     top: '100%',
                     marginTop: '6px',
-                    background: '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
                     borderRadius: '10px',
-                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12)',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
                     zIndex: 220,
                     width: '280px',
                     padding: '0.85rem'
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div style={{ fontWeight: 700, fontSize: '0.8125rem', marginBottom: '0.65rem', color: '#0f172a' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.8125rem', marginBottom: '0.65rem', color: 'var(--text-title)' }}>
                     Date Filter Presets
                   </div>
 
@@ -928,22 +928,22 @@ export default function SalesList({ setTab }) {
                     right: 0,
                     top: '100%',
                     marginTop: '6px',
-                    background: '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
                     borderRadius: '10px',
-                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
                     zIndex: 200,
                     width: '260px',
                     padding: '1rem'
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#0f172a' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--text-title)' }}>
                     Additional Filters
                   </div>
 
                   <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '4px', fontWeight: 600 }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
                       Payment Status
                     </label>
                     <select
@@ -1082,7 +1082,7 @@ export default function SalesList({ setTab }) {
                       key={sale.id}
                       style={{
                         height: '72px',
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                         transition: 'background-color 0.1s ease'
                       }}
                     >
@@ -1093,20 +1093,20 @@ export default function SalesList({ setTab }) {
                             width: '32px',
                             height: '32px',
                             borderRadius: '6px',
-                            background: '#f3f4f6',
-                            border: '1px solid #e5e7eb',
+                            background: 'var(--hover-bg)',
+                            border: '1px solid var(--border)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0
                           }}>
-                            <Package size={16} color="#6b7280" />
+                            <Package size={16} color="var(--text-muted)" />
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <div style={{
                               fontWeight: 600,
                               fontSize: '14px',
-                              color: '#111827',
+                              color: 'var(--text-title)',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -1114,7 +1114,7 @@ export default function SalesList({ setTab }) {
                             }} title={sale.product_summary || 'Frozen Food Item'}>
                               {sale.product_summary || 'Frozen Food Item(s)'}
                             </div>
-                            <div style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic', marginTop: '2px' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '2px' }}>
                               {sale.category_name || (sale.item_count ? `${sale.item_count} Items • General Product` : 'General Product')}
                             </div>
                           </div>
@@ -1128,8 +1128,8 @@ export default function SalesList({ setTab }) {
                             width: '32px',
                             height: '32px',
                             borderRadius: '50%',
-                            background: '#ecfdf5',
-                            color: '#059669',
+                            background: 'rgba(5, 150, 105, 0.15)',
+                            color: '#34d399',
                             fontSize: '13px',
                             fontWeight: 700,
                             display: 'flex',
@@ -1140,10 +1140,10 @@ export default function SalesList({ setTab }) {
                             {customerInitial}
                           </div>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: '14px', color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-title)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {sale.customer_name || 'Counter Walk-in'}
                             </div>
-                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                               {sale.customer_phone || (sale.customer_id ? 'Registered Client' : 'Walk-in Retail')}
                             </div>
                           </div>
@@ -1152,22 +1152,22 @@ export default function SalesList({ setTab }) {
 
                       {/* Column 3: Order Id */}
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
-                        <div style={{ fontWeight: 600, fontSize: '13px', color: '#111827' }}>
+                        <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-title)' }}>
                           #{sale.invoice_no}
                         </div>
-                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                           {formatDate(sale.sale_date)}
                         </div>
                       </td>
 
                       {/* Column 4: Amount */}
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
-                        <div style={{ fontWeight: 600, fontSize: '14px', color: '#111827' }}>
+                        <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-title)' }}>
                           {formatPKR(sale.grand_total)}
                         </div>
                         <div style={{
                           fontSize: '12px',
-                          color: Number(sale.balance_due) > 0 ? '#dc2626' : '#9ca3af',
+                          color: Number(sale.balance_due) > 0 ? '#ef4444' : 'var(--text-muted)',
                           marginTop: '2px',
                           fontWeight: Number(sale.balance_due) > 0 ? 600 : 400
                         }}>
@@ -1292,69 +1292,69 @@ export default function SalesList({ setTab }) {
 
             <div className="modal-body" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
               {/* Customer & Payment Meta Strip */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', marginBottom: '1.25rem', padding: '0.85rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', marginBottom: '1.25rem', padding: '0.85rem', background: 'var(--hover-bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                 <div>
-                  <div style={{ fontSize: '0.725rem', color: '#64748b', fontWeight: 600 }}>CUSTOMER</div>
-                  <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#0f172a' }}>
+                  <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 600 }}>CUSTOMER</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-title)' }}>
                     {selectedSale.sale.customer_name || 'Counter Walk-in Retail'}
                   </div>
                   {selectedSale.sale.customer_phone && (
-                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       Phone: {selectedSale.sale.customer_phone}
                     </div>
                   )}
                   {selectedSale.sale.customer_address && (
-                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       Address: {selectedSale.sale.customer_address}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '0.725rem', color: '#64748b', fontWeight: 600 }}>PAYMENT DETAILS</div>
-                  <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#0f172a' }}>
+                  <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', fontWeight: 600 }}>PAYMENT DETAILS</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-title)' }}>
                     Method: {selectedSale.sale.payment_method || 'Cash'}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: selectedSale.sale.balance_due > 0 ? '#dc2626' : '#059669', fontWeight: 600 }}>
+                  <div style={{ fontSize: '0.75rem', color: selectedSale.sale.balance_due > 0 ? '#ef4444' : '#10b981', fontWeight: 600 }}>
                     Status: {selectedSale.sale.balance_due > 0 ? `Unpaid Due (₨ ${selectedSale.sale.balance_due})` : 'Settled in Full'}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     Cashier: {selectedSale.sale.user_name || 'Staff User'}
                   </div>
                 </div>
               </div>
 
               {/* Items Table */}
-              <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.5rem', color: '#0f172a' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--text-title)' }}>
                 Ordered Products ({selectedSale.items?.length || 0})
               </div>
 
-              <div className="table-responsive" style={{ border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '1.25rem' }}>
+              <div className="table-responsive" style={{ border: '1px solid var(--border)', borderRadius: '8px', marginBottom: '1.25rem' }}>
                 <table className="table" style={{ margin: 0 }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc' }}>
-                      <th style={{ padding: '8px 10px', fontSize: '0.75rem' }}>Product</th>
-                      <th style={{ padding: '8px 10px', fontSize: '0.75rem', textAlign: 'center' }}>Qty</th>
-                      <th style={{ padding: '8px 10px', fontSize: '0.75rem', textAlign: 'right' }}>Price</th>
-                      <th style={{ padding: '8px 10px', fontSize: '0.75rem', textAlign: 'right' }}>Total</th>
+                    <tr style={{ background: 'var(--bg-table-head)' }}>
+                      <th style={{ padding: '8px 10px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Product</th>
+                      <th style={{ padding: '8px 10px', fontSize: '0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>Qty</th>
+                      <th style={{ padding: '8px 10px', fontSize: '0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>Price</th>
+                      <th style={{ padding: '8px 10px', fontSize: '0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {selectedSale.items?.map((it, idx) => (
                       <tr key={idx}>
                         <td style={{ padding: '8px 10px' }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.8125rem' }}>{it.product_name}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-title)' }}>{it.product_name}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                             {it.brand_name || it.supplier_name ? `${it.brand_name || it.supplier_name} • ` : ''}SKU: {it.sku || it.product_id}
                           </div>
                         </td>
-                        <td style={{ padding: '8px 10px', textAlign: 'center', fontSize: '0.8125rem' }}>
+                        <td style={{ padding: '8px 10px', textAlign: 'center', fontSize: '0.8125rem', color: 'var(--text-value)' }}>
                           {it.quantity} {it.unit}
                         </td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '0.8125rem' }}>
+                        <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '0.8125rem', color: 'var(--text-value)' }}>
                           {formatPKR(it.unit_price)}
                         </td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, fontSize: '0.8125rem' }}>
+                        <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-title)' }}>
                           {formatPKR(it.total_price)}
                         </td>
                       </tr>
@@ -1364,33 +1364,33 @@ export default function SalesList({ setTab }) {
               </div>
 
               {/* Financial Calculation Breakdown */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', color: '#64748b' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '0.75rem', background: 'var(--hover-bg)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                   <span>Subtotal:</span>
-                  <span>{formatPKR(selectedSale.sale.subtotal)}</span>
+                  <span style={{ color: 'var(--text-value)' }}>{formatPKR(selectedSale.sale.subtotal)}</span>
                 </div>
                 {Number(selectedSale.sale.discount) > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', color: '#dc2626' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', color: '#ef4444' }}>
                     <span>Discount:</span>
                     <span>-{formatPKR(selectedSale.sale.discount)}</span>
                   </div>
                 )}
                 {Number(selectedSale.sale.tax) > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', color: '#64748b' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     <span>Tax:</span>
-                    <span>+{formatPKR(selectedSale.sale.tax)}</span>
+                    <span style={{ color: 'var(--text-value)' }}>+{formatPKR(selectedSale.sale.tax)}</span>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', borderTop: '1px solid #e2e8f0', paddingTop: '6px', marginTop: '3px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-title)', borderTop: '1px solid var(--border)', paddingTop: '6px', marginTop: '3px' }}>
                   <span>Grand Total:</span>
-                  <span style={{ color: '#0284c7' }}>{formatPKR(selectedSale.sale.grand_total)}</span>
+                  <span style={{ color: 'var(--primary)' }}>{formatPKR(selectedSale.sale.grand_total)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', color: '#059669', fontWeight: 600 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', color: '#10b981', fontWeight: 600 }}>
                   <span>Paid Amount:</span>
                   <span>{formatPKR(selectedSale.sale.paid_amount)}</span>
                 </div>
                 {Number(selectedSale.sale.balance_due) > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#dc2626', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#ef4444', fontWeight: 700 }}>
                     <span>Outstanding Due:</span>
                     <span>{formatPKR(selectedSale.sale.balance_due)}</span>
                   </div>
@@ -1398,7 +1398,7 @@ export default function SalesList({ setTab }) {
               </div>
 
               {selectedSale.sale.notes && (
-                <div style={{ marginTop: '0.75rem', fontSize: '0.785rem', color: '#64748b', fontStyle: 'italic' }}>
+                <div style={{ marginTop: '0.75rem', fontSize: '0.785rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                   Notes: {selectedSale.sale.notes}
                 </div>
               )}
@@ -1725,15 +1725,15 @@ export default function SalesList({ setTab }) {
             </div>
 
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-              <div className="table-responsive" style={{ border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '1rem' }}>
+              <div className="table-responsive" style={{ border: '1px solid var(--border)', borderRadius: '8px', marginBottom: '1rem' }}>
                 <table className="table" style={{ margin: 0 }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc' }}>
-                      <th style={{ padding: '8px' }}>Product</th>
-                      <th style={{ padding: '8px', width: '90px' }}>Quantity</th>
-                      <th style={{ padding: '8px', width: '100px' }}>Rate</th>
-                      <th style={{ padding: '8px', width: '90px' }}>Disc</th>
-                      <th style={{ padding: '8px', textAlign: 'right' }}>Total</th>
+                    <tr style={{ background: 'var(--bg-table-head)' }}>
+                      <th style={{ padding: '8px', color: 'var(--text-muted)' }}>Product</th>
+                      <th style={{ padding: '8px', width: '90px', color: 'var(--text-muted)' }}>Quantity</th>
+                      <th style={{ padding: '8px', width: '100px', color: 'var(--text-muted)' }}>Rate</th>
+                      <th style={{ padding: '8px', width: '90px', color: 'var(--text-muted)' }}>Disc</th>
+                      <th style={{ padding: '8px', textAlign: 'right', color: 'var(--text-muted)' }}>Total</th>
                     </tr>
                   </thead>
                   <tbody>

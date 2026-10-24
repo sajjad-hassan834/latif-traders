@@ -406,10 +406,10 @@ function ReportsContent({ initialReport }) {
       {/* 1. CLEAN PAGE HEADER */}
       <div className="page-header no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-title)', margin: 0 }}>
             {activeReport === 'stock' ? 'Inventory Stock Valuation' : 'Financial Reports & Analytics'}
           </h1>
-          <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0' }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
             {activeReport === 'stock'
               ? 'Real-time asset valuation, unit purchase costs, retail margins, and warehouse holding value'
               : 'Certified profit & loss, daily sales audit, cash register closing, and product analytics'}
@@ -1491,17 +1491,17 @@ function ReportsContent({ initialReport }) {
                         <tr key={m.id} style={{ height: '56px', maxHeight: '56px' }}>
                           {/* COLUMN 1: Date & Time */}
                           <td style={{ padding: '8px 16px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                            <div style={{ fontSize: '13px', fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>
+                            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', lineHeight: 1.2 }}>
                               {dateStr}
                             </div>
-                            <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                               {timeStr}
                             </div>
                           </td>
 
                           {/* COLUMN 2: Product */}
                           <td style={{ padding: '8px 16px', verticalAlign: 'middle' }}>
-                            <div style={{ fontSize: '14px', fontWeight: 600, color: '#111827', lineHeight: 1.25, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-title)', lineHeight: 1.25, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {m.product_name}
                             </div>
                             <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px', fontFamily: 'monospace' }}>
@@ -1625,10 +1625,10 @@ function ReportsContent({ initialReport }) {
                     }}
                   >
                     <div>
-                      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#111827' }}>
+                      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--text-title)' }}>
                         Movement Details
                       </h3>
-                      <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#6B7280' }}>
+                      <p style={{ margin: '2px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>
                         Audit trail log #{selectedMovement.id}
                       </p>
                     </div>
@@ -1654,57 +1654,57 @@ function ReportsContent({ initialReport }) {
 
                   {/* Panel Body */}
                   <div style={{ padding: '24px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ background: '#F8FAFC', padding: '14px', borderRadius: '10px', border: '1px solid #E5E7EB' }}>
-                      <div style={{ fontSize: '11px', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>Product</div>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: '#111827', marginTop: '2px' }}>{selectedMovement.product_name}</div>
-                      <div style={{ fontSize: '12px', color: '#0F766E', fontFamily: 'monospace', marginTop: '2px' }}>SKU: {selectedMovement.sku}</div>
+                    <div style={{ background: 'var(--hover-bg)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Product</div>
+                      <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-title)', marginTop: '2px' }}>{selectedMovement.product_name}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--primary)', fontFamily: 'monospace', marginTop: '2px' }}>SKU: {selectedMovement.sku}</div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px 12px' }}>
-                        <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>Movement Type</div>
-                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#111827', marginTop: '4px', textTransform: 'uppercase' }}>
+                      <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 12px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Movement Type</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', marginTop: '4px', textTransform: 'uppercase' }}>
                           {selectedMovement.type}
                         </div>
                       </div>
 
-                      <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px 12px' }}>
-                        <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>Quantity Delta</div>
+                      <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 12px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Quantity Delta</div>
                         <div style={{ fontSize: '14px', fontWeight: 800, color: selectedMovement.quantity_delta > 0 ? '#10B981' : '#EF4444', marginTop: '4px' }}>
                           {selectedMovement.quantity_delta > 0 ? `+${selectedMovement.quantity_delta}` : selectedMovement.quantity_delta} {selectedMovement.unit}
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px 14px' }}>
-                      <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>Stock Balance</div>
-                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#111827', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Stock Balance</div>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-title)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span>{(selectedMovement.balance_after || 0) - (selectedMovement.quantity_delta || 0)}</span>
-                        <ArrowRight size={14} color="#9CA3AF" />
-                        <span style={{ color: '#0F766E' }}>{selectedMovement.balance_after} {selectedMovement.unit}</span>
+                        <ArrowRight size={14} color="var(--text-muted)" />
+                        <span style={{ color: 'var(--primary)' }}>{selectedMovement.balance_after} {selectedMovement.unit}</span>
                       </div>
                     </div>
 
-                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px 14px' }}>
-                      <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>Batch / Lot Number</div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#111827', marginTop: '4px', fontFamily: 'monospace' }}>
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Batch / Lot Number</div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-title)', marginTop: '4px', fontFamily: 'monospace' }}>
                         {selectedMovement.batch_no || 'Standard Stock (No Lot)'}
                       </div>
                     </div>
 
-                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px 14px' }}>
-                      <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>Reference / Reason</div>
-                      <div style={{ fontSize: '13px', color: '#374151', marginTop: '4px', lineHeight: 1.5 }}>
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Reference / Reason</div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-value)', marginTop: '4px', lineHeight: 1.5 }}>
                         {selectedMovement.reason || 'No description provided'}
                       </div>
                     </div>
 
-                    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px 14px' }}>
-                      <div style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600 }}>Date, Time & Staff</div>
-                      <div style={{ fontSize: '13px', color: '#111827', fontWeight: 600, marginTop: '4px' }}>
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Date, Time & Staff</div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-title)', fontWeight: 600, marginTop: '4px' }}>
                         {formatDateTime(selectedMovement.created_at)}
                       </div>
-                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                         Logged by: <strong>{selectedMovement.user_name || 'Staff User'}</strong>
                       </div>
                     </div>

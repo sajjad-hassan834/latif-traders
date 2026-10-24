@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { DollarSign, ArrowUpRight, ArrowDownLeft, Printer, FileText, Eye, CheckCircle, Filter, Trash2, X } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { DollarSign, ArrowUpRight, ArrowDownLeft, Printer, FileText, Eye, CheckCircle, Filter, Trash2, X, Search } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +7,7 @@ import ReportPrintHeader from '../components/common/ReportPrintHeader';
 import Pagination from '../components/common/Pagination';
 import ReportPrintFooter from '../components/common/ReportPrintFooter';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
+import CustomDatePicker from '../components/common/CustomDatePicker';
 
 export default function CashFlow() {
   const { user, isAdmin } = useAuth();
@@ -16,6 +17,11 @@ export default function CashFlow() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 15;
+
+  // Search & Type Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [flowFilter, setFlowFilter] = useState('all');
 
   // Receipt & Invoice viewing states
   const [selectedInvoice, setSelectedInvoice] = useState(null);
@@ -151,25 +157,61 @@ export default function CashFlow() {
     return { label: entry.title || 'Transaction', bg: '#F3F4F6', color: '#374151' };
   };
 
+  const filteredEntries = useMemo(() => {
+    let list = cashbook?.entries || [];
+    if (searchTerm && searchTerm.trim()) {
+      const q = searchTerm.trim().toLowerCase();
+      list = list.filter(e =>
+        (e.ref_no && e.ref_no.toLowerCase().includes(q)) ||
+        (e.party_name && e.party_name.toLowerCase().includes(q)) ||
+        (e.title && e.title.toLowerCase().includes(q)) ||
+        (e.notes && e.notes.toLowerCase().includes(q))
+      );
+    }
+    if (typeFilter && typeFilter !== 'all') {
+      list = list.filter(e => {
+        if (typeFilter === 'SALE') return e.source_type === 'SALE' || (e.ref_no && e.ref_no.startsWith('INV-'));
+        if (typeFilter === 'CUSTOMER_RECEIPT') return e.source_type === 'CUSTOMER_RECEIPT' || (e.flow === 'IN' && (e.party_type === 'CUSTOMER' || (e.title || '').toLowerCase().includes('receipt')));
+        if (typeFilter === 'PURCHASE') return e.source_type === 'PURCHASE' || (e.ref_no && e.ref_no.startsWith('PUR-'));
+        if (typeFilter === 'SUPPLIER_PAYMENT') return e.source_type === 'SUPPLIER_PAYMENT' || (e.flow === 'OUT' && (e.party_type === 'SUPPLIER' || (e.title || '').toLowerCase().includes('supplier')));
+        if (typeFilter === 'EXPENSE') return e.source_type === 'EXPENSE' || (e.ref_no && e.ref_no.startsWith('EXP-'));
+        return true;
+      });
+    }
+    if (flowFilter && flowFilter !== 'all') {
+      list = list.filter(e => e.flow === flowFilter);
+    }
+    return list;
+  }, [cashbook?.entries, searchTerm, typeFilter, flowFilter]);
+
+  const isFiltered = Boolean(searchTerm || (typeFilter && typeFilter !== 'all') || (flowFilter && flowFilter !== 'all'));
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setTypeFilter('all');
+    setFlowFilter('all');
+    setCurrentPage(1);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* FIX 7: STATEMENT HEADER BLOCK REPLACED WITH CLEAN MODERN HEADER */}
+      {/* STATEMENT HEADER BLOCK */}
       <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#111827', margin: 0, letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-title)', margin: 0, letterSpacing: '-0.02em' }}>
             Daily Cashbook & Cash Flow
           </h1>
-          <p style={{ fontSize: '13px', color: '#6B7280', margin: '4px 0 10px 0' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 10px 0' }}>
             Daily cash collections, customer recoveries, supplier disbursements and net cash balance
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ background: '#F3F4F6', color: '#4B5563', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 500 }}>
+            <span style={{ background: 'var(--hover-bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 500 }}>
               📅 Date: {startDate === endDate ? formatDate(startDate) : `${formatDate(startDate)} - ${formatDate(endDate)}`}
             </span>
-            <span style={{ background: '#F3F4F6', color: '#4B5563', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 500 }}>
+            <span style={{ background: 'var(--hover-bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 500 }}>
               👤 {user?.full_name || 'Staff'}
             </span>
-            <span style={{ background: '#F3F4F6', color: '#4B5563', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 500 }}>
+            <span style={{ background: 'var(--hover-bg)', color: 'var(--text-muted)', border: '1px solid var(--border)', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 500 }}>
               🔖 Ref: {docRef}
             </span>
           </div>
@@ -182,12 +224,12 @@ export default function CashFlow() {
             style={{
               height: '38px',
               padding: '0 16px',
-              background: '#FFFFFF',
-              border: '1px solid #E5E7EB',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
               borderRadius: '8px',
               fontSize: '13px',
               fontWeight: 600,
-              color: '#374151',
+              color: 'var(--text-value)',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -200,126 +242,245 @@ export default function CashFlow() {
         </div>
       </div>
 
-      {/* FIX 8: DATE FILTER BAR & QUICK FILTER CHIPS */}
-      <div className="card no-print" style={{ padding: '16px', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>From:</span>
+      {/* FILTER & SEARCH BAR */}
+      <div className="card no-print" style={{ padding: '16px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', alignItems: 'center' }}>
+          {/* Search Box */}
+          <div style={{ position: 'relative', minWidth: '220px' }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setActiveDateFilter('custom');
-              }}
+              type="text"
+              placeholder="Search invoice #, party name, notes..."
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               style={{
+                width: '100%',
                 height: '38px',
-                border: '1px solid #E5E7EB',
+                padding: '0 32px 0 36px',
                 borderRadius: '8px',
-                padding: '0 12px',
+                border: '1px solid var(--border)',
+                background: 'var(--input-bg)',
+                color: 'var(--text-title)',
                 fontSize: '13px',
-                color: '#111827',
-                background: '#FFFFFF'
+                outline: 'none'
               }}
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
+                title="Clear search"
+              >
+                <X size={15} />
+              </button>
+            )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>To:</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setActiveDateFilter('custom');
-              }}
+          {/* Type Filter */}
+          <div style={{ minWidth: '160px' }}>
+            <select
+              value={typeFilter}
+              onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
               style={{
+                width: '100%',
                 height: '38px',
-                border: '1px solid #E5E7EB',
-                borderRadius: '8px',
                 padding: '0 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: 'var(--input-bg)',
+                color: 'var(--text-title)',
                 fontSize: '13px',
-                color: '#111827',
-                background: '#FFFFFF'
+                outline: 'none'
               }}
-            />
+            >
+              <option value="all">All Types</option>
+              <option value="SALE">Cash Sales (POS)</option>
+              <option value="CUSTOMER_RECEIPT">Customer Receipts</option>
+              <option value="PURCHASE">Cash Purchases</option>
+              <option value="SUPPLIER_PAYMENT">Supplier Payments</option>
+              <option value="EXPENSE">Expenses</option>
+            </select>
           </div>
 
-          <button
-            onClick={loadCashbook}
-            style={{
-              height: '38px',
-              padding: '0 18px',
-              background: '#0F766E',
-              color: '#FFFFFF',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <Filter size={14} />
-            <span>Filter</span>
-          </button>
+          {/* Flow Filter */}
+          <div style={{ minWidth: '140px' }}>
+            <select
+              value={flowFilter}
+              onChange={(e) => { setFlowFilter(e.target.value); setCurrentPage(1); }}
+              style={{
+                width: '100%',
+                height: '38px',
+                padding: '0 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: 'var(--input-bg)',
+                color: 'var(--text-title)',
+                fontSize: '13px',
+                outline: 'none'
+              }}
+            >
+              <option value="all">All Flows (In & Out)</option>
+              <option value="IN">Cash In (Collections)</option>
+              <option value="OUT">Cash Out (Disbursements)</option>
+            </select>
+          </div>
         </div>
 
-        {/* Quick Filter Chips */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
-          {[
-            { id: 'today', label: 'Today' },
-            { id: 'yesterday', label: 'Yesterday' },
-            { id: 'this_week', label: 'This Week' },
-            { id: 'this_month', label: 'This Month' },
-            { id: 'custom', label: 'Custom' }
-          ].map(chip => (
+        {/* Date presets and CustomDatePicker */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginRight: '4px' }}>Date:</span>
+            {[
+              { id: 'today', label: 'Today' },
+              { id: 'yesterday', label: 'Yesterday' },
+              { id: 'this_week', label: 'This Week' },
+              { id: 'this_month', label: 'This Month' },
+              { id: 'custom', label: 'Custom' }
+            ].map(chip => (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => setQuickDate(chip.id)}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: '16px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: activeDateFilter === chip.id ? '1px solid var(--primary)' : '1px solid var(--border)',
+                  background: activeDateFilter === chip.id ? 'var(--primary)' : 'var(--bg-card)',
+                  color: activeDateFilter === chip.id ? '#FFFFFF' : 'var(--text-muted)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ width: '145px' }}>
+              <CustomDatePicker
+                value={startDate}
+                onChange={(d) => { setStartDate(d); setActiveDateFilter('custom'); }}
+                placeholder="From date"
+                allowClear
+              />
+            </div>
+            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>to</span>
+            <div style={{ width: '145px' }}>
+              <CustomDatePicker
+                value={endDate}
+                onChange={(d) => { setEndDate(d); setActiveDateFilter('custom'); }}
+                placeholder="To date"
+                allowClear
+              />
+            </div>
             <button
-              key={chip.id}
-              type="button"
-              onClick={() => setQuickDate(chip.id)}
+              onClick={loadCashbook}
               style={{
-                padding: '4px 14px',
-                borderRadius: '20px',
+                height: '36px',
+                padding: '0 14px',
+                background: 'var(--primary)',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Filter size={13} />
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Active Filter Chips & Results Count */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', paddingTop: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Showing <strong style={{ color: 'var(--text-title)' }}>{filteredEntries.length}</strong> of <strong style={{ color: 'var(--text-title)' }}>{cashbook?.entries?.length || 0}</strong> transactions
+            </span>
+
+            {searchTerm && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-value)', fontSize: '11px', padding: '2px 8px', borderRadius: '12px' }}>
+                Search: "{searchTerm}"
+                <button type="button" onClick={() => { setSearchTerm(''); setCurrentPage(1); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-muted)' }}>✕</button>
+              </span>
+            )}
+
+            {typeFilter !== 'all' && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-value)', fontSize: '11px', padding: '2px 8px', borderRadius: '12px' }}>
+                Type: {typeFilter}
+                <button type="button" onClick={() => { setTypeFilter('all'); setCurrentPage(1); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-muted)' }}>✕</button>
+              </span>
+            )}
+
+            {flowFilter !== 'all' && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-value)', fontSize: '11px', padding: '2px 8px', borderRadius: '12px' }}>
+                Flow: {flowFilter === 'IN' ? 'Cash In' : 'Cash Out'}
+                <button type="button" onClick={() => { setFlowFilter('all'); setCurrentPage(1); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-muted)' }}>✕</button>
+              </span>
+            )}
+          </div>
+
+          {isFiltered && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--primary)',
                 fontSize: '12px',
                 fontWeight: 600,
                 cursor: 'pointer',
-                border: activeDateFilter === chip.id ? 'none' : '1px solid #E5E7EB',
-                background: activeDateFilter === chip.id ? '#0F766E' : '#FFFFFF',
-                color: activeDateFilter === chip.id ? '#FFFFFF' : '#4B5563',
-                transition: 'all 0.15s ease'
+                padding: '2px 6px'
               }}
             >
-              {chip.label}
+              Clear all filters
             </button>
-          ))}
+          )}
         </div>
       </div>
 
-      {/* FIX 9: STAT CARDS WITH 4PX BORDER ACCENT */}
+      {/* STAT CARDS WITH BORDER ACCENT */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
         {/* TOTAL CASH IN */}
         <div style={{
-          background: '#FFFFFF',
+          background: 'var(--bg-card)',
           borderRadius: '12px',
-          border: '1px solid #E5E7EB',
+          border: '1px solid var(--border)',
           borderLeft: '4px solid #16A34A',
           padding: '16px 20px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+          boxShadow: 'var(--shadow-card)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 TOTAL CASH IN
               </div>
               <div style={{ fontSize: '24px', fontWeight: 800, color: '#16A34A', marginTop: '6px', lineHeight: 1 }}>
                 {formatPKR(cashbook?.total_in || 0)}
               </div>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '6px' }}>Sales & collections</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>Sales & collections</div>
             </div>
-            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#ECFDF5', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(22, 163, 74, 0.15)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <ArrowDownLeft size={18} />
             </div>
           </div>
@@ -327,24 +488,24 @@ export default function CashFlow() {
 
         {/* TOTAL CASH OUT */}
         <div style={{
-          background: '#FFFFFF',
+          background: 'var(--bg-card)',
           borderRadius: '12px',
-          border: '1px solid #E5E7EB',
+          border: '1px solid var(--border)',
           borderLeft: '4px solid #DC2626',
           padding: '16px 20px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+          boxShadow: 'var(--shadow-card)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 TOTAL CASH OUT
               </div>
               <div style={{ fontSize: '24px', fontWeight: 800, color: '#DC2626', marginTop: '6px', lineHeight: 1 }}>
                 {formatPKR(cashbook?.total_out || 0)}
               </div>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '6px' }}>Expenses & purchases</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>Expenses & purchases</div>
             </div>
-            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#FEF2F2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(220, 38, 38, 0.15)', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <ArrowUpRight size={18} />
             </div>
           </div>
@@ -352,67 +513,81 @@ export default function CashFlow() {
 
         {/* NET CASH FLOW */}
         <div style={{
-          background: '#FFFFFF',
+          background: 'var(--bg-card)',
           borderRadius: '12px',
-          border: '1px solid #E5E7EB',
+          border: '1px solid var(--border)',
           borderLeft: '4px solid #2563EB',
           padding: '16px 20px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+          boxShadow: 'var(--shadow-card)'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 NET CASH FLOW
               </div>
               <div style={{
                 fontSize: '24px',
                 fontWeight: 800,
-                color: (cashbook?.net_cash_flow || 0) >= 0 ? '#2563EB' : '#DC2626',
+                color: (cashbook?.net_cash_flow || 0) >= 0 ? '#38BDF8' : '#DC2626',
                 marginTop: '6px',
                 lineHeight: 1
               }}>
                 {(cashbook?.net_cash_flow || 0) < 0 && <span style={{ marginRight: '4px' }}>⚠️</span>}
                 {formatPKR(cashbook?.net_cash_flow || 0)}
               </div>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '6px' }}>Net balance today</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>Net balance today</div>
             </div>
-            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(37, 99, 235, 0.15)', color: '#38BDF8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <DollarSign size={18} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* FIX 1, 2, 3, 4, 5, 6, 10, 11: 6-COLUMN TABLE WITHOUT REDUNDANT NOTES */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden', background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+      {/* 6-COLUMN TABLE WITHOUT REDUNDANT NOTES */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)' }}>
         <div className="table-responsive" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', minWidth: '830px', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E5E7EB' }}>
-                <th style={{ width: '100px', padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Date</th>
-                <th style={{ width: '150px', padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Invoice #</th>
-                <th style={{ width: '130px', padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Type</th>
-                <th style={{ width: '160px', padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Party</th>
-                <th style={{ width: '110px', padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Cash In</th>
-                <th style={{ width: '110px', padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Cash Out</th>
-                <th className="no-print" style={{ width: '70px', padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Action</th>
+              <tr style={{ background: 'var(--bg-table-head)', borderBottom: '2px solid var(--border)' }}>
+                <th style={{ width: '100px', padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Date</th>
+                <th style={{ width: '150px', padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Invoice #</th>
+                <th style={{ width: '130px', padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Type</th>
+                <th style={{ width: '160px', padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Party</th>
+                <th style={{ width: '110px', padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Cash In</th>
+                <th style={{ width: '110px', padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Cash Out</th>
+                <th className="no-print" style={{ width: '70px', padding: '12px 16px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#6B7280', fontSize: '13px' }}>
-                    Loading cashbook records...
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <div className="spinner" style={{ width: '24px', height: '24px', border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                      <span>Loading cashbook records...</span>
+                    </div>
                   </td>
                 </tr>
-              ) : cashbook?.entries?.length === 0 ? (
+              ) : filteredEntries.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#6B7280', fontSize: '13px' }}>
-                    No cash transactions recorded for this period.
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                    {isFiltered ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--hover-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Search size={20} />
+                        </div>
+                        <div style={{ fontWeight: 600, color: 'var(--text-title)' }}>No cash records match your search or filters</div>
+                        <div style={{ fontSize: '12px' }}>Try searching with different terms or reset your filters.</div>
+                        <button type="button" onClick={handleClearFilters} className="btn btn-secondary btn-sm" style={{ marginTop: '4px' }}>Clear Filters</button>
+                      </div>
+                    ) : (
+                      'No cash transactions recorded for this period.'
+                    )}
                   </td>
                 </tr>
               ) : (
-                (cashbook?.entries || []).slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((entry, idx) => {
+                filteredEntries.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map((entry, idx) => {
                   const badge = getTypeBadge(entry);
                   const isPos = entry.source_type === 'SALE' || (entry.ref_no && entry.ref_no.startsWith('INV-'));
 
@@ -421,15 +596,15 @@ export default function CashFlow() {
                       key={idx}
                       style={{
                         height: '52px',
-                        borderBottom: '1px solid #F3F4F6',
+                        borderBottom: '1px solid var(--border)',
                         verticalAlign: 'middle',
                         transition: 'background 0.15s'
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = '#F9FAFB'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = '#FFFFFF'; }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover-bg)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     >
                       {/* 1. Date */}
-                      <td style={{ padding: '0 16px', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '0 16px', fontSize: '13px', color: 'var(--text-table)', whiteSpace: 'nowrap' }}>
                         {formatDate(entry.date)}
                       </td>
 
@@ -441,7 +616,7 @@ export default function CashFlow() {
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#0F766E',
+                            color: 'var(--primary)',
                             fontFamily: 'monospace',
                             fontSize: '12px',
                             fontWeight: 600,
@@ -477,7 +652,7 @@ export default function CashFlow() {
                         style={{
                           padding: '0 16px',
                           fontSize: '13px',
-                          color: '#374151',
+                          color: 'var(--text-table)',
                           maxWidth: '160px',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -563,8 +738,8 @@ export default function CashFlow() {
             {/* FIX 10: PROMINENT TOTALS ROW & NET BALANCE BAR */}
             {cashbook?.entries?.length > 0 && (
               <tfoot>
-                <tr style={{ background: '#F8FAFC', borderTop: '2px solid #E5E7EB', height: '48px', fontWeight: 700 }}>
-                  <td colSpan="4" style={{ padding: '0 16px', textAlign: 'right', fontSize: '13px', color: '#111827', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <tr style={{ background: 'var(--bg-table-head)', borderTop: '2px solid var(--border)', height: '48px', fontWeight: 700 }}>
+                  <td colSpan="4" style={{ padding: '0 16px', textAlign: 'right', fontSize: '13px', color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     TOTALS:
                   </td>
                   <td style={{ padding: '0 16px', textAlign: 'right', fontWeight: 700, color: '#16A34A', fontSize: '14px', whiteSpace: 'nowrap' }}>
@@ -596,14 +771,14 @@ export default function CashFlow() {
           </table>
         </div>
 
-        {/* FIX 12: PAGINATION WITH PAGE INFO */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '12px 16px', borderTop: '1px solid #F3F4F6' }} className="no-print">
-          <div style={{ fontSize: '12px', color: '#6B7280' }}>
-            Page {currentPage} of {Math.max(1, Math.ceil((cashbook?.entries?.length || 0) / ITEMS_PER_PAGE))}  •  {cashbook?.entries?.length || 0} entries
+        {/* PAGINATION WITH PAGE INFO */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '12px 16px', borderTop: '1px solid var(--border)' }} className="no-print">
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            Page {currentPage} of {Math.max(1, Math.ceil(filteredEntries.length / ITEMS_PER_PAGE))}  •  {filteredEntries.length} entries
           </div>
           <Pagination
             currentPage={currentPage}
-            totalItems={cashbook?.entries?.length || 0}
+            totalItems={filteredEntries.length}
             itemsPerPage={ITEMS_PER_PAGE}
             onPageChange={setCurrentPage}
           />
@@ -626,8 +801,8 @@ export default function CashFlow() {
           <div className="modal-content" style={{ maxWidth: '440px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Cash Transaction Voucher</h3>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Receipt details & print voucher</p>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-title)' }}>Cash Transaction Voucher</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Receipt details & print voucher</p>
               </div>
               <button
                 type="button"
@@ -639,8 +814,8 @@ export default function CashFlow() {
               </button>
             </div>
             <div className="modal-body" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-              <div style={{ textAlign: 'center', borderBottom: '1px dashed #cbd5e1', paddingBottom: '0.75rem' }}>
-                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a' }}>{settings.shop_name}</div>
+              <div style={{ textAlign: 'center', borderBottom: '1px dashed var(--border)', paddingBottom: '0.75rem' }}>
+                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-title)' }}>{settings.shop_name}</div>
                 <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{settings.tagline}</div>
                 <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0284c7', marginTop: '4px' }}>
                   {genericReceipt.title}

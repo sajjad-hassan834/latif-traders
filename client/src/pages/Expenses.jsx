@@ -278,8 +278,8 @@ function ExpensesContent() {
       {/* 1. CLEAN PAGE HEADER */}
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Operating Expenses Ledger</h1>
-          <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0' }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-title)', margin: 0 }}>Operating Expenses Ledger</h1>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
             Track business overheads, shop electricity, freezer maintenance, fuel, and daily payouts
           </p>
         </div>
@@ -320,17 +320,17 @@ function ExpensesContent() {
         {/* TOTAL EXPENSES */}
         <div className="card" style={{ padding: '1.15rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Total Expenses
             </div>
-            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a', marginTop: '0.35rem', lineHeight: 1.1 }}>
+            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-title)', marginTop: '0.35rem', lineHeight: 1.1 }}>
               {formatPKR(totalAmount)}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
               {expenses.length} voucher{expenses.length !== 1 ? 's' : ''} recorded • Deducted from P&L
             </div>
           </div>
-          <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#eff6ff', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(2, 132, 199, 0.15)', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Wallet size={20} />
           </div>
         </div>
@@ -338,17 +338,17 @@ function ExpensesContent() {
         {/* CASH PAYMENTS */}
         <div className="card" style={{ padding: '1.15rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Cash Drawer
             </div>
             <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#059669', marginTop: '0.35rem', lineHeight: 1.1 }}>
               {formatPKR(cashTotal)}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
               Paid directly from shop cash register
             </div>
           </div>
-          <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Banknote size={20} />
           </div>
         </div>
@@ -356,17 +356,17 @@ function ExpensesContent() {
         {/* BANK & DIGITAL PAYMENTS */}
         <div className="card" style={{ padding: '1.15rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <div style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Bank & Online
             </div>
-            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#7c3aed', marginTop: '0.35rem', lineHeight: 1.1 }}>
+            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#A78BFA', marginTop: '0.35rem', lineHeight: 1.1 }}>
               {formatPKR(bankTotal)}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
               Online transfers, cheques & digital pay
             </div>
           </div>
-          <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(124, 58, 237, 0.15)', color: '#A78BFA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <CreditCard size={20} />
           </div>
         </div>
@@ -471,13 +471,13 @@ function ExpensesContent() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.35rem',
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
+              background: 'var(--input-bg, #ffffff)',
+              border: '1px solid var(--border, #e2e8f0)',
               borderRadius: '6px',
               padding: '2px 8px',
               height: '32px'
             }}>
-              <Calendar size={13} color="#64748b" />
+              <Calendar size={13} color="var(--text-muted, #64748b)" />
               <input
                 type="date"
                 value={startDate}
@@ -488,10 +488,10 @@ function ExpensesContent() {
                   border: 'none',
                   background: 'transparent',
                   padding: '0 2px',
-                  color: '#0f172a'
+                  color: 'var(--text-value, #0f172a)'
                 }}
               />
-              <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>to</span>
+              <span style={{ color: 'var(--text-muted, #94a3b8)', fontSize: '0.75rem' }}>to</span>
               <input
                 type="date"
                 value={endDate}
@@ -502,7 +502,7 @@ function ExpensesContent() {
                   border: 'none',
                   background: 'transparent',
                   padding: '0 2px',
-                  color: '#0f172a'
+                  color: 'var(--text-value, #0f172a)'
                 }}
               />
             </div>
@@ -510,7 +510,7 @@ function ExpensesContent() {
 
           {/* SEARCH INPUT */}
           <div style={{ position: 'relative', minWidth: '220px', flex: '1 1 220px', maxWidth: '340px' }}>
-            <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: '#94a3b8' }} />
+            <Search size={14} style={{ position: 'absolute', left: '10px', top: '9px', color: 'var(--text-muted, #94a3b8)' }} />
             <input
               type="text"
               className="form-control"
@@ -523,7 +523,7 @@ function ExpensesContent() {
             {search && (
               <button
                 onClick={() => { setSearch(''); loadExpenses(); }}
-                style={{ position: 'absolute', right: '8px', top: '7px', color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer' }}
+                style={{ position: 'absolute', right: '8px', top: '7px', color: 'var(--text-muted, #94a3b8)', background: 'none', border: 'none', cursor: 'pointer' }}
                 title="Clear Search"
               >
                 <X size={14} />
@@ -537,20 +537,20 @@ function ExpensesContent() {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{
           padding: '1rem 1.35rem',
-          borderBottom: '1px solid #e2e8f0',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: '#ffffff'
+          background: 'var(--bg-card)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Expense Ledger</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-title)', margin: 0 }}>Expense Ledger</h3>
             <span className="badge badge-stage" style={{ fontSize: '0.75rem' }}>
               {expenses.length} Records
             </span>
           </div>
-          <div style={{ fontSize: '0.8125rem', color: '#64748b' }}>
-            Filtered Total: <strong style={{ color: '#0284c7', fontSize: '0.95rem' }}>{formatPKR(totalAmount)}</strong>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            Filtered Total: <strong style={{ color: 'var(--primary)', fontSize: '0.95rem' }}>{formatPKR(totalAmount)}</strong>
           </div>
         </div>
 
@@ -571,23 +571,23 @@ function ExpensesContent() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted, #64748b)' }}>
                     Loading expenses...
                   </td>
                 </tr>
               ) : expenses.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted, #94a3b8)' }}>
                     No expenses found matching the filter criteria.
                   </td>
                 </tr>
               ) : (
                 expenses.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(e => (
                   <tr key={e.id}>
-                    <td style={{ fontWeight: 500, fontSize: '0.8rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                    <td style={{ fontWeight: 500, fontSize: '0.8rem', color: 'var(--text-muted, #64748b)', whiteSpace: 'nowrap' }}>
                       {formatDate(e.expense_date)}
                     </td>
-                    <td style={{ fontWeight: 600, color: '#0f172a' }}>
+                    <td style={{ fontWeight: 600, color: 'var(--text-title, #0f172a)' }}>
                       {e.title}
                     </td>
                     <td>
@@ -600,7 +600,7 @@ function ExpensesContent() {
                         {e.payment_method}
                       </span>
                     </td>
-                    <td style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748b)' }}>
                       {e.description || '—'}
                     </td>
                     <td style={{ textAlign: 'center' }}>
@@ -663,8 +663,8 @@ function ExpensesContent() {
             </tbody>
             {expenses.length > 0 && (
               <tfoot>
-                <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
-                  <td colSpan="6" style={{ textAlign: 'right', padding: '0.65rem 1rem', fontSize: '0.8rem', color: '#475569' }}>
+                <tr style={{ background: 'var(--bg-table-head, #f8fafc)', fontWeight: 800 }}>
+                  <td colSpan="6" style={{ textAlign: 'right', padding: '0.65rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted, #475569)' }}>
                     Total ({expenses.length} Records):
                   </td>
                   <td style={{ textAlign: 'right', padding: '0.65rem 1rem', color: '#ef4444', fontSize: '0.95rem' }}>
@@ -690,8 +690,8 @@ function ExpensesContent() {
           <div className="modal-content" style={{ maxWidth: '520px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Record Expense</h3>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title, #0f172a)' }}>Record Expense</h3>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748b)', marginTop: '2px' }}>
                   Log an operational expenditure or utility payment.
                 </div>
               </div>
@@ -781,9 +781,9 @@ function ExpensesContent() {
                   />
                 </div>
 
-                <div className="form-group" style={{ margin: 0, background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '6px', padding: '0.75rem' }}>
+                <div className="form-group" style={{ margin: 0, background: 'var(--hover-bg, #f8fafc)', border: '1px dashed var(--border, #cbd5e1)', borderRadius: '6px', padding: '0.75rem' }}>
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
-                    <Paperclip size={13} color="#0284c7" />
+                    <Paperclip size={13} color="var(--primary, #0284c7)" />
                     <span>Receipt / Bill Image (Optional)</span>
                   </label>
                   <input
@@ -793,7 +793,7 @@ function ExpensesContent() {
                     style={{ fontSize: '0.75rem', width: '100%' }}
                   />
                   {formData.receipt_name && (
-                    <div style={{ fontSize: '0.72rem', color: '#047857', marginTop: '4px', fontWeight: 600 }}>
+                    <div style={{ fontSize: '0.72rem', color: '#10b981', marginTop: '4px', fontWeight: 600 }}>
                       ✓ Attached: {formData.receipt_name}
                     </div>
                   )}
@@ -814,8 +814,8 @@ function ExpensesContent() {
           <div className="modal-content" style={{ maxWidth: '520px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Edit Expense</h3>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title, #0f172a)' }}>Edit Expense</h3>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748b)', marginTop: '2px' }}>
                   Modify recorded expenditure information or attachment.
                 </div>
               </div>
@@ -901,18 +901,18 @@ function ExpensesContent() {
                   />
                 </div>
 
-                <div className="form-group" style={{ margin: 0, background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '6px', padding: '0.75rem' }}>
+                <div className="form-group" style={{ margin: 0, background: 'var(--hover-bg, #f8fafc)', border: '1px dashed var(--border, #cbd5e1)', borderRadius: '6px', padding: '0.75rem' }}>
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
-                    <Paperclip size={13} color="#0284c7" />
+                    <Paperclip size={13} color="var(--primary, #0284c7)" />
                     <span>Receipt / Bill Image (Optional)</span>
                   </label>
                   {editingExpense.receipt_path && !editingExpense.receipt_name && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', background: '#ecfdf5', padding: '4px 8px', borderRadius: '4px', border: '1px solid #a7f3d0' }}>
-                      <span style={{ fontSize: '0.725rem', color: '#065f46', fontWeight: 600 }}>Current Receipt Attached</span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', background: 'var(--hover-bg)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: '0.725rem', color: 'var(--text-title)', fontWeight: 600 }}>Current Receipt Attached</span>
                       <button
                         type="button"
                         onClick={() => setPreviewReceiptUrl(getFileUrl(editingExpense.receipt_path))}
-                        style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '0.725rem', cursor: 'pointer', textDecoration: 'underline' }}
+                        style={{ background: 'none', border: 'none', color: 'var(--primary, #0284c7)', fontSize: '0.725rem', cursor: 'pointer', textDecoration: 'underline' }}
                       >
                         View
                       </button>
@@ -925,7 +925,7 @@ function ExpensesContent() {
                     style={{ fontSize: '0.75rem', width: '100%' }}
                   />
                   {editingExpense.receipt_name && (
-                    <div style={{ fontSize: '0.72rem', color: '#047857', marginTop: '4px', fontWeight: 600 }}>
+                    <div style={{ fontSize: '0.72rem', color: '#10b981', marginTop: '4px', fontWeight: 600 }}>
                       ✓ New File Selected: {editingExpense.receipt_name}
                     </div>
                   )}
@@ -946,8 +946,8 @@ function ExpensesContent() {
           <div className="modal-content" style={{ maxWidth: '420px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Add Expense Category</h3>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title, #0f172a)' }}>Add Expense Category</h3>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748b)', marginTop: '2px' }}>
                   Create an expenditure category group.
                 </div>
               </div>
@@ -993,8 +993,8 @@ function ExpensesContent() {
           >
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Expense Receipt / Bill Attachment</h3>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>Attached payment proof document</div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title, #0f172a)' }}>Expense Receipt / Bill Attachment</h3>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748b)', marginTop: '2px' }}>Attached payment proof document</div>
               </div>
               <button
                 type="button"

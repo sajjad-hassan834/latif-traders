@@ -995,7 +995,7 @@ export default function PosSales() {
                             style={{
                               fontSize: '0.78rem',
                               fontWeight: 600,
-                              color: '#0f172a',
+                              color: 'var(--text-title)',
                               lineHeight: 1.2,
                               display: '-webkit-box',
                               WebkitLineClamp: 2,
@@ -1011,7 +1011,7 @@ export default function PosSales() {
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.825rem', fontWeight: 800, color: '#0f172a' }}>
+                          <div style={{ fontSize: '0.825rem', fontWeight: 800, color: 'var(--text-title)' }}>
                             {formatPKR(displayPrice)}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end' }}>
@@ -1283,7 +1283,7 @@ export default function PosSales() {
               cart.map((item, idx) => (
                 <div key={idx} className="pos-cart-item">
                   <div style={{ flex: 1, paddingRight: '0.3rem' }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.75rem', color: '#0f172a', lineHeight: 1.15 }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.75rem', color: 'var(--text-title)', lineHeight: 1.15 }}>
                       {item.name}
                     </div>
 
@@ -1311,7 +1311,7 @@ export default function PosSales() {
                         <span style={{ fontSize: '0.62rem', color: '#64748b' }}>/{item.unit || 'unit'}</span>
                       </div>
                       <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>•</span>
-                      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0f172a' }}>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-title)' }}>
                         {formatPKR(((item.total_price !== undefined && item.total_price !== null) ? Number(item.total_price) : ((Number(item.quantity) || 0) * Number(item.unit_price))) - (item.discount || 0))}
                       </span>
                       {item.discount > 0 && (
@@ -1372,9 +1372,9 @@ export default function PosSales() {
                           borderRadius: '3px',
                           border: '1px solid #a7f3d0'
                         }}
-                        title={`Company / Brand: ${item.company_name || item.brand || item.supplier_name || 'Latif Traders'}`}
+                        title={`Company / Brand: ${item.company_name || item.brand || item.supplier_name || localStorage.getItem('lt_shop_name') || 'In-House'}`}
                       >
-                        Company: {item.company_name || item.brand || item.supplier_name || 'Latif Traders'}
+                        Company: {item.company_name || item.brand || item.supplier_name || localStorage.getItem('lt_shop_name') || 'In-House'}
                       </span>
 
                       {item.original_price && Number(item.original_price) !== Number(item.unit_price) && (
@@ -1477,7 +1477,7 @@ export default function PosSales() {
                           border: 'none',
                           background: 'transparent',
                           padding: '0 2px',
-                          color: '#0f172a'
+                          color: 'var(--text-value)'
                         }}
                         title="Directly enter item quantity (e.g. 50, 100, 200)"
                       />
@@ -1505,7 +1505,7 @@ export default function PosSales() {
           </div>
 
           {/* CART SUMMARY & CHECKOUT (ULTRA-COMPACT HIGH-DENSITY FOOTER) */}
-          <div className="pos-cart-footer" style={{ padding: '0.4rem 0.5rem', background: '#f8fafc', borderTop: '1.5px solid #e2e8f0' }}>
+          <div className="pos-cart-footer" style={{ padding: '0.4rem 0.5rem', background: 'var(--bg-table-head)', borderTop: '1.5px solid var(--border)' }}>
             {/* Quick Cash Presets */}
             <div className="quick-cash-chips" style={{ display: 'flex', gap: '3px', marginBottom: '0.3rem' }}>
               <button type="button" className="cash-chip" style={{ padding: '1px 6px', fontSize: '0.65rem', height: '20px' }} onClick={() => setQuickCash('exact')}>Exact</button>
@@ -1517,13 +1517,13 @@ export default function PosSales() {
 
             {/* Compact Totals & Input Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.7rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '2px 5px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
-                <span style={{ color: '#64748b', fontSize: '0.675rem' }}>Subtotal:</span>
-                <strong style={{ color: '#0f172a' }}>{formatPKR(subtotal)}</strong>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-card)', padding: '2px 5px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.675rem' }}>Subtotal:</span>
+                <strong style={{ color: 'var(--text-title)' }}>{formatPKR(subtotal)}</strong>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', padding: '2px 5px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
-                <span style={{ color: '#64748b', fontSize: '0.675rem' }}>Discount:</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-card)', padding: '2px 5px', borderRadius: '4px', border: '1px solid var(--border)' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.675rem' }}>Discount:</span>
                 <input
                   type="number"
                   className="form-control"
@@ -1538,14 +1538,14 @@ export default function PosSales() {
             {/* Grand Total & Paid / Method Row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 1fr', gap: '0.3rem', alignItems: 'center', marginBottom: '0.3rem' }}>
               {/* Grand Total */}
-              <div style={{ background: '#e0f2fe', padding: '3px 6px', borderRadius: '5px', border: '1px solid #bae6fd', display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' }}>Grand Total</span>
-                <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0284c7', lineHeight: 1.1 }}>{formatPKR(grandTotal)}</span>
+              <div style={{ background: 'rgba(14, 165, 233, 0.15)', padding: '3px 6px', borderRadius: '5px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase' }}>Grand Total</span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary)', lineHeight: 1.1 }}>{formatPKR(grandTotal)}</span>
               </div>
 
               {/* Paid Input */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, color: '#475569', marginBottom: '1px' }}>
+                <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '1px' }}>
                   Paid (PKR)
                 </label>
                 <input
@@ -1560,7 +1560,7 @@ export default function PosSales() {
 
               {/* Payment Method */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, color: '#475569', marginBottom: '1px' }}>
+                <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '1px' }}>
                   Method
                 </label>
                 <select
@@ -1594,7 +1594,7 @@ export default function PosSales() {
 
               if (!actualChangeReturn && !balanceDue && !amountAppliedToUdhaar && custPrevBalance === 0) {
                 return (
-                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '2px 6px', marginBottom: '0.3rem', fontSize: '0.65rem', color: '#16a34a', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '4px', padding: '3px 8px', marginBottom: '0.3rem', fontSize: '0.7rem', color: '#10b981', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
                     <span>Status:</span>
                     <span>✓ Exact Payment Settled</span>
                   </div>
@@ -1603,34 +1603,34 @@ export default function PosSales() {
 
               return (
                 <div style={{
-                  background: actualChangeReturn > 0 || amountAppliedToUdhaar > 0 ? '#ecfdf5' : balanceDue > 0 ? '#fef2f2' : '#f8fafc',
-                  border: `1px solid ${actualChangeReturn > 0 || amountAppliedToUdhaar > 0 ? '#a7f3d0' : balanceDue > 0 ? '#fecaca' : '#e2e8f0'}`,
+                  background: actualChangeReturn > 0 || amountAppliedToUdhaar > 0 ? 'rgba(16, 185, 129, 0.15)' : balanceDue > 0 ? 'rgba(239, 68, 68, 0.15)' : 'var(--hover-bg)',
+                  border: `1px solid ${actualChangeReturn > 0 || amountAppliedToUdhaar > 0 ? 'rgba(16, 185, 129, 0.3)' : balanceDue > 0 ? 'rgba(239, 68, 68, 0.3)' : 'var(--border)'}`,
                   borderRadius: '4px',
-                  padding: '3px 6px',
+                  padding: '4px 8px',
                   marginBottom: '0.3rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '1px',
-                  fontSize: '0.65rem'
+                  gap: '2px',
+                  fontSize: '0.7rem'
                 }}>
                   {actualChangeReturn > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#065f46', fontWeight: 800, fontSize: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#34d399', fontWeight: 800, fontSize: '0.75rem' }}>
                       <span>💵 Change Return (Wapis):</span>
                       <span>{formatPKR(actualChangeReturn)}</span>
                     </div>
                   )}
 
                   {balanceDue > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c', fontWeight: 700 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#f87171', fontWeight: 700 }}>
                       <span>⚠️ Unpaid on bill:</span>
                       <span>{formatPKR(balanceDue)}</span>
                     </div>
                   )}
 
                   {activeCustomer && activeCustomer.id !== 1 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0369a1', fontWeight: 700, paddingTop: '1px', borderTop: '1px dashed #cbd5e1', marginTop: '1px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontWeight: 700, paddingTop: '2px', borderTop: '1px dashed var(--border)', marginTop: '2px' }}>
                       <span>Total Remaining Udhaar:</span>
-                      <span style={{ color: netRemainingUdhaar > 0 ? '#dc2626' : '#16a34a' }}>
+                      <span style={{ color: netRemainingUdhaar > 0 ? '#ef4444' : '#10b981' }}>
                         {formatPKR(netRemainingUdhaar)}
                       </span>
                     </div>
@@ -1685,8 +1685,8 @@ export default function PosSales() {
           <div className="modal-content" style={{ maxWidth: '520px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Parked / Held Carts ({heldOrders.length})</h3>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Resume or discard parked customer transactions</p>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-title)' }}>Parked / Held Carts ({heldOrders.length})</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Resume or discard parked customer transactions</p>
               </div>
               <button
                 type="button"
@@ -1699,7 +1699,7 @@ export default function PosSales() {
             </div>
             <div className="modal-body" style={{ maxHeight: '380px', overflowY: 'auto' }}>
               {heldOrders.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#94a3b8' }}>
+                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
                   No held orders currently parked.
                 </div>
               ) : (
@@ -1709,8 +1709,8 @@ export default function PosSales() {
                       key={held.id}
                       style={{
                         padding: '0.75rem',
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
+                        background: 'var(--hover-bg)',
+                        border: '1px solid var(--border)',
                         borderRadius: '6px',
                         display: 'flex',
                         alignItems: 'center',
@@ -1718,11 +1718,11 @@ export default function PosSales() {
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-title)' }}>
                           {held.customer_name}
                         </div>
-                        <div style={{ fontSize: '0.725rem', color: '#64748b', marginTop: '2px' }}>
-                          Parked at {held.created_at} • {held.items.length} item(s) • Total: <strong style={{ color: '#0f172a' }}>{formatPKR(held.grand_total)}</strong>
+                        <div style={{ fontSize: '0.725rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          Parked at {held.created_at} • {held.items.length} item(s) • Total: <strong style={{ color: 'var(--primary)' }}>{formatPKR(held.grand_total)}</strong>
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -1764,8 +1764,8 @@ export default function PosSales() {
           <div className="modal-content" style={{ maxWidth: '460px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Quick Add Product</h3>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Create a fast catalog item and add directly to bill</p>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-title)' }}>Quick Add Product</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Create a fast catalog item and add directly to bill</p>
               </div>
               <button
                 type="button"
@@ -1855,8 +1855,8 @@ export default function PosSales() {
           <div className="modal-content" style={{ maxWidth: '440px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Quick Register Customer</h3>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Create a new customer profile on the fly</p>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-title)' }}>Quick Register Customer</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Create a new customer profile on the fly</p>
               </div>
               <button
                 type="button"
@@ -1932,8 +1932,8 @@ export default function PosSales() {
           <div className="modal-content" style={{ maxWidth: '460px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Cashier POS Shortcuts</h3>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Quick reference hotkeys for high-speed checkout</p>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-title)' }}>Cashier POS Shortcuts</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Quick reference hotkeys for high-speed checkout</p>
               </div>
               <button
                 type="button"
@@ -1948,31 +1948,31 @@ export default function PosSales() {
               <table className="table" style={{ fontSize: '0.8rem', margin: 0 }}>
                 <tbody>
                   <tr>
-                    <td style={{ width: '130px' }}><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F2</kbd> or <kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>/</kbd></td>
+                    <td style={{ width: '130px' }}><kbd style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-title)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F2</kbd> or <kbd style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-title)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>/</kbd></td>
                     <td>Focus Product Search / Scanner</td>
                   </tr>
                   <tr>
-                    <td><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Enter</kbd></td>
+                    <td><kbd style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-title)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Enter</kbd></td>
                     <td>Add matched barcode or searched item to cart</td>
                   </tr>
                   <tr>
-                    <td><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F4</kbd></td>
+                    <td><kbd style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-title)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F4</kbd></td>
                     <td>Complete Sale & Process Checkout</td>
                   </tr>
                   <tr>
-                    <td><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F7</kbd></td>
+                    <td><kbd style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-title)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F7</kbd></td>
                     <td>Hold / Park Current Cart for next customer</td>
                   </tr>
                   <tr>
-                    <td><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F8</kbd></td>
+                    <td><kbd style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-title)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F8</kbd></td>
                     <td>Open Parked / Held Carts list to resume</td>
                   </tr>
                   <tr>
-                    <td><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>?</kbd></td>
+                    <td><kbd style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-title)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>?</kbd></td>
                     <td>Show this shortcuts help dialog</td>
                   </tr>
                   <tr>
-                    <td><kbd style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Esc</kbd></td>
+                    <td><kbd style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-title)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Esc</kbd></td>
                     <td>Close any active modal or clear selection</td>
                   </tr>
                 </tbody>
@@ -1993,8 +1993,8 @@ export default function PosSales() {
           <div className="modal-content" style={{ maxWidth: '720px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Recent Sales Invoices & Receipts</h3>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Search and reprint recent customer counter bills</p>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Recent Sales Invoices & Receipts</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Search and reprint recent customer counter bills</p>
               </div>
               <button
                 type="button"
