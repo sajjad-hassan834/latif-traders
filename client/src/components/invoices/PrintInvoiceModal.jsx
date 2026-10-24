@@ -1,12 +1,47 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Printer, X, FileText, Share2, MessageSquare, Check, RefreshCw } from 'lucide-react';
+import { Printer, X, FileText, Share2, MessageSquare, Check, RefreshCw, ChevronDown } from 'lucide-react';
 import { formatPKR, formatDate, formatDateTime } from '../../utils/formatters';
 import { api } from '../../utils/api';
 
+// Safe PKR currency formatter that uses clean ASCII 'Rs. ' to prevent broken glyphs on thermal and POS drivers
+const safeFormatPKR = (amt) => {
+  if (amt === undefined || amt === null || isNaN(amt)) return 'Rs. 0';
+  return 'Rs. ' + Number(amt).toLocaleString('en-PK', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+};
+
 export default function PrintInvoiceModal({ sale: rawSale, items: propItems = [], settings: propSettings = {}, onClose }) {
-  const [printFormat, setPrintFormat] = useState('thermal');
+  const [printFormat, setPrintFormat] = useState(() => {
+    const saved = localStorage.getItem('lt_invoice_format');
+    return (saved === 'a4' || saved === 'thermal') ? saved : 'thermal';
+  });
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [whatsappCopied, setWhatsappCopied] = useState(false);
   const printContainerRef = useRef(null);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownOpen]);
+
+  const handleFormatSelect = (fmt) => {
+    setPrintFormat(fmt);
+    localStorage.setItem('lt_invoice_format', fmt);
+    setDropdownOpen(false);
+  };
 
   const sale = rawSale?.sale || rawSale || {};
   const initialItems = (propItems && propItems.length > 0) ? propItems : (rawSale?.items || rawSale?.sale_items || []);
@@ -72,7 +107,7 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
       document.body.appendChild(iframe);
 
       const doc = iframe.contentWindow.document;
-      const contentHtml = printableElement.innerHTML;
+      const contentHtml = printableElement.innerHTML.replace(/₨\s*/g, 'Rs. ');
 
       // Note: Do NOT use "size: 80mm auto" because Windows Xprinter/ESC-POS drivers reject auto height and cancel the job.
       // Setting "@page { margin: 0; }" lets the thermal printer roll feed and cut naturally.
@@ -182,11 +217,12 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
     }
   };
 
-  const shopName = settings.company_name || settings.shop_name || 'LATIF TRADERS';
-  const tagline = settings.tagline || 'Frozen Food Wholesalers & Retailers';
-  const phone = settings.company_phone || settings.phone || '+92 300 1234567';
-  const address = settings.company_address || settings.address || 'Shop # 14-16, Commercial Market, Frozen Food Market, Lahore';
-  const footerNote = settings.invoice_footer || 'Thank you for shopping at Latif Traders! Keep frozen at -18°C.';
+  const tenantShopName = settings.company_name || settings.shop_name || localStorage.getItem('lt_shop_name');
+  const shopName = tenantShopName || 'LATIF TRADERS';
+  const tagline = settings.tagline || (tenantShopName ? '' : 'Frozen Food Wholesalers & Retailers');
+  const phone = settings.company_phone || settings.phone || '';
+  const address = settings.company_address || settings.address || '';
+  const footerNote = settings.invoice_footer || `Thank you for shopping at ${shopName}!`;
 
   const hasCustomerBalance = Boolean(sale.customer_id && sale.customer_id > 1);
   const currentCustomerBalance = Number(sale.customer_current_balance) || 0;
@@ -259,33 +295,123 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
   return (
     <div className="modal-overlay" style={{ zIndex: 1200 }}>
       <div className="modal-content" style={{ maxWidth: printFormat === 'a4' ? '820px' : '440px', width: '96%' }}>
-        <div className="modal-header">
+        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '14px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
           <div>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Invoice Preview</h3>
-            <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Ref: {sale.invoice_no}</p>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-title)' }}>Invoice Preview</h3>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ref: {sale.invoice_no}</p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', background: '#f1f5f9', padding: '2px', borderRadius: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            {/* Custom Listbox Dropdown for Invoice Format (>= 12px gap from title & close button) */}
+            <div ref={dropdownRef} style={{ position: 'relative' }}>
               <button
-                className={`btn btn-sm ${printFormat === 'thermal' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ padding: '3px 8px', fontSize: '0.75rem' }}
-                onClick={() => setPrintFormat('thermal')}
+                type="button"
+                onClick={() => setDropdownOpen(prev => !prev)}
+                className="btn btn-secondary btn-sm"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '5px 12px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  borderRadius: '8px',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-title)',
+                  cursor: 'pointer',
+                  height: '34px'
+                }}
+                aria-haspopup="listbox"
+                aria-expanded={dropdownOpen}
               >
-                80mm Slip
+                <FileText size={14} style={{ color: 'var(--primary)' }} />
+                <span>{printFormat === 'thermal' ? 'Thermal Slip - 80mm roll' : 'A4 Invoice - Full page'}</span>
+                <ChevronDown size={14} style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', color: 'var(--text-muted)' }} />
               </button>
-              <button
-                className={`btn btn-sm ${printFormat === 'a4' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ padding: '3px 8px', fontSize: '0.75rem' }}
-                onClick={() => setPrintFormat('a4')}
-              >
-                A4 Invoice
-              </button>
+
+              {dropdownOpen && (
+                <ul
+                  role="listbox"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    right: 0,
+                    minWidth: '220px',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.25)',
+                    padding: '4px',
+                    margin: 0,
+                    listStyle: 'none',
+                    zIndex: 1300
+                  }}
+                >
+                  <li
+                    role="option"
+                    aria-selected={printFormat === 'thermal'}
+                    onClick={() => handleFormatSelect('thermal')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: printFormat === 'thermal' ? 700 : 500,
+                      color: printFormat === 'thermal' ? 'var(--primary)' : 'var(--text-title)',
+                      background: printFormat === 'thermal' ? 'var(--hover-bg)' : 'transparent',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (printFormat !== 'thermal') e.currentTarget.style.background = 'var(--hover-bg)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (printFormat !== 'thermal') e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <span>Thermal Slip - 80mm roll</span>
+                    {printFormat === 'thermal' && <Check size={14} style={{ color: 'var(--primary)', strokeWidth: 2.5 }} />}
+                  </li>
+
+                  <li
+                    role="option"
+                    aria-selected={printFormat === 'a4'}
+                    onClick={() => handleFormatSelect('a4')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: printFormat === 'a4' ? 700 : 500,
+                      color: printFormat === 'a4' ? 'var(--primary)' : 'var(--text-title)',
+                      background: printFormat === 'a4' ? 'var(--hover-bg)' : 'transparent',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (printFormat !== 'a4') e.currentTarget.style.background = 'var(--hover-bg)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (printFormat !== 'a4') e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <span>A4 Invoice - Full page</span>
+                    {printFormat === 'a4' && <Check size={14} style={{ color: 'var(--primary)', strokeWidth: 2.5 }} />}
+                  </li>
+                </ul>
+              )}
             </div>
+
             <button
               type="button"
               className="modal-close-btn"
               onClick={onClose}
               aria-label="Close"
+              style={{ marginLeft: '2px' }}
             >
               <X size={16} />
             </button>
@@ -336,7 +462,7 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
                       <tr key={idx}>
                         <td style={{ padding: '2px 0' }}>
                           <div>{it.product_name}</div>
-                          <div style={{ fontSize: '8px', color: '#555' }}>Company: {it.brand_name || it.supplier_name || it.company_name || 'Latif Traders'}</div>
+                          <div style={{ fontSize: '8px', color: '#555' }}>Company: {it.brand_name || it.supplier_name || it.company_name || shopName}</div>
                         </td>
                         <td style={{ textAlign: 'center', verticalAlign: 'top' }}>{it.quantity}</td>
                         <td style={{ textAlign: 'right', verticalAlign: 'top' }}>{it.unit_price}</td>
@@ -350,32 +476,32 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
 
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Subtotal:</span>
-                  <strong>{formatPKR(sale.subtotal)}</strong>
+                  <strong>{safeFormatPKR(sale.subtotal)}</strong>
                 </div>
                 {sale.discount > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Discount:</span>
-                    <span>-{formatPKR(sale.discount)}</span>
+                    <span>-{safeFormatPKR(sale.discount)}</span>
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', margin: '3px 0' }}>
                   <strong>GRAND TOTAL:</strong>
-                  <strong>{formatPKR(sale.grand_total)}</strong>
+                  <strong>{safeFormatPKR(sale.grand_total)}</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Paid ({sale.payment_method || 'Cash'}):</span>
-                  <span>{formatPKR(sale.paid_amount)}</span>
+                  <span>{safeFormatPKR(sale.paid_amount)}</span>
                 </div>
                 {changeReturn > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#047857', fontWeight: 'bold' }}>
                     <span>Change Return (Wapis):</span>
-                    <span>{formatPKR(changeReturn)}</span>
+                    <span>{safeFormatPKR(changeReturn)}</span>
                   </div>
                 )}
                 {sale.balance_due > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c', fontWeight: 'bold' }}>
                     <span>This Bill Due:</span>
-                    <span>{formatPKR(sale.balance_due)}</span>
+                    <span>{safeFormatPKR(sale.balance_due)}</span>
                   </div>
                 )}
 
@@ -384,23 +510,23 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
                     <div style={{ borderTop: '1px dashed #777', margin: '4px 0' }}></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#444' }}>
                       <span>Previous Udhaar:</span>
-                      <span>{formatPKR(previousBalance)}</span>
+                      <span>{safeFormatPKR(previousBalance)}</span>
                     </div>
                     {sale.balance_due > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#b91c1c' }}>
                         <span>Added This Bill:</span>
-                        <span>+{formatPKR(sale.balance_due)}</span>
+                        <span>+{safeFormatPKR(sale.balance_due)}</span>
                       </div>
                     )}
                     {udhaarDeduction > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#16a34a', fontWeight: 'bold' }}>
                         <span>Deducted from Udhaar:</span>
-                        <span>-{formatPKR(udhaarDeduction)}</span>
+                        <span>-{safeFormatPKR(udhaarDeduction)}</span>
                       </div>
                     )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', color: netRemainingBalance > 0 ? '#b91c1c' : '#16a34a' }}>
                       <span>Total Remaining Udhaar:</span>
-                      <span>{formatPKR(netRemainingBalance)}</span>
+                      <span>{safeFormatPKR(netRemainingBalance)}</span>
                     </div>
                   </>
                 )}
@@ -463,8 +589,8 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
                         <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600 }}>{it.product_name}</td>
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', color: '#64748b' }}>{it.brand_name || it.supplier_name || it.company_name || '-'}</td>
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600 }}>{it.quantity} {it.unit}</td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatPKR(it.unit_price)}</td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 700 }}>{formatPKR(it.total_price)}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{safeFormatPKR(it.unit_price)}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 700 }}>{safeFormatPKR(it.total_price)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -474,55 +600,55 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
                   <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.875rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Subtotal:</span>
-                      <span>{formatPKR(sale.subtotal)}</span>
+                      <span>{safeFormatPKR(sale.subtotal)}</span>
                     </div>
                     {sale.discount > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a' }}>
                         <span>Discount:</span>
-                        <span>-{formatPKR(sale.discount)}</span>
+                        <span>-{safeFormatPKR(sale.discount)}</span>
                       </div>
                     )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #0f172a', paddingTop: '0.35rem', fontSize: '1.05rem', fontWeight: 800 }}>
                       <span>Grand Total:</span>
-                      <span style={{ color: '#0284c7' }}>{formatPKR(sale.grand_total)}</span>
+                      <span style={{ color: '#0284c7' }}>{safeFormatPKR(sale.grand_total)}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>Paid ({sale.payment_method || 'Cash'}):</span>
-                      <span>{formatPKR(sale.paid_amount)}</span>
+                      <span>{safeFormatPKR(sale.paid_amount)}</span>
                     </div>
                     {changeReturn > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#047857', fontWeight: 700 }}>
                         <span>Change Return (Wapis):</span>
-                        <span>{formatPKR(changeReturn)}</span>
+                        <span>{safeFormatPKR(changeReturn)}</span>
                       </div>
                     )}
                     {sale.balance_due > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontWeight: 700 }}>
                         <span>This Invoice Due:</span>
-                        <span>{formatPKR(sale.balance_due)}</span>
+                        <span>{safeFormatPKR(sale.balance_due)}</span>
                       </div>
                     )}
                     {hasCustomerBalance && (
                       <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', borderTop: '1px dashed #cbd5e1', paddingTop: '0.35rem', marginTop: '0.35rem' }}>
                           <span>Previous Balance (Pehla Udhaar):</span>
-                          <span>{formatPKR(previousBalance)}</span>
+                          <span>{safeFormatPKR(previousBalance)}</span>
                         </div>
                         {sale.balance_due > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontSize: '0.8rem' }}>
                             <span>Added This Bill:</span>
-                            <span>+{formatPKR(sale.balance_due)}</span>
+                            <span>+{safeFormatPKR(sale.balance_due)}</span>
                           </div>
                         )}
                         {udhaarDeduction > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontSize: '0.85rem', fontWeight: 700 }}>
                             <span>Deducted from Udhaar:</span>
-                            <span>-{formatPKR(udhaarDeduction)}</span>
+                            <span>-{safeFormatPKR(udhaarDeduction)}</span>
                           </div>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'space-between', color: netRemainingBalance > 0 ? '#b91c1c' : '#16a34a', fontWeight: 800, fontSize: '0.95rem' }}>
                           <span>Total Remaining Udhaar:</span>
-                          <span>{formatPKR(netRemainingBalance)}</span>
+                          <span>{safeFormatPKR(netRemainingBalance)}</span>
                         </div>
                       </>
                     )}
@@ -554,9 +680,9 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
             <button className="btn btn-secondary btn-sm" onClick={onClose} style={{ height: '30px', padding: '0 0.6rem' }}>
               Close
             </button>
-            <button className="btn btn-primary btn-sm" onClick={handlePrint} style={{ height: '30px', padding: '0 0.6rem' }}>
+            <button className="btn btn-primary btn-sm" onClick={handlePrint} style={{ height: '32px', padding: '0 0.85rem', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
               <Printer size={14} />
-              <span>Print<span className="hide-mobile"> Slip</span></span>
+              <span>{printFormat === 'thermal' ? 'Print 80mm Slip' : 'Print A4 Invoice'}</span>
             </button>
           </div>
         </div>
