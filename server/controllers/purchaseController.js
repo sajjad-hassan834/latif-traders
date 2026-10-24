@@ -288,6 +288,14 @@ exports.createPurchase = (req, res) => {
         WHERE id = ? AND tenant_id = ?
       `).run(rate, batchSalePrice, batchSalePrice, batchWholesalePrice, batchWholesalePrice, supplier_id, itemBrand, item.product_id, tenantId);
 
+      db.prepare(`
+        INSERT INTO supplier_products (tenant_id, supplier_id, product_id, last_purchase_price, last_purchased_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(tenant_id, supplier_id, product_id) DO UPDATE SET
+          last_purchase_price = excluded.last_purchase_price,
+          last_purchased_at = CURRENT_TIMESTAMP
+      `).run(tenantId, supplier_id, item.product_id, rate);
+
       const newTotal = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ?")
         .get(item.product_id, tenantId).s;
 
@@ -606,5 +614,79 @@ exports.getProductStockPreview = (req, res) => {
   } catch (err) {
     console.error('Error fetching stock preview:', err);
     return res.status(500).json({ success: false, message: 'Failed to fetch stock preview.' });
+  }
+};
+
+// Fetch supplier-linked products with fallback to full catalog
+exports.getSupplierProducts = (req, res) => {
+  try {
+    const tenantId = req.tenant_id || 'latif_001';
+    const { supplierId } = req.params;
+
+    // Safe check table exists
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS supplier_products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        last_purchase_price REAL DEFAULT 0,
+        last_purchased_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        tenant_id TEXT DEFAULT 'latif_001',
+        UNIQUE(tenant_id, supplier_id, product_id)
+      )
+    `).run();
+
+    // Query supplier mapped products (via supplier_products, products.supplier_id, or past purchases)
+    const mappedProducts = db.prepare(`
+      SELECT p.id, p.name, p.sku, p.barcode, p.brand, p.unit, p.sale_price, p.wholesale_price,
+        COALESCE(
+          (SELECT sp.last_purchase_price FROM supplier_products sp WHERE sp.product_id = p.id AND sp.supplier_id = ? AND sp.tenant_id = p.tenant_id),
+          (SELECT pi.unit_price FROM purchase_items pi JOIN purchases pu ON pi.purchase_id = pu.id WHERE pi.product_id = p.id AND pu.supplier_id = ? AND pu.tenant_id = p.tenant_id ORDER BY pu.id DESC LIMIT 1),
+          p.purchase_price,
+          0
+        ) as last_purchase_cost,
+        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.status = 'active' AND b.tenant_id = p.tenant_id), 0) as current_stock,
+        1 as is_mapped
+      FROM products p
+      WHERE p.tenant_id = ? AND p.status = 'active'
+        AND (
+          p.supplier_id = ?
+          OR EXISTS (SELECT 1 FROM supplier_products sp WHERE sp.product_id = p.id AND sp.supplier_id = ? AND sp.tenant_id = p.tenant_id)
+          OR EXISTS (SELECT 1 FROM purchase_items pi JOIN purchases pu ON pi.purchase_id = pu.id WHERE pi.product_id = p.id AND pu.supplier_id = ? AND pu.tenant_id = p.tenant_id)
+        )
+      ORDER BY p.name ASC
+    `).all(supplierId, supplierId, tenantId, supplierId, supplierId, supplierId);
+
+    // Query all catalog products
+    const allProducts = db.prepare(`
+      SELECT p.id, p.name, p.sku, p.barcode, p.brand, p.unit, p.sale_price, p.wholesale_price,
+        COALESCE(
+          (SELECT sp.last_purchase_price FROM supplier_products sp WHERE sp.product_id = p.id AND sp.supplier_id = ? AND sp.tenant_id = p.tenant_id),
+          (SELECT pi.unit_price FROM purchase_items pi JOIN purchases pu ON pi.purchase_id = pu.id WHERE pi.product_id = p.id AND pu.supplier_id = ? AND pu.tenant_id = p.tenant_id ORDER BY pu.id DESC LIMIT 1),
+          p.purchase_price,
+          0
+        ) as last_purchase_cost,
+        COALESCE((SELECT SUM(b.quantity) FROM batches b WHERE b.product_id = p.id AND b.status = 'active' AND b.tenant_id = p.tenant_id), 0) as current_stock,
+        CASE WHEN (
+          p.supplier_id = ?
+          OR EXISTS (SELECT 1 FROM supplier_products sp WHERE sp.product_id = p.id AND sp.supplier_id = ? AND sp.tenant_id = p.tenant_id)
+          OR EXISTS (SELECT 1 FROM purchase_items pi JOIN purchases pu ON pi.purchase_id = pu.id WHERE pi.product_id = p.id AND pu.supplier_id = ? AND pu.tenant_id = p.tenant_id)
+        ) THEN 1 ELSE 0 END as is_mapped
+      FROM products p
+      WHERE p.tenant_id = ? AND p.status = 'active'
+      ORDER BY p.name ASC
+    `).all(supplierId, supplierId, supplierId, supplierId, supplierId, tenantId);
+
+    return res.json({
+      success: true,
+      supplier_id: Number(supplierId),
+      mapped_products: mappedProducts,
+      all_products: allProducts,
+      mapped_count: mappedProducts.length
+    });
+  } catch (err) {
+    console.error('Error fetching supplier products:', err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch supplier products.' });
   }
 };
