@@ -1,11 +1,64 @@
 const { db } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
 
-// List purchases with supplier info
+// List purchases with supplier info, search, filtering & pagination
 exports.getPurchases = (req, res) => {
   try {
     const tenantId = req.tenant_id || 'latif_001';
-    const { start_date, end_date, supplier_id } = req.query;
+    const { start_date, end_date, date_from, date_to, supplier_id, search, payment_status, page, limit } = req.query;
+
+    let baseWhere = ` WHERE p.tenant_id = ?`;
+    const params = [tenantId];
+
+    const fromDate = start_date || date_from;
+    const toDate = end_date || date_to;
+
+    if (fromDate) {
+      baseWhere += ` AND p.purchase_date >= ?`;
+      params.push(fromDate);
+    }
+    if (toDate) {
+      baseWhere += ` AND p.purchase_date <= ?`;
+      params.push(toDate);
+    }
+    if (supplier_id && supplier_id !== 'all') {
+      baseWhere += ` AND p.supplier_id = ?`;
+      params.push(supplier_id);
+    }
+    if (payment_status && payment_status !== 'all') {
+      const ps = String(payment_status).toUpperCase();
+      if (ps === 'PAID') {
+        baseWhere += ` AND (p.balance_due <= 0 OR p.paid_amount >= p.grand_total)`;
+      } else if (ps === 'PARTIAL') {
+        baseWhere += ` AND (p.paid_amount > 0 AND p.balance_due > 0 AND p.paid_amount < p.grand_total)`;
+      } else if (ps === 'UNPAID') {
+        baseWhere += ` AND (p.paid_amount <= 0)`;
+      }
+    }
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      baseWhere += ` AND (
+        p.invoice_no LIKE ?
+        OR p.supplier_invoice_no LIKE ?
+        OR s.name LIKE ?
+        OR EXISTS (
+          SELECT 1 FROM purchase_items pi
+          JOIN products pr ON pi.product_id = pr.id AND pr.tenant_id = pi.tenant_id
+          WHERE pi.purchase_id = p.id AND pi.tenant_id = p.tenant_id
+            AND (pr.name LIKE ? OR pr.sku LIKE ?)
+        )
+      )`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    const countQuery = `
+      SELECT COUNT(DISTINCT p.id) as total
+      FROM purchases p
+      JOIN suppliers s ON p.supplier_id = s.id AND s.tenant_id = p.tenant_id
+      ${baseWhere}
+    `;
+    const countRow = db.prepare(countQuery).get(...params);
+    const total = countRow ? countRow.total : 0;
 
     let query = `
       SELECT p.*, s.name as supplier_name, s.phone as supplier_phone, u.full_name as user_name,
@@ -14,27 +67,31 @@ exports.getPurchases = (req, res) => {
       FROM purchases p
       JOIN suppliers s ON p.supplier_id = s.id AND s.tenant_id = p.tenant_id
       LEFT JOIN users u ON p.user_id = u.id AND u.tenant_id = p.tenant_id
-      WHERE p.tenant_id = ?
+      ${baseWhere}
+      ORDER BY p.id DESC
     `;
-    const params = [tenantId];
 
-    if (start_date) {
-      query += ` AND p.purchase_date >= ?`;
-      params.push(start_date);
-    }
-    if (end_date) {
-      query += ` AND p.purchase_date <= ?`;
-      params.push(end_date);
-    }
-    if (supplier_id) {
-      query += ` AND p.supplier_id = ?`;
-      params.push(supplier_id);
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const queryParams = [...params];
+
+    if (!isNaN(pageNum) && !isNaN(limitNum) && limitNum > 0) {
+      const offset = (pageNum - 1) * limitNum;
+      query += ` LIMIT ? OFFSET ?`;
+      queryParams.push(limitNum, offset);
     }
 
-    query += ` ORDER BY p.id DESC`;
-    const purchases = db.prepare(query).all(...params);
+    const purchases = db.prepare(query).all(...queryParams);
+    const totalPages = (!isNaN(pageNum) && !isNaN(limitNum) && limitNum > 0) ? Math.ceil(total / limitNum) : 1;
 
-    return res.json({ success: true, purchases });
+    return res.json({
+      success: true,
+      purchases,
+      total,
+      page: pageNum || 1,
+      limit: limitNum || purchases.length,
+      totalPages
+    });
   } catch (err) {
     console.error('Error fetching purchases:', err);
     return res.status(500).json({ success: false, message: 'Failed to fetch purchases.' });

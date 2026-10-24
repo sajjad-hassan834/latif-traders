@@ -351,10 +351,10 @@ export default function Suppliers() {
                             }
                           ]}
                         />
-                    </div>
-                  </td>
-                </tr>
-              ))
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
@@ -1132,6 +1132,8 @@ export default function Suppliers() {
             </div>
           </div>
         </div>
+      )}
+
       {/* SUPPLIER AUDIT & SYNC BALANCES BEFORE/AFTER DIFF MODAL */}
       {showAuditModal && (
         <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={() => setShowAuditModal(false)}>
