@@ -86,9 +86,20 @@ export default function Settings({ initialTab: propInitialTab }) {
 
     window.addEventListener('settings_tab_change', syncTab);
     window.addEventListener('popstate', syncTab);
+
+    const syncTheme = (e) => {
+      if (e?.detail) {
+        setSettings(prev => ({ ...prev, theme: e.detail }));
+      }
+    };
+    window.addEventListener('app_theme_changed', syncTheme);
+    window.addEventListener('theme_changed', syncTheme);
+
     return () => {
       window.removeEventListener('settings_tab_change', syncTab);
       window.removeEventListener('popstate', syncTab);
+      window.removeEventListener('app_theme_changed', syncTheme);
+      window.removeEventListener('theme_changed', syncTheme);
     };
   }, []);
 
@@ -414,10 +425,10 @@ export default function Settings({ initialTab: propInitialTab }) {
       {/* PAGE HEADER */}
       <div className="page-header-container" style={{ marginBottom: '0.25rem' }}>
         <div>
-          <h1 className="page-header-title" style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: '0 0 4px 0' }}>
+          <h1 className="page-header-title" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-title, #111827)', margin: '0 0 4px 0' }}>
             Shop Settings & Subscription
           </h1>
-          <p className="page-header-subtitle" style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
+          <p className="page-header-subtitle" style={{ fontSize: '13px', color: 'var(--text-muted, #6B7280)', margin: 0 }}>
             Manage store profile, subscription tier, receipt layouts, warehouse policies, and data backups
           </p>
         </div>
@@ -430,7 +441,7 @@ export default function Settings({ initialTab: propInitialTab }) {
           style={{
             display: 'flex',
             gap: '2px',
-            borderBottom: '1px solid #E5E7EB',
+            borderBottom: '1px solid var(--border, #E5E7EB)',
             background: 'transparent',
             padding: '0',
             overflowX: 'auto',
@@ -451,10 +462,10 @@ export default function Settings({ initialTab: propInitialTab }) {
                   padding: '0 16px',
                   fontSize: '13px',
                   borderRadius: '8px 8px 0 0',
-                  color: isActive ? '#0F766E' : '#6B7280',
-                  background: isActive ? '#FFFFFF' : 'transparent',
+                  color: isActive ? 'var(--primary, #0F766E)' : 'var(--text-muted, #6B7280)',
+                  background: isActive ? 'var(--bg-card, #FFFFFF)' : 'transparent',
                   border: 'none',
-                  borderBottom: isActive ? '2px solid #0F766E' : '2px solid transparent',
+                  borderBottom: isActive ? '2px solid var(--primary, #0F766E)' : '2px solid transparent',
                   fontWeight: isActive ? 600 : 500,
                   cursor: 'pointer',
                   display: 'inline-flex',
@@ -467,14 +478,14 @@ export default function Settings({ initialTab: propInitialTab }) {
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) {
-                    e.currentTarget.style.background = '#F4F6F9';
-                    e.currentTarget.style.color = '#374151';
+                    e.currentTarget.style.background = 'var(--hover-bg, #F4F6F9)';
+                    e.currentTarget.style.color = 'var(--text-title, #374151)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isActive) {
                     e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = '#6B7280';
+                    e.currentTarget.style.color = 'var(--text-muted, #6B7280)';
                   }
                 }}
               >
@@ -505,7 +516,7 @@ export default function Settings({ initialTab: propInitialTab }) {
             right: 0,
             bottom: '1px',
             width: '32px',
-            background: 'linear-gradient(to right, rgba(248, 250, 252, 0) 0%, rgba(248, 250, 252, 0.95) 100%)',
+            background: 'linear-gradient(to right, transparent 0%, var(--bg-app, rgba(248, 250, 252, 0.95)) 100%)',
             pointerEvents: 'none',
             borderRadius: '0 8px 0 0'
           }}
@@ -514,15 +525,15 @@ export default function Settings({ initialTab: propInitialTab }) {
 
       {/* ═════════ TAB 1: BUSINESS PROFILE ═════════ */}
       {(activeTab === 'business-profile' || activeTab === 'profile') && (
-        <div className="card" style={{ padding: '1.5rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #A7F3D0' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(5, 150, 105, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(5, 150, 105, 0.3)' }}>
                 <Sliders size={18} color="#059669" />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: '#0F172A' }}>Business Profile & Identity</h3>
-                <p style={{ fontSize: '0.785rem', color: '#64748B', margin: '2px 0 0 0' }}>
+                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: 'var(--text-title)' }}>Business Profile & Identity</h3>
+                <p style={{ fontSize: '0.785rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Public business details printed on receipts, customer invoices, and reports.
                 </p>
               </div>
@@ -543,8 +554,8 @@ export default function Settings({ initialTab: propInitialTab }) {
           <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {/* Business Type & Custom Application Setup */}
             <div style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
+              background: 'var(--hover-bg, #f8fafc)',
+              border: '1px solid var(--border, #e2e8f0)',
               borderRadius: '10px',
               padding: '14px 18px',
               display: 'flex',
@@ -556,14 +567,14 @@ export default function Settings({ initialTab: propInitialTab }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ fontSize: '26px' }}>{currentBusinessType.icon}</span>
                 <div>
-                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>Registered Industry / Business Type</div>
-                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>{currentBusinessType.name}</div>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted, #64748b)', fontWeight: 700 }}>Registered Industry / Business Type</div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-title, #0f172a)' }}>{currentBusinessType.name}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <select
                   className="form-control"
-                  style={{ height: '34px', fontSize: '12px', borderRadius: '6px', padding: '0 8px', background: '#ffffff', minWidth: '170px' }}
+                  style={{ height: '34px', fontSize: '12px', borderRadius: '6px', padding: '0 8px', background: 'var(--input-bg, #ffffff)', minWidth: '170px' }}
                   value={settings.business_type || tenant?.business_type || 'frozen_food'}
                   onChange={(e) => {
                     const newType = e.target.value;
@@ -576,7 +587,7 @@ export default function Settings({ initialTab: propInitialTab }) {
                     <option key={key} value={key}>{val.icon} {val.name}</option>
                   ))}
                 </select>
-                <span style={{ fontSize: '11px', color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '5px 12px', borderRadius: '6px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '11px', color: '#059669', background: 'rgba(5, 150, 105, 0.12)', border: '1px solid rgba(5, 150, 105, 0.25)', padding: '5px 12px', borderRadius: '6px', fontWeight: 600, whiteSpace: 'nowrap' }}>
                   ✓ Dedicated Custom Application
                 </span>
               </div>
@@ -584,7 +595,7 @@ export default function Settings({ initialTab: propInitialTab }) {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
                   Shop / Business Name *
                 </label>
                 <input
@@ -598,7 +609,7 @@ export default function Settings({ initialTab: propInitialTab }) {
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
                   Tagline / Subtitle
                 </label>
                 <input
@@ -611,7 +622,7 @@ export default function Settings({ initialTab: propInitialTab }) {
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
                   Industry / Business Type
                 </label>
                 <select
@@ -626,13 +637,13 @@ export default function Settings({ initialTab: propInitialTab }) {
                     </option>
                   ))}
                 </select>
-                <div style={{ fontSize: '11px', color: '#64748B', marginTop: '3px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted, #64748B)', marginTop: '3px' }}>
                   Adapts terminology, batch tracking, and headers across the application.
                 </div>
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
                   Shop Logo
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -640,8 +651,8 @@ export default function Settings({ initialTab: propInitialTab }) {
                     width: '38px',
                     height: '38px',
                     borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    background: '#f8fafc',
+                    border: '1px solid var(--border, #e2e8f0)',
+                    background: 'var(--hover-bg, #f8fafc)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -656,7 +667,7 @@ export default function Settings({ initialTab: propInitialTab }) {
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       />
                     ) : (
-                      <ImageIcon size={18} color="#94a3b8" />
+                      <ImageIcon size={18} color="var(--text-muted, #94a3b8)" />
                     )}
                   </div>
                   <input
@@ -693,13 +704,13 @@ export default function Settings({ initialTab: propInitialTab }) {
                     />
                   </label>
                 </div>
-                <div style={{ fontSize: '11px', color: '#64748B', marginTop: '3px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted, #64748B)', marginTop: '3px' }}>
                   PNG, JPG, or WEBP (max 1 MB) for receipt headers and invoices.
                 </div>
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
                   Contact Phone Numbers
                 </label>
                 <input
@@ -713,7 +724,7 @@ export default function Settings({ initialTab: propInitialTab }) {
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
                   Official Email Address
                 </label>
                 <input
@@ -727,13 +738,13 @@ export default function Settings({ initialTab: propInitialTab }) {
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
                   System Appearance Theme
                 </label>
                 <select
                   className="form-control"
                   style={{ height: '38px', fontSize: '13px', borderRadius: '8px' }}
-                  value={settings.theme || 'light'}
+                  value={settings.theme === 'classic' ? 'light' : (settings.theme === 'green' ? 'emerald' : (settings.theme || 'light'))}
                   onChange={(e) => {
                     const newTheme = e.target.value;
                     setSettings(prev => ({ ...prev, theme: newTheme }));
@@ -741,10 +752,10 @@ export default function Settings({ initialTab: propInitialTab }) {
                     api.post('/settings', { theme: newTheme }).catch(() => {});
                   }}
                 >
-                  <option value="light">☀️ Classic Light (ShopOS Blue)</option>
-                  <option value="dark">🌙 Midnight Dark (OLED Slate)</option>
-                  <option value="emerald">🍃 Emerald Green (Fresh Business)</option>
-                  <option value="indigo">🔮 Royal Indigo (Modern Tech)</option>
+                  <option value="light">☀️ Classic Light</option>
+                  <option value="dark">🌙 Midnight Dark</option>
+                  <option value="emerald">🍃 Emerald Green</option>
+                  <option value="indigo">🔮 Royal Indigo</option>
                 </select>
                 <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
                   Choose from 4 custom business themes tailored for eye comfort and aesthetics.
@@ -752,7 +763,7 @@ export default function Settings({ initialTab: propInitialTab }) {
               </div>
 
               <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-title)', marginBottom: '4px' }}>
                   Physical Shop / Warehouse Address
                 </label>
                 <input
@@ -772,37 +783,37 @@ export default function Settings({ initialTab: propInitialTab }) {
             marginTop: '1.5rem',
             padding: '1.15rem 1.25rem',
             borderRadius: '10px',
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0'
+            background: 'var(--bg-table-head)',
+            border: '1px solid var(--border)'
           }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Database size={14} color="#0284c7" />
               <span>Workspace Infrastructure</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.85rem' }}>
               {isSuperOwner && (
                 <div>
-                  <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Tenant ID</div>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Tenant ID</div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', fontFamily: 'monospace' }}>
                     {tenant?.id || 'tenant_001'}
                   </div>
                 </div>
               )}
               <div>
-                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Plan</div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', textTransform: 'capitalize' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Plan</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', textTransform: 'capitalize' }}>
                   {plan || tenant?.plan || 'Free'} Plan
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Member Since</div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Member Since</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)' }}>
                   {tenant?.created_at ? formatDate(tenant.created_at) : 'Active'}
                 </div>
               </div>
               {isSuperOwner && (
                 <div>
-                  <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Database Status</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Database Status</div>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <CheckCircle size={14} color="#059669" />
                     Connected, Healthy
@@ -816,15 +827,15 @@ export default function Settings({ initialTab: propInitialTab }) {
 
       {/* ═════════ TAB 2: INVOICE & RECEIPTS ═════════ */}
       {activeTab === 'invoice' && (
-        <div className="card" style={{ padding: '1.5rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #BBF7D0' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(22, 163, 74, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(22, 163, 74, 0.3)' }}>
                 <Printer size={18} color="#16A34A" />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: '#0F172A' }}>Invoice & Thermal Receipts</h3>
-                <p style={{ fontSize: '0.785rem', color: '#64748B', margin: '2px 0 0 0' }}>
+                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: 'var(--text-title)' }}>Invoice & Thermal Receipts</h3>
+                <p style={{ fontSize: '0.785rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Configure print slip templates, default print engines, currency signs, and footer text.
                 </p>
               </div>
@@ -845,7 +856,7 @@ export default function Settings({ initialTab: propInitialTab }) {
           <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-title)', marginBottom: '4px' }}>
                   Default Print Format
                 </label>
                 <select
@@ -858,13 +869,13 @@ export default function Settings({ initialTab: propInitialTab }) {
                   <option value="standard">Full Sheet / A4 Invoice</option>
                   <option value="half">Half Sheet / A5 Receipt</option>
                 </select>
-                <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   Used automatically when printing receipts directly after checkout.
                 </div>
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-title)', marginBottom: '4px' }}>
                   Currency Display Symbol
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -888,7 +899,7 @@ export default function Settings({ initialTab: propInitialTab }) {
               </div>
 
               <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-title)', marginBottom: '4px' }}>
                   Receipt / Invoice Footer Disclaimer
                 </label>
                 <textarea
@@ -907,15 +918,15 @@ export default function Settings({ initialTab: propInitialTab }) {
 
       {/* ═════════ TAB 3: INVENTORY POLICY ═════════ */}
       {activeTab === 'inventory' && (
-        <div className="card" style={{ padding: '1.5rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#F0F9FF', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #BAE6FD' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(2, 132, 199, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(2, 132, 199, 0.3)' }}>
                 <Package size={18} color="#0284C7" />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: '#0F172A' }}>Warehouse & Inventory Policies</h3>
-                <p style={{ fontSize: '0.785rem', color: '#64748B', margin: '2px 0 0 0' }}>
+                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: 'var(--text-title)' }}>Warehouse & Inventory Policies</h3>
+                <p style={{ fontSize: '0.785rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Safety thresholds, batch expiry warnings, and negative balance protections.
                 </p>
               </div>
@@ -936,7 +947,7 @@ export default function Settings({ initialTab: propInitialTab }) {
           <form onSubmit={handleSaveSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-title)', marginBottom: '4px' }}>
                   Near-Expiry Alert Warning (Days)
                 </label>
                 <input
@@ -948,13 +959,13 @@ export default function Settings({ initialTab: propInitialTab }) {
                   value={settings.near_expiry_days}
                   onChange={(e) => setSettings({ ...settings, near_expiry_days: e.target.value })}
                 />
-                <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
-                  Lots expiring within <strong>{settings.near_expiry_days || 15} days</strong> trigger warning badges.
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Lots expiring within <strong style={{ color: 'var(--text-title)' }}>{settings.near_expiry_days || 15} days</strong> trigger warning badges.
                 </div>
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-title)', marginBottom: '4px' }}>
                   Negative Stock Depletion Policy
                 </label>
                 <select
@@ -966,14 +977,14 @@ export default function Settings({ initialTab: propInitialTab }) {
                   <option value="false">Strictly Blocked (Recommended — No overselling)</option>
                   <option value="true">Allowed (Permit sales below zero stock)</option>
                 </select>
-                <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   Prevent POS sales from completing when on-hand stock is insufficient.
                 </div>
               </div>
             </div>
 
-            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '14px 16px', fontSize: '12.5px', color: '#475569', lineHeight: 1.5 }}>
-              💡 <strong>FIFO Batch Tracking:</strong> The system automatically rotates older product lots first when sales are made at POS. Batches reaching expiry before depletion will be flagged in the Inventory tab for immediate clearance or adjustment.
+            <div style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '14px 16px', fontSize: '12.5px', color: 'var(--text-value)', lineHeight: 1.5 }}>
+              💡 <strong style={{ color: 'var(--text-title)' }}>FIFO Batch Tracking:</strong> The system automatically rotates older product lots first when sales are made at POS. Batches reaching expiry before depletion will be flagged in the Inventory tab for immediate clearance or adjustment.
             </div>
           </form>
         </div>
@@ -988,11 +999,11 @@ export default function Settings({ initialTab: propInitialTab }) {
       {activeTab === 'billing' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Current Subscription Card */}
-          <div className="card" style={{ padding: '1.75rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1.25rem' }}>
+          <div className="card" style={{ padding: '1.75rem', background: 'var(--bg-card, #ffffff)', borderRadius: '12px', border: '1px solid var(--border, #E5E7EB)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border, #f1f5f9)', paddingBottom: '1.25rem' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-title, #0f172a)' }}>
                     {billingInfo?.plan_name || (plan === 'pro' ? 'Pro Plan' : (plan === 'enterprise' ? 'Enterprise Plan' : 'Free Forever Plan'))}
                   </h2>
                   <span style={{
@@ -1001,14 +1012,14 @@ export default function Settings({ initialTab: propInitialTab }) {
                     textTransform: 'uppercase',
                     padding: '3px 10px',
                     borderRadius: '20px',
-                    background: plan === 'pro' ? '#e0f2fe' : (plan === 'enterprise' ? '#f3e8ff' : '#f1f5f9'),
-                    color: plan === 'pro' ? '#0369a1' : (plan === 'enterprise' ? '#7e22ce' : '#475569'),
-                    border: `1px solid ${plan === 'pro' ? '#bae6fd' : (plan === 'enterprise' ? '#e9d5ff' : '#e2e8f0')}`
+                    background: plan === 'pro' ? 'rgba(14, 165, 233, 0.15)' : (plan === 'enterprise' ? 'rgba(168, 85, 247, 0.15)' : 'var(--hover-bg, #f1f5f9)'),
+                    color: plan === 'pro' ? '#0ea5e9' : (plan === 'enterprise' ? '#a855f7' : 'var(--text-muted, #475569)'),
+                    border: `1px solid ${plan === 'pro' ? 'rgba(14, 165, 233, 0.3)' : (plan === 'enterprise' ? 'rgba(168, 85, 247, 0.3)' : 'var(--border, #e2e8f0)')}`
                   }}>
                     Active Subscription
                   </span>
                 </div>
-                <p style={{ margin: '6px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                <p style={{ margin: '6px 0 0', fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>
                   {plan === 'free' ? 'Single user account with basic limits' : 'Full-featured multi-user cloud workspace'}
                   {plan !== 'free' && (billingInfo?.plan_expires_at || billingInfo?.planExpiresAt) ? ` • Renews ${formatDate(billingInfo.plan_expires_at || billingInfo.planExpiresAt)}` : ''}
                 </p>
@@ -1038,20 +1049,20 @@ export default function Settings({ initialTab: propInitialTab }) {
             </div>
 
             {/* Quota Usage Meters */}
-            <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.95rem', fontWeight: 700, color: '#334155' }}>
+            <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-title)' }}>
               Resource Quota & Usage
             </h4>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '1.75rem' }}>
               {/* Products meter */}
-              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ background: 'var(--bg-table-head)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: 600, color: '#475569' }}>Active Products</span>
-                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Active Products</span>
+                  <span style={{ fontWeight: 700, color: 'var(--text-title)' }}>
                     {billingInfo?.usage?.products?.used || 0} / {billingInfo?.usage?.products?.limit === 'unlimited' ? '∞ Unlimited' : (billingInfo?.usage?.products?.limit || 50)}
                   </span>
                 </div>
-                <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '8px', background: 'var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div style={{
                     width: `${Math.min(100, billingInfo?.usage?.products?.pct || 0)}%`,
                     height: '100%',
@@ -1061,14 +1072,14 @@ export default function Settings({ initialTab: propInitialTab }) {
               </div>
 
               {/* Invoices meter */}
-              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ background: 'var(--bg-table-head)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: 600, color: '#475569' }}>Invoices This Month</span>
-                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Invoices This Month</span>
+                  <span style={{ fontWeight: 700, color: 'var(--text-title)' }}>
                     {billingInfo?.usage?.invoices_this_month?.used || 0} / {billingInfo?.usage?.invoices_this_month?.limit === 'unlimited' ? '∞ Unlimited' : (billingInfo?.usage?.invoices_this_month?.limit || 100)}
                   </span>
                 </div>
-                <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '8px', background: 'var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div style={{
                     width: `${Math.min(100, billingInfo?.usage?.invoices_this_month?.pct || 0)}%`,
                     height: '100%',
@@ -1078,14 +1089,14 @@ export default function Settings({ initialTab: propInitialTab }) {
               </div>
 
               {/* Staff users meter */}
-              <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ background: 'var(--bg-table-head)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: 600, color: '#475569' }}>Staff Accounts</span>
-                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Staff Accounts</span>
+                  <span style={{ fontWeight: 700, color: 'var(--text-title)' }}>
                     {billingInfo?.usage?.staff_users?.used || 1} / {billingInfo?.usage?.staff_users?.limit === 'unlimited' ? '∞ Unlimited' : (billingInfo?.usage?.staff_users?.limit || 1)}
                   </span>
                 </div>
-                <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '8px', background: 'var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
                   <div style={{
                     width: `${Math.min(100, billingInfo?.usage?.staff_users?.pct || 0)}%`,
                     height: '100%',
@@ -1096,7 +1107,7 @@ export default function Settings({ initialTab: propInitialTab }) {
             </div>
 
             {/* Plan Features Checklist */}
-            <h4 style={{ margin: '0 0 0.85rem 0', fontSize: '0.95rem', fontWeight: 700, color: '#334155' }}>
+            <h4 style={{ margin: '0 0 0.85rem 0', fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-title)' }}>
               Features Included in Your Current Tier
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
@@ -1107,7 +1118,7 @@ export default function Settings({ initialTab: propInitialTab }) {
                 'Stock Movements & Adjustments',
                 'Automated Expiry Warnings'
               ]).map((feat, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#475569' }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-value, #475569)' }}>
                   <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
                   <span>{feat}</span>
                 </div>
@@ -1116,14 +1127,14 @@ export default function Settings({ initialTab: propInitialTab }) {
           </div>
 
           {/* Billing History Table */}
-          <div className="card" style={{ padding: '1.5rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-            <h3 style={{ fontSize: '1.05rem', margin: '0 0 1rem 0', fontWeight: 700, color: '#0F172A' }}>
+          <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-card, #ffffff)', borderRadius: '12px', border: '1px solid var(--border, #E5E7EB)' }}>
+            <h3 style={{ fontSize: '1.05rem', margin: '0 0 1rem 0', fontWeight: 700, color: 'var(--text-title, #0F172A)' }}>
               Subscription & Invoicing History
             </h3>
             <div className="table-responsive">
               <table className="table" style={{ fontSize: '13px' }}>
                 <thead>
-                  <tr style={{ background: '#f8fafc' }}>
+                  <tr style={{ background: 'var(--bg-table-head, #f8fafc)' }}>
                     <th>Plan</th>
                     <th>Started Date</th>
                     <th>Expiration</th>
@@ -1135,16 +1146,16 @@ export default function Settings({ initialTab: propInitialTab }) {
                   {billingInfo?.history && billingInfo.history.length > 0 ? (
                     billingInfo.history.map((h, i) => (
                       <tr key={i}>
-                        <td style={{ fontWeight: 700, textTransform: 'capitalize' }}>{h.plan}</td>
-                        <td>{formatDate(h.started_at)}</td>
-                        <td>{formatDate(h.expires_at)}</td>
-                        <td style={{ fontWeight: 600 }}>₨ {Number(h.price).toLocaleString()}</td>
+                        <td style={{ fontWeight: 700, textTransform: 'capitalize', color: 'var(--text-title)' }}>{h.plan}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{formatDate(h.started_at)}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{formatDate(h.expires_at)}</td>
+                        <td style={{ fontWeight: 600, color: 'var(--text-title)' }}>₨ {Number(h.price).toLocaleString()}</td>
                         <td>
                           <span style={{
                             padding: '2px 8px',
                             borderRadius: '12px',
-                            background: '#dcfce7',
-                            color: '#15803d',
+                            background: 'rgba(16, 185, 129, 0.15)',
+                            color: '#10b981',
                             fontSize: '11px',
                             fontWeight: 700
                           }}>
@@ -1155,7 +1166,7 @@ export default function Settings({ initialTab: propInitialTab }) {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', color: '#94a3b8', padding: '1.5rem' }}>
+                      <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-muted, #94a3b8)', padding: '1.5rem' }}>
                         No previous billing records found.
                       </td>
                     </tr>
@@ -1170,10 +1181,10 @@ export default function Settings({ initialTab: propInitialTab }) {
       {/* ═════════ TAB 6: BACKUP & RECOVERY ═════════ */}
       {activeTab === 'backup' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="card" style={{ padding: '1.5rem', background: '#ffffff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-card, #ffffff)', borderRadius: '12px', border: '1px solid var(--border, #E5E7EB)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #A7F3D0' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
                   <HardDrive size={20} color="#10B981" />
                 </div>
                 <div>
@@ -1253,14 +1264,14 @@ export default function Settings({ initialTab: propInitialTab }) {
         <div className="modal-overlay" onClick={() => setShowUpgradeModal(false)}>
           <div
             className="modal-content"
-            style={{ maxWidth: '850px', width: '92%', padding: '2rem', borderRadius: '16px' }}
+            style={{ maxWidth: '850px', width: '92%', padding: '2rem', borderRadius: '16px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', margin: '0 0 6px 0' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-title)', margin: '0 0 6px 0' }}>
                 Switch Your Subscription Tier
               </h2>
-              <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>
                 Instant upgrade with immediate limit removal and new feature access.
               </p>
             </div>
@@ -1270,16 +1281,16 @@ export default function Settings({ initialTab: propInitialTab }) {
               <div style={{
                 padding: '20px',
                 borderRadius: '12px',
-                border: plan === 'free' ? '2px solid #0284c7' : '1px solid #e2e8f0',
-                background: plan === 'free' ? '#f0f9ff' : '#ffffff',
+                border: plan === 'free' ? '2px solid var(--primary)' : '1px solid var(--border)',
+                background: plan === 'free' ? 'var(--hover-bg)' : 'var(--bg-card)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between'
               }}>
                 <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0' }}>Free Forever</h3>
-                  <div style={{ fontSize: '24px', fontWeight: 900, color: '#0f172a', margin: '10px 0' }}>₨ 0</div>
-                  <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text-title)' }}>Free Forever</h3>
+                  <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--text-title)', margin: '10px 0' }}>₨ 0</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <div>• 1 User</div>
                     <div>• 50 Products</div>
                     <div>• 100 Invoices/mo</div>
@@ -1294,8 +1305,9 @@ export default function Settings({ initialTab: propInitialTab }) {
                     marginTop: '16px',
                     padding: '8px',
                     borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: plan === 'free' ? '#e2e8f0' : '#ffffff',
+                    border: '1px solid var(--border)',
+                    background: plan === 'free' ? 'var(--hover-bg)' : 'var(--bg-card)',
+                    color: 'var(--text-title)',
                     cursor: plan === 'free' ? 'default' : 'pointer',
                     fontWeight: 700,
                     fontSize: '13px'
@@ -1309,8 +1321,8 @@ export default function Settings({ initialTab: propInitialTab }) {
               <div style={{
                 padding: '20px',
                 borderRadius: '12px',
-                border: '2px solid #0ea5e9',
-                background: plan === 'pro' ? '#f0f9ff' : '#ffffff',
+                border: '2px solid var(--primary)',
+                background: plan === 'pro' ? 'var(--hover-bg)' : 'var(--bg-card)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
@@ -1321,7 +1333,7 @@ export default function Settings({ initialTab: propInitialTab }) {
                   top: '-10px',
                   left: '50%',
                   transform: 'translateX(-50%)',
-                  background: '#0ea5e9',
+                  background: 'var(--primary)',
                   color: '#fff',
                   fontSize: '9px',
                   fontWeight: 800,
@@ -1332,9 +1344,9 @@ export default function Settings({ initialTab: propInitialTab }) {
                   Most Popular
                 </span>
                 <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0' }}>Professional</h3>
-                  <div style={{ fontSize: '24px', fontWeight: 900, color: '#0ea5e9', margin: '10px 0' }}>₨ 3,500 <span style={{ fontSize: '12px', color: '#64748b' }}>/mo</span></div>
-                  <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text-title)' }}>Professional</h3>
+                  <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--primary)', margin: '10px 0' }}>₨ 3,500 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>/mo</span></div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <div>• Up to 5 Staff Users</div>
                     <div>• Unlimited Products</div>
                     <div>• Unlimited Invoices</div>
@@ -1366,16 +1378,16 @@ export default function Settings({ initialTab: propInitialTab }) {
               <div style={{
                 padding: '20px',
                 borderRadius: '12px',
-                border: plan === 'enterprise' ? '2px solid #7e22ce' : '1px solid #e2e8f0',
-                background: plan === 'enterprise' ? '#faf5ff' : '#ffffff',
+                border: plan === 'enterprise' ? '2px solid #a855f7' : '1px solid var(--border)',
+                background: plan === 'enterprise' ? 'var(--hover-bg)' : 'var(--bg-card)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between'
               }}>
                 <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0' }}>Enterprise</h3>
-                  <div style={{ fontSize: '24px', fontWeight: 900, color: '#7e22ce', margin: '10px 0' }}>₨ 8,500 <span style={{ fontSize: '12px', color: '#64748b' }}>/mo</span></div>
-                  <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--text-title)' }}>Enterprise</h3>
+                  <div style={{ fontSize: '24px', fontWeight: 900, color: '#a855f7', margin: '10px 0' }}>₨ 8,500 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>/mo</span></div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <div>• Unlimited Users</div>
                     <div>• Multi-Branch Support</div>
                     <div>• Custom Domain Integration</div>
@@ -1390,8 +1402,9 @@ export default function Settings({ initialTab: propInitialTab }) {
                     marginTop: '16px',
                     padding: '8px',
                     borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: plan === 'enterprise' ? '#e2e8f0' : '#ffffff',
+                    border: '1px solid var(--border)',
+                    background: plan === 'enterprise' ? 'var(--hover-bg)' : 'var(--bg-card)',
+                    color: 'var(--text-title)',
                     cursor: plan === 'enterprise' ? 'default' : 'pointer',
                     fontWeight: 700,
                     fontSize: '13px'

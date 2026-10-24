@@ -292,9 +292,9 @@ export default function Users() {
       {/* PASSWORD RESET REQUESTS */}
       {activeTab === 'requests' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '0.85rem 1.25rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: '0.85rem', color: '#475569' }}>
-              <strong>Staff Password Resets</strong> &bull; Review, approve, and assign new passwords to staff members.
+          <div style={{ padding: '0.85rem 1.25rem', background: 'var(--bg-table-head, #f8fafc)', borderBottom: '1px solid var(--border, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted, #475569)' }}>
+              <strong style={{ color: 'var(--text-title)' }}>Staff Password Resets</strong> &bull; Review, approve, and assign new passwords to staff members.
             </div>
             <button onClick={loadData} className="btn btn-secondary btn-sm" title="Refresh">
               <RefreshCw size={14} />
@@ -421,13 +421,13 @@ export default function Users() {
             <div className="table-responsive">
               <table className="table" style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', height: 42 }}>
-                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B' }}>Date & Time</th>
-                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B' }}>User</th>
-                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B' }}>Action</th>
-                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B' }}>Entity</th>
-                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B' }}>Summary</th>
-                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: '#64748B', textAlign: 'right' }}>Action</th>
+                  <tr style={{ background: 'var(--bg-table-head)', borderBottom: '1px solid var(--border)', height: 42 }}>
+                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>Date & Time</th>
+                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>User</th>
+                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>Action</th>
+                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>Entity</th>
+                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>Summary</th>
+                    <th style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -517,9 +517,9 @@ export default function Users() {
                                 gap: 4,
                                 padding: '4px 10px',
                                 borderRadius: 6,
-                                border: '1px solid #CBD5E1',
-                                background: '#FFFFFF',
-                                color: '#0F766E',
+                                border: '1px solid var(--border)',
+                                background: 'var(--hover-bg)',
+                                color: 'var(--primary)',
                                 fontSize: 12,
                                 fontWeight: 600,
                                 cursor: 'pointer'
@@ -548,22 +548,23 @@ export default function Users() {
               bottom: 0,
               width: 420,
               maxWidth: '92vw',
-              background: '#FFFFFF',
-              boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
+              background: 'var(--bg-card)',
+              borderLeft: '1px solid var(--border)',
+              boxShadow: '-4px 0 24px rgba(0,0,0,0.3)',
               zIndex: 9999,
               display: 'flex',
               flexDirection: 'column',
               fontFamily: "'Outfit', 'Inter', sans-serif"
             }}>
               {/* Drawer Header */}
-              <div style={{ padding: '18px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0F172A' }}>Audit Log Details</h3>
-                  <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Log Entry #{selectedLog.id}</div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-title)' }}>Audit Log Details</h3>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Log Entry #{selectedLog.id}</div>
                 </div>
                 <button
                   onClick={() => setSelectedLog(null)}
-                  style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #E2E8F0', background: '#F8FAFC', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--hover-bg)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                 >
                   ✕
                 </button>
@@ -572,47 +573,47 @@ export default function Users() {
               {/* Drawer Body */}
               <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Timestamp</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Timestamp</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-title)' }}>
                     {formatDateTime(selectedLog.created_at)}
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Responsible User</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{selectedLog.user_name || 'System'}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Responsible User</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-title)' }}>{selectedLog.user_name || 'System'}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>IP Address</div>
-                    <div style={{ fontSize: 13, color: '#475569', fontFamily: 'monospace' }}>{selectedLog.ip_address || '—'}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>IP Address</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-value)', fontFamily: 'monospace' }}>{selectedLog.ip_address || '—'}</div>
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Action Type</div>
-                    <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: '#E0F2FE', color: '#0369A1' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Action Type</div>
+                    <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: 'rgba(2, 132, 199, 0.15)', color: '#38bdf8' }}>
                       {selectedLog.action}
                     </span>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 4 }}>Entity Target</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0F766E', fontFamily: 'monospace' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Entity Target</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#2dd4bf', fontFamily: 'monospace' }}>
                       {selectedLog.entity_type} {selectedLog.entity_id ? `(#${selectedLog.entity_id})` : ''}
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginBottom: 6 }}>Event Payload & Description</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 6 }}>Event Payload & Description</div>
                   <div style={{
                     padding: 12,
                     borderRadius: 8,
-                    background: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
+                    background: 'var(--hover-bg)',
+                    border: '1px solid var(--border)',
                     fontSize: 13,
-                    color: '#334155',
+                    color: 'var(--text-value)',
                     lineHeight: 1.5,
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-word',
@@ -624,10 +625,10 @@ export default function Users() {
               </div>
 
               {/* Drawer Footer */}
-              <div style={{ padding: '14px 20px', borderTop: '1px solid #E2E8F0', background: '#F8FAFC', display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   onClick={() => setSelectedLog(null)}
-                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #CBD5E1', background: '#FFFFFF', color: '#334155', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--hover-bg)', color: 'var(--text-title)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
                 >
                   Close
                 </button>
@@ -643,8 +644,8 @@ export default function Users() {
           <div className="modal-content" style={{ maxWidth: '520px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Create Staff Account</h3>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title, #0f172a)' }}>Create Staff Account</h3>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748b)', marginTop: '2px' }}>
                   Register a cashier, store manager, or administrator.
                 </div>
               </div>
@@ -735,9 +736,9 @@ export default function Users() {
           <div className="modal-content" style={{ maxWidth: '560px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>Edit User</h3>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                  Username: <strong className="mono" style={{ color: '#0284c7' }}>{selectedUser.username}</strong>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title, #0f172a)' }}>Edit User</h3>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748b)', marginTop: '2px' }}>
+                  Username: <strong className="mono" style={{ color: 'var(--primary, #0284c7)' }}>{selectedUser.username}</strong>
                 </div>
               </div>
               <button
@@ -752,14 +753,14 @@ export default function Users() {
             <form onSubmit={handleUpdateUser}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {/* Identity Card */}
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ background: 'var(--hover-bg, #f8fafc)', border: '1px solid var(--border, #e2e8f0)', borderRadius: '8px', padding: '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: selectedUser.role === 'admin' ? '#fee2e2' : selectedUser.role === 'inventory' ? '#dbeafe' : selectedUser.role === 'accountant' ? '#fef3c7' : '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1rem', color: selectedUser.role === 'admin' ? '#dc2626' : selectedUser.role === 'inventory' ? '#2563eb' : selectedUser.role === 'accountant' ? '#d97706' : '#16a34a' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: selectedUser.role === 'admin' ? 'rgba(239, 68, 68, 0.2)' : selectedUser.role === 'inventory' ? 'rgba(59, 130, 246, 0.2)' : selectedUser.role === 'accountant' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1rem', color: selectedUser.role === 'admin' ? '#ef4444' : selectedUser.role === 'inventory' ? '#3b82f6' : selectedUser.role === 'accountant' ? '#f59e0b' : '#10b981' }}>
                       {selectedUser.full_name?.charAt(0) || selectedUser.username?.charAt(0)}
                     </div>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedUser.full_name}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{selectedUser.email || 'No email set'}</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-title, #0f172a)' }}>{selectedUser.full_name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)' }}>{selectedUser.email || 'No email set'}</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -834,7 +835,7 @@ export default function Users() {
                     value={selectedUser.password || ''}
                     onChange={(e) => setSelectedUser({ ...selectedUser, password: e.target.value })}
                   />
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '3px' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted, #94a3b8)', marginTop: '3px' }}>
                     Minimum 6 characters. Only set if you want to change the user's password.
                   </div>
                 </div>
@@ -920,18 +921,18 @@ export default function Users() {
             </div>
             <form onSubmit={handleResolveSubmit}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ background: '#f8fafc', padding: '0.85rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
+                <div style={{ background: 'var(--hover-bg, #f8fafc)', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--border, #e2e8f0)', fontSize: '0.85rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                    <span style={{ color: '#64748b' }}>Staff Username:</span>
-                    <strong className="mono" style={{ color: '#0284c7' }}>{selectedRequest.username}</strong>
+                    <span style={{ color: 'var(--text-muted, #64748b)' }}>Staff Username:</span>
+                    <strong className="mono" style={{ color: 'var(--primary, #0284c7)' }}>{selectedRequest.username}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                    <span style={{ color: '#64748b' }}>Full Name:</span>
-                    <strong>{selectedRequest.full_name || '-'}</strong>
+                    <span style={{ color: 'var(--text-muted, #64748b)' }}>Full Name:</span>
+                    <strong style={{ color: 'var(--text-title)' }}>{selectedRequest.full_name || '-'}</strong>
                   </div>
                   {selectedRequest.request_note && (
-                    <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px dashed #cbd5e1', color: '#475569', fontSize: '0.785rem' }}>
-                      <strong>User Message:</strong> {selectedRequest.request_note}
+                    <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px dashed var(--border, #cbd5e1)', color: 'var(--text-muted, #475569)', fontSize: '0.785rem' }}>
+                      <strong style={{ color: 'var(--text-title)' }}>User Message:</strong> {selectedRequest.request_note}
                     </div>
                   )}
                 </div>

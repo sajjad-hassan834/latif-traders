@@ -39,11 +39,23 @@ html[data-app-theme="classic"],
   --header-bg: #FFFFFF;
   --dropdown-bg: #FFFFFF;
   --hover-bg: #F1F5F9;
+
+  /* Legacy shop tokens */
+  --bg-surface: #FFFFFF;
+  --bg-app: #F4F6F9;
+  --text-main: #0F172A;
+  --text-light: #64748B;
+  --secondary-light: #F1F5F9;
+  --border-card: #E5E7EB;
+  --border-subtle: #F1F5F9;
 }
 
 /* 2. MIDNIGHT DARK */
 html[data-app-theme="dark"],
-[data-app-theme="dark"] {
+[data-app-theme="dark"],
+html[data-theme="dark"],
+body[data-theme="dark"],
+.dark {
   color-scheme: dark;
   --bg-page: #0B1220;
   --bg-sidebar: #0F172A;
@@ -78,6 +90,15 @@ html[data-app-theme="dark"],
   --header-bg: #0F172A;
   --dropdown-bg: #111B2E;
   --hover-bg: #1E293B;
+
+  /* Legacy shop tokens mapped to dark */
+  --bg-surface: #111B2E;
+  --bg-app: #0B1220;
+  --text-main: #F8FAFC;
+  --text-light: #94A3B8;
+  --secondary-light: #1E293B;
+  --border-card: #1E293B;
+  --border-subtle: #1E293B;
 }
 
 /* 3. EMERALD GREEN */
@@ -117,6 +138,15 @@ html[data-app-theme="green"],
   --header-bg: #FFFFFF;
   --dropdown-bg: #FFFFFF;
   --hover-bg: #ECFDF5;
+
+  /* Legacy shop tokens */
+  --bg-surface: #FFFFFF;
+  --bg-app: #F0FAF5;
+  --text-main: #0F2A20;
+  --text-light: #4B6B5C;
+  --secondary-light: #ECFDF5;
+  --border-card: #D1FAE5;
+  --border-subtle: #D1FAE5;
 }
 
 /* 4. ROYAL INDIGO */
@@ -156,6 +186,15 @@ html[data-app-theme="indigo"],
   --header-bg: #FFFFFF;
   --dropdown-bg: #FFFFFF;
   --hover-bg: #EEF2FF;
+
+  /* Legacy shop tokens */
+  --bg-surface: #FFFFFF;
+  --bg-app: #F5F3FF;
+  --text-main: #1E1B4B;
+  --text-light: #6B7280;
+  --secondary-light: #EEF2FF;
+  --border-card: #E0E7FF;
+  --border-subtle: #E0E7FF;
 }
 
 /* Smooth 200ms theme color transition */
@@ -200,11 +239,11 @@ html[data-app-theme] button {
 
 /* ══════════════════════════════════════════════
    INVOICES & RECEIPTS: ALWAYS LIGHT & PRINTABLE
+   (Excludes reports on screen)
    ══════════════════════════════════════════════ */
 .invoice-print,
 .receipt-print,
 .print-paper,
-.printable-area,
 .invoice-preview-container,
 .invoice-sheet,
 .receipt-sheet,
@@ -226,7 +265,6 @@ html[data-app-theme] button {
 .invoice-print *,
 .receipt-print *,
 .print-paper *,
-.printable-area *,
 .invoice-preview-container *,
 .invoice-sheet *,
 .receipt-sheet * {
@@ -237,7 +275,8 @@ html[data-app-theme] button {
   html,
   body,
   html[data-app-theme],
-  body[data-app-theme] {
+  body[data-app-theme],
+  .printable-area {
     --bg-page: #FFFFFF !important;
     --bg-card: #FFFFFF !important;
     --bg-table: #FFFFFF !important;
@@ -259,14 +298,21 @@ html[data-app-theme] button {
    ══════════════════════════════════════════════ */
 html[data-app-theme] .card,
 html[data-app-theme] .kukumo-stat-card,
-html[data-app-theme] .stat-card {
+html[data-app-theme] .stat-card,
+html[data-app-theme] .overview-card,
+html[data-app-theme] .dashboard-card,
+html[data-app-theme] .balance-card,
+html[data-app-theme] .expense-card,
+html[data-app-theme] .sadax-card {
   background-color: var(--bg-card) !important;
   border-color: var(--border) !important;
   color: var(--text-value) !important;
 }
 
 html[data-app-theme] .page-title,
-html[data-app-theme] .stat-value {
+html[data-app-theme] .stat-value,
+html[data-app-theme] .card-title,
+html[data-app-theme] .section-title {
   color: var(--text-title) !important;
 }
 
@@ -286,3 +332,258 @@ html[data-app-theme] table.sadax-table td {
   border-color: var(--border) !important;
   color: var(--text-table) !important;
 }
+
+/* SADAX TOOLBAR, CONTROLS & PAGINATION */
+html[data-app-theme] .sadax-toolbar-row,
+html[data-app-theme] .pagination-footer-bar {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-app-theme] .sadax-search-input,
+html[data-app-theme] .sadax-select-btn,
+html[data-app-theme] .pagination-select,
+html[data-app-theme] .pagination-nav-btn {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text-value) !important;
+}
+
+html[data-app-theme] .pagination-nav-btn:hover:not(:disabled) {
+  background-color: var(--hover-bg) !important;
+  border-color: var(--primary) !important;
+}
+
+html[data-app-theme] .pagination-info {
+  color: var(--text-muted) !important;
+}
+
+/* FILTER PILLS & BARS */
+html[data-app-theme] .filter-pills-bar {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-app-theme] .filter-pill:not(.active) {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text-muted) !important;
+}
+
+/* POS TERMINAL COMPONENT ADAPTATIONS */
+html[data-app-theme] .pos-catalog,
+html[data-app-theme] .pos-cart,
+html[data-app-theme] .pos-cart-item,
+html[data-app-theme] .pos-product-card,
+html[data-app-theme] .pos-product-list-item {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--text-value) !important;
+}
+
+html[data-app-theme] .pos-cart-header,
+html[data-app-theme] .pos-cart-footer {
+  background-color: var(--bg-table-head) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-app-theme] .pos-cat-pill:not(.active),
+html[data-app-theme] .cash-chip,
+html[data-app-theme] .pos-stepper-btn {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text-muted) !important;
+}
+
+/* MODALS & PORTALS (ADAPTED TO ALL THEMES) */
+html[data-app-theme] .modal-content,
+html[data-app-theme] .modal-box,
+html[data-app-theme] .pos-modal-content {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--text-value) !important;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6) !important;
+}
+
+html[data-app-theme] .modal-header {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-app-theme] .modal-header h2,
+html[data-app-theme] .modal-header h3,
+html[data-app-theme] .modal-title {
+  color: var(--text-title) !important;
+}
+
+html[data-app-theme] .modal-body {
+  background-color: var(--bg-card) !important;
+  color: var(--text-value) !important;
+}
+
+html[data-app-theme] .modal-footer {
+  background-color: var(--bg-table-head) !important;
+  border-color: var(--border) !important;
+}
+
+/* INPUTS, SELECTS, LABELS IN DARK MODE */
+html[data-app-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not(.keep-light),
+html[data-app-theme="dark"] select:not(.keep-light),
+html[data-app-theme="dark"] textarea:not(.keep-light) {
+  background-color: var(--input-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text-value) !important;
+}
+
+html[data-app-theme="dark"] select:not(.keep-light) option,
+html[data-theme="dark"] select option,
+body.dark select option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+select option {
+  background-color: var(--bg-card);
+  color: var(--text-value);
+}
+
+html[data-app-theme="dark"] label:not(.keep-light),
+html[data-app-theme="dark"] .form-label {
+  color: var(--text-muted) !important;
+}
+
+/* HEADINGS AUTO-COLOR IN DARK THEME */
+html[data-app-theme="dark"] h1:not(.text-white):not([class*="text-emerald"]):not([class*="text-red"]):not([class*="text-sky"]):not([class*="text-blue"]):not([class*="text-amber"]),
+html[data-app-theme="dark"] h2:not(.text-white):not([class*="text-emerald"]):not([class*="text-red"]):not([class*="text-sky"]):not([class*="text-blue"]):not([class*="text-amber"]),
+html[data-app-theme="dark"] h3:not(.text-white):not([class*="text-emerald"]):not([class*="text-red"]):not([class*="text-sky"]):not([class*="text-blue"]):not([class*="text-amber"]),
+html[data-app-theme="dark"] h4:not(.text-white):not([class*="text-emerald"]):not([class*="text-red"]):not([class*="text-sky"]):not([class*="text-blue"]):not([class*="text-amber"]) {
+  color: var(--text-title) !important;
+}
+
+/* REPORT PRINT HEADER ON-SCREEN ADAPTATION */
+html[data-app-theme] .report-title-banner {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-app-theme] .report-main-title {
+  color: var(--text-title) !important;
+}
+
+html[data-app-theme] .report-main-subtitle {
+  color: var(--text-muted) !important;
+}
+
+html[data-app-theme] .report-meta-chip {
+  background-color: var(--bg-table-head) !important;
+  border-color: var(--border) !important;
+  color: var(--text-value) !important;
+}
+
+html[data-app-theme] .chip-val {
+  color: var(--text-title) !important;
+}
+
+html[data-app-theme] .report-company-name {
+  color: var(--text-title) !important;
+}
+
+html[data-app-theme] .report-seal-badge {
+  background-color: var(--bg-table-head) !important;
+}
+
+html[data-app-theme] .report-ref-box {
+  color: var(--text-muted) !important;
+}
+
+/* ══════════════════════════════════════════════
+   GLOBAL DROPDOWNS & ACTION BUTTON OVERRIDES
+   ══════════════════════════════════════════════ */
+html[data-app-theme] .dropdown-menu,
+html[data-app-theme] .sadax-dropdown-menu {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--text-value) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.45) !important;
+}
+
+html[data-app-theme] .dropdown-item,
+html[data-app-theme] .sadax-dropdown-item {
+  color: var(--text-title) !important;
+}
+
+html[data-app-theme] .dropdown-item:hover,
+html[data-app-theme] .sadax-dropdown-item:hover {
+  background-color: var(--hover-bg) !important;
+  color: var(--primary) !important;
+}
+
+html[data-app-theme] .btn-sadax-white {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--text-title) !important;
+}
+
+html[data-app-theme] .btn-sadax-white:hover {
+  background-color: var(--hover-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text-title) !important;
+}
+
+html[data-app-theme] .sadax-action-details,
+html[data-app-theme] .btn-table-details {
+  color: var(--text-title) !important;
+}
+
+html[data-app-theme] .sadax-action-dots-btn,
+html[data-app-theme] .btn-table-dots {
+  background-color: var(--hover-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text-muted) !important;
+}
+
+html[data-app-theme] .sadax-action-dots-btn:hover,
+html[data-app-theme] .btn-table-dots:hover {
+  background-color: var(--bg-card) !important;
+  color: var(--text-title) !important;
+}
+
+html[data-app-theme] .sadax-filter-btn {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border) !important;
+  color: var(--text-value) !important;
+}
+
+/* ══════════════════════════════════════════════
+   UNIVERSAL MODALS & POPUPS HIGH-CONTRAST OVERRIDES
+   ══════════════════════════════════════════════ */
+html[data-app-theme] .modal-content,
+html[data-app-theme] .modal-box,
+html[data-app-theme] .modal-container {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-value) !important;
+}
+
+html[data-app-theme] .modal-header {
+  border-bottom: 1px solid var(--border) !important;
+}
+
+html[data-app-theme] .modal-header h1,
+html[data-app-theme] .modal-header h2,
+html[data-app-theme] .modal-header h3,
+html[data-app-theme] .modal-header h4,
+html[data-app-theme] .modal-title {
+  color: var(--text-title) !important;
+}
+
+html[data-app-theme] .modal-header p,
+html[data-app-theme] .modal-header span,
+html[data-app-theme] .modal-subtitle {
+  color: var(--text-muted) !important;
+}
+
+html[data-app-theme] .modal-footer {
+  border-top: 1px solid var(--border) !important;
+}
+

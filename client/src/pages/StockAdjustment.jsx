@@ -459,10 +459,10 @@ export default function StockAdjustment({ setTab }) {
             <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>/</span>
             <span style={{ fontSize: '0.8125rem', color: '#00a389', fontWeight: 600 }}>Adjustments</span>
           </nav>
-          <h1 className="page-header-title" style={{ fontSize: '28px', fontWeight: 700, color: '#111827', margin: '0 0 4px 0' }}>
+          <h1 className="page-header-title" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-title)', margin: '0 0 4px 0' }}>
             Stock Adjustments
           </h1>
-          <p className="page-header-subtitle" style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>
+          <p className="page-header-subtitle" style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
             Log damaged, melted, expired or lost stock with audit trail
           </p>
         </div>
@@ -614,22 +614,22 @@ export default function StockAdjustment({ setTab }) {
                     right: 0,
                     top: '100%',
                     marginTop: '6px',
-                    background: '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
                     borderRadius: '10px',
-                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
                     zIndex: 200,
                     width: '280px',
                     padding: '1rem'
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#0f172a' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--text-title)' }}>
                     Filter by Date Range
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', marginBottom: '3px' }}>Start Date</label>
+                      <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '3px' }}>Start Date</label>
                       <input
                         type="date"
                         value={startDate}
@@ -640,7 +640,7 @@ export default function StockAdjustment({ setTab }) {
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', marginBottom: '3px' }}>End Date</label>
+                      <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '3px' }}>End Date</label>
                       <input
                         type="date"
                         value={endDate}
@@ -702,22 +702,22 @@ export default function StockAdjustment({ setTab }) {
                     right: 0,
                     top: '100%',
                     marginTop: '6px',
-                    background: '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
                     borderRadius: '10px',
-                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
                     zIndex: 200,
                     width: '260px',
                     padding: '1rem'
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#0f172a' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--text-title)' }}>
                     Additional Filters
                   </div>
 
                   <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#64748b', marginBottom: '4px', fontWeight: 600 }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600 }}>
                       Audited By (Staff)
                     </label>
                     <input
@@ -850,13 +850,13 @@ export default function StockAdjustment({ setTab }) {
                       key={row.id}
                       style={{
                         height: '72px',
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                         transition: 'background-color 0.1s ease'
                       }}
                     >
                       {/* COLUMN 1: Date & Time */}
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
-                        <div style={{ fontWeight: 600, fontSize: '13px', color: '#111827' }}>
+                        <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-title)' }}>
                           {dt.date}
                         </div>
                         {dt.time && (
@@ -900,20 +900,20 @@ export default function StockAdjustment({ setTab }) {
                             width: '32px',
                             height: '32px',
                             borderRadius: '6px',
-                            background: '#f3f4f6',
-                            border: '1px solid #e5e7eb',
+                            background: 'var(--hover-bg)',
+                            border: '1px solid var(--border)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0
                           }}>
-                            <Package size={16} color="#6b7280" />
+                            <Package size={16} color="var(--primary)" />
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <div style={{
                               fontWeight: 600,
                               fontSize: '14px',
-                              color: '#111827',
+                              color: 'var(--text-title)',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -1029,12 +1029,12 @@ export default function StockAdjustment({ setTab }) {
             onClick={(e) => e.stopPropagation()}
           >
             {/* MODAL HEADER */}
-            <div className="modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#111827', margin: 0 }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)', margin: 0 }}>
                   New Stock Adjustment
                 </h3>
-                <p style={{ fontSize: '0.8rem', color: '#6B7280', margin: '3px 0 0 0' }}>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
                   Log a stock change with mandatory audit reason
                 </p>
               </div>
@@ -1213,9 +1213,9 @@ export default function StockAdjustment({ setTab }) {
             style={{ maxWidth: '520px', width: '96%', borderRadius: '14px' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
+            <div className="modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <div>
-                <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#111827', margin: 0 }}>
+                <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-title)', margin: 0 }}>
                   Adjustment Audit Details
                 </h3>
                 <span className="mono" style={{ fontSize: '13px', color: '#0F766E', fontWeight: 700 }}>
@@ -1247,19 +1247,19 @@ export default function StockAdjustment({ setTab }) {
                   width: '38px',
                   height: '38px',
                   borderRadius: '6px',
-                  background: '#ffffff',
-                  border: '1px solid #E5E7EB',
+                  background: 'var(--hover-bg)',
+                  border: '1px solid var(--border)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}>
-                  <Package size={20} color="#0284c7" />
+                  <Package size={20} color="var(--primary)" />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: '14px', color: '#111827' }}>
+                  <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-title)' }}>
                     {selectedAdjustment.product_name}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                     SKU: #{selectedAdjustment.sku || `ITM-${selectedAdjustment.product_id}`}
                     {selectedAdjustment.batch_no && ` • Batch: Lot #${selectedAdjustment.batch_no}`}
                   </div>
@@ -1268,15 +1268,15 @@ export default function StockAdjustment({ setTab }) {
 
               {/* Data Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }}>
-                <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '6px', border: '1px solid #F1F5F9' }}>
-                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Adjustment Type</div>
+                <div style={{ background: 'var(--hover-bg)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Adjustment Type</div>
                   <div style={{ marginTop: '4px' }}>
                     {renderTypeBadge(selectedAdjustment.type)}
                   </div>
                 </div>
 
-                <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '6px', border: '1px solid #F1F5F9' }}>
-                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Quantity Adjusted</div>
+                <div style={{ background: 'var(--hover-bg)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Quantity Adjusted</div>
                   <div style={{
                     marginTop: '4px',
                     fontWeight: 700,
@@ -1287,16 +1287,16 @@ export default function StockAdjustment({ setTab }) {
                   </div>
                 </div>
 
-                <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '6px', border: '1px solid #F1F5F9' }}>
-                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Event Timestamp</div>
-                  <div style={{ marginTop: '4px', fontWeight: 600, color: '#1E293B' }}>
+                <div style={{ background: 'var(--hover-bg)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Event Timestamp</div>
+                  <div style={{ marginTop: '4px', fontWeight: 600, color: 'var(--text-title)' }}>
                     {formatDateTime(selectedAdjustment.created_at)}
                   </div>
                 </div>
 
-                <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '6px', border: '1px solid #F1F5F9' }}>
-                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, textTransform: 'uppercase' }}>Audited By</div>
-                  <div style={{ marginTop: '4px', fontWeight: 600, color: '#1E293B' }}>
+                <div style={{ background: 'var(--hover-bg)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Audited By</div>
+                  <div style={{ marginTop: '4px', fontWeight: 600, color: 'var(--text-title)' }}>
                     {selectedAdjustment.user_name || 'Staff Member'}
                   </div>
                 </div>
@@ -1304,16 +1304,16 @@ export default function StockAdjustment({ setTab }) {
 
               {/* Reason / Justification */}
               <div>
-                <div style={{ fontSize: '12px', color: '#4B5563', fontWeight: 600, marginBottom: '6px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '6px' }}>
                   Audit Justification / Mandatory Reason:
                 </div>
                 <div style={{
                   padding: '12px 14px',
-                  background: '#FFFBEB',
-                  border: '1px solid #FDE68A',
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
                   borderRadius: '8px',
                   fontSize: '13px',
-                  color: '#92400E',
+                  color: '#fbbf24',
                   lineHeight: 1.5
                 }}>
                   {selectedAdjustment.reason || 'No justification specified.'}
@@ -1321,7 +1321,7 @@ export default function StockAdjustment({ setTab }) {
               </div>
             </div>
 
-            <div className="modal-footer" style={{ padding: '14px 20px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div className="modal-footer" style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button
                 type="button"
                 onClick={() => copyRefToClipboard(selectedAdjustment.adjustment_no)}

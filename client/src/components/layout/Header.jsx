@@ -27,7 +27,8 @@ import {
   Layers,
   Sun,
   Moon,
-  Sliders
+  Sliders,
+  Check
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../utils/api';
@@ -232,18 +233,24 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              color: '#6B7280',
+              color: 'var(--text-muted)',
               padding: 0,
-              transition: 'background 0.15s ease'
+              transition: 'background 0.15s ease, color 0.15s ease'
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#F4F6F9'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--hover-bg)';
+              e.currentTarget.style.color = 'var(--text-title)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = 'var(--text-muted)';
+            }}
           >
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'transform 280ms cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: 'transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1)',
               transform: sidebarCollapsed ? 'rotate(180deg)' : 'rotate(0deg)'
             }}>
               <PanelLeftClose size={16} />
@@ -285,54 +292,91 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                   className="btn btn-secondary btn-sm"
                   title={`Theme: ${currentTh.name}. Click to switch theme.`}
                   aria-label="Toggle visual theme"
+                  data-keep-icon="true"
                   style={{
                     padding: '0 10px',
-                    height: '32px',
+                    height: '34px',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px',
+                    gap: '7px',
                     borderRadius: '8px',
                     background: 'var(--bg-card)',
                     border: '1px solid var(--border)',
-                    color: 'var(--text-value)',
+                    color: 'var(--text-title)',
                     cursor: 'pointer',
-                    fontSize: '0.8rem'
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    boxShadow: 'var(--shadow-xs, 0 1px 2px rgba(0,0,0,0.04))',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)';
+                    e.currentTarget.style.background = 'var(--hover-bg)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.background = 'var(--bg-card)';
                   }}
                 >
-                  <span
+                  <span style={{ fontSize: '14px', lineHeight: 1 }}>{currentTh.icon}</span>
+                  <span className="hide-mobile" style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-title)' }}>
+                    {currentTh.name}
+                  </span>
+                  <ChevronDown
+                    size={13}
+                    color="var(--text-muted)"
                     style={{
-                      width: '11px',
-                      height: '11px',
-                      borderRadius: '50%',
-                      background: currentTh.color,
-                      display: 'inline-block',
-                      flexShrink: 0,
-                      boxShadow: '0 0 0 1.5px rgba(0,0,0,0.1)'
+                      transition: 'transform 0.2s ease',
+                      transform: themeMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)'
                     }}
                   />
-                  <ChevronDown size={12} color="var(--text-muted)" />
                 </button>
               );
             })()}
 
             {themeMenuOpen && (
-              <div style={{
-                position: 'absolute',
-                right: 0,
-                top: 'calc(100% + 6px)',
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border)',
-                borderRadius: '10px',
-                boxShadow: 'var(--shadow-card)',
-                width: '235px',
-                padding: '6px',
-                zIndex: 1200,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '3px'
-              }}>
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', padding: '4px 8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Choose Theme
+              <div
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 'calc(100% + 6px)',
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '12px',
+                  boxShadow: '0 16px 36px -4px rgba(0, 0, 0, 0.3), 0 6px 16px -4px rgba(0, 0, 0, 0.15)',
+                  minWidth: '290px',
+                  padding: '8px',
+                  zIndex: 1200,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{
+                  fontSize: '0.6875rem',
+                  fontWeight: 700,
+                  color: 'var(--text-muted)',
+                  padding: '4px 10px 6px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderBottom: '1px solid var(--border)',
+                  marginBottom: '2px'
+                }}>
+                  <span>System Appearance Theme</span>
+                  <span style={{
+                    fontSize: '10px',
+                    padding: '1px 6px',
+                    borderRadius: '999px',
+                    background: 'var(--hover-bg)',
+                    color: 'var(--text-muted)',
+                    fontWeight: 600
+                  }}>
+                    4 Themes
+                  </span>
                 </div>
                 {APP_THEMES.map(th => {
                   const isActive = th.id === theme;
@@ -340,6 +384,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                     <button
                       key={th.id}
                       type="button"
+                      data-keep-icon="true"
                       onClick={() => {
                         applyAppTheme(th.id);
                         setTheme(th.id);
@@ -349,35 +394,60 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '7px 8px',
-                        borderRadius: '6px',
-                        border: isActive ? `1.5px solid ${th.color}` : '1px solid transparent',
-                        background: isActive ? 'var(--bg-sidebar-active)' : 'transparent',
-                        color: isActive ? 'var(--text-sidebar-active)' : 'var(--text-value)',
+                        padding: '9px 12px',
+                        borderRadius: '8px',
+                        border: isActive ? `1px solid var(--primary)` : '1px solid transparent',
+                        background: isActive ? 'var(--primary)' : 'transparent',
+                        color: isActive ? 'var(--primary-text, #ffffff)' : 'var(--text-title)',
                         cursor: 'pointer',
                         textAlign: 'left',
                         width: '100%',
-                        transition: 'background 0.12s'
+                        transition: 'all 0.15s ease',
+                        fontSize: '0.8125rem',
+                        fontWeight: isActive ? 700 : 500,
+                        boxShadow: isActive ? '0 2px 8px -1px rgba(0, 0, 0, 0.2)' : 'none'
                       }}
-                      onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--bg-table-head)'; }}
-                      onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = 'var(--hover-bg)';
+                          e.currentTarget.style.color = 'var(--text-title)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.color = 'var(--text-title)';
+                        }
+                      }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{
-                          width: '12px',
-                          height: '12px',
-                          borderRadius: '50%',
-                          background: th.color,
-                          display: 'inline-block',
-                          flexShrink: 0,
-                          boxShadow: '0 0 0 1px rgba(0,0,0,0.1)'
-                        }} />
-                        <div>
-                          <div style={{ fontSize: '0.8rem', fontWeight: isActive ? 700 : 600 }}>{th.name}</div>
-                          <div style={{ fontSize: '0.67rem', color: 'var(--text-muted)' }}>{th.desc}</div>
-                        </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                        <span style={{ fontSize: '15px', lineHeight: 1 }}>{th.icon}</span>
+                        <span style={{ fontSize: '0.8125rem' }}>{th.name}</span>
                       </div>
-                      {isActive && <span style={{ color: th.color, fontWeight: 800, fontSize: '0.85rem' }}>✓</span>}
+                      {isActive ? (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: 'rgba(255, 255, 255, 0.25)'
+                        }}>
+                          <Check size={13} color="#ffffff" strokeWidth={3} />
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: th.color,
+                            display: 'inline-block',
+                            opacity: 0.8
+                          }}
+                        />
+                      )}
                     </button>
                   );
                 })}
@@ -506,7 +576,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
           )}
 
           {/* Divider */}
-          <div style={{ width: '1px', height: '22px', background: '#e2e8f0', margin: '0 2px' }} />
+          <div style={{ width: '1px', height: '22px', background: 'var(--border, #e2e8f0)', margin: '0 2px' }} />
 
           {/* TOP-RIGHT USER PROFILE TRIGGER */}
           <div style={{ position: 'relative' }} ref={userMenuRef}>
@@ -518,8 +588,8 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                 gap: '0.5rem',
                 padding: '3px 8px 3px 4px',
                 borderRadius: '8px',
-                background: userMenuOpen ? '#f1f5f9' : 'transparent',
-                border: userMenuOpen ? '1px solid #cbd5e1' : '1px solid transparent',
+                background: userMenuOpen ? 'var(--hover-bg, #f1f5f9)' : 'transparent',
+                border: userMenuOpen ? '1px solid var(--border, #cbd5e1)' : '1px solid transparent',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
               }}
@@ -550,7 +620,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                   height: '8px',
                   borderRadius: '50%',
                   background: '#10b981',
-                  border: '1.5px solid #ffffff'
+                  border: '1.5px solid var(--bg-card, #ffffff)'
                 }} />
               </div>
 
@@ -559,7 +629,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                 <span style={{
                   fontSize: '0.8rem',
                   fontWeight: 700,
-                  color: '#0f172a',
+                  color: 'var(--text-title, #0f172a)',
                   lineHeight: 1.2,
                   maxWidth: '130px',
                   whiteSpace: 'nowrap',
@@ -568,14 +638,14 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                 }}>
                   {user?.full_name || user?.username}
                 </span>
-                <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted, #64748b)', textTransform: 'uppercase', fontWeight: 600 }}>
                   {roleLabel}
                 </span>
               </div>
 
               <ChevronDown
                 size={14}
-                color="#64748b"
+                color="var(--text-muted, #64748b)"
                 style={{
                   transform: userMenuOpen ? 'rotate(180deg)' : 'none',
                   transition: 'transform 0.15s ease',
@@ -595,10 +665,10 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                   width: '260px',
                   maxHeight: 'calc(100vh - 75px)',
                   overflowY: 'auto',
-                  background: '#FFFFFF',
-                  border: '1px solid #E5E7EB',
+                  background: 'var(--dropdown-bg, var(--bg-card, #FFFFFF))',
+                  border: '1px solid var(--border, #E5E7EB)',
                   borderRadius: '14px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
+                  boxShadow: 'var(--shadow-card, 0 8px 24px rgba(0,0,0,0.15))',
                   padding: '8px',
                   zIndex: 1000,
                   boxSizing: 'border-box',
@@ -609,11 +679,11 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                 <div
                   style={{
                     padding: '12px 12px 10px',
-                    background: '#F8FAFC',
+                    background: 'var(--hover-bg, #F8FAFC)',
                     borderRadius: '10px',
                     margin: '4px',
                     marginBottom: '8px',
-                    border: '1px solid #F1F5F9'
+                    border: '1px solid var(--border, #F1F5F9)'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -641,7 +711,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                         style={{
                           fontSize: '14px',
                           fontWeight: 700,
-                          color: '#111827',
+                          color: 'var(--text-title, #111827)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -653,7 +723,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       <div
                         style={{
                           fontSize: '12px',
-                          color: '#6B7280',
+                          color: 'var(--text-muted, #6B7280)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -674,9 +744,9 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                         textTransform: 'uppercase',
                         padding: '2px 7px',
                         borderRadius: '9999px',
-                        border: '1px solid #E5E7EB',
-                        color: '#374151',
-                        background: '#FFFFFF'
+                        border: '1px solid var(--border, #E5E7EB)',
+                        color: 'var(--text-value, #374151)',
+                        background: 'var(--bg-card, #FFFFFF)'
                       }}
                     >
                       {roleLabel || 'ADMINISTRATOR'}
@@ -707,7 +777,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                     style={{
                       marginTop: '8px',
                       paddingTop: '6px',
-                      borderTop: '1px solid #E5E7EB',
+                      borderTop: '1px solid var(--border, #E5E7EB)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -720,7 +790,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                         style={{
                           fontSize: '12px',
                           fontWeight: 600,
-                          color: '#374151',
+                          color: 'var(--text-title, #374151)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis'
@@ -735,8 +805,8 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                         fontSize: '11px',
                         fontWeight: 600,
                         color: '#0F766E',
-                        background: '#F0FDFA',
-                        border: '1px solid #CCFBF1',
+                        background: 'rgba(15, 118, 110, 0.15)',
+                        border: '1px solid rgba(15, 118, 110, 0.3)',
                         borderRadius: '9999px',
                         padding: '1px 7px',
                         flexShrink: 0
@@ -751,7 +821,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                     style={{
                       marginTop: '6px',
                       fontSize: '11px',
-                      color: '#6B7280',
+                      color: 'var(--text-muted, #6B7280)',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '5px'
@@ -773,7 +843,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                     style={{
                       fontSize: '10px',
                       fontWeight: 700,
-                      color: '#9CA3AF',
+                      color: 'var(--text-muted, #9CA3AF)',
                       letterSpacing: '0.05em',
                       padding: '6px 10px 2px',
                       textTransform: 'uppercase'
@@ -790,7 +860,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       padding: '0 10px',
                       borderRadius: '8px',
                       fontSize: '13px',
-                      color: '#374151',
+                      color: 'var(--text-value, #374151)',
                       background: 'transparent',
                       border: 'none',
                       cursor: 'pointer',
@@ -802,19 +872,19 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       transition: 'all 0.15s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#F4F6F9';
-                      e.currentTarget.style.color = '#111827';
+                      e.currentTarget.style.background = 'var(--hover-bg, #F4F6F9)';
+                      e.currentTarget.style.color = 'var(--primary, #0F766E)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#0F766E';
+                      if (svg) svg.style.color = 'var(--primary, #0F766E)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#374151';
+                      e.currentTarget.style.color = 'var(--text-value, #374151)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#9CA3AF';
+                      if (svg) svg.style.color = 'var(--text-muted, #9CA3AF)';
                     }}
                   >
-                    <User size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <User size={16} color="var(--text-muted, #9CA3AF)" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
                     <span style={{ flex: 1 }}>My Profile</span>
                   </button>
 
@@ -826,7 +896,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       padding: '0 10px',
                       borderRadius: '8px',
                       fontSize: '13px',
-                      color: '#374151',
+                      color: 'var(--text-value, #374151)',
                       background: 'transparent',
                       border: 'none',
                       cursor: 'pointer',
@@ -838,29 +908,29 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       transition: 'all 0.15s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#F4F6F9';
-                      e.currentTarget.style.color = '#111827';
+                      e.currentTarget.style.background = 'var(--hover-bg, #F4F6F9)';
+                      e.currentTarget.style.color = 'var(--primary, #0F766E)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#0F766E';
+                      if (svg) svg.style.color = 'var(--primary, #0F766E)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#374151';
+                      e.currentTarget.style.color = 'var(--text-value, #374151)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#9CA3AF';
+                      if (svg) svg.style.color = 'var(--text-muted, #9CA3AF)';
                     }}
                   >
-                    <KeyRound size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <KeyRound size={16} color="var(--text-muted, #9CA3AF)" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
                     <span style={{ flex: 1 }}>Change Password</span>
                   </button>
 
                   {/* Divider label: BUSINESS */}
-                  <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
+                  <div style={{ height: '1px', background: 'var(--border, #F1F5F9)', margin: '4px 0' }} />
                   <div
                     style={{
                       fontSize: '10px',
                       fontWeight: 700,
-                      color: '#9CA3AF',
+                      color: 'var(--text-muted, #9CA3AF)',
                       letterSpacing: '0.05em',
                       padding: '4px 10px 2px',
                       textTransform: 'uppercase'
@@ -880,7 +950,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       padding: '0 10px',
                       borderRadius: '8px',
                       fontSize: '13px',
-                      color: '#374151',
+                      color: 'var(--text-value, #374151)',
                       background: 'transparent',
                       border: 'none',
                       cursor: 'pointer',
@@ -892,19 +962,19 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       transition: 'all 0.15s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#F4F6F9';
-                      e.currentTarget.style.color = '#111827';
+                      e.currentTarget.style.background = 'var(--hover-bg, #F4F6F9)';
+                      e.currentTarget.style.color = 'var(--primary, #0F766E)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#0F766E';
+                      if (svg) svg.style.color = 'var(--primary, #0F766E)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#374151';
+                      e.currentTarget.style.color = 'var(--text-value, #374151)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#9CA3AF';
+                      if (svg) svg.style.color = 'var(--text-muted, #9CA3AF)';
                     }}
                   >
-                    <Sliders size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <Sliders size={16} color="var(--text-muted, #9CA3AF)" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
                     <span style={{ flex: 1 }}>Shop Settings</span>
                   </button>
 
@@ -916,7 +986,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       padding: '0 10px',
                       borderRadius: '8px',
                       fontSize: '13px',
-                      color: '#374151',
+                      color: 'var(--text-value, #374151)',
                       background: 'transparent',
                       border: 'none',
                       cursor: 'pointer',
@@ -928,19 +998,19 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       transition: 'all 0.15s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#F4F6F9';
-                      e.currentTarget.style.color = '#111827';
+                      e.currentTarget.style.background = 'var(--hover-bg, #F4F6F9)';
+                      e.currentTarget.style.color = 'var(--primary, #0F766E)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#0F766E';
+                      if (svg) svg.style.color = 'var(--primary, #0F766E)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#374151';
+                      e.currentTarget.style.color = 'var(--text-value, #374151)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#9CA3AF';
+                      if (svg) svg.style.color = 'var(--text-muted, #9CA3AF)';
                     }}
                   >
-                    <Users size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <Users size={16} color="var(--text-muted, #9CA3AF)" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
                     <span style={{ flex: 1 }}>Staff & Access</span>
                   </button>
 
@@ -952,7 +1022,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       padding: '0 10px',
                       borderRadius: '8px',
                       fontSize: '13px',
-                      color: '#374151',
+                      color: 'var(--text-value, #374151)',
                       background: 'transparent',
                       border: 'none',
                       cursor: 'pointer',
@@ -964,29 +1034,29 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       transition: 'all 0.15s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#F4F6F9';
-                      e.currentTarget.style.color = '#111827';
+                      e.currentTarget.style.background = 'var(--hover-bg, #F4F6F9)';
+                      e.currentTarget.style.color = 'var(--primary, #0F766E)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#0F766E';
+                      if (svg) svg.style.color = 'var(--primary, #0F766E)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#374151';
+                      e.currentTarget.style.color = 'var(--text-value, #374151)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#9CA3AF';
+                      if (svg) svg.style.color = 'var(--text-muted, #9CA3AF)';
                     }}
                   >
-                    <BarChart3 size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <BarChart3 size={16} color="var(--text-muted, #9CA3AF)" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
                     <span style={{ flex: 1 }}>My Plan & Billing</span>
                   </button>
 
                   {/* Divider label: SUPPORT */}
-                  <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
+                  <div style={{ height: '1px', background: 'var(--border, #F1F5F9)', margin: '4px 0' }} />
                   <div
                     style={{
                       fontSize: '10px',
                       fontWeight: 700,
-                      color: '#9CA3AF',
+                      color: 'var(--text-muted, #9CA3AF)',
                       letterSpacing: '0.05em',
                       padding: '4px 10px 2px',
                       textTransform: 'uppercase'
@@ -1006,7 +1076,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       padding: '0 10px',
                       borderRadius: '8px',
                       fontSize: '13px',
-                      color: '#374151',
+                      color: 'var(--text-value, #374151)',
                       background: 'transparent',
                       border: 'none',
                       cursor: 'pointer',
@@ -1018,19 +1088,19 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       transition: 'all 0.15s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#F4F6F9';
-                      e.currentTarget.style.color = '#111827';
+                      e.currentTarget.style.background = 'var(--hover-bg, #F4F6F9)';
+                      e.currentTarget.style.color = 'var(--primary, #0F766E)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#0F766E';
+                      if (svg) svg.style.color = 'var(--primary, #0F766E)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#374151';
+                      e.currentTarget.style.color = 'var(--text-value, #374151)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#9CA3AF';
+                      if (svg) svg.style.color = 'var(--text-muted, #9CA3AF)';
                     }}
                   >
-                    <BookOpen size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <BookOpen size={16} color="var(--text-muted, #9CA3AF)" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
                     <span style={{ flex: 1 }}>Help & Docs</span>
                   </button>
 
@@ -1045,7 +1115,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       padding: '0 10px',
                       borderRadius: '8px',
                       fontSize: '13px',
-                      color: '#374151',
+                      color: 'var(--text-value, #374151)',
                       background: 'transparent',
                       border: 'none',
                       cursor: 'pointer',
@@ -1057,19 +1127,19 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       transition: 'all 0.15s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#F4F6F9';
-                      e.currentTarget.style.color = '#111827';
+                      e.currentTarget.style.background = 'var(--hover-bg, #F4F6F9)';
+                      e.currentTarget.style.color = 'var(--primary, #0F766E)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#0F766E';
+                      if (svg) svg.style.color = 'var(--primary, #0F766E)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#374151';
+                      e.currentTarget.style.color = 'var(--text-value, #374151)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#9CA3AF';
+                      if (svg) svg.style.color = 'var(--text-muted, #9CA3AF)';
                     }}
                   >
-                    <MessageSquare size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <MessageSquare size={16} color="var(--text-muted, #9CA3AF)" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
                     <span style={{ flex: 1 }}>Contact Support</span>
                   </button>
 
@@ -1084,7 +1154,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       padding: '0 10px',
                       borderRadius: '8px',
                       fontSize: '13px',
-                      color: '#374151',
+                      color: 'var(--text-value, #374151)',
                       background: 'transparent',
                       border: 'none',
                       cursor: 'pointer',
@@ -1096,24 +1166,24 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       transition: 'all 0.15s ease'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#F4F6F9';
-                      e.currentTarget.style.color = '#111827';
+                      e.currentTarget.style.background = 'var(--hover-bg, #F4F6F9)';
+                      e.currentTarget.style.color = 'var(--primary, #0F766E)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#0F766E';
+                      if (svg) svg.style.color = 'var(--primary, #0F766E)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#374151';
+                      e.currentTarget.style.color = 'var(--text-value, #374151)';
                       const svg = e.currentTarget.querySelector('svg');
-                      if (svg) svg.style.color = '#9CA3AF';
+                      if (svg) svg.style.color = 'var(--text-muted, #9CA3AF)';
                     }}
                   >
-                    <Bug size={16} color="#9CA3AF" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
+                    <Bug size={16} color="var(--text-muted, #9CA3AF)" style={{ flexShrink: 0, transition: 'color 0.15s ease' }} />
                     <span style={{ flex: 1 }}>Report a Bug</span>
                   </button>
 
                   {/* Divider before Sign Out */}
-                  <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
+                  <div style={{ height: '1px', background: 'var(--border, #F1F5F9)', margin: '4px 0' }} />
 
                   {/* [→ Sign Out] Color: #DC2626 (red) */}
                   <button
@@ -1139,7 +1209,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                       textAlign: 'left',
                       transition: 'all 0.15s ease'
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#FEF2F2')}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(220, 38, 38, 0.12)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
                     <LogOut size={16} color="#DC2626" style={{ flexShrink: 0 }} />

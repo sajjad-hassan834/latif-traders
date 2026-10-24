@@ -148,21 +148,16 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
     <aside className={`sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
       {/* BRAND LOGO HEADER */}
       <div className="sidebar-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: 1, minWidth: 0 }}>
-          <div className="brand-icon" style={{ flexShrink: 0, background: 'transparent', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="sidebar-header-inner">
+          <div className="brand-icon">
             <TenantLogo tenant={tenant} size={32} />
           </div>
-          <div className="brand-text" style={{ minWidth: 0, overflow: 'hidden' }}>
-            <h2 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.95rem', margin: 0 }} title={shopDisplayName}>
+          <div className="brand-text">
+            <h2 title={shopDisplayName}>
               {shopDisplayName}
             </h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
-              <span style={{
-                fontSize: '9px',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                padding: '1px 6px',
-                borderRadius: '4px',
+            <div className="brand-badge-wrap">
+              <span className="brand-plan-badge" style={{
                 background: plan === 'pro' ? 'rgba(56, 189, 248, 0.2)' : (plan === 'enterprise' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(148, 163, 184, 0.2)'),
                 color: plan === 'pro' ? '#38bdf8' : (plan === 'enterprise' ? '#c084fc' : '#94a3b8'),
                 border: `1px solid ${plan === 'pro' ? 'rgba(56, 189, 248, 0.4)' : (plan === 'enterprise' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(148, 163, 184, 0.3)')}`
@@ -183,8 +178,6 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
         </button>
       </div>
 
-
-
       {/* NAVIGATION ITEMS */}
       <nav className="sidebar-nav" style={{ paddingBottom: '0.5rem', flex: 1 }}>
         {visibleSections.map((section, idx) => {
@@ -193,28 +186,26 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
 
           return (
             <div key={idx} className="sidebar-section">
-              {!isCollapsed ? (
-                <button
-                  type="button"
-                  onClick={() => toggleSection(section.title)}
-                  className={`sidebar-section-header-btn ${hasActiveItem ? 'has-active' : ''}`}
-                  title={`Click to ${isSectionCollapsed ? 'expand' : 'collapse'} ${section.title}`}
-                  aria-expanded={!isSectionCollapsed}
-                >
-                  <div className="sidebar-section-title-wrap">
-                    <span className="sidebar-section-title">{section.title}</span>
-                    {hasActiveItem && isSectionCollapsed && (
-                      <span className="sidebar-active-dot" title="Active item inside" />
-                    )}
-                  </div>
-                  <ChevronDown
-                    size={12}
-                    className={`sidebar-section-chevron ${isSectionCollapsed ? 'collapsed' : ''}`}
-                  />
-                </button>
-              ) : (
-                idx > 0 && <div className="sidebar-rail-divider" key={`div-${idx}`} />
-              )}
+              <button
+                type="button"
+                onClick={() => !isCollapsed && toggleSection(section.title)}
+                className={`sidebar-section-header-btn ${hasActiveItem ? 'has-active' : ''}`}
+                title={!isCollapsed ? `Click to ${isSectionCollapsed ? 'expand' : 'collapse'} ${section.title}` : undefined}
+                aria-expanded={!isSectionCollapsed}
+                tabIndex={isCollapsed ? -1 : 0}
+              >
+                <div className="sidebar-section-title-wrap">
+                  <span className="sidebar-section-title">{section.title}</span>
+                  {hasActiveItem && isSectionCollapsed && (
+                    <span className="sidebar-active-dot" title="Active item inside" />
+                  )}
+                </div>
+                <ChevronDown
+                  size={12}
+                  className={`sidebar-section-chevron ${isSectionCollapsed ? 'collapsed' : ''}`}
+                />
+              </button>
+              {idx > 0 && <div className="sidebar-rail-divider" key={`div-${idx}`} />}
 
               <div className={`sidebar-section-items ${isSectionCollapsed ? 'collapsed' : ''}`}>
                 {section.visibleItems.map(item => {
@@ -225,12 +216,14 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
                       key={item.id}
                       onClick={() => handleNavClick(item.id)}
                       className={`nav-item ${isActive ? 'active' : ''}`}
-                      title={!isCollapsed ? item.label : undefined}
+                      title={isCollapsed ? item.label : undefined}
                       aria-label={item.label}
                       data-tooltip={item.label}
                     >
-                      <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
-                      {!isCollapsed && <span>{item.label}</span>}
+                      <span className="nav-item-icon-wrap">
+                        <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
+                      </span>
+                      <span className="nav-item-label">{item.label}</span>
                     </button>
                   );
                 })}
