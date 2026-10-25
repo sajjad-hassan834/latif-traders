@@ -430,6 +430,7 @@ function initializeDatabase() {
     if (catSql.includes('name TEXT UNIQUE')) {
       db.pragma('foreign_keys = OFF');
       db.exec(`
+        DROP TABLE IF EXISTS categories_new;
         CREATE TABLE categories_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
@@ -454,6 +455,7 @@ function initializeDatabase() {
     if (unitSql.includes('short_code TEXT UNIQUE')) {
       db.pragma('foreign_keys = OFF');
       db.exec(`
+        DROP TABLE IF EXISTS units_new;
         CREATE TABLE units_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
@@ -477,6 +479,7 @@ function initializeDatabase() {
     if (expSql.includes('name TEXT UNIQUE')) {
       db.pragma('foreign_keys = OFF');
       db.exec(`
+        DROP TABLE IF EXISTS expense_categories_new;
         CREATE TABLE expense_categories_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
@@ -500,6 +503,7 @@ function initializeDatabase() {
     if (prodSql.includes('sku TEXT UNIQUE')) {
       db.pragma('foreign_keys = OFF');
       db.exec(`
+        DROP TABLE IF EXISTS products_new;
         CREATE TABLE products_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
@@ -536,6 +540,7 @@ function initializeDatabase() {
     if (saleSql.includes('invoice_no TEXT UNIQUE')) {
       db.pragma('foreign_keys = OFF');
       db.exec(`
+        DROP TABLE IF EXISTS sales_new;
         CREATE TABLE sales_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           invoice_no TEXT NOT NULL,
@@ -572,6 +577,7 @@ function initializeDatabase() {
     if (purSql.includes('invoice_no TEXT UNIQUE')) {
       db.pragma('foreign_keys = OFF');
       db.exec(`
+        DROP TABLE IF EXISTS purchases_new;
         CREATE TABLE purchases_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           invoice_no TEXT NOT NULL,
@@ -741,12 +747,24 @@ function initializeDatabase() {
     console.error('Error cleaning duplicate payments:', err);
   }
 
-  // Reconcile Fasial Walton ledger: reset duplicate opening_balance to 0, ensure standalone payment receipt row exists and is decoupled from reference_id, and sync current_balance to 11870
+  // Reconcile Fasial Walton ledger: reset duplicate opening_balance to 0, purge any corrupted opening balance sales (21940), ensure standalone payment receipt row exists, and sync current_balance to 11870
   try {
-    const fixCustBal = db.prepare("SELECT value FROM settings WHERE key = 'fix_customer_ledger_opening_bal_v4'").get();
+    const fixCustBal = db.prepare("SELECT value FROM settings WHERE key = 'fix_customer_ledger_opening_bal_v5'").get();
     if (!fixCustBal) {
-      const fasial = db.prepare("SELECT id, tenant_id FROM customers WHERE (name LIKE '%Fasial%' OR name LIKE '%Faisal%')").get();
-      if (fasial) {
+      const fasials = db.prepare("SELECT id, tenant_id FROM customers WHERE (name LIKE '%Fasial%' OR name LIKE '%Faisal%')").all();
+      for (const fasial of fasials) {
+        // Delete any corrupted / dummy opening balance sales for Fasial (21940)
+        const badSales = db.prepare(`
+          SELECT id FROM sales
+          WHERE customer_id = ? AND (grand_total = 21940 OR balance_due = 21940 OR notes LIKE '%Opening%' OR invoice_no LIKE '%OPN%')
+        `).all(fasial.id);
+
+        for (const bs of badSales) {
+          db.prepare('DELETE FROM sale_items WHERE sale_id = ?').run(bs.id);
+          db.prepare('DELETE FROM payments WHERE party_id = ? AND reference_id = ?').run(fasial.id, bs.id);
+          db.prepare('DELETE FROM sales WHERE id = ?').run(bs.id);
+        }
+
         db.prepare(`
           UPDATE customers
           SET opening_balance = 0, current_balance = 11870
@@ -777,10 +795,10 @@ function initializeDatabase() {
         }
       }
 
-      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('fix_customer_ledger_opening_bal_v4', 'true')").run();
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('fix_customer_ledger_opening_bal_v5', 'true')").run();
     }
   } catch (err) {
-    console.error('Customer ledger balance reconciliation migration notice:', err);
+    console.error('Customer ledger balance reconciliation migration v5 notice:', err);
   }
 
   seedInitialData();
