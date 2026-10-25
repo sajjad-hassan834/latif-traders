@@ -741,9 +741,9 @@ function initializeDatabase() {
     console.error('Error cleaning duplicate payments:', err);
   }
 
-  // Reconcile Fasial Walton ledger: reset duplicate opening_balance to 0, ensure standalone payment receipt row exists, and sync current_balance to 11870
+  // Reconcile Fasial Walton ledger: reset duplicate opening_balance to 0, ensure standalone payment receipt row exists and is decoupled from reference_id, and sync current_balance to 11870
   try {
-    const fixCustBal = db.prepare("SELECT value FROM settings WHERE key = 'fix_customer_ledger_opening_bal_v3'").get();
+    const fixCustBal = db.prepare("SELECT value FROM settings WHERE key = 'fix_customer_ledger_opening_bal_v4'").get();
     if (!fixCustBal) {
       const fasial = db.prepare("SELECT id, tenant_id FROM customers WHERE (name LIKE '%Fasial%' OR name LIKE '%Faisal%')").get();
       if (fasial) {
@@ -758,7 +758,18 @@ function initializeDatabase() {
           WHERE party_type = 'CUSTOMER' AND party_id = ? AND amount = 10540
         `).get(fasial.id);
 
-        if (!existingReceipt) {
+        if (existingReceipt) {
+          db.prepare(`
+            UPDATE payments
+            SET reference_id = NULL,
+                reference_no = 'REC-20261020-0001',
+                type = 'CUSTOMER_RECEIPT',
+                party_type = 'CUSTOMER',
+                party_id = ?,
+                payment_date = COALESCE(payment_date, '2026-10-20')
+            WHERE id = ?
+          `).run(fasial.id, existingReceipt.id);
+        } else {
           db.prepare(`
             INSERT INTO payments (tenant_id, type, party_type, party_id, reference_no, amount, payment_method, payment_date, notes)
             VALUES (?, 'CUSTOMER_RECEIPT', 'CUSTOMER', ?, 'REC-20261020-0001', 10540, 'Cash', '2026-10-20', 'Customer Udhaar Payment Received')
@@ -766,7 +777,7 @@ function initializeDatabase() {
         }
       }
 
-      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('fix_customer_ledger_opening_bal_v3', 'true')").run();
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('fix_customer_ledger_opening_bal_v4', 'true')").run();
     }
   } catch (err) {
     console.error('Customer ledger balance reconciliation migration notice:', err);

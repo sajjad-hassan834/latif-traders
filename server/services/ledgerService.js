@@ -113,9 +113,27 @@ function calculateCustomerLedger(customerId, tenantId, options = {}) {
     });
   }
 
-  // Standalone Payments & Receipts from `payments` table
-  // Only include payments that are NOT already recorded on the invoice row itself (i.e. reference_id is NULL/0 and not an INV- ref)
-  const standalonePayments = payments.filter(p => !p.reference_id && (!p.ref_no || !p.ref_no.startsWith('INV-')));
+  // Payments & Receipts from `payments` table
+  // Include all receipts EXCEPT initial POS checkout down-payments that are already
+  // represented directly on the sale invoice row (i.e. where ref_no starts with INV- or notes has 'POS Receipt')
+  const standalonePayments = payments.filter(p => {
+    // If it's a receipt voucher (REC-), it's ALWAYS a customer account payment:
+    if (p.ref_no && p.ref_no.startsWith('REC-')) return true;
+
+    // If it's explicitly labeled as the initial POS invoice checkout payment:
+    if (p.ref_no && p.ref_no.startsWith('INV-')) return false;
+    if (p.notes && p.notes.includes('POS Receipt for invoice')) return false;
+
+    // If reference_id is linked to a sale, check if that sale already counted this exact payment at POS checkout
+    if (p.reference_id) {
+      const linkedSale = sales.find(s => s.id === Number(p.reference_id));
+      if (linkedSale && Number(linkedSale.paid_amount) >= Number(p.amount) && linkedSale.date === p.date) {
+        return false; // Already credited on the sale invoice row itself
+      }
+    }
+
+    return true;
+  });
 
   for (const p of standalonePayments) {
     const pAmt = Number(p.amount) || 0;
@@ -315,7 +333,18 @@ function calculateSupplierLedger(supplierId, tenantId, options = {}) {
   }
 
   // Standalone Payments & Disbursements to Supplier
-  const standalonePayments = payments.filter(pay => !pay.reference_id && (!pay.ref_no || !pay.ref_no.startsWith('PUR-')));
+  const standalonePayments = payments.filter(pay => {
+    if (pay.ref_no && (pay.ref_no.startsWith('PAY-') || pay.ref_no.startsWith('REC-'))) return true;
+    if (pay.ref_no && pay.ref_no.startsWith('PUR-')) return false;
+    if (pay.notes && (pay.notes.includes('purchase bill') || pay.notes.includes('POS Receipt'))) return false;
+    if (pay.reference_id) {
+      const linkedPur = purchases.find(p => p.id === Number(pay.reference_id));
+      if (linkedPur && Number(linkedPur.paid_amount) >= Number(pay.amount) && linkedPur.date === pay.date) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   for (const pay of standalonePayments) {
     const pAmt = Number(pay.amount) || 0;
