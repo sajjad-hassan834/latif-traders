@@ -63,14 +63,14 @@ exports.updateCustomer = (req, res) => {
   try {
     const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
-    const { name, phone, address, customer_type, credit_limit, notes } = req.body;
+    const { name, phone, address, customer_type, credit_limit, opening_balance, notes } = req.body;
 
     const existing = db.prepare('SELECT * FROM customers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
     if (!existing) return res.status(404).json({ success: false, message: 'Customer not found.' });
 
     db.prepare(`
       UPDATE customers SET
-        name = ?, phone = ?, address = ?, customer_type = ?, credit_limit = ?, notes = ?
+        name = ?, phone = ?, address = ?, customer_type = ?, credit_limit = ?, opening_balance = ?, notes = ?
       WHERE id = ? AND tenant_id = ?
     `).run(
       name ? name.trim() : existing.name,
@@ -78,6 +78,7 @@ exports.updateCustomer = (req, res) => {
       address !== undefined ? address : existing.address,
       customer_type || existing.customer_type,
       credit_limit !== undefined ? Number(credit_limit) : existing.credit_limit,
+      opening_balance !== undefined ? Number(opening_balance) : existing.opening_balance,
       notes !== undefined ? notes : existing.notes,
       id,
       tenantId
@@ -209,20 +210,21 @@ exports.updateSupplier = (req, res) => {
   try {
     const tenantId = req.tenant_id || 'latif_001';
     const { id } = req.params;
-    const { name, phone, address, contact_person, notes } = req.body;
+    const { name, phone, address, contact_person, opening_balance, notes } = req.body;
 
     const existing = db.prepare('SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
     if (!existing) return res.status(404).json({ success: false, message: 'Supplier not found.' });
 
     db.prepare(`
       UPDATE suppliers SET
-        name = ?, phone = ?, address = ?, contact_person = ?, notes = ?
+        name = ?, phone = ?, address = ?, contact_person = ?, opening_balance = ?, notes = ?
       WHERE id = ? AND tenant_id = ?
     `).run(
       name ? name.trim() : existing.name,
       phone !== undefined ? phone : existing.phone,
       address !== undefined ? address : existing.address,
       contact_person !== undefined ? contact_person : existing.contact_person,
+      opening_balance !== undefined ? Number(opening_balance) : existing.opening_balance,
       notes !== undefined ? notes : existing.notes,
       id,
       tenantId

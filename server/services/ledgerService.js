@@ -48,7 +48,7 @@ function calculateCustomerLedger(customerId, tenantId, options = {}) {
   // Build unified chronological entry pool
   const rawEntries = [];
 
-  // Opening Balance
+  // Opening Balance (Account Starting Balance - NEVER counts as purchases)
   const opnBal = Number(customer.opening_balance) || 0;
   if (opnBal !== 0) {
     const isDebit = opnBal > 0;
@@ -59,8 +59,8 @@ function calculateCustomerLedger(customerId, tenantId, options = {}) {
       type: 'OPENING',
       debit: isDebit ? opnBal : 0,
       credit: !isDebit ? Math.abs(opnBal) : 0,
-      bill_amount: isDebit ? opnBal : 0,
-      received_amount: !isDebit ? Math.abs(opnBal) : 0,
+      bill_amount: 0,
+      received_amount: 0,
       notes: 'Initial account starting balance',
       payment_method: null,
       sort_order: 1
@@ -68,10 +68,11 @@ function calculateCustomerLedger(customerId, tenantId, options = {}) {
   }
 
   // Sales Invoices
-  // Map of sale id to sale row for reference
-  const salesMap = new Map();
+  // Each sale is a single complete transaction row:
+  // - Bill Amount = grand_total (debit)
+  // - Received = paid_amount (credit)
+  // - Net Debt Delta = grand_total - paid_amount (0 for settled cash sales, so running balance stays steady)
   for (const s of sales) {
-    salesMap.set(s.id, s);
     const grandTotal = Number(s.grand_total) || 0;
     const paidAmt = Number(s.paid_amount) || 0;
     const dueAmt = Number(s.balance_due) || 0;
@@ -98,121 +99,62 @@ function calculateCustomerLedger(customerId, tenantId, options = {}) {
       ref_no: s.ref_no,
       type: 'SALE_INVOICE',
       debit: grandTotal,
-      credit: 0, // Invoice itself only debits; payments are distinct credit rows
+      credit: paidAmt,
       bill_amount: grandTotal,
-      received_amount: 0,
+      received_amount: paidAmt,
       invoice_grand_total: grandTotal,
       invoice_paid: paidAmt,
       invoice_due: dueAmt,
       status_chip: statusChip,
       status_label: statusLabel,
       payment_method: s.payment_method,
-      notes: s.notes || (dueAmt > 0 ? `Credit Sale (₨ ${dueAmt.toLocaleString()} due)` : `Settled Sale`),
+      notes: s.notes || (dueAmt > 0 ? (paidAmt > 0 ? `Partial Payment` : `Credit Sale`) : `Settled Sale`),
       sort_order: 2
     });
   }
 
-  // Payments / Receipts
-  // Check which sales already have explicit payment rows in `payments`
-  const saleIdsWithPayments = new Set();
-  for (const p of payments) {
-    if (p.reference_id && p.type !== 'CUSTOMER_REFUND') {
-      saleIdsWithPayments.add(Number(p.reference_id));
-    }
-  }
+  // Standalone Payments & Receipts from `payments` table
+  // Only include payments that are NOT already recorded on the invoice row itself (i.e. reference_id is NULL/0 and not an INV- ref)
+  const standalonePayments = payments.filter(p => !p.reference_id && (!p.ref_no || !p.ref_no.startsWith('INV-')));
 
-  // Include explicit payment rows
-  for (const p of payments) {
+  for (const p of standalonePayments) {
     const pAmt = Number(p.amount) || 0;
     const isRefund = p.type === 'CUSTOMER_REFUND';
-    const linkedSale = p.reference_id ? salesMap.get(Number(p.reference_id)) : null;
 
     if (isRefund) {
       rawEntries.push({
         id: p.id,
         payment_id: p.id,
-        reference_id: p.reference_id || null,
+        reference_id: null,
         date: p.date,
-        ref_no: p.ref_no,
+        ref_no: p.ref_no || `REF-${p.id}`,
         type: 'CUSTOMER_REFUND',
-        debit: pAmt, // Refund paid to customer increases their receivable/debit
+        debit: pAmt,
         credit: 0,
         bill_amount: 0,
         received_amount: 0,
         payment_method: p.payment_method || 'Cash',
-        notes: p.notes || `Cash Refund paid on Return ${p.ref_no}`,
+        notes: p.notes || `Cash Refund paid to customer`,
         sort_order: 3
       });
       continue;
     }
 
-    let desc = p.notes || `Payment received - ${p.payment_method || 'Cash'}`;
-    let isExtraPayment = false;
-    let extraAmount = 0;
-
-    if (linkedSale) {
-      const saleTotal = Number(linkedSale.grand_total) || 0;
-      if (pAmt > saleTotal) {
-        isExtraPayment = true;
-        extraAmount = pAmt - saleTotal;
-        desc = `Payment received - ${p.payment_method || 'Cash'} (Bill ${linkedSale.ref_no} settled + ₨ ${extraAmount.toLocaleString()} extra applied to account)`;
-      } else {
-        desc = `Payment received - ${p.payment_method || 'Cash'} (Bill ${linkedSale.ref_no})`;
-      }
-    }
-
     rawEntries.push({
       id: p.id,
       payment_id: p.id,
-      reference_id: p.reference_id || null,
+      reference_id: null,
       date: p.date,
-      ref_no: p.ref_no,
+      ref_no: p.ref_no || `REC-${p.id}`,
       type: 'PAYMENT_RECEIPT',
       debit: 0,
       credit: pAmt,
       bill_amount: 0,
       received_amount: pAmt,
-      is_extra_payment: isExtraPayment,
-      extra_amount: extraAmount,
       payment_method: p.payment_method || 'Cash',
-      notes: desc,
+      notes: p.notes || `Direct Payment Received (${p.payment_method || 'Cash'})`,
       sort_order: 3
     });
-  }
-
-  // Backfill synthetic payment receipt rows for any legacy sales that have `paid_amount > 0`
-  // but were created before the dual-write to `payments` table was introduced.
-  for (const s of sales) {
-    const paidAmt = Number(s.paid_amount) || 0;
-    if (paidAmt > 0 && !saleIdsWithPayments.has(s.id)) {
-      const grandTotal = Number(s.grand_total) || 0;
-      let isExtraPayment = false;
-      let extraAmount = 0;
-      let desc = `Payment received - ${s.payment_method || 'Cash'} (Bill ${s.ref_no})`;
-      if (paidAmt > grandTotal) {
-        isExtraPayment = true;
-        extraAmount = paidAmt - grandTotal;
-        desc = `Payment received - ${s.payment_method || 'Cash'} (Bill ${s.ref_no} settled + ₨ ${extraAmount.toLocaleString()} extra applied to account)`;
-      }
-
-      rawEntries.push({
-        id: `legacy-sale-pay-${s.id}`,
-        payment_id: null,
-        reference_id: s.id,
-        date: s.date,
-        ref_no: `REC-${s.ref_no.replace('INV-', '')}`,
-        type: 'PAYMENT_RECEIPT',
-        debit: 0,
-        credit: paidAmt,
-        bill_amount: 0,
-        received_amount: paidAmt,
-        is_extra_payment: isExtraPayment,
-        extra_amount: extraAmount,
-        payment_method: s.payment_method || 'Cash',
-        notes: desc,
-        sort_order: 3
-      });
-    }
   }
 
   // Returns
@@ -255,8 +197,12 @@ function calculateCustomerLedger(customerId, tenantId, options = {}) {
   });
 
   // Overall totals across entire history
-  const totalBilled = fullChronologicalLedger.reduce((acc, l) => acc + (l.type === 'SALE_INVOICE' ? l.debit : (l.type === 'OPENING' && l.debit > 0 ? l.debit : 0)), 0);
-  const totalReceived = fullChronologicalLedger.reduce((acc, l) => acc + (l.type === 'PAYMENT_RECEIPT' ? l.credit : (l.type === 'OPENING' && l.credit > 0 ? l.credit : 0)), 0);
+  // Total Purchases MUST be the exact sum of all sales invoices (pure goods bought)
+  const totalPurchases = sales.reduce((acc, s) => acc + (Number(s.grand_total) || 0), 0);
+  const totalBilled = totalPurchases;
+  const totalPaidOnSales = sales.reduce((acc, s) => acc + (Number(s.paid_amount) || 0), 0);
+  const totalDirectReceipts = standalonePayments.reduce((acc, p) => acc + (p.type !== 'CUSTOMER_REFUND' ? (Number(p.amount) || 0) : 0), 0);
+  const totalReceived = totalPaidOnSales + totalDirectReceipts;
   const totalReturns = fullChronologicalLedger.reduce((acc, l) => acc + (l.type === 'SALE_RETURN' ? l.credit : 0), 0);
   const closingBalance = running;
 
@@ -277,13 +223,13 @@ function calculateCustomerLedger(customerId, tenantId, options = {}) {
     ledger: resultLedger,
     chronological_ledger: fullChronologicalLedger,
     summary: {
-      total_purchased: totalBilled,
-      total_billed: totalBilled,
+      total_purchased: totalPurchases,
+      total_billed: totalPurchases,
       total_paid: totalReceived,
       total_received: totalReceived,
       total_returns: totalReturns,
-      total_debit: totalBilled,
-      total_credit: totalReceived + totalReturns,
+      total_debit: (opnBal > 0 ? opnBal : 0) + totalPurchases,
+      total_credit: (opnBal < 0 ? Math.abs(opnBal) : 0) + totalReceived + totalReturns,
       closing_balance: closingBalance,
       pending_balance: closingBalance
     }
@@ -341,9 +287,12 @@ function calculateSupplierLedger(supplierId, tenantId, options = {}) {
   }
 
   // Purchases
-  const purchasesMap = new Map();
+  // Purchases
+  // Each purchase is a single complete row:
+  // - Bill Amount = grand_total (credit to supplier)
+  // - Paid Amount = paid_amount (debit to supplier)
+  // - Net Payable Delta = grand_total - paid_amount (0 for settled cash purchases)
   for (const p of purchases) {
-    purchasesMap.set(p.id, p);
     const grandTotal = Number(p.grand_total) || 0;
     const paidAmt = Number(p.paid_amount) || 0;
     const dueAmt = Number(p.balance_due) || 0;
@@ -354,66 +303,38 @@ function calculateSupplierLedger(supplierId, tenantId, options = {}) {
       date: p.date,
       ref_no: p.ref_no,
       type: 'PURCHASE_BILL',
-      debit: 0,
+      debit: paidAmt,
       credit: grandTotal,
       bill_amount: grandTotal,
-      paid_amount: 0,
+      paid_amount: paidAmt,
+      received_amount: paidAmt,
       balance_due: dueAmt,
-      notes: `Purchase Bill ${p.ref_no}${dueAmt > 0 ? ` (₨ ${dueAmt.toLocaleString()} due)` : ''}`,
+      notes: p.notes || (dueAmt > 0 ? (paidAmt > 0 ? `Partial Payment (₨ ${dueAmt.toLocaleString()} due)` : `Credit Purchase (₨ ${dueAmt.toLocaleString()} due)`) : `Settled Purchase (Paid in Full)`),
       sort_order: 2
     });
   }
 
-  // Payments to Supplier
-  const purchaseIdsWithPayments = new Set();
-  for (const pay of payments) {
-    if (pay.reference_id) {
-      purchaseIdsWithPayments.add(Number(pay.reference_id));
-    }
-  }
+  // Standalone Payments & Disbursements to Supplier
+  const standalonePayments = payments.filter(pay => !pay.reference_id && (!pay.ref_no || !pay.ref_no.startsWith('PUR-')));
 
-  for (const pay of payments) {
+  for (const pay of standalonePayments) {
     const pAmt = Number(pay.amount) || 0;
-    const linkedPurchase = pay.reference_id ? purchasesMap.get(Number(pay.reference_id)) : null;
-
-    let desc = pay.notes || `Payment to supplier - ${pay.payment_method || 'Cash'}`;
-    if (linkedPurchase) {
-      desc = `Payment to supplier (${linkedPurchase.ref_no})`;
-    }
 
     rawEntries.push({
       id: pay.id,
       payment_id: pay.id,
-      reference_id: pay.reference_id || null,
+      reference_id: null,
       date: pay.date,
-      ref_no: pay.ref_no,
+      ref_no: pay.ref_no || `PAY-${pay.id}`,
       type: 'SUPPLIER_PAYMENT',
       debit: pAmt,
       credit: 0,
+      bill_amount: 0,
       received_amount: pAmt,
-      notes: desc,
+      payment_method: pay.payment_method || 'Cash',
+      notes: pay.notes || `Disbursement to Supplier (${pay.payment_method || 'Cash'})`,
       sort_order: 3
     });
-  }
-
-  // Backfill synthetic payments for any legacy purchases where paid_amount > 0 and no row in payments
-  for (const p of purchases) {
-    const paidAmt = Number(p.paid_amount) || 0;
-    if (paidAmt > 0 && !purchaseIdsWithPayments.has(p.id)) {
-      rawEntries.push({
-        id: `legacy-purchase-pay-${p.id}`,
-        payment_id: null,
-        reference_id: p.id,
-        date: p.date,
-        ref_no: `PAY-${p.ref_no.replace('PUR-', '')}`,
-        type: 'SUPPLIER_PAYMENT',
-        debit: paidAmt,
-        credit: 0,
-        received_amount: paidAmt,
-        notes: `Payment on purchase ${p.ref_no}`,
-        sort_order: 3
-      });
-    }
   }
 
   // Returns to Supplier
@@ -427,6 +348,8 @@ function calculateSupplierLedger(supplierId, tenantId, options = {}) {
       type: 'PURCHASE_RETURN',
       debit: rAmt,
       credit: 0,
+      bill_amount: 0,
+      received_amount: 0,
       notes: r.notes || 'Purchase return credit',
       sort_order: 4
     });
@@ -451,8 +374,11 @@ function calculateSupplierLedger(supplierId, tenantId, options = {}) {
     };
   });
 
-  const totalBilled = fullChronologicalLedger.reduce((acc, l) => acc + (l.type === 'PURCHASE_BILL' ? l.credit : (l.type === 'OPENING' && l.credit > 0 ? l.credit : 0)), 0);
-  const totalPaid = fullChronologicalLedger.reduce((acc, l) => acc + (l.type === 'SUPPLIER_PAYMENT' ? l.debit : (l.type === 'OPENING' && l.debit > 0 ? l.debit : 0)), 0);
+  const totalPurchases = purchases.reduce((acc, p) => acc + (Number(p.grand_total) || 0), 0);
+  const totalBilled = totalPurchases;
+  const totalPaidOnPurchases = purchases.reduce((acc, p) => acc + (Number(p.paid_amount) || 0), 0);
+  const totalDirectPayments = standalonePayments.reduce((acc, pay) => acc + (Number(pay.amount) || 0), 0);
+  const totalPaid = totalPaidOnPurchases + totalDirectPayments;
   const totalReturns = fullChronologicalLedger.reduce((acc, l) => acc + (l.type === 'PURCHASE_RETURN' ? l.debit : 0), 0);
   const closingBalance = running;
 
@@ -472,12 +398,12 @@ function calculateSupplierLedger(supplierId, tenantId, options = {}) {
     ledger: resultLedger,
     chronological_ledger: fullChronologicalLedger,
     summary: {
-      total_purchased: totalBilled,
-      total_billed: totalBilled,
+      total_purchased: totalPurchases,
+      total_billed: totalPurchases,
       total_paid: totalPaid,
       total_returns: totalReturns,
-      total_credit: totalBilled,
-      total_debit: totalPaid + totalReturns,
+      total_credit: (opnBal > 0 ? opnBal : 0) + totalPurchases,
+      total_debit: (opnBal < 0 ? Math.abs(opnBal) : 0) + totalPaid + totalReturns,
       closing_balance: closingBalance,
       pending_balance: closingBalance
     }

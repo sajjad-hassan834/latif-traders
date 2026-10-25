@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import Pagination from '../components/common/Pagination';
 import ActionMenu from '../components/common/ActionMenu';
 import CustomDatePicker from '../components/common/CustomDatePicker';
+import ReceiptVoucherModal from '../components/invoices/ReceiptVoucherModal';
 
 export default function Suppliers() {
   const { user, isAdmin: authIsAdmin } = useAuth();
@@ -32,9 +33,18 @@ export default function Suppliers() {
   const [ledgerData, setLedgerData] = useState(null);
   const [actionMenuId, setActionMenuId] = useState(null);
   const [viewingPurchase, setViewingPurchase] = useState(null);
+  const [viewingReceipt, setViewingReceipt] = useState(null);
 
   const handleViewPurchaseDetails = async (row) => {
     try {
+      if (row.type === 'SUPPLIER_PAYMENT' || row.type === 'PAYMENT' || (row.ref_no && row.ref_no.startsWith('REC-'))) {
+        setViewingReceipt({
+          ...row,
+          supplier_name: ledgerData?.supplier?.name,
+          supplier_phone: ledgerData?.supplier?.phone
+        });
+        return;
+      }
       if (row.id && (row.type === 'PURCHASE' || (row.ref_no && row.ref_no.startsWith('PO-')))) {
         const res = await api.get(`/purchases/${row.id}`);
         if (res.success) {
@@ -1247,6 +1257,20 @@ export default function Suppliers() {
             </div>
           </div>
         </div>
+      )}
+      {/* VIEW PAYMENT RECEIPT VOUCHER */}
+      {viewingReceipt && (
+        <ReceiptVoucherModal
+          receipt={viewingReceipt}
+          party={selectedSup || { name: viewingReceipt.supplier_name || 'Supplier' }}
+          tenantSettings={{
+            shop_name: 'LATIF TRADERS',
+            tagline: 'Frozen Food Wholesalers & Retailers',
+            phone: '+92 300 1234567 / +92 321 7654321',
+            address: 'Shop # 14-16, Commercial Market, Frozen Food Market, Lahore'
+          }}
+          onClose={() => setViewingReceipt(null)}
+        />
       )}
     </div>
   );
