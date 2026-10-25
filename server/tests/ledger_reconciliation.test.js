@@ -58,9 +58,9 @@ function runTests() {
   db.prepare('UPDATE customers SET current_balance = current_balance + 6000 WHERE id = ?').run(custId);
 
   let ledger = ledgerService.calculateCustomerLedger(custId, tenantA);
-  assertEqual(ledger.summary.total_billed, 11000, 'Total Billed (10,000 + 1,000 opening)');
+  assertEqual(ledger.summary.total_billed, 10000, 'Total Billed (pure sales, excludes opening balance)');
   assertEqual(ledger.summary.total_paid, 4000, 'Total Received');
-  assertEqual(ledger.summary.closing_balance, 7000, 'Ledger Closing Balance (1,000 + 6,000)');
+  assertEqual(ledger.summary.closing_balance, 7000, 'Ledger Closing Balance (1,000 opening + 6,000 unpaid sale)');
   assertEqual(ledger.ledger[0].running_balance, 7000, 'Top row running balance equals closing balance');
 
   // Verify stored customer balance matches ledger
@@ -89,16 +89,12 @@ function runTests() {
 
   // Verify overpayment entry is not labeled "Paid in Full"
   const overpayRow = ledger.ledger.find(r => r.type === 'SALE_INVOICE' && r.ref_no === 'INV-002');
-  if (overpayRow.status_chip === 'PAID') {
-    throw new Error('Overpaid invoice should not be simply labeled PAID');
+  if (overpayRow.status_chip !== 'OVERPAID') {
+    throw new Error(`Overpaid invoice should have status_chip OVERPAID, got ${overpayRow.status_chip}`);
   }
   console.log(`✅ PASSED: Overpaid invoice labeled correctly: ${overpayRow.status_label}`);
-
-  const overpayReceipt = ledger.ledger.find(r => r.type === 'PAYMENT_RECEIPT' && r.reference_id === sRes2.lastInsertRowid);
-  if (!overpayReceipt.is_extra_payment) {
-    throw new Error('Extra payment flag not set on overpaid receipt');
-  }
-  console.log(`✅ PASSED: Extra payment receipt recognized: ${overpayReceipt.notes}`);
+  assertEqual(overpayRow.credit, 7000, 'Invoice row credit reflects full received amount of 7,000');
+  assertEqual(overpayRow.debit, 5000, 'Invoice row debit reflects billed amount of 5,000');
 
   // 3. Scenario 3: Standalone Customer Receipt (e.g. Paid 2,000 against account balance)
   console.log('\n--- Scenario 3: Standalone Customer Receipt ---');

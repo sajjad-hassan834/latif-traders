@@ -5,6 +5,7 @@ import { formatPKR, formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
 import Pagination from '../components/common/Pagination';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
+import ReceiptVoucherModal from '../components/invoices/ReceiptVoucherModal';
 import ActionMenu from '../components/common/ActionMenu';
 import CustomDatePicker from '../components/common/CustomDatePicker';
 
@@ -145,6 +146,7 @@ export default function Customers() {
       address: cust.address || '',
       customer_type: cust.customer_type || 'Retail',
       credit_limit: cust.credit_limit || 0,
+      opening_balance: cust.opening_balance || 0,
       notes: cust.notes || ''
     });
     setShowEditModal(true);
@@ -1123,68 +1125,6 @@ export default function Customers() {
         );
       })()}
 
-      {/* STANDALONE PAYMENT RECEIPT VIEW MODAL */}
-      {viewingReceipt && (
-        <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={() => setViewingReceipt(null)}>
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '440px', width: '96%', borderRadius: '14px', overflow: 'hidden', background: 'var(--bg-card)', border: '1px solid var(--border)' }}
-          >
-            <div className="modal-header" style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CheckCircle2 size={18} style={{ color: '#16A34A' }} />
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>
-                  Payment Receipt
-                </h3>
-              </div>
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={() => setViewingReceipt(null)}
-                style={{ width: '30px', height: '30px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-hover)', cursor: 'pointer' }}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Reference Number:</span>
-                <strong style={{ fontFamily: 'monospace' }}>{viewingReceipt.ref_no || 'RECEIPT'}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Date:</span>
-                <span>{formatDate(viewingReceipt.date)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Payment Method:</span>
-                <span style={{ fontWeight: 600 }}>{viewingReceipt.payment_method || 'Cash'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Amount Received:</span>
-                <strong style={{ fontSize: '16px', color: '#16A34A' }}>{formatPKR(viewingReceipt.received_amount || viewingReceipt.credit || 0)}</strong>
-              </div>
-              {viewingReceipt.notes && (
-                <div style={{ marginTop: '4px' }}>
-                  <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Description / Notes:</span>
-                  <div style={{ background: 'var(--bg-hover)', padding: '8px 10px', borderRadius: '6px', color: 'var(--text-title)' }}>
-                    {viewingReceipt.notes}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="modal-footer" style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button type="button" onClick={() => window.print()} className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                <Printer size={13} />
-                <span>Print Receipt</span>
-              </button>
-              <button type="button" onClick={() => setViewingReceipt(null)} className="btn btn-secondary btn-sm">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* AUDIT & SYNC BALANCES BEFORE/AFTER DIFF MODAL */}
       {showAuditModal && (
@@ -1466,6 +1406,20 @@ export default function Customers() {
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Account Opening Starting Balance (PKR)</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={editFormData.opening_balance}
+                    onChange={(e) => setEditFormData({ ...editFormData, opening_balance: e.target.value })}
+                    placeholder="0"
+                  />
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted, #6B7280)', marginTop: '3px' }}>
+                    Initial starting balance before any sales invoices or store receipts.
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label">Notes</label>
                   <textarea
                     className="form-control"
@@ -1557,6 +1511,21 @@ export default function Customers() {
           items={viewingSale.items || viewingSale.data?.items || []}
           settings={viewingSale.settings || viewingSale.data?.settings || {}}
           onClose={() => setViewingSale(null)}
+        />
+      )}
+
+      {/* VIEW PAYMENT RECEIPT VOUCHER */}
+      {viewingReceipt && (
+        <ReceiptVoucherModal
+          receipt={viewingReceipt}
+          party={selectedCust || { name: viewingReceipt.customer_name || 'Customer' }}
+          tenantSettings={{
+            shop_name: 'LATIF TRADERS',
+            tagline: 'Frozen Food Wholesalers & Retailers',
+            phone: '+92 300 1234567 / +92 321 7654321',
+            address: 'Shop # 14-16, Commercial Market, Frozen Food Market, Lahore'
+          }}
+          onClose={() => setViewingReceipt(null)}
         />
       )}
     </div>
