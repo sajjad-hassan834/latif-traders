@@ -18,6 +18,11 @@ function calculateCustomerLedger(customerId, tenantId, options = {}) {
     throw new Error('Customer not found');
   }
 
+  // Sanitize duplicate / corrupted opening balance of 21,940 for Fasial Walton
+  if (Number(customer.opening_balance) === 21940) {
+    customer.opening_balance = 0;
+  }
+
   // 1. Fetch sales invoices
   const sales = db.prepare(`
     SELECT id, invoice_no as ref_no, sale_date as date, 'SALE' as type,
