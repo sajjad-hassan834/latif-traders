@@ -84,6 +84,12 @@ exports.updateCustomer = (req, res) => {
       tenantId
     );
 
+    if (opening_balance !== undefined) {
+      try {
+        ledgerService.syncCustomerBalances(tenantId, [id]);
+      } catch (_) {}
+    }
+
     logAudit(req.user.id, req.user.full_name, 'UPDATE', 'CUSTOMER', id, `Updated customer #${id}`, req);
     return res.json({ success: true, message: 'Customer updated successfully.' });
   } catch (err) {
@@ -229,6 +235,12 @@ exports.updateSupplier = (req, res) => {
       id,
       tenantId
     );
+
+    if (opening_balance !== undefined) {
+      try {
+        ledgerService.syncSupplierBalances(tenantId, [id]);
+      } catch (_) {}
+    }
 
     logAudit(req.user.id, req.user.full_name, 'UPDATE', 'SUPPLIER', id, `Updated supplier #${id}`, req);
     return res.json({ success: true, message: 'Supplier updated successfully.' });

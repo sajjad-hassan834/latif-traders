@@ -741,20 +741,18 @@ function initializeDatabase() {
     console.error('Error cleaning duplicate payments:', err);
   }
 
-  // Reconcile Fasial Walton ledger: reset duplicate opening_balance if current_balance is already 11870, and ensure standalone payment receipt row exists
+  // Reconcile Fasial Walton ledger: reset duplicate opening_balance to 0, ensure standalone payment receipt row exists, and sync current_balance to 11870
   try {
-    const fixCustBal = db.prepare("SELECT value FROM settings WHERE key = 'fix_customer_ledger_opening_bal_v2'").get();
+    const fixCustBal = db.prepare("SELECT value FROM settings WHERE key = 'fix_customer_ledger_opening_bal_v3'").get();
     if (!fixCustBal) {
-      db.prepare(`
-        UPDATE customers
-        SET opening_balance = 0
-        WHERE (name LIKE '%Fasial%' OR name LIKE '%Faisal%')
-          AND opening_balance > 0
-          AND current_balance = 11870
-      `).run();
-
       const fasial = db.prepare("SELECT id, tenant_id FROM customers WHERE (name LIKE '%Fasial%' OR name LIKE '%Faisal%')").get();
       if (fasial) {
+        db.prepare(`
+          UPDATE customers
+          SET opening_balance = 0, current_balance = 11870
+          WHERE id = ?
+        `).run(fasial.id);
+
         const existingReceipt = db.prepare(`
           SELECT id FROM payments
           WHERE party_type = 'CUSTOMER' AND party_id = ? AND amount = 10540
@@ -768,7 +766,7 @@ function initializeDatabase() {
         }
       }
 
-      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('fix_customer_ledger_opening_bal_v2', 'true')").run();
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('fix_customer_ledger_opening_bal_v3', 'true')").run();
     }
   } catch (err) {
     console.error('Customer ledger balance reconciliation migration notice:', err);
