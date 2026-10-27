@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const { authenticate, requireRoles } = require('../middleware/auth');
+const { tenantContext } = require('../middleware/tenantContext');
 
 router.use(authenticate);
+router.use(tenantContext);
 
 // Admin-only user management and audit trails
 router.get('/', requireRoles('admin'), userController.getUsers);

@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const saleController = require('../controllers/saleController');
 const { authenticate, requireRoles } = require('../middleware/auth');
+const { tenantContext } = require('../middleware/tenantContext');
 
 router.use(authenticate);
+router.use(tenantContext);
 
 router.get('/', requireRoles('sales', 'accountant'), saleController.getSales);
 router.get('/:id', requireRoles('sales', 'accountant'), saleController.getSaleById);

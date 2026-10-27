@@ -2,9 +2,9 @@ const { db } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
 
 // List payments with filters
-exports.getPayments = (req, res) => {
+exports.getPayments = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { type, party_type, start_date, end_date, payment_method } = req.query;
 
     let query = `
@@ -42,7 +42,7 @@ exports.getPayments = (req, res) => {
     }
 
     query += ` ORDER BY p.id DESC`;
-    const payments = db.prepare(query).all(...params);
+    const payments = await db.all(query, params);
 
     return res.json({ success: true, payments });
   } catch (err) {
@@ -52,89 +52,83 @@ exports.getPayments = (req, res) => {
 };
 
 // Record Customer Receipt
-exports.recordCustomerReceipt = (req, res) => {
-  const transaction = db.transaction(() => {
-    const tenantId = req.tenant_id || 'latif_001';
-    const { customer_id, amount, payment_method, payment_date, reference_no, notes } = req.body;
-
-    if (!customer_id || !amount || Number(amount) <= 0) {
-      throw new Error('Customer and a valid amount greater than 0 are required.');
-    }
-
-    const customer = db.prepare('SELECT id, name, current_balance FROM customers WHERE id = ? AND tenant_id = ?').get(customer_id, tenantId);
-    if (!customer) throw new Error('Customer not found.');
-
-    const amt = Number(amount);
-    const date = payment_date || new Date().toISOString().split('T')[0];
-    const refNo = reference_no || `REC-${Date.now().toString().slice(-6)}`;
-
-    const stmt = db.prepare(`
-      INSERT INTO payments (tenant_id, type, party_type, party_id, reference_no, amount, payment_method, payment_date, notes, user_id)
-      VALUES (?, 'CUSTOMER_RECEIPT', 'CUSTOMER', ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const result = stmt.run(tenantId, customer_id, refNo, amt, payment_method || 'Cash', date, notes || null, req.user.id);
-
-    // Reduce customer receivable balance
-    db.prepare('UPDATE customers SET current_balance = current_balance - ? WHERE id = ? AND tenant_id = ?').run(amt, customer_id, tenantId);
-
-    logAudit(req.user.id, req.user.full_name, 'RECEIPT', 'PAYMENT', result.lastInsertRowid, `Received ₨ ${amt} from customer ${customer.name} (${payment_method || 'Cash'})`, req);
-
-    return { id: result.lastInsertRowid, ref_no: refNo, new_balance: customer.current_balance - amt };
-  });
-
+exports.recordCustomerReceipt = async (req, res) => {
   try {
-    const data = transaction();
-    return res.status(201).json({ success: true, message: 'Customer payment receipt recorded.', data });
+    const resultData = await db.transaction(async () => {
+      const tenantId = req.tenantId || req.tenant_id;
+      const { customer_id, amount, payment_method, payment_date, reference_no, notes } = req.body;
+
+      if (!customer_id || !amount || Number(amount) <= 0) {
+        throw new Error('Customer and a valid amount greater than 0 are required.');
+      }
+
+      const customer = await db.get('SELECT id, name, current_balance FROM customers WHERE id = ? AND tenant_id = ?', [customer_id, tenantId]);
+      if (!customer) throw new Error('Customer not found.');
+
+      const amt = Number(amount);
+      const date = payment_date || new Date().toISOString().split('T')[0];
+      const refNo = reference_no || await db.getNextNumber(tenantId, 'customer_receipt', 'REC');
+
+      const insertRes = await db.run(`
+        INSERT INTO payments (tenant_id, type, party_type, party_id, reference_no, amount, payment_method, payment_date, notes, user_id)
+        VALUES (?, 'CUSTOMER_RECEIPT', 'CUSTOMER', ?, ?, ?, ?, ?, ?, ?)
+      `, [tenantId, customer_id, refNo, amt, payment_method || 'Cash', date, notes || null, req.user.id]);
+
+      // Reduce customer receivable balance atomically
+      await db.run('UPDATE customers SET current_balance = current_balance - ? WHERE id = ? AND tenant_id = ?', [amt, customer_id, tenantId]);
+
+      await logAudit(req.user.id, req.user.full_name, 'RECEIPT', 'PAYMENT', insertRes.lastInsertRowid, `Received ₨ ${amt} from customer ${customer.name} (${payment_method || 'Cash'})`, req);
+
+      return { id: insertRes.lastInsertRowid, ref_no: refNo, receipt_no: refNo, new_balance: Number(customer.current_balance) - amt };
+    });
+
+    return res.status(201).json({ success: true, message: 'Customer payment receipt recorded.', data: resultData, ...resultData });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
 
 // Record Supplier Payment
-exports.recordSupplierPayment = (req, res) => {
-  const transaction = db.transaction(() => {
-    const tenantId = req.tenant_id || 'latif_001';
-    const { supplier_id, amount, payment_method, payment_date, reference_no, notes } = req.body;
-
-    if (!supplier_id || !amount || Number(amount) <= 0) {
-      throw new Error('Supplier and a valid amount greater than 0 are required.');
-    }
-
-    const supplier = db.prepare('SELECT id, name, current_balance FROM suppliers WHERE id = ? AND tenant_id = ?').get(supplier_id, tenantId);
-    if (!supplier) throw new Error('Supplier not found.');
-
-    const amt = Number(amount);
-    const date = payment_date || new Date().toISOString().split('T')[0];
-    const refNo = reference_no || `PAY-${Date.now().toString().slice(-6)}`;
-
-    const stmt = db.prepare(`
-      INSERT INTO payments (tenant_id, type, party_type, party_id, reference_no, amount, payment_method, payment_date, notes, user_id)
-      VALUES (?, 'SUPPLIER_PAYMENT', 'SUPPLIER', ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const result = stmt.run(tenantId, supplier_id, refNo, amt, payment_method || 'Cash', date, notes || null, req.user.id);
-
-    // Reduce supplier payable balance
-    db.prepare('UPDATE suppliers SET current_balance = current_balance - ? WHERE id = ? AND tenant_id = ?').run(amt, supplier_id, tenantId);
-
-    logAudit(req.user.id, req.user.full_name, 'DISBURSEMENT', 'PAYMENT', result.lastInsertRowid, `Paid ₨ ${amt} to supplier ${supplier.name} (${payment_method || 'Cash'})`, req);
-
-    return { id: result.lastInsertRowid, ref_no: refNo, new_balance: supplier.current_balance - amt };
-  });
-
+exports.recordSupplierPayment = async (req, res) => {
   try {
-    const data = transaction();
-    return res.status(201).json({ success: true, message: 'Supplier payment recorded.', data });
+    const resultData = await db.transaction(async () => {
+      const tenantId = req.tenantId || req.tenant_id;
+      const { supplier_id, amount, payment_method, payment_date, reference_no, notes } = req.body;
+
+      if (!supplier_id || !amount || Number(amount) <= 0) {
+        throw new Error('Supplier and a valid amount greater than 0 are required.');
+      }
+
+      const supplier = await db.get('SELECT id, name, current_balance FROM suppliers WHERE id = ? AND tenant_id = ?', [supplier_id, tenantId]);
+      if (!supplier) throw new Error('Supplier not found.');
+
+      const amt = Number(amount);
+      const date = payment_date || new Date().toISOString().split('T')[0];
+      const refNo = reference_no || await db.getNextNumber(tenantId, 'supplier_payment', 'PAY');
+
+      const insertRes = await db.run(`
+        INSERT INTO payments (tenant_id, type, party_type, party_id, reference_no, amount, payment_method, payment_date, notes, user_id)
+        VALUES (?, 'SUPPLIER_PAYMENT', 'SUPPLIER', ?, ?, ?, ?, ?, ?, ?)
+      `, [tenantId, supplier_id, refNo, amt, payment_method || 'Cash', date, notes || null, req.user.id]);
+
+      // Reduce supplier payable balance atomically
+      await db.run('UPDATE suppliers SET current_balance = current_balance - ? WHERE id = ? AND tenant_id = ?', [amt, supplier_id, tenantId]);
+
+      await logAudit(req.user.id, req.user.full_name, 'DISBURSEMENT', 'PAYMENT', insertRes.lastInsertRowid, `Paid ₨ ${amt} to supplier ${supplier.name} (${payment_method || 'Cash'})`, req);
+
+      return { id: insertRes.lastInsertRowid, ref_no: refNo, new_balance: Number(supplier.current_balance) - amt };
+    });
+
+    return res.status(201).json({ success: true, message: 'Supplier payment recorded.', data: resultData });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
 
 // Cashbook (Cash in, Cash out, Closing Cash)
-exports.getCashbook = (req, res) => {
+exports.getCashbook = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { start_date, end_date } = req.query;
 
     const today = new Date().toISOString().split('T')[0];
@@ -142,7 +136,7 @@ exports.getCashbook = (req, res) => {
     const eDate = end_date || today;
 
     // 1. Cash In:
-    const receipts = db.prepare(`
+    const receipts = await db.all(`
       SELECT p.id, p.payment_date as date, p.reference_no as ref_no, 'Customer Receipt' as title,
         c.name as party_name, p.amount, 'IN' as flow, p.notes, 'CUSTOMER_RECEIPT' as source_type
       FROM payments p
@@ -153,10 +147,10 @@ exports.getCashbook = (req, res) => {
         AND (p.notes IS NULL OR (p.notes NOT LIKE '%Receipt for Invoice%' AND p.notes NOT LIKE '%INV-%'))
         AND p.payment_date >= ? AND p.payment_date <= ?
         AND p.tenant_id = ?
-    `).all(sDate, eDate, tenantId);
+    `, [sDate, eDate, tenantId]);
 
     // Direct Cash Sales
-    const cashSales = db.prepare(`
+    const cashSales = await db.all(`
       SELECT s.id, s.sale_date as date, s.invoice_no as ref_no, 'Cash Sale (POS)' as title,
         COALESCE(c.name, 'Walk-in Customer') as party_name, s.paid_amount as amount, 'IN' as flow,
         ('Sale Invoice: ' || s.invoice_no) as notes, 'SALE' as source_type
@@ -165,10 +159,10 @@ exports.getCashbook = (req, res) => {
       WHERE s.payment_method = 'Cash' AND s.paid_amount > 0
         AND s.sale_date >= ? AND s.sale_date <= ?
         AND s.tenant_id = ?
-    `).all(sDate, eDate, tenantId);
+    `, [sDate, eDate, tenantId]);
 
     // 2. Cash Out:
-    const disbursements = db.prepare(`
+    const disbursements = await db.all(`
       SELECT p.id, p.payment_date as date, p.reference_no as ref_no, 'Supplier Payment' as title,
         s.name as party_name, p.amount, 'OUT' as flow, p.notes, 'SUPPLIER_PAYMENT' as source_type
       FROM payments p
@@ -179,9 +173,9 @@ exports.getCashbook = (req, res) => {
         AND (p.notes IS NULL OR (p.notes NOT LIKE '%purchase bill%' AND p.notes NOT LIKE '%PUR-%'))
         AND p.payment_date >= ? AND p.payment_date <= ?
         AND p.tenant_id = ?
-    `).all(sDate, eDate, tenantId);
+    `, [sDate, eDate, tenantId]);
 
-    const cashPurchases = db.prepare(`
+    const cashPurchases = await db.all(`
       SELECT pu.id, pu.purchase_date as date, pu.invoice_no as ref_no, 'Cash Purchase' as title,
         s.name as party_name, pu.paid_amount as amount, 'OUT' as flow,
         ('Supplier Bill: ' || pu.invoice_no) as notes, 'PURCHASE' as source_type
@@ -190,9 +184,9 @@ exports.getCashbook = (req, res) => {
       WHERE pu.payment_method = 'Cash' AND pu.paid_amount > 0
         AND pu.purchase_date >= ? AND pu.purchase_date <= ?
         AND pu.tenant_id = ?
-    `).all(sDate, eDate, tenantId);
+    `, [sDate, eDate, tenantId]);
 
-    const cashExpenses = db.prepare(`
+    const cashExpenses = await db.all(`
       SELECT e.id, e.expense_date as date, ('EXP-' || e.id) as ref_no, e.title,
         ec.name as party_name, e.amount, 'OUT' as flow, e.description as notes, 'EXPENSE' as source_type
       FROM expenses e
@@ -200,7 +194,7 @@ exports.getCashbook = (req, res) => {
       WHERE e.payment_method = 'Cash'
         AND e.expense_date >= ? AND e.expense_date <= ?
         AND e.tenant_id = ?
-    `).all(sDate, eDate, tenantId);
+    `, [sDate, eDate, tenantId]);
 
     const entries = [...receipts, ...cashSales, ...disbursements, ...cashPurchases, ...cashExpenses];
     entries.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -208,8 +202,8 @@ exports.getCashbook = (req, res) => {
     let totalIn = 0;
     let totalOut = 0;
     for (const e of entries) {
-      if (e.flow === 'IN') totalIn += e.amount;
-      else totalOut += e.amount;
+      if (e.flow === 'IN') totalIn += Number(e.amount);
+      else totalOut += Number(e.amount);
     }
 
     return res.json({
@@ -228,40 +222,39 @@ exports.getCashbook = (req, res) => {
 };
 
 // Delete payment record
-exports.deletePayment = (req, res) => {
-  const transaction = db.transaction(() => {
-    const tenantId = req.tenant_id || 'latif_001';
-    const { id } = req.params;
-    const payment = db.prepare('SELECT * FROM payments WHERE id = ? AND tenant_id = ?').get(id, tenantId);
-    if (!payment) {
-      throw new Error('Payment record not found.');
-    }
-
-    if (payment.party_type === 'CUSTOMER' && payment.party_id) {
-      db.prepare('UPDATE customers SET current_balance = current_balance + ? WHERE id = ? AND tenant_id = ?')
-        .run(payment.amount, payment.party_id, tenantId);
-    } else if (payment.party_type === 'SUPPLIER' && payment.party_id) {
-      db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ? AND tenant_id = ?')
-        .run(payment.amount, payment.party_id, tenantId);
-    }
-
-    db.prepare('DELETE FROM payments WHERE id = ? AND tenant_id = ?').run(id, tenantId);
-
-    logAudit(
-      req.user.id,
-      req.user.full_name,
-      'DELETE',
-      'PAYMENT',
-      payment.id,
-      `Deleted payment record ${payment.reference_no || ('#' + payment.id)} for ₨ ${payment.amount}`,
-      req
-    );
-
-    return { success: true, message: `Payment ${payment.reference_no || ('#' + payment.id)} deleted and balance reverted.` };
-  });
-
+exports.deletePayment = async (req, res) => {
   try {
-    const result = transaction();
+    const result = await db.transaction(async () => {
+      const tenantId = req.tenantId || req.tenant_id;
+      const { id } = req.params;
+      const payment = await db.get('SELECT * FROM payments WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+      if (!payment) {
+        throw new Error('Payment record not found.');
+      }
+
+      if (payment.party_type === 'CUSTOMER' && payment.party_id) {
+        await db.run('UPDATE customers SET current_balance = current_balance + ? WHERE id = ? AND tenant_id = ?',
+          [payment.amount, payment.party_id, tenantId]);
+      } else if (payment.party_type === 'SUPPLIER' && payment.party_id) {
+        await db.run('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ? AND tenant_id = ?',
+          [payment.amount, payment.party_id, tenantId]);
+      }
+
+      await db.run('DELETE FROM payments WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+
+      await logAudit(
+        req.user.id,
+        req.user.full_name,
+        'DELETE',
+        'PAYMENT',
+        payment.id,
+        `Deleted payment record ${payment.reference_no || ('#' + payment.id)} for ₨ ${payment.amount}`,
+        req
+      );
+
+      return { success: true, message: `Payment ${payment.reference_no || ('#' + payment.id)} deleted and balance reverted.` };
+    });
+
     return res.json(result);
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });

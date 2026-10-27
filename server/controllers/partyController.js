@@ -3,15 +3,15 @@ const { logAudit } = require('../middleware/audit');
 const ledgerService = require('../services/ledgerService');
 
 // Customers CRUD
-exports.getCustomers = (req, res) => {
+exports.getCustomers = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { search, customer_type } = req.query;
     let query = 'SELECT * FROM customers WHERE tenant_id = ?';
     const params = [tenantId];
 
     if (search) {
-      query += ' AND (name LIKE ? OR phone LIKE ? OR address LIKE ?)';
+      query += ' AND (name ILIKE ? OR phone ILIKE ? OR address ILIKE ?)';
       const s = `%${search}%`;
       params.push(s, s, s);
     }
@@ -21,26 +21,24 @@ exports.getCustomers = (req, res) => {
     }
 
     query += ' ORDER BY name ASC';
-    const customers = db.prepare(query).all(...params);
+    const customers = await db.all(query, params);
     return res.json({ success: true, customers });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Failed to fetch customers.' });
   }
 };
 
-exports.createCustomer = (req, res) => {
+exports.createCustomer = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { name, phone, address, customer_type, opening_balance, credit_limit, notes } = req.body;
     if (!name) return res.status(400).json({ success: false, message: 'Customer name is required.' });
 
     const openBal = Number(opening_balance) || 0;
-    const stmt = db.prepare(`
+    const result = await db.run(`
       INSERT INTO customers (tenant_id, name, phone, address, customer_type, opening_balance, credit_limit, current_balance, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const result = stmt.run(
+    `, [
       tenantId,
       name.trim(),
       phone ? phone.trim() : null,
@@ -50,29 +48,29 @@ exports.createCustomer = (req, res) => {
       Number(credit_limit) || 0,
       openBal,
       notes ? notes.trim() : null
-    );
+    ]);
 
-    logAudit(req.user.id, req.user.full_name, 'CREATE', 'CUSTOMER', result.lastInsertRowid, `Added customer ${name}`, req);
+    await logAudit(req.user.id, req.user.full_name, 'CREATE', 'CUSTOMER', result.lastInsertRowid, `Added customer ${name}`, req);
     return res.status(201).json({ success: true, id: result.lastInsertRowid, message: 'Customer created.' });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
 
-exports.updateCustomer = (req, res) => {
+exports.updateCustomer = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
     const { name, phone, address, customer_type, credit_limit, opening_balance, notes } = req.body;
 
-    const existing = db.prepare('SELECT * FROM customers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
+    const existing = await db.get('SELECT * FROM customers WHERE id = ? AND tenant_id = ?', [id, tenantId]);
     if (!existing) return res.status(404).json({ success: false, message: 'Customer not found.' });
 
-    db.prepare(`
+    await db.run(`
       UPDATE customers SET
         name = ?, phone = ?, address = ?, customer_type = ?, credit_limit = ?, opening_balance = ?, notes = ?
       WHERE id = ? AND tenant_id = ?
-    `).run(
+    `, [
       name ? name.trim() : existing.name,
       phone !== undefined ? phone : existing.phone,
       address !== undefined ? address : existing.address,
@@ -82,27 +80,27 @@ exports.updateCustomer = (req, res) => {
       notes !== undefined ? notes : existing.notes,
       id,
       tenantId
-    );
+    ]);
 
     if (opening_balance !== undefined) {
       try {
-        ledgerService.syncCustomerBalances(tenantId, [id]);
+        await ledgerService.syncCustomerBalances(tenantId, [id]);
       } catch (_) {}
     }
 
-    logAudit(req.user.id, req.user.full_name, 'UPDATE', 'CUSTOMER', id, `Updated customer #${id}`, req);
+    await logAudit(req.user.id, req.user.full_name, 'UPDATE', 'CUSTOMER', id, `Updated customer #${id}`, req);
     return res.json({ success: true, message: 'Customer updated successfully.' });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Failed to update customer.' });
   }
 };
 
-exports.deleteCustomer = (req, res) => {
+exports.deleteCustomer = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
 
-    const customer = db.prepare('SELECT * FROM customers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
+    const customer = await db.get('SELECT * FROM customers WHERE id = ? AND tenant_id = ?', [id, tenantId]);
     if (!customer) {
       return res.status(404).json({ success: false, message: 'Customer not found.' });
     }
@@ -118,15 +116,13 @@ exports.deleteCustomer = (req, res) => {
       });
     }
 
-    const deleteTransaction = db.transaction(() => {
-      db.prepare('UPDATE sales SET customer_id = NULL WHERE customer_id = ? AND tenant_id = ?').run(id, tenantId);
-      db.prepare("DELETE FROM payments WHERE party_type = 'CUSTOMER' AND party_id = ? AND tenant_id = ?").run(id, tenantId);
-      db.prepare('DELETE FROM customers WHERE id = ? AND tenant_id = ?').run(id, tenantId);
+    await db.transaction(async () => {
+      await db.run('UPDATE sales SET customer_id = NULL WHERE customer_id = ? AND tenant_id = ?', [id, tenantId]);
+      await db.run("DELETE FROM payments WHERE party_type = 'CUSTOMER' AND party_id = ? AND tenant_id = ?", [id, tenantId]);
+      await db.run('DELETE FROM customers WHERE id = ? AND tenant_id = ?', [id, tenantId]);
     });
 
-    deleteTransaction();
-
-    logAudit(req.user.id, req.user.full_name, 'DELETE', 'CUSTOMER', id, `Deleted customer ${customer.name}`, req);
+    await logAudit(req.user.id, req.user.full_name, 'DELETE', 'CUSTOMER', id, `Deleted customer ${customer.name}`, req);
     return res.json({ success: true, message: `Customer "${customer.name}" deleted successfully.` });
   } catch (err) {
     console.error('Error deleting customer:', err);
@@ -135,20 +131,13 @@ exports.deleteCustomer = (req, res) => {
 };
 
 // Customer Ledger (Date-wise statement using Single Source of Truth ledgerService)
-exports.getCustomerLedger = (req, res) => {
+exports.getCustomerLedger = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
     const { start_date, end_date } = req.query;
 
-    const cust = db.prepare('SELECT id, name, opening_balance, current_balance FROM customers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
-    if (cust && (cust.name?.toLowerCase().includes('fasial') || cust.name?.toLowerCase().includes('faisal') || Number(cust.opening_balance) === 21940)) {
-      if (Number(cust.opening_balance) > 0 || Number(cust.current_balance) !== 11870) {
-        db.prepare('UPDATE customers SET opening_balance = 0, current_balance = 11870 WHERE id = ?').run(id);
-      }
-    }
-
-    const result = ledgerService.calculateCustomerLedger(id, tenantId, {
+    const result = await ledgerService.calculateCustomerLedger(id, tenantId, {
       startDate: start_date,
       endDate: end_date,
       reverse: true
@@ -168,40 +157,38 @@ exports.getCustomerLedger = (req, res) => {
 };
 
 // Suppliers CRUD
-exports.getSuppliers = (req, res) => {
+exports.getSuppliers = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { search } = req.query;
     let query = 'SELECT * FROM suppliers WHERE tenant_id = ?';
     const params = [tenantId];
 
     if (search) {
-      query += ' AND (name LIKE ? OR phone LIKE ? OR contact_person LIKE ?)';
+      query += ' AND (name ILIKE ? OR phone ILIKE ? OR contact_person ILIKE ?)';
       const s = `%${search}%`;
       params.push(s, s, s);
     }
 
     query += ' ORDER BY name ASC';
-    const suppliers = db.prepare(query).all(...params);
+    const suppliers = await db.all(query, params);
     return res.json({ success: true, suppliers });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Failed to fetch suppliers.' });
   }
 };
 
-exports.createSupplier = (req, res) => {
+exports.createSupplier = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { name, phone, address, contact_person, opening_balance, notes } = req.body;
     if (!name) return res.status(400).json({ success: false, message: 'Supplier name is required.' });
 
     const openBal = Number(opening_balance) || 0;
-    const stmt = db.prepare(`
+    const result = await db.run(`
       INSERT INTO suppliers (tenant_id, name, phone, address, contact_person, opening_balance, current_balance, notes)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const result = stmt.run(
+    `, [
       tenantId,
       name.trim(),
       phone ? phone.trim() : null,
@@ -210,29 +197,29 @@ exports.createSupplier = (req, res) => {
       openBal,
       openBal,
       notes ? notes.trim() : null
-    );
+    ]);
 
-    logAudit(req.user.id, req.user.full_name, 'CREATE', 'SUPPLIER', result.lastInsertRowid, `Added supplier ${name}`, req);
+    await logAudit(req.user.id, req.user.full_name, 'CREATE', 'SUPPLIER', result.lastInsertRowid, `Added supplier ${name}`, req);
     return res.status(201).json({ success: true, id: result.lastInsertRowid, message: 'Supplier created.' });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
 
-exports.updateSupplier = (req, res) => {
+exports.updateSupplier = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
     const { name, phone, address, contact_person, opening_balance, notes } = req.body;
 
-    const existing = db.prepare('SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
+    const existing = await db.get('SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?', [id, tenantId]);
     if (!existing) return res.status(404).json({ success: false, message: 'Supplier not found.' });
 
-    db.prepare(`
+    await db.run(`
       UPDATE suppliers SET
         name = ?, phone = ?, address = ?, contact_person = ?, opening_balance = ?, notes = ?
       WHERE id = ? AND tenant_id = ?
-    `).run(
+    `, [
       name ? name.trim() : existing.name,
       phone !== undefined ? phone : existing.phone,
       address !== undefined ? address : existing.address,
@@ -241,27 +228,27 @@ exports.updateSupplier = (req, res) => {
       notes !== undefined ? notes : existing.notes,
       id,
       tenantId
-    );
+    ]);
 
     if (opening_balance !== undefined) {
       try {
-        ledgerService.syncSupplierBalances(tenantId, [id]);
+        await ledgerService.syncSupplierBalances(tenantId, [id]);
       } catch (_) {}
     }
 
-    logAudit(req.user.id, req.user.full_name, 'UPDATE', 'SUPPLIER', id, `Updated supplier #${id}`, req);
+    await logAudit(req.user.id, req.user.full_name, 'UPDATE', 'SUPPLIER', id, `Updated supplier #${id}`, req);
     return res.json({ success: true, message: 'Supplier updated successfully.' });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Failed to update supplier.' });
   }
 };
 
-exports.deleteSupplier = (req, res) => {
+exports.deleteSupplier = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
 
-    const supplier = db.prepare('SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?').get(id, tenantId);
+    const supplier = await db.get('SELECT * FROM suppliers WHERE id = ? AND tenant_id = ?', [id, tenantId]);
     if (!supplier) {
       return res.status(404).json({ success: false, message: 'Supplier not found.' });
     }
@@ -273,15 +260,13 @@ exports.deleteSupplier = (req, res) => {
       });
     }
 
-    const deleteTransaction = db.transaction(() => {
-      db.prepare('UPDATE purchases SET supplier_id = NULL WHERE supplier_id = ? AND tenant_id = ?').run(id, tenantId);
-      db.prepare("DELETE FROM payments WHERE party_type = 'SUPPLIER' AND party_id = ? AND tenant_id = ?").run(id, tenantId);
-      db.prepare('DELETE FROM suppliers WHERE id = ? AND tenant_id = ?').run(id, tenantId);
+    await db.transaction(async () => {
+      await db.run('UPDATE purchases SET supplier_id = NULL WHERE supplier_id = ? AND tenant_id = ?', [id, tenantId]);
+      await db.run("DELETE FROM payments WHERE party_type = 'SUPPLIER' AND party_id = ? AND tenant_id = ?", [id, tenantId]);
+      await db.run('DELETE FROM suppliers WHERE id = ? AND tenant_id = ?', [id, tenantId]);
     });
 
-    deleteTransaction();
-
-    logAudit(req.user.id, req.user.full_name, 'DELETE', 'SUPPLIER', id, `Deleted supplier ${supplier.name}`, req);
+    await logAudit(req.user.id, req.user.full_name, 'DELETE', 'SUPPLIER', id, `Deleted supplier ${supplier.name}`, req);
     return res.json({ success: true, message: `Supplier "${supplier.name}" deleted successfully.` });
   } catch (err) {
     console.error('Error deleting supplier:', err);
@@ -290,13 +275,13 @@ exports.deleteSupplier = (req, res) => {
 };
 
 // Supplier Ledger (Date-wise statement using Single Source of Truth ledgerService)
-exports.getSupplierLedger = (req, res) => {
+exports.getSupplierLedger = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
     const { start_date, end_date } = req.query;
 
-    const result = ledgerService.calculateSupplierLedger(id, tenantId, {
+    const result = await ledgerService.calculateSupplierLedger(id, tenantId, {
       startDate: start_date,
       endDate: end_date,
       reverse: true
@@ -316,10 +301,10 @@ exports.getSupplierLedger = (req, res) => {
 };
 
 // Customer Balances Audit (Read-Only Diff Preview)
-exports.auditCustomerBalances = (req, res) => {
+exports.auditCustomerBalances = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
-    const audit = ledgerService.auditCustomerBalances(tenantId);
+    const tenantId = req.tenantId || req.tenant_id;
+    const audit = await ledgerService.auditCustomerBalances(tenantId);
     return res.json({ success: true, ...audit });
   } catch (err) {
     console.error('Audit customer balances error:', err);
@@ -328,13 +313,13 @@ exports.auditCustomerBalances = (req, res) => {
 };
 
 // Customer Balances Sync (Admin-Confirmed Action)
-exports.syncCustomerBalances = (req, res) => {
+exports.syncCustomerBalances = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { customer_ids } = req.body;
-    const syncRes = ledgerService.syncCustomerBalances(tenantId, customer_ids);
+    const syncRes = await ledgerService.syncCustomerBalances(tenantId, customer_ids);
 
-    logAudit(
+    await logAudit(
       req.user.id,
       req.user.full_name,
       'SYNC',
@@ -356,10 +341,10 @@ exports.syncCustomerBalances = (req, res) => {
 };
 
 // Supplier Balances Audit (Read-Only Diff Preview)
-exports.auditSupplierBalances = (req, res) => {
+exports.auditSupplierBalances = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
-    const audit = ledgerService.auditSupplierBalances(tenantId);
+    const tenantId = req.tenantId || req.tenant_id;
+    const audit = await ledgerService.auditSupplierBalances(tenantId);
     return res.json({ success: true, ...audit });
   } catch (err) {
     console.error('Audit supplier balances error:', err);
@@ -368,13 +353,13 @@ exports.auditSupplierBalances = (req, res) => {
 };
 
 // Supplier Balances Sync (Admin-Confirmed Action)
-exports.syncSupplierBalances = (req, res) => {
+exports.syncSupplierBalances = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { supplier_ids } = req.body;
-    const syncRes = ledgerService.syncSupplierBalances(tenantId, supplier_ids);
+    const syncRes = await ledgerService.syncSupplierBalances(tenantId, supplier_ids);
 
-    logAudit(
+    await logAudit(
       req.user.id,
       req.user.full_name,
       'SYNC',
@@ -403,5 +388,3 @@ exports.recalculateCustomerBalances = (req, res) => {
 exports.recalculateSupplierBalances = (req, res) => {
   return exports.syncSupplierBalances(req, res);
 };
-
-

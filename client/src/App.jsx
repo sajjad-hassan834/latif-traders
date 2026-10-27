@@ -22,6 +22,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Sparkles, CheckCircle2, Circle, X } from 'lucide-react';
 import { api } from './utils/api';
 import { applyAppTheme as applyThemeHelper } from './utils/theme';
+import { LEGACY_TENANT_ID } from './constants/tenant';
 
 // Map URLs to active workspace tabs
 const ROUTE_TAB_MAP = {
@@ -533,7 +534,7 @@ function MainApp() {
           )}
 
           {/* Welcome Onboarding Checklist for newly registered tenants (Dashboard only) */}
-          {showOnboarding && currentTab === 'dashboard' && tenant?.id !== 'latif_001' && (
+          {showOnboarding && currentTab === 'dashboard' && tenant?.id !== LEGACY_TENANT_ID && (
             <div style={{
               margin: '0 0 1.25rem 0',
               padding: '1.25rem',

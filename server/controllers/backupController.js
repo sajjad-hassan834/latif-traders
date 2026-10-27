@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { db, DATA_DIR } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
+const { LEGACY_TENANT_ID } = require('../constants/tenant');
 
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 if (!fs.existsSync(BACKUP_DIR)) {
@@ -22,17 +23,17 @@ function getTenantBackupDir(tenantId) {
 }
 
 // Automatically detect and migrate legacy pre-multitenancy backups into tenant folders
-function migrateLegacyBackups() {
+async function migrateLegacyBackups() {
   try {
     if (!fs.existsSync(BACKUP_DIR)) return;
 
     let tenants = [];
     try {
-      tenants = db.prepare('SELECT id, business_name FROM tenants').all();
+      tenants = await db.all('SELECT id, business_name FROM tenants');
     } catch (_) {}
 
     const tenantIds = new Set(tenants.map(t => t.id));
-    tenantIds.add('latif_001');
+    tenantIds.add(LEGACY_TENANT_ID);
 
     // 1. Scan root BACKUP_DIR for loose backup files
     const rootEntries = fs.readdirSync(BACKUP_DIR, { withFileTypes: true });
@@ -74,9 +75,9 @@ function migrateLegacyBackups() {
         }
       }
 
-      // Default to primary legacy tenant 'latif_001' for all pre-multitenancy backups
+      // Default to primary legacy tenant for pre-multitenancy backups
       if (!targetTenantId) {
-        targetTenantId = 'latif_001';
+        targetTenantId = LEGACY_TENANT_ID;
       }
 
       const targetDir = path.join(BACKUP_DIR, targetTenantId);
@@ -105,36 +106,10 @@ function migrateLegacyBackups() {
         } catch (_) {}
       }
     }
-
-    // 2. Also check DATA_DIR root for legacy snapshots left outside backups directory
-    if (fs.existsSync(DATA_DIR)) {
-      const dataEntries = fs.readdirSync(DATA_DIR, { withFileTypes: true });
-      for (const entry of dataEntries) {
-        if (entry.isDirectory()) continue;
-        const file = entry.name;
-        if (
-          (file.includes('safety_backup') || file.includes('pre_multitenancy_fix_backup')) &&
-          (file.endsWith('.db') || file.endsWith('.json'))
-        ) {
-          const fullSourcePath = path.join(DATA_DIR, file);
-          const targetDir = path.join(BACKUP_DIR, 'latif_001');
-          if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-          const targetPath = path.join(targetDir, file);
-          if (!fs.existsSync(targetPath)) {
-            try {
-              fs.copyFileSync(fullSourcePath, targetPath);
-            } catch (_) {}
-          }
-        }
-      }
-    }
   } catch (err) {
     console.warn('Backup legacy auto-migration notice:', err.message);
   }
 }
-
-// Run migration immediately on module load
-migrateLegacyBackups();
 
 // Format display name: "<Shop Name> backup - 19 Sep 2026, 12:19 PM"
 function formatBackupDisplayName(shopName, date, filename = '') {
@@ -203,8 +178,10 @@ exports.createBackup = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Tenant context required.' });
     }
 
+
+
     const tenantDir = getTenantBackupDir(tenantId);
-    const tenant = db.prepare('SELECT business_name, business_type, plan FROM tenants WHERE id = ?').get(tenantId);
+    const tenant = await db.get('SELECT business_name, business_type, plan FROM tenants WHERE id = ?', [tenantId]);
     const shopName = tenant?.business_name || req.tenant?.business_name || 'Shop';
     const now = new Date();
 
@@ -225,10 +202,9 @@ exports.createBackup = async (req, res) => {
 
     for (const table of TENANT_TABLES) {
       try {
-        const rows = db.prepare(`SELECT * FROM ${table} WHERE tenant_id = ?`).all(tenantId);
+        const rows = await db.all(`SELECT * FROM ${table} WHERE tenant_id = ?`, [tenantId]);
         backupData.tables[table] = rows;
       } catch (tableErr) {
-        // Table might not exist or not have tenant_id in legacy state
         backupData.tables[table] = [];
       }
     }
@@ -238,9 +214,9 @@ exports.createBackup = async (req, res) => {
     const stats = fs.statSync(destinationPath);
     const sizeKb = (stats.size / 1024).toFixed(1);
 
-    logAudit(
-      req.user.id,
-      req.user.full_name,
+    await logAudit(
+      req.user?.id,
+      req.user?.full_name,
       'BACKUP',
       'TENANT_DATA',
       null,
@@ -265,18 +241,19 @@ exports.createBackup = async (req, res) => {
 };
 
 // List available tenant backups
-exports.listBackups = (req, res) => {
+exports.listBackups = async (req, res) => {
   try {
     const tenantId = req.tenant_id || req.user?.tenant_id;
     if (!tenantId) {
       return res.status(401).json({ success: false, message: 'Tenant context required.' });
     }
 
-    // Ensure any legacy backups on disk are migrated
-    migrateLegacyBackups();
+
+
+    await migrateLegacyBackups();
 
     const tenantDir = getTenantBackupDir(tenantId);
-    const tenant = db.prepare('SELECT business_name FROM tenants WHERE id = ?').get(tenantId);
+    const tenant = await db.get('SELECT business_name FROM tenants WHERE id = ?', [tenantId]);
     const shopName = tenant?.business_name || req.tenant?.business_name || 'Shop';
 
     const fileMap = new Map();
@@ -288,16 +265,13 @@ exports.listBackups = (req, res) => {
       const stats = fs.statSync(filePath);
       let displayName = formatBackupDisplayName(shopName, stats.mtime || stats.birthtime, file);
 
-      // If JSON file, try to extract accurate stored display_name
       if (file.endsWith('.json')) {
         try {
           const preview = JSON.parse(fs.readFileSync(filePath, 'utf8'));
           if (preview.display_name) {
             displayName = preview.display_name;
           }
-        } catch (e) {
-          // Ignore preview read error
-        }
+        } catch (e) {}
       }
 
       fileMap.set(file, {
@@ -308,7 +282,6 @@ exports.listBackups = (req, res) => {
       });
     };
 
-    // 1. Read files inside tenant directory
     if (fs.existsSync(tenantDir)) {
       const files = fs.readdirSync(tenantDir).filter(f => f.endsWith('.json') || f.endsWith('.db'));
       for (const f of files) {
@@ -316,8 +289,7 @@ exports.listBackups = (req, res) => {
       }
     }
 
-    // 2. If primary legacy tenant 'latif_001', also include any unmigrated files in root BACKUP_DIR
-    if (tenantId === 'latif_001' && fs.existsSync(BACKUP_DIR)) {
+    if (tenantId === LEGACY_TENANT_ID && fs.existsSync(BACKUP_DIR)) {
       const rootFiles = fs.readdirSync(BACKUP_DIR, { withFileTypes: true });
       for (const entry of rootFiles) {
         if (!entry.isDirectory() && (entry.name.endsWith('.json') || entry.name.endsWith('.db'))) {
@@ -336,7 +308,7 @@ exports.listBackups = (req, res) => {
 };
 
 // Download a tenant backup file
-exports.downloadBackup = (req, res) => {
+exports.downloadBackup = async (req, res) => {
   try {
     const tenantId = req.tenant_id || req.user?.tenant_id;
     if (!tenantId) {
@@ -344,22 +316,20 @@ exports.downloadBackup = (req, res) => {
     }
 
     const { filename } = req.params;
-    // Strictly prevent directory traversal
     if (!filename || filename.includes('..') || path.isAbsolute(filename) || path.basename(filename) !== filename) {
       return res.status(400).json({ success: false, message: 'Invalid file parameter.' });
     }
 
-    migrateLegacyBackups();
+    await migrateLegacyBackups();
 
     const tenantDir = getTenantBackupDir(tenantId);
     let filePath = path.join(tenantDir, filename);
 
-    // Verify tenant ownership - file must reside inside tenantDir, or in root BACKUP_DIR for latif_001
     let resolvedPath = path.resolve(filePath);
     const resolvedTenantDir = path.resolve(tenantDir);
 
     if (!resolvedPath.startsWith(resolvedTenantDir) || !fs.existsSync(resolvedPath)) {
-      if (tenantId === 'latif_001') {
+      if (tenantId === LEGACY_TENANT_ID) {
         const rootPath = path.join(BACKUP_DIR, filename);
         if (fs.existsSync(rootPath)) {
           resolvedPath = path.resolve(rootPath);
@@ -371,7 +341,7 @@ exports.downloadBackup = (req, res) => {
       }
     }
 
-    logAudit(req.user.id, req.user.full_name, 'DOWNLOAD', 'BACKUP', null, `Downloaded tenant backup ${filename}`, req);
+    await logAudit(req.user?.id, req.user?.full_name, 'DOWNLOAD', 'BACKUP', null, `Downloaded tenant backup ${filename}`, req);
     return res.download(resolvedPath, filename);
   } catch (err) {
     console.error('Download backup error:', err);
@@ -387,18 +357,20 @@ exports.restoreBackup = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Tenant context required.' });
     }
 
+
+
     const { filename } = req.body;
     if (!filename || filename.includes('..') || path.isAbsolute(filename) || path.basename(filename) !== filename) {
       return res.status(400).json({ success: false, message: 'Filename is required for restore.' });
     }
 
-    migrateLegacyBackups();
+    await migrateLegacyBackups();
 
     const tenantDir = getTenantBackupDir(tenantId);
     let filePath = path.join(tenantDir, filename);
 
     if (!fs.existsSync(filePath)) {
-      if (tenantId === 'latif_001') {
+      if (tenantId === LEGACY_TENANT_ID) {
         const rootPath = path.join(BACKUP_DIR, filename);
         if (fs.existsSync(rootPath)) {
           filePath = rootPath;
@@ -410,11 +382,6 @@ exports.restoreBackup = async (req, res) => {
       }
     }
 
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: 'Backup file does not exist.' });
-    }
-
-    // Only JSON tenant-scoped backups can be restored by tenant
     if (!filename.endsWith('.json')) {
       return res.status(400).json({
         success: false,
@@ -429,10 +396,9 @@ exports.restoreBackup = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid backup structure. Restore aborted.' });
     }
 
-    // Create a safety backup snapshot for this tenant before restoring
     const safetyFilename = `pre_restore_safety_${Date.now()}.json`;
     const safetyPath = path.join(tenantDir, safetyFilename);
-    const tenant = db.prepare('SELECT business_name, business_type, plan FROM tenants WHERE id = ?').get(tenantId);
+    const tenant = await db.get('SELECT business_name, business_type, plan FROM tenants WHERE id = ?', [tenantId]);
     const safetyBackup = {
       version: '2.0',
       tenant_id: tenantId,
@@ -443,16 +409,15 @@ exports.restoreBackup = async (req, res) => {
     };
     for (const table of TENANT_TABLES) {
       try {
-        safetyBackup.tables[table] = db.prepare(`SELECT * FROM ${table} WHERE tenant_id = ?`).all(tenantId);
+        safetyBackup.tables[table] = await db.all(`SELECT * FROM ${table} WHERE tenant_id = ?`, [tenantId]);
       } catch (e) {
         safetyBackup.tables[table] = [];
       }
     }
     fs.writeFileSync(safetyPath, JSON.stringify(safetyBackup, null, 2), 'utf8');
 
-    // Scoped restore transaction: writes ONLY into rows where tenant_id = current tenant
-    const restoreTx = db.transaction(() => {
-      // 1. Delete current tenant data in reverse dependency order
+    await db.transaction(async (tx) => {
+      const runner = tx.run ? tx : db;
       const tablesToClean = [
         'sale_items',
         'sales',
@@ -474,13 +439,12 @@ exports.restoreBackup = async (req, res) => {
 
       for (const table of tablesToClean) {
         try {
-          db.prepare(`DELETE FROM ${table} WHERE tenant_id = ?`).run(tenantId);
+          await runner.run(`DELETE FROM ${table} WHERE tenant_id = ?`, [tenantId]);
         } catch (delErr) {
           console.warn(`Could not delete from ${table}:`, delErr.message);
         }
       }
 
-      // 2. Insert rows with explicit tenant_id = tenantId
       for (const table of TENANT_TABLES) {
         const rows = backup.tables[table];
         if (!Array.isArray(rows) || rows.length === 0) continue;
@@ -489,9 +453,9 @@ exports.restoreBackup = async (req, res) => {
           const rowData = { ...row, tenant_id: tenantId };
           const cols = Object.keys(rowData);
           const placeholders = cols.map(() => '?').join(', ');
-          const sql = `INSERT OR REPLACE INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`;
+          const sql = `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`;
           try {
-            db.prepare(sql).run(...Object.values(rowData));
+            await runner.run(sql, Object.values(rowData));
           } catch (insertErr) {
             console.warn(`Error inserting into ${table}:`, insertErr.message);
           }
@@ -499,9 +463,7 @@ exports.restoreBackup = async (req, res) => {
       }
     });
 
-    restoreTx();
-
-    logAudit(req.user.id, req.user.full_name, 'RESTORE', 'TENANT_DATA', null, `Restored tenant data from ${filename}`, req);
+    await logAudit(req.user?.id, req.user?.full_name, 'RESTORE', 'TENANT_DATA', null, `Restored tenant data from ${filename}`, req);
 
     return res.json({
       success: true,

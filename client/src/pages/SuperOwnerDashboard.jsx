@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { LEGACY_TENANT_ID } from '../constants/tenant';
 
 export default function SuperOwnerDashboard() {
   const navigate = (path) => {
@@ -302,7 +303,7 @@ export default function SuperOwnerDashboard() {
                 ) : (
                   filteredTenants.map((t) => {
                     const isActive = t.is_active === 1;
-                    const isLatif = t.id === 'latif_001';
+                    const isBaseTenant = t.id === LEGACY_TENANT_ID;
 
                     return (
                       <tr key={t.id} style={{ borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.15s' }}>
@@ -431,7 +432,7 @@ export default function SuperOwnerDashboard() {
                             </button>
 
                             {/* Delete (Confirmation Required) */}
-                            {!isLatif && (
+                            {!isBaseTenant && (
                               <button
                                 onClick={() => setConfirmDelete(t)}
                                 disabled={actionLoading === t.id}

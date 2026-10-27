@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productController');
 const { authenticate, requireRoles } = require('../middleware/auth');
+const { tenantContext } = require('../middleware/tenantContext');
 
 router.use(authenticate);
+router.use(tenantContext);
 
 // Categories, Units & Brands
 router.get('/meta/categories', productController.getCategories);

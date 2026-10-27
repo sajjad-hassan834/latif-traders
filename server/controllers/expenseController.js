@@ -29,9 +29,9 @@ const saveReceiptFile = (base64String, existingPath) => {
 };
 
 // List expenses with category info
-exports.getExpenses = (req, res) => {
+exports.getExpenses = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { start_date, end_date, category_id, payment_method, search } = req.query;
 
     let query = `
@@ -44,7 +44,7 @@ exports.getExpenses = (req, res) => {
     const params = [tenantId];
 
     if (search) {
-      query += ' AND (e.title LIKE ? OR e.description LIKE ? OR ec.name LIKE ?)';
+      query += ' AND (e.title ILIKE ? OR e.description ILIKE ? OR ec.name ILIKE ?)';
       const s = `%${search}%`;
       params.push(s, s, s);
     }
@@ -66,9 +66,9 @@ exports.getExpenses = (req, res) => {
     }
 
     query += ' ORDER BY e.expense_date DESC, e.id DESC';
-    const expenses = db.prepare(query).all(...params);
+    const expenses = await db.all(query, params);
 
-    const totalAmount = expenses.reduce((sum, item) => sum + item.amount, 0);
+    const totalAmount = expenses.reduce((sum, item) => sum + Number(item.amount), 0);
 
     return res.json({ success: true, expenses, total_amount: totalAmount });
   } catch (err) {
@@ -78,9 +78,9 @@ exports.getExpenses = (req, res) => {
 };
 
 // Create Expense
-exports.createExpense = (req, res) => {
+exports.createExpense = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { category_id, title, amount, payment_method, expense_date, description, receipt_path, receipt_base64 } = req.body;
 
     if (!title || !amount || Number(amount) <= 0) {
@@ -89,12 +89,10 @@ exports.createExpense = (req, res) => {
 
     const savedReceipt = saveReceiptFile(receipt_base64, receipt_path);
 
-    const stmt = db.prepare(`
+    const result = await db.run(`
       INSERT INTO expenses (tenant_id, category_id, title, amount, payment_method, expense_date, description, receipt_path, user_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const result = stmt.run(
+    `, [
       tenantId,
       category_id || null,
       title.trim(),
@@ -103,10 +101,10 @@ exports.createExpense = (req, res) => {
       expense_date || new Date().toISOString().split('T')[0],
       description ? description.trim() : null,
       savedReceipt,
-      req.user.id
-    );
+      req.user?.id || 1
+    ]);
 
-    logAudit(req.user.id, req.user.full_name, 'CREATE', 'EXPENSE', result.lastInsertRowid, `Recorded expense: ${title} (₨ ${amount})`, req);
+    await logAudit(req.user?.id || 1, req.user?.full_name || 'Admin', 'CREATE', 'EXPENSE', result.lastInsertRowid, `Recorded expense: ${title} (₨ ${amount})`, req);
 
     return res.status(201).json({ success: true, id: result.lastInsertRowid, receipt_path: savedReceipt, message: 'Expense recorded.' });
   } catch (err) {
@@ -115,13 +113,13 @@ exports.createExpense = (req, res) => {
 };
 
 // Update Expense
-exports.updateExpense = (req, res) => {
+exports.updateExpense = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
     const { category_id, title, amount, payment_method, expense_date, description, receipt_path, receipt_base64 } = req.body;
 
-    const existing = db.prepare('SELECT * FROM expenses WHERE id = ? AND tenant_id = ?').get(id, tenantId);
+    const existing = await db.get('SELECT * FROM expenses WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
     if (!existing) return res.status(404).json({ success: false, message: 'Expense record not found.' });
 
     if (!title || !amount || Number(amount) <= 0) {
@@ -130,11 +128,11 @@ exports.updateExpense = (req, res) => {
 
     const savedReceipt = saveReceiptFile(receipt_base64, receipt_path !== undefined ? receipt_path : existing.receipt_path);
 
-    db.prepare(`
+    await db.run(`
       UPDATE expenses
       SET category_id = ?, title = ?, amount = ?, payment_method = ?, expense_date = ?, description = ?, receipt_path = ?
       WHERE id = ? AND tenant_id = ?
-    `).run(
+    `, [
       category_id || null,
       title.trim(),
       Number(amount),
@@ -142,11 +140,11 @@ exports.updateExpense = (req, res) => {
       expense_date || existing.expense_date,
       description ? description.trim() : null,
       savedReceipt,
-      id,
+      String(id),
       tenantId
-    );
+    ]);
 
-    logAudit(req.user.id, req.user.full_name, 'UPDATE', 'EXPENSE', id, `Updated expense #${id}: ${title} (₨ ${amount})`, req);
+    await logAudit(req.user?.id || 1, req.user?.full_name || 'Admin', 'UPDATE', 'EXPENSE', existing.id, `Updated expense #${id}: ${title} (₨ ${amount})`, req);
 
     return res.json({ success: true, message: 'Expense updated.' });
   } catch (err) {
@@ -155,15 +153,15 @@ exports.updateExpense = (req, res) => {
 };
 
 // Delete expense (Admin only)
-exports.deleteExpense = (req, res) => {
+exports.deleteExpense = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
-    const existing = db.prepare('SELECT * FROM expenses WHERE id = ? AND tenant_id = ?').get(id, tenantId);
+    const existing = await db.get('SELECT * FROM expenses WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
     if (!existing) return res.status(404).json({ success: false, message: 'Expense record not found.' });
 
-    db.prepare('DELETE FROM expenses WHERE id = ? AND tenant_id = ?').run(id, tenantId);
-    logAudit(req.user.id, req.user.full_name, 'DELETE', 'EXPENSE', id, `Deleted expense #${id}: ${existing.title} (₨ ${existing.amount})`, req);
+    await db.run('DELETE FROM expenses WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
+    await logAudit(req.user?.id || 1, req.user?.full_name || 'Admin', 'DELETE', 'EXPENSE', existing.id, `Deleted expense #${id}: ${existing.title} (₨ ${existing.amount})`, req);
 
     return res.json({ success: true, message: 'Expense deleted.' });
   } catch (err) {
@@ -172,31 +170,31 @@ exports.deleteExpense = (req, res) => {
 };
 
 // Expense Categories
-exports.getCategories = (req, res) => {
+exports.getCategories = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
-    const categories = db.prepare(`
+    const tenantId = req.tenantId || req.tenant_id;
+    const categories = await db.all(`
       SELECT ec.*, COUNT(e.id) as expense_count, COALESCE(SUM(e.amount), 0) as total_spent
       FROM expense_categories ec
       LEFT JOIN expenses e ON ec.id = e.category_id AND e.tenant_id = ec.tenant_id
       WHERE ec.tenant_id = ?
       GROUP BY ec.id
       ORDER BY ec.name ASC
-    `).all(tenantId);
+    `, [tenantId]);
     return res.json({ success: true, categories });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Failed to fetch expense categories.' });
   }
 };
 
-exports.createCategory = (req, res) => {
+exports.createCategory = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { name, description } = req.body;
     if (!name) return res.status(400).json({ success: false, message: 'Category name is required.' });
 
-    const stmt = db.prepare('INSERT INTO expense_categories (tenant_id, name, description) VALUES (?, ?, ?)');
-    const result = stmt.run(tenantId, name.trim(), description ? description.trim() : null);
+    const result = await db.run('INSERT INTO expense_categories (tenant_id, name, description) VALUES (?, ?, ?)',
+      [tenantId, name.trim(), description ? description.trim() : null]);
 
     return res.status(201).json({ success: true, id: result.lastInsertRowid, message: 'Category created.' });
   } catch (err) {
