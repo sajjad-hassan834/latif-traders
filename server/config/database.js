@@ -2,13 +2,14 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
+const { LEGACY_TENANT_ID } = require('../constants/tenant');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', '..', 'data');
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'latif_traders.db');
+const DB_PATH = process.env.DB_PATH || (fs.existsSync(path.join(DATA_DIR, 'shopos.db')) ? path.join(DATA_DIR, 'shopos.db') : (fs.existsSync(path.join(DATA_DIR, 'latif_traders.db')) ? path.join(DATA_DIR, 'latif_traders.db') : path.join(DATA_DIR, 'shopos.db')));
 const db = new Database(DB_PATH);
 
 // Enable WAL mode for high concurrency and performance
@@ -36,7 +37,7 @@ function initializeDatabase() {
       name TEXT NOT NULL,
       description TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      tenant_id TEXT DEFAULT 'latif_001',
+      tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
       UNIQUE(tenant_id, name)
     );
 
@@ -44,7 +45,7 @@ function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       short_code TEXT NOT NULL,
-      tenant_id TEXT DEFAULT 'latif_001',
+      tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
       UNIQUE(tenant_id, short_code)
     );
 
@@ -65,7 +66,7 @@ function initializeDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       supplier_id INTEGER REFERENCES suppliers(id),
-      tenant_id TEXT DEFAULT 'latif_001',
+      tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
       UNIQUE(tenant_id, sku)
     );
 
@@ -139,7 +140,7 @@ function initializeDatabase() {
       notes TEXT,
       user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      tenant_id TEXT DEFAULT 'latif_001',
+      tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
       UNIQUE(tenant_id, invoice_no)
     );
 
@@ -163,7 +164,7 @@ function initializeDatabase() {
       last_purchase_price REAL DEFAULT 0,
       last_purchased_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      tenant_id TEXT DEFAULT 'latif_001',
+      tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
       UNIQUE(tenant_id, supplier_id, product_id)
     );
 
@@ -184,7 +185,7 @@ function initializeDatabase() {
       user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
       order_status TEXT NOT NULL DEFAULT 'Completed',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      tenant_id TEXT DEFAULT 'latif_001',
+      tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
       UNIQUE(tenant_id, invoice_no)
     );
 
@@ -221,7 +222,7 @@ function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       description TEXT,
-      tenant_id TEXT DEFAULT 'latif_001',
+      tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
       UNIQUE(tenant_id, name)
     );
 
@@ -249,7 +250,7 @@ function initializeDatabase() {
       reason TEXT NOT NULL,
       user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      tenant_id TEXT DEFAULT 'latif_001',
+      tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
       UNIQUE(tenant_id, adjustment_no)
     );
 
@@ -264,7 +265,7 @@ function initializeDatabase() {
       reason TEXT,
       user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      tenant_id TEXT DEFAULT 'latif_001',
+      tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
       UNIQUE(tenant_id, return_no)
     );
 
@@ -367,12 +368,12 @@ function initializeDatabase() {
       const cols = db.prepare(`PRAGMA table_info("${tbl}")`).all();
       const hasTenantId = cols.some(c => c.name === 'tenant_id');
       if (!hasTenantId) {
-        db.prepare(`ALTER TABLE "${tbl}" ADD COLUMN tenant_id TEXT DEFAULT 'latif_001'`).run();
+        db.prepare(`ALTER TABLE "${tbl}" ADD COLUMN tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}'`).run();
       }
       if (tbl === 'users') {
-        db.prepare(`UPDATE "${tbl}" SET tenant_id = 'latif_001' WHERE tenant_id IS NULL AND role != 'superowner'`).run();
+        db.prepare(`UPDATE "${tbl}" SET tenant_id = '${LEGACY_TENANT_ID}' WHERE tenant_id IS NULL AND role != 'superowner'`).run();
       } else {
-        db.prepare(`UPDATE "${tbl}" SET tenant_id = 'latif_001' WHERE tenant_id IS NULL`).run();
+        db.prepare(`UPDATE "${tbl}" SET tenant_id = '${LEGACY_TENANT_ID}' WHERE tenant_id IS NULL`).run();
       }
     } catch (_) {}
   }
@@ -382,7 +383,7 @@ function initializeDatabase() {
     db.prepare("UPDATE sales SET order_status = 'Completed' WHERE order_status IS NULL OR order_status = ''").run();
   } catch (_) {}
 
-  // Add hidden system flags to users table
+  // Add hidden system flags, token_version, and must_change_password to users table
   try {
     const userCols = db.prepare('PRAGMA table_info("users")').all();
     if (!userCols.some(c => c.name === 'is_hidden')) {
@@ -391,37 +392,52 @@ function initializeDatabase() {
     if (!userCols.some(c => c.name === 'is_system_account')) {
       db.prepare('ALTER TABLE users ADD COLUMN is_system_account INTEGER DEFAULT 0').run();
     }
+    if (!userCols.some(c => c.name === 'token_version')) {
+      db.prepare('ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1').run();
+    }
+    if (!userCols.some(c => c.name === 'must_change_password')) {
+      db.prepare('ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0').run();
+    }
   } catch (_) {}
 
-  // Seed / update hidden superowner account from environment variables
+  // Add security columns to password_reset_requests and NULL all plaintext temporary_password entries
   try {
-    const soUsername = process.env.SUPEROWNER_USERNAME || 'shopos_superowner';
-    const soPassword = process.env.SUPEROWNER_PASSWORD || 'SuperOwner@ShopOS#2026!SecureKey';
-    const salt = bcrypt.genSaltSync(12);
-    const soHash = bcrypt.hashSync(soPassword, salt);
+    const resetCols = db.prepare('PRAGMA table_info("password_reset_requests")').all();
+    if (!resetCols.some(c => c.name === 'reset_token_hash')) {
+      db.prepare('ALTER TABLE password_reset_requests ADD COLUMN reset_token_hash TEXT').run();
+    }
+    if (!resetCols.some(c => c.name === 'expires_at')) {
+      db.prepare('ALTER TABLE password_reset_requests ADD COLUMN expires_at DATETIME').run();
+    }
+    if (!resetCols.some(c => c.name === 'is_used')) {
+      db.prepare('ALTER TABLE password_reset_requests ADD COLUMN is_used INTEGER DEFAULT 0').run();
+    }
+    // Security cleanup: eliminate historical plaintext temporary passwords
+    db.prepare('UPDATE password_reset_requests SET temporary_password = NULL WHERE temporary_password IS NOT NULL').run();
+  } catch (_) {}
 
-    const existingSO = db.prepare('SELECT id FROM users WHERE role = ? OR username = ?').get('superowner', soUsername);
-    if (existingSO) {
-      db.prepare(`
-        UPDATE users SET 
-          username = ?,
-          password_hash = ?,
-          full_name = 'ShopOS SuperOwner',
-          role = 'superowner',
-          status = 'active',
-          tenant_id = NULL,
-          is_hidden = 1,
-          is_system_account = 1
-        WHERE id = ?
-      `).run(soUsername, soHash, existingSO.id);
+  // Seed superowner account from environment variables if not already existing
+  try {
+    const soUsername = process.env.SUPEROWNER_USERNAME;
+    const soPassword = process.env.SUPEROWNER_PASSWORD;
+
+    if (!soUsername || !soPassword) {
+      console.warn('[SECURITY WARNING] SUPEROWNER_USERNAME or SUPEROWNER_PASSWORD environment variable is not set. Superowner account initialization skipped.');
     } else {
-      db.prepare(`
-        INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, is_hidden, is_system_account)
-        VALUES (?, 'superowner@shopos.system', ?, 'ShopOS SuperOwner', 'superowner', 'active', NULL, 1, 1)
-      `).run(soUsername, soHash);
+      const existingSO = db.prepare('SELECT id FROM users WHERE role = ? OR username = ?').get('superowner', soUsername);
+      if (!existingSO) {
+        const salt = bcrypt.genSaltSync(12);
+        const soHash = bcrypt.hashSync(soPassword, salt);
+        db.prepare(`
+          INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, is_hidden, is_system_account, token_version, must_change_password)
+          VALUES (?, 'superowner@shopos.system', ?, 'ShopOS SuperOwner', 'superowner', 'active', NULL, 1, 1, 1, 0)
+        `).run(soUsername, soHash);
+        console.log('[ShopOS Security] SuperOwner account initialized from environment.');
+      }
+      // Note: We intentionally do NOT reset superowner password on startup. Use rotate_credentials.js for rotation.
     }
   } catch (err) {
-    console.error('Superowner seed error:', err.message);
+    console.error('Superowner initialization error:', err.message);
   }
 
   // Upgrade old tables with global single-column UNIQUE to composite (tenant_id, col)
@@ -436,11 +452,11 @@ function initializeDatabase() {
           name TEXT NOT NULL,
           description TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          tenant_id TEXT DEFAULT 'latif_001',
+          tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
           UNIQUE(tenant_id, name)
         );
         INSERT INTO categories_new (id, name, description, created_at, tenant_id)
-        SELECT id, name, description, created_at, COALESCE(tenant_id, 'latif_001') FROM categories;
+        SELECT id, name, description, created_at, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM categories;
         DROP TABLE categories;
         ALTER TABLE categories_new RENAME TO categories;
       `);
@@ -460,11 +476,11 @@ function initializeDatabase() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
           short_code TEXT NOT NULL,
-          tenant_id TEXT DEFAULT 'latif_001',
+          tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
           UNIQUE(tenant_id, short_code)
         );
         INSERT INTO units_new (id, name, short_code, tenant_id)
-        SELECT id, name, short_code, COALESCE(tenant_id, 'latif_001') FROM units;
+        SELECT id, name, short_code, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM units;
         DROP TABLE units;
         ALTER TABLE units_new RENAME TO units;
       `);
@@ -484,11 +500,11 @@ function initializeDatabase() {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
           description TEXT,
-          tenant_id TEXT DEFAULT 'latif_001',
+          tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
           UNIQUE(tenant_id, name)
         );
         INSERT INTO expense_categories_new (id, name, description, tenant_id)
-        SELECT id, name, description, COALESCE(tenant_id, 'latif_001') FROM expense_categories;
+        SELECT id, name, description, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM expense_categories;
         DROP TABLE expense_categories;
         ALTER TABLE expense_categories_new RENAME TO expense_categories;
       `);
@@ -521,11 +537,11 @@ function initializeDatabase() {
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           supplier_id INTEGER REFERENCES suppliers(id),
-          tenant_id TEXT DEFAULT 'latif_001',
+          tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
           UNIQUE(tenant_id, sku)
         );
         INSERT INTO products_new (id, name, sku, barcode, category_id, brand, unit, purchase_price, sale_price, wholesale_price, min_stock_level, status, storage_location, created_at, updated_at, supplier_id, tenant_id)
-        SELECT id, name, sku, barcode, category_id, brand, unit, purchase_price, sale_price, wholesale_price, min_stock_level, status, storage_location, created_at, updated_at, supplier_id, COALESCE(tenant_id, 'latif_001') FROM products;
+        SELECT id, name, sku, barcode, category_id, brand, unit, purchase_price, sale_price, wholesale_price, min_stock_level, status, storage_location, created_at, updated_at, supplier_id, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM products;
         DROP TABLE products;
         ALTER TABLE products_new RENAME TO products;
       `);
@@ -558,11 +574,11 @@ function initializeDatabase() {
           user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
           order_status TEXT NOT NULL DEFAULT 'Completed',
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          tenant_id TEXT DEFAULT 'latif_001',
+          tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
           UNIQUE(tenant_id, invoice_no)
         );
         INSERT INTO sales_new (id, invoice_no, customer_id, sale_type, sale_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, order_status, created_at, tenant_id)
-        SELECT id, invoice_no, customer_id, sale_type, sale_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, COALESCE(order_status, 'Completed'), created_at, COALESCE(tenant_id, 'latif_001') FROM sales;
+        SELECT id, invoice_no, customer_id, sale_type, sale_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, COALESCE(order_status, 'Completed'), created_at, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM sales;
         DROP TABLE sales;
         ALTER TABLE sales_new RENAME TO sales;
       `);
@@ -594,11 +610,11 @@ function initializeDatabase() {
           notes TEXT,
           user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          tenant_id TEXT DEFAULT 'latif_001',
+          tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
           UNIQUE(tenant_id, invoice_no)
         );
         INSERT INTO purchases_new (id, invoice_no, supplier_invoice_no, supplier_id, purchase_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, created_at, tenant_id)
-        SELECT id, invoice_no, supplier_invoice_no, supplier_id, purchase_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, created_at, COALESCE(tenant_id, 'latif_001') FROM purchases;
+        SELECT id, invoice_no, supplier_invoice_no, supplier_id, purchase_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, created_at, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM purchases;
         DROP TABLE purchases;
         ALTER TABLE purchases_new RENAME TO purchases;
       `);
@@ -608,27 +624,91 @@ function initializeDatabase() {
     console.error('Migration error for purchases:', err.message);
   }
 
+
+  try {
+    const adjSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='stock_adjustments'").get()?.sql || '';
+    if (adjSql.includes('adjustment_no TEXT UNIQUE')) {
+      db.pragma('foreign_keys = OFF');
+      db.exec(`
+        DROP TABLE IF EXISTS stock_adjustments_new;
+        CREATE TABLE stock_adjustments_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          adjustment_no TEXT NOT NULL,
+          product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+          batch_id INTEGER REFERENCES batches(id) ON DELETE SET NULL,
+          type TEXT NOT NULL,
+          quantity REAL NOT NULL,
+          unit_cost REAL NOT NULL DEFAULT 0,
+          reason TEXT NOT NULL,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
+          UNIQUE(tenant_id, adjustment_no)
+        );
+        INSERT INTO stock_adjustments_new (id, adjustment_no, product_id, batch_id, type, quantity, unit_cost, reason, user_id, created_at, tenant_id)
+        SELECT id, adjustment_no, product_id, batch_id, type, quantity, unit_cost, reason, user_id, created_at, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM stock_adjustments;
+        DROP TABLE stock_adjustments;
+        ALTER TABLE stock_adjustments_new RENAME TO stock_adjustments;
+      `);
+      db.pragma('foreign_keys = ON');
+    }
+  } catch (err) {
+    console.error('Migration error for stock_adjustments:', err.message);
+  }
+
+  try {
+    const retSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='returns'").get()?.sql || '';
+    if (retSql.includes('return_no TEXT UNIQUE')) {
+      db.pragma('foreign_keys = OFF');
+      db.exec(`
+        DROP TABLE IF EXISTS returns_new;
+        CREATE TABLE returns_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          return_no TEXT NOT NULL,
+          type TEXT NOT NULL,
+          original_invoice_id INTEGER,
+          original_invoice_no TEXT,
+          party_id INTEGER,
+          total_amount REAL NOT NULL,
+          reason TEXT,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
+          UNIQUE(tenant_id, return_no)
+        );
+        INSERT INTO returns_new (id, return_no, type, original_invoice_id, original_invoice_no, party_id, total_amount, reason, user_id, created_at, tenant_id)
+        SELECT id, return_no, type, original_invoice_id, original_invoice_no, party_id, total_amount, reason, user_id, created_at, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM returns;
+        DROP TABLE returns;
+        ALTER TABLE returns_new RENAME TO returns;
+      `);
+      db.pragma('foreign_keys = ON');
+    }
+  } catch (err) {
+    console.error('Migration error for returns:', err.message);
+  }
+
+
   // Ensure default Latif Traders tenant exists
   try {
-    const defaultTenant = db.prepare("SELECT id FROM tenants WHERE id = 'latif_001'").get();
+    const defaultTenant = db.prepare("SELECT id FROM tenants WHERE id = '${LEGACY_TENANT_ID}'").get();
     if (!defaultTenant) {
       db.prepare(`
         INSERT INTO tenants (id, business_name, business_type, owner_name, email, phone, address, plan, is_active)
-        VALUES ('latif_001', 'Latif Traders', 'frozen_food', 'Mudassir Arif', 'admin@latiftraders.com', '+92 300 1234567', 'Shop # 14-16, Commercial Market, Lahore', 'pro', 1)
+        VALUES ('${LEGACY_TENANT_ID}', 'Latif Traders', 'frozen_food', 'Mudassir Arif', 'admin@latiftraders.com', '+92 300 1234567', 'Shop # 14-16, Commercial Market, Lahore', 'pro', 1)
       `).run();
 
       db.prepare(`
         INSERT INTO subscriptions (tenant_id, plan, price, payment_status)
-        VALUES ('latif_001', 'pro', 3000, 'active')
+        VALUES ('${LEGACY_TENANT_ID}', 'pro', 3000, 'active')
       `).run();
     }
   } catch (_) {}
 
-  // Migrate legacy settings table into tenant_settings for latif_001
+  // Migrate legacy settings table into tenant_settings for legacy tenant
   try {
     db.prepare(`
       INSERT OR IGNORE INTO tenant_settings (tenant_id, key, value)
-      SELECT 'latif_001', key, value FROM settings
+      SELECT '${LEGACY_TENANT_ID}', key, value FROM settings
     `).run();
   } catch (_) {}
 
@@ -791,7 +871,7 @@ function initializeDatabase() {
           db.prepare(`
             INSERT INTO payments (tenant_id, type, party_type, party_id, reference_no, amount, payment_method, payment_date, notes)
             VALUES (?, 'CUSTOMER_RECEIPT', 'CUSTOMER', ?, 'REC-20261020-0001', 10540, 'Cash', '2026-10-20', 'Customer Udhaar Payment Received')
-          `).run(fasial.tenant_id || 'latif_001', fasial.id);
+          `).run(fasial.tenant_id || LEGACY_TENANT_ID, fasial.id);
         }
       }
 
@@ -805,18 +885,42 @@ function initializeDatabase() {
 }
 
 function seedInitialData() {
-  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users WHERE role != ?').get('superowner')?.count || 0;
   if (userCount === 0) {
-    console.log('Seeding initial Administrator account...');
-    const salt = bcrypt.genSaltSync(10);
-    const adminHash = bcrypt.hashSync('admin123', salt);
+    const initialAdminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+    if (initialAdminPassword) {
+      console.log('[ShopOS Security] Seeding initial Administrator account from INITIAL_ADMIN_PASSWORD...');
+      const salt = bcrypt.genSaltSync(12);
+      const adminHash = bcrypt.hashSync(initialAdminPassword, salt);
 
-    const insertUser = db.prepare(`
-      INSERT INTO users (username, email, password_hash, full_name, role, status)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
+      const insertUser = db.prepare(`
+        INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, must_change_password, token_version)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)
+      `);
 
-    insertUser.run('admin', 'admin@latiftraders.com', adminHash, 'Mudassir Arif', 'admin', 'active');
+      insertUser.run('admin', 'admin@shopos.system', adminHash, 'System Administrator', 'admin', 'active', LEGACY_TENANT_ID);
+    } else if (process.env.NODE_ENV !== 'production') {
+      const crypto = require('crypto');
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      const salt = bcrypt.genSaltSync(12);
+      const adminHash = bcrypt.hashSync(randomPassword, salt);
+
+      const insertUser = db.prepare(`
+        INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, must_change_password, token_version)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)
+      `);
+
+      insertUser.run('admin', 'admin@shopos.system', adminHash, 'System Administrator', 'admin', 'active', LEGACY_TENANT_ID);
+      console.log('\n======================================================');
+      console.log('  [ShopOS SECURITY] Fresh Database Initialized');
+      console.log('  Initial Admin Account Created:');
+      console.log('  Username: admin');
+      console.log(`  Password: ${randomPassword}`);
+      console.log('  Please save this password immediately and change it upon login.');
+      console.log('======================================================\n');
+    } else {
+      console.warn('[SECURITY WARNING] Fresh database detected in production, but INITIAL_ADMIN_PASSWORD is not set. Default admin account skipped.');
+    }
   }
 
   const unitCount = db.prepare('SELECT COUNT(*) as count FROM units').get().count;
@@ -894,11 +998,11 @@ function seedInitialData() {
     ];
     for (const t of businessTables) {
       try {
-        db.prepare(`UPDATE ${t} SET tenant_id = 'latif_001' WHERE tenant_id IS NULL`).run();
+        db.prepare(`UPDATE ${t} SET tenant_id = '${LEGACY_TENANT_ID}' WHERE tenant_id IS NULL`).run();
         db.prepare(`CREATE INDEX IF NOT EXISTS idx_${t}_tenant ON ${t}(tenant_id)`).run();
       } catch (_) {}
     }
-    db.prepare("UPDATE users SET tenant_id = 'latif_001' WHERE tenant_id IS NULL AND role != 'superowner'").run();
+    db.prepare("UPDATE users SET tenant_id = '${LEGACY_TENANT_ID}' WHERE tenant_id IS NULL AND role != 'superowner'").run();
     db.prepare("CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id)").run();
     db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_adjustments_tenant_no ON stock_adjustments(tenant_id, adjustment_no)").run();
     db.prepare("CREATE INDEX IF NOT EXISTS idx_customers_tenant_phone ON customers(tenant_id, phone)").run();
@@ -909,6 +1013,59 @@ function seedInitialData() {
 
 initializeDatabase();
 
+// SQLite async and compatibility helpers
+db.get = async (sql, params = []) => db.prepare(sql).get(...params);
+db.all = async (sql, params = []) => db.prepare(sql).all(...params);
+db.run = async (sql, params = []) => {
+  const res = db.prepare(sql).run(...params);
+  return { rowCount: res.changes, lastInsertRowid: res.lastInsertRowid };
+};
+db.transaction = async (callback) => {
+  db.prepare('BEGIN IMMEDIATE').run();
+  try {
+    const result = await callback(db);
+    db.prepare('COMMIT').run();
+    return result;
+  } catch (err) {
+    try { db.prepare('ROLLBACK').run(); } catch (_) {}
+    throw err;
+  }
+};
+db.measureLatency = async () => {
+  const start = Date.now();
+  db.prepare('SELECT 1').get();
+  return Date.now() - start;
+};
+db.getDriver = () => 'sqlite';
+db.getNextNumber = async (tenantId, counterType, prefix, padLength = 4) => {
+  const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  const fullType = `${counterType}_${today}`;
+  db.prepare(`
+    INSERT INTO counters (tenant_id, counter_type, last_number, updated_at)
+    VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+    ON CONFLICT (tenant_id, counter_type)
+    DO UPDATE SET last_number = counters.last_number + 1, updated_at = CURRENT_TIMESTAMP
+  `).run(tenantId, fullType);
+
+  const row = db.prepare('SELECT last_number FROM counters WHERE tenant_id = ? AND counter_type = ?').get(tenantId, fullType);
+  const num = row ? row.last_number : 1;
+  const formattedNum = String(num).padStart(padLength, '0');
+  return `${prefix}-${today}-${formattedNum}`;
+};
+
+// Register custom scalar functions for SQL dialect parity
+try {
+  db.function('GREATEST', { varargs: true }, (...args) => Math.max(...args.map(a => Number(a) || 0)));
+  db.function('LEAST', { varargs: true }, (...args) => Math.min(...args.map(a => Number(a) || 0)));
+} catch (_) {}
+
+module.exports = {
+  db,
+  sqliteDb: db,
+  initializeDatabase,
+  DB_PATH,
+  DATA_DIR
+};
 module.exports = {
   db,
   initializeDatabase,

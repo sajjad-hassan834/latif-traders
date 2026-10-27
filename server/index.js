@@ -4,8 +4,16 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 require('dotenv').config();
 
+// Strict production security pre-flight check
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    console.error('FATAL: JWT_SECRET environment variable is missing or shorter than 32 characters in production.');
+    process.exit(1);
+  }
+}
+
 // Initialize DB schema & seeds
-const { DATA_DIR } = require('./config/database');
+const { db, DATA_DIR } = require('./config/database');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -72,9 +80,40 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', app: 'Latif Traders Management System', timestamp: new Date().toISOString() });
+// Health check with database latency measurement
+app.get('/api/health', async (req, res) => {
+  try {
+    const latencyMs = db.measureLatency ? await db.measureLatency() : 0;
+    res.json({
+      status: 'ok',
+      app: 'ShopOS Management System',
+      driver: 'sqlite',
+      latency_ms: latencyMs,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(503).json({
+      status: 'unhealthy',
+      error: err.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Maintenance mode middleware (stops tenant traffic during cut-over/maintenance while keeping health and superowner open)
+app.use((req, res, next) => {
+  if (process.env.MAINTENANCE_MODE === 'true') {
+    if (req.path === '/api/health' || req.path.startsWith('/api/superowner')) {
+      return next();
+    }
+    return res.status(503).json({
+      success: false,
+      maintenance: true,
+      message: 'System is currently undergoing maintenance. Please try again shortly.',
+      timestamp: new Date().toISOString()
+    });
+  }
+  next();
 });
 
 // API Routes
@@ -107,13 +146,19 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`\n======================================================`);
-  console.log(`  LATIF TRADERS - Frozen Food Management Server`);
-  console.log(`  Local:   http://localhost:${PORT}`);
-  console.log(`  Network: Accessible across LAN devices`);
-  console.log(`  API:     http://localhost:${PORT}/api`);
-  console.log(`======================================================\n`);
-});
+let server = null;
+if (process.env.NODE_ENV !== 'test' || require.main === module) {
+  server = app.listen(PORT, () => {
+    console.log('\n======================================================');
+    console.log('  ShopOS - Multi-Tenant Point of Sale Server');
+    console.log(`  Local:   http://localhost:${PORT}`);
+    console.log('  Network: Accessible across LAN devices');
+    console.log(`  API:     http://localhost:${PORT}/api`);
+    console.log('======================================================\n');
+  });
+}
+
+module.exports = app;
+module.exports.server = server;
 
 module.exports = app;
