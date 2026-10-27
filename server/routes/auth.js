@@ -10,8 +10,9 @@ router.get('/me', authenticate, authController.getCurrentUser);
 router.post('/change-password', authenticate, authController.changePassword);
 router.put('/profile', authenticate, authController.updateProfile);
 
-// Public password reset request & status check
+// Public password reset request & token status check
 router.post('/forgot-password', authController.requestPasswordReset);
-router.get('/forgot-password-status/:username', authController.getResetRequestStatus);
+router.get('/forgot-password-status', authController.getResetRequestStatus);
+router.get('/forgot-password-status/:token', authController.getResetRequestStatus);
 
 module.exports = router;

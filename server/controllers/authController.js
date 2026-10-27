@@ -6,7 +6,7 @@ const { JWT_SECRET } = require('../middleware/auth');
 const { logAudit } = require('../middleware/audit');
 const { seedNewTenant } = require('../config/seedTenant');
 
-exports.register = (req, res) => {
+exports.register = async (req, res) => {
   try {
     const fullName = (req.body.fullName || req.body.full_name || '').trim();
     const email = (req.body.email || '').trim();
@@ -25,17 +25,17 @@ exports.register = (req, res) => {
       });
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return res.status(400).json({
         success: false,
-        message: 'Password must be at least 6 characters long.'
+        message: 'Password must be at least 8 characters long.'
       });
     }
 
     const normalizedEmail = email.trim().toLowerCase();
 
     // Check if email already registered
-    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
+    const existingUser = await db.get('SELECT id FROM users WHERE email = ?', [normalizedEmail]);
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -49,26 +49,25 @@ exports.register = (req, res) => {
     const baseUsername = normalizedEmail.split('@')[0].replace(/[^a-z0-9_]/g, '') || 'owner';
     let username = baseUsername;
     let counter = 1;
-    while (db.prepare('SELECT id FROM users WHERE username = ?').get(username)) {
+    while (await db.get('SELECT id FROM users WHERE username = ?', [username])) {
       username = `${baseUsername}${counter++}`;
     }
 
     const bType = businessType || 'retail_general';
-    // Priority 2: New registrations start on the FREE plan. Only Latif Traders & superowner-upgraded accounts may be Enterprise.
     const chosenPlan = 'free';
     const planPrice = 0;
 
-    const salt = bcrypt.genSaltSync(10);
+    const salt = bcrypt.genSaltSync(12);
     const passwordHash = bcrypt.hashSync(password, salt);
 
     let newUserId;
 
-    const registerTx = db.transaction(() => {
+    await db.transaction(async () => {
       // 1. Create Tenant
-      db.prepare(`
+      await db.run(`
         INSERT INTO tenants (id, business_name, business_type, owner_name, email, phone, address, plan, is_active)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
-      `).run(
+      `, [
         tenantId,
         businessName.trim(),
         bType,
@@ -77,58 +76,59 @@ exports.register = (req, res) => {
         businessPhone || phone || '',
         city || '',
         chosenPlan
-      );
+      ]);
 
       // 2. Create Subscription
-      db.prepare(`
+      await db.run(`
         INSERT INTO subscriptions (tenant_id, plan, price, payment_status)
         VALUES (?, ?, ?, 'active')
-      `).run(tenantId, chosenPlan, planPrice);
+      `, [tenantId, chosenPlan, planPrice]);
 
-      // 3. Create Admin / Owner User
-      const userRes = db.prepare(`
-        INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id)
-        VALUES (?, ?, ?, ?, 'admin', 'active', ?)
-      `).run(username, normalizedEmail, passwordHash, fullName.trim(), tenantId);
+      // 3. Create Admin / Owner User with default token_version = 1, must_change_password = 0
+      const userRes = await db.run(`
+        INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, token_version, must_change_password)
+        VALUES (?, ?, ?, ?, 'admin', 'active', ?, 1, 0)
+      `, [username, normalizedEmail, passwordHash, fullName.trim(), tenantId]);
 
       newUserId = userRes.lastInsertRowid;
     });
 
-    registerTx();
-
     // 4. Pre-seed default categories, units, expense categories, settings and walk-in customer
-    seedNewTenant(
-      tenantId,
-      bType,
-      businessName.trim(),
-      normalizedEmail,
-      businessPhone || phone || '',
-      city || '',
-      city || ''
-    );
+    try {
+      seedNewTenant(
+        tenantId,
+        bType,
+        businessName.trim(),
+        normalizedEmail,
+        businessPhone || phone || '',
+        city || '',
+        city || ''
+      );
+    } catch (_) {}
 
-    // 5. Issue JWT Token with tenant payload
+    // 5. Issue JWT Token with algorithm pinning
     const token = jwt.sign(
       {
         id: newUserId,
         username,
         role: 'admin',
         tenantId,
+        token_version: 1,
         businessType: bType,
         plan: chosenPlan
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '24h', algorithm: 'HS256' }
     );
 
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000
+      maxAge: 24 * 60 * 60 * 1000
     });
 
-    logAudit(newUserId, fullName.trim(), 'REGISTER', 'TENANT', newUserId, `Registered new ${chosenPlan} tenant: ${businessName}`, req);
+    await logAudit(newUserId, fullName.trim(), 'REGISTER', 'TENANT', newUserId, `Registered new ${chosenPlan} business`, req);
 
     const tenantObj = {
       id: tenantId,
@@ -154,6 +154,7 @@ exports.register = (req, res) => {
         plan: chosenPlan,
         theme: 'classic',
         is_first_login: true,
+        must_change_password: false,
         tenant: tenantObj
       }
     });
@@ -163,7 +164,7 @@ exports.register = (req, res) => {
   }
 };
 
-exports.login = (req, res) => {
+exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -171,8 +172,10 @@ exports.login = (req, res) => {
     }
 
     const normalizedInput = username.trim().toLowerCase();
-    const user = db.prepare(`
+    const user = await db.get(`
       SELECT u.*, 
+             COALESCE(u.token_version, 1) as token_version,
+             COALESCE(u.must_change_password, 0) as must_change_password,
              COALESCE(t.business_name, 'ShopOS Business') as business_name,
              COALESCE(t.business_type, 'retail_general') as business_type,
              COALESCE(t.plan, 'free') as plan,
@@ -182,7 +185,7 @@ exports.login = (req, res) => {
       FROM users u
       LEFT JOIN tenants t ON u.tenant_id = t.id
       WHERE LOWER(u.username) = ? OR LOWER(u.email) = ?
-    `).get(normalizedInput, normalizedInput);
+    `, [normalizedInput, normalizedInput]);
 
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials. Please check your username/email and password.' });
@@ -196,7 +199,7 @@ exports.login = (req, res) => {
       if (!user.tenant_id) {
         return res.status(401).json({ success: false, message: 'No valid business tenant associated with this account.' });
       }
-      if (user.tenant_active === 0) {
+      if (Number(user.tenant_active) === 0) {
         return res.status(403).json({ success: false, message: 'Your business account is suspended or inactive. Please contact support.' });
       }
     }
@@ -212,26 +215,26 @@ exports.login = (req, res) => {
         id: user.id,
         username: user.username,
         role: user.role,
-        tenantId: tokenTenantId,
+        tenant_id: tokenTenantId,
+        token_version: user.token_version || 1,
         businessType: user.business_type || 'retail_general',
         plan: user.role === 'superowner' ? 'enterprise' : (user.plan || 'free')
       },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '24h', algorithm: 'HS256' }
     );
 
-    // Set secure httpOnly cookie
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000
+      maxAge: 24 * 60 * 60 * 1000
     });
 
     if (user.role === 'superowner') {
-      logAudit(null, 'System', 'LOGIN', 'SYSTEM', 0, 'System operator session initiated', req);
+      await logAudit(null, 'System', 'LOGIN', 'SYSTEM', 0, 'System operator session initiated', req);
     } else {
-      logAudit(user.id, user.full_name, 'LOGIN', 'USER', user.id, `User logged in to tenant ${user.tenant_id}`, req);
+      await logAudit(user.id, user.full_name, 'LOGIN', 'USER', user.id, `User logged in`, req);
     }
 
     const tenantObj = user.role === 'superowner' ? {
@@ -264,6 +267,7 @@ exports.login = (req, res) => {
         plan: tenantObj.plan,
         theme: user.theme || 'classic',
         logo_url: user.logo_url,
+        must_change_password: Number(user.must_change_password) === 1,
         tenant: tenantObj
       }
     });
@@ -273,12 +277,18 @@ exports.login = (req, res) => {
   }
 };
 
-exports.logout = (req, res) => {
-  res.clearCookie('token');
-  if (req.user) {
-    logAudit(req.user.id, req.user.full_name, 'LOGOUT', 'USER', req.user.id, 'User signed out', req);
+exports.logout = async (req, res) => {
+  try {
+    res.clearCookie('token');
+    if (req.user) {
+      await db.run('UPDATE users SET token_version = COALESCE(token_version, 1) + 1 WHERE id = ?', [req.user.id]);
+      await logAudit(req.user.id, req.user.full_name, 'LOGOUT', 'USER', req.user.id, 'User signed out', req);
+    }
+    return res.json({ success: true, message: 'Successfully signed out.' });
+  } catch (err) {
+    console.error('Logout error:', err);
+    return res.status(500).json({ success: false, message: 'Server error during sign out.' });
   }
-  return res.json({ success: true, message: 'Successfully signed out.' });
 };
 
 exports.getCurrentUser = (req, res) => {
@@ -288,47 +298,81 @@ exports.getCurrentUser = (req, res) => {
   });
 };
 
-exports.changePassword = (req, res) => {
+exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ success: false, message: 'Current and new password are required.' });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters.' });
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters long.' });
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-    if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    if (!user || !bcrypt.compareSync(currentPassword, user.password_hash)) {
       return res.status(400).json({ success: false, message: 'Incorrect current password.' });
     }
 
-    const salt = bcrypt.genSaltSync(10);
+    const salt = bcrypt.genSaltSync(12);
     const newHash = bcrypt.hashSync(newPassword, salt);
+    const newTokenVersion = (user.token_version || 1) + 1;
 
-    db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newHash, req.user.id);
-    logAudit(req.user.id, req.user.full_name, 'CHANGE_PASSWORD', 'USER', req.user.id, 'Changed personal password', req);
+    await db.run(`
+      UPDATE users 
+      SET password_hash = ?, 
+          must_change_password = 0, 
+          token_version = ?, 
+          updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ?
+    `, [newHash, newTokenVersion, req.user.id]);
 
-    return res.json({ success: true, message: 'Password updated successfully.' });
+    await logAudit(req.user.id, req.user.full_name, 'CHANGE_PASSWORD', 'USER', req.user.id, 'Changed personal password', req);
+
+    // Issue refreshed token with the new token_version so active session can continue
+    const tokenTenantId = user.role === 'superowner' ? null : user.tenant_id;
+    const refreshedToken = jwt.sign(
+      {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        tenant_id: tokenTenantId,
+        token_version: newTokenVersion
+      },
+      JWT_SECRET,
+      { expiresIn: '24h', algorithm: 'HS256' }
+    );
+
+    res.cookie('token', refreshedToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    return res.json({
+      success: true,
+      message: 'Password updated successfully.',
+      token: refreshedToken
+    });
   } catch (err) {
     console.error('Change password error:', err);
     return res.status(500).json({ success: false, message: 'Failed to update password.' });
   }
 };
 
-exports.updateProfile = (req, res) => {
+exports.updateProfile = async (req, res) => {
   try {
     const { full_name, email } = req.body;
     if (!full_name || !full_name.trim()) {
       return res.status(400).json({ success: false, message: 'Full name is required.' });
     }
 
-    db.prepare('UPDATE users SET full_name = ?, email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .run(full_name.trim(), email ? email.trim() : null, req.user.id);
+    await db.run('UPDATE users SET full_name = ?, email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [full_name.trim(), email ? email.trim() : null, req.user.id]);
 
-    const updatedUser = db.prepare('SELECT id, username, email, full_name, role, status FROM users WHERE id = ?').get(req.user.id);
-    logAudit(req.user.id, full_name.trim(), 'UPDATE_PROFILE', 'USER', req.user.id, 'Updated personal profile details', req);
+    const updatedUser = await db.get('SELECT id, username, email, full_name, role, status FROM users WHERE id = ?', [req.user.id]);
+    await logAudit(req.user.id, full_name.trim(), 'UPDATE_PROFILE', 'USER', req.user.id, 'Updated personal profile details', req);
 
     return res.json({
       success: true,
@@ -342,79 +386,82 @@ exports.updateProfile = (req, res) => {
 };
 
 // Staff submits a password reset request to Admin
-exports.requestPasswordReset = (req, res) => {
+// Security: Generic response returned in all scenarios to prevent username enumeration
+exports.requestPasswordReset = async (req, res) => {
   try {
     const { username, request_note, contact_info } = req.body;
+    const genericResponse = {
+      success: true,
+      message: 'If an active account exists for this username, a reset request has been logged for your administrator.'
+    };
+
     if (!username || !username.trim()) {
       return res.status(400).json({ success: false, message: 'Please enter your Username or Staff ID.' });
     }
 
     const cleanUsername = username.trim().toLowerCase();
-    const user = db.prepare('SELECT id, username, full_name, status FROM users WHERE LOWER(username) = ?').get(cleanUsername);
-    if (!user) {
-      return res.status(404).json({ success: false, message: `Staff username "${username}" not found. Please contact Administrator.` });
+    const user = await db.get('SELECT id, username, full_name, role, status, tenant_id FROM users WHERE LOWER(username) = ?', [cleanUsername]);
+
+    // If user does not exist, or is superowner (superowner reset requests are silently blocked), or is inactive
+    if (!user || user.role === 'superowner' || user.status !== 'active') {
+      return res.json(genericResponse);
     }
 
-    if (user.status !== 'active') {
-      return res.status(403).json({ success: false, message: 'Your account is deactivated. Please contact Administrator directly.' });
-    }
-
-    // Check if there is already a pending request
-    const existing = db.prepare("SELECT id, created_at FROM password_reset_requests WHERE LOWER(username) = ? AND status = 'pending'").get(cleanUsername);
-    if (existing) {
-      return res.json({
-        success: true,
-        alreadyPending: true,
-        message: 'A password reset request is already pending Admin review. Admin has been notified.'
-      });
-    }
+    // Generate secure random reset token and store only its SHA-256 hash
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h expiry
 
     const note = request_note && request_note.trim()
       ? `${request_note.trim()}${contact_info ? ' (Contact: ' + contact_info.trim() + ')' : ''}`
       : (contact_info ? `Contact: ${contact_info.trim()}` : 'Password reset requested via login terminal');
 
-    const result = db.prepare(`
-      INSERT INTO password_reset_requests (user_id, username, full_name, request_note, status)
-      VALUES (?, ?, ?, ?, 'pending')
-    `).run(user.id, user.username, user.full_name, note);
+    await db.run(`
+      INSERT INTO password_reset_requests (tenant_id, user_id, username, full_name, request_note, status, reset_token_hash, expires_at, is_used)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, 0)
+    `, [user.tenant_id, user.id, user.username, user.full_name, note, resetTokenHash, expiresAt]);
 
-    logAudit(user.id, user.full_name, 'FORGOT_PASSWORD_REQUEST', 'USER', user.id, `Password reset requested by ${user.username}`, req);
+    await logAudit(user.id, user.full_name, 'FORGOT_PASSWORD_REQUEST', 'USER', user.id, 'Password reset requested via login terminal', req);
 
-    return res.status(201).json({
-      success: true,
-      message: 'Password reset request submitted successfully! Your administrator has been notified to approve and set your new password.',
-      requestId: result.lastInsertRowid
-    });
+    return res.json(genericResponse);
   } catch (err) {
     console.error('Password reset request error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to submit password reset request.' });
+    return res.status(500).json({ success: false, message: 'Failed to process password reset request.' });
   }
 };
 
-// Staff checks the status of their reset request
-exports.getResetRequestStatus = (req, res) => {
+// Staff checks the status of their reset request by token only
+exports.getResetRequestStatus = async (req, res) => {
   try {
-    const { username } = req.params;
-    if (!username || !username.trim()) {
-      return res.status(400).json({ success: false, message: 'Username is required.' });
+    const token = req.query.token || req.params.token;
+    if (!token || !token.trim()) {
+      return res.status(400).json({ success: false, message: 'Reset token is required.' });
     }
 
-    const cleanUsername = username.trim().toLowerCase();
-    const latest = db.prepare(`
-      SELECT id, username, full_name, status, admin_note, temporary_password, created_at, resolved_at
+    const tokenHash = crypto.createHash('sha256').update(token.trim()).digest('hex');
+    const request = await db.get(`
+      SELECT status, expires_at, is_used
       FROM password_reset_requests
-      WHERE LOWER(username) = ?
+      WHERE reset_token_hash = ?
       ORDER BY id DESC
       LIMIT 1
-    `).get(cleanUsername);
+    `, [tokenHash]);
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Invalid or expired reset token.' });
+    }
+
+    // Verify 24h expiration
+    if (request.expires_at && new Date(request.expires_at) < new Date()) {
+      return res.status(410).json({ success: false, message: 'This reset token has expired.' });
+    }
 
     return res.json({
       success: true,
-      request: latest || null
+      status: request.status
     });
   } catch (err) {
     console.error('Fetch reset status error:', err);
     return res.status(500).json({ success: false, message: 'Failed to check reset status.' });
   }
 };
-
