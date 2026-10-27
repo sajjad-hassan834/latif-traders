@@ -37,7 +37,7 @@ function runTests() {
   console.log('--- Scenario 1: Opening Balance + Partial Payment Sale ---');
   const custRes = db.prepare(`
     INSERT INTO customers (tenant_id, name, phone, opening_balance, current_balance)
-    VALUES (?, 'Fasial Walton', '03001234567', 1000, 1000)
+    VALUES (?, 'Synthetic Customer Beta', '03001234567', 1000, 1000)
   `).run(tenantA);
   const custId = custRes.lastInsertRowid;
 

@@ -1,0 +1,18 @@
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    container_name: latif_traders_pg_test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpassword123
+      POSTGRES_DB: latif_test
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d latif_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pg_test_data:

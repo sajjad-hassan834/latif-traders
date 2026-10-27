@@ -1,5 +1,6 @@
 const { db } = require('../config/database');
 
+
 /**
  * Sanitizes sensitive fields from details before writing to audit logs
  */
@@ -22,6 +23,7 @@ function sanitizeAuditDetails(details) {
   return String(details);
 }
 
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
 async function logAudit(userId, userName, action, entityType, entityId, details, req) {
   try {
     const isSuperOwner = req?.user?.role === 'superowner' || req?.isSuperOwner;
@@ -29,24 +31,30 @@ async function logAudit(userId, userName, action, entityType, entityId, details,
     const finalUserName = isSuperOwner ? 'System' : (userName || 'System');
 
     const ip = req ? (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1') : '127.0.0.1';
+
     let tenantId = req?.tenantId || req?.tenant_id || req?.user?.tenant_id;
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     if (!tenantId && finalUserId) {
       try {
         const u = await db.get('SELECT tenant_id FROM users WHERE id = ?', [finalUserId]);
         if (u) tenantId = u.tenant_id;
       } catch (_) {}
     }
+
     
     // Never attribute unattributed or superowner logs to any specific tenant
     const finalTenantId = tenantId || (isSuperOwner ? 'system' : null);
 
     const sanitizedDetails = sanitizeAuditDetails(details);
 
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     await db.run(`
       INSERT INTO audit_logs (tenant_id, user_id, user_name, action, entity_type, entity_id, details, ip_address)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
+
       finalTenantId,
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       finalUserId,
       finalUserName,
       action,

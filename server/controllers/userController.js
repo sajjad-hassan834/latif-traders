@@ -4,7 +4,9 @@ const { logAudit } = require('../middleware/audit');
 
 exports.getUsers = async (req, res) => {
   try {
+
     const tenantId = req.tenantId || req.tenant_id;
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     const users = await db.all(`
       SELECT id, username, email, full_name, role, status, created_at, updated_at 
       FROM users 
@@ -189,7 +191,9 @@ exports.getAuditLogs = async (req, res) => {
 // Admin: Get all staff password reset requests
 exports.getPasswordResetRequests = async (req, res) => {
   try {
+
     const tenantId = req.tenantId || req.tenant_id;
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     const requests = await db.all(`
       SELECT 
         r.*,
@@ -217,7 +221,9 @@ exports.getPasswordResetRequests = async (req, res) => {
 
 // Admin: Approve and set new password or Reject request
 exports.resolvePasswordResetRequest = async (req, res) => {
+
   const tenantId = req.tenantId || req.tenant_id;
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
   try {
     const result = await db.transaction(async (tx) => {
       const runner = tx.get ? tx : db;
@@ -243,6 +249,7 @@ exports.resolvePasswordResetRequest = async (req, res) => {
           throw new Error('New password must be at least 6 characters long.');
         }
 
+
         const salt = bcrypt.genSaltSync(12);
         const hash = bcrypt.hashSync(new_password.trim(), salt);
         const tempExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -260,21 +267,27 @@ exports.resolvePasswordResetRequest = async (req, res) => {
         `, [hash, tempExpiresAt, user.id, tenantId]);
 
         // Update request record with admin approval, NULL temporary_password, and mark used
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
         await runner.run(`
           UPDATE password_reset_requests SET
             status = 'approved',
             admin_note = ?,
+
             temporary_password = NULL,
             is_used = 1,
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
             resolved_at = CURRENT_TIMESTAMP,
             resolved_by = ?
           WHERE id = ? AND tenant_id = ?
         `, [
           admin_note ? admin_note.trim() : 'Password has been successfully reset by Administrator.',
+
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
           req.user?.id,
           id,
           tenantId
         ]);
+
 
         await logAudit(req.user?.id, req.user?.full_name, 'RESET_PASSWORD_APPROVED', 'USER', user.id, 'Admin approved password reset for staff user', req);
 
@@ -282,6 +295,7 @@ exports.resolvePasswordResetRequest = async (req, res) => {
           message: `Temporary password for ${user.username} has been successfully generated!`,
           username: user.username,
           temporary_password: new_password.trim()
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
         };
       } else if (action === 'reject') {
         await runner.run(`

@@ -66,6 +66,12 @@ const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// Register custom scalar functions for SQL dialect parity with PostgreSQL
+try {
+  db.function('GREATEST', { varargs: true }, (...args) => Math.max(...args.map(a => Number(a) || 0)));
+  db.function('LEAST', { varargs: true }, (...args) => Math.min(...args.map(a => Number(a) || 0)));
+} catch (_) {}
+
 function initializeDatabase() {
   const schema = `
     CREATE TABLE IF NOT EXISTS users (
@@ -333,6 +339,14 @@ function initializeDatabase() {
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS counters (
+      tenant_id TEXT NOT NULL,
+      counter_type TEXT NOT NULL,
+      last_number INTEGER NOT NULL DEFAULT 0,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (tenant_id, counter_type)
     );
 
     CREATE TABLE IF NOT EXISTS brands (
@@ -712,7 +726,6 @@ function initializeDatabase() {
     console.error('Migration error for purchases:', err.message);
   }
 
-
   try {
     const adjSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='stock_adjustments'").get()?.sql || '';
     if (adjSql.includes('adjustment_no TEXT UNIQUE')) {
@@ -730,6 +743,7 @@ function initializeDatabase() {
           reason TEXT NOT NULL,
           user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
           tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
           UNIQUE(tenant_id, adjustment_no)
         );
@@ -761,11 +775,12 @@ function initializeDatabase() {
           reason TEXT,
           user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
           tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
-          UNIQUE(tenant_id, return_no)
+          UNIQUE(tenant_id, adjustment_no)
         );
-        INSERT INTO returns_new (id, return_no, type, original_invoice_id, original_invoice_no, party_id, total_amount, reason, user_id, created_at, tenant_id)
-        SELECT id, return_no, type, original_invoice_id, original_invoice_no, party_id, total_amount, reason, user_id, created_at, tenant_id FROM returns;
+        INSERT INTO stock_adjustments_new (id, adjustment_no, product_id, batch_id, type, quantity, unit_cost, reason, user_id, created_at, tenant_id)
+        SELECT id, adjustment_no, product_id, batch_id, type, quantity, unit_cost, reason, user_id, created_at, tenant_id FROM stock_adjustments;
         DROP TABLE returns;
         ALTER TABLE returns_new RENAME TO returns;
       `);
@@ -774,7 +789,6 @@ function initializeDatabase() {
   } catch (err) {
     console.error('Migration error for returns:', err.message);
   }
-
 
   // Ensure default Latif Traders tenant exists
   try {
@@ -1101,70 +1115,168 @@ function seedInitialData() {
 
 initializeDatabase();
 
-// SQLite async and compatibility helpers
-db.get = async (sql, params = []) => db.prepare(sql).get(...params);
-db.all = async (sql, params = []) => db.prepare(sql).all(...params);
-db.run = async (sql, params = []) => {
-  const res = db.prepare(sql).run(...params);
-  return { rowCount: res.changes, lastInsertRowid: res.lastInsertRowid };
-};
-const originalNativeTransaction = db.transaction.bind(db);
-db.transaction = (callback) => {
-  if (callback && callback.constructor && callback.constructor.name === 'AsyncFunction') {
-    return (async () => {
-      db.prepare('BEGIN IMMEDIATE').run();
-      try {
-        const result = await callback(db);
-        db.prepare('COMMIT').run();
-        return result;
-      } catch (err) {
-        try { db.prepare('ROLLBACK').run(); } catch (_) {}
-        throw err;
-      }
-    })();
+const { PostgresAdapter } = require('./database-pg');
+const { tokenizeSqlForDriver } = require('./sqlTokenizer');
+
+let currentDriver = process.env.DB_DRIVER || 'sqlite';
+let pgAdapter = null;
+
+async function getPgAdapter() {
+  if (!pgAdapter) {
+    const connStr = process.env.DATABASE_URL || process.env.TEST_DATABASE_URL;
+    if (!connStr) {
+      throw new Error('DATABASE_URL is required when DB_DRIVER=postgres');
+    }
+    pgAdapter = new PostgresAdapter({ connectionString: connStr, max: 20 });
+    await pgAdapter.init();
   }
-  return originalNativeTransaction(callback);
-};
-db.measureLatency = async () => {
-  const start = Date.now();
-  db.prepare('SELECT 1').get();
-  return Date.now() - start;
-};
-db.getDriver = () => 'sqlite';
-db.getNextNumber = async (tenantId, counterType, prefix, padLength = 4) => {
-  const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
-  const fullType = `${counterType}_${today}`;
-  db.prepare(`
-    INSERT INTO counters (tenant_id, counter_type, last_number, updated_at)
-    VALUES (?, ?, 1, CURRENT_TIMESTAMP)
-    ON CONFLICT (tenant_id, counter_type)
-    DO UPDATE SET last_number = counters.last_number + 1, updated_at = CURRENT_TIMESTAMP
-  `).run(tenantId, fullType);
+  return pgAdapter;
+}
 
-  const row = db.prepare('SELECT last_number FROM counters WHERE tenant_id = ? AND counter_type = ?').get(tenantId, fullType);
-  const num = row ? row.last_number : 1;
-  const formattedNum = String(num).padStart(padLength, '0');
-  return `${prefix}-${today}-${formattedNum}`;
-};
+const dualDb = {
+  // Underlying drivers & diagnostics
+  sqliteDb: db,
+  getSqliteDb: () => db,
+  getPgAdapter,
+  getDriver: () => currentDriver,
+  setDriver: (d) => { currentDriver = d; },
 
-// Register custom scalar functions for SQL dialect parity
-try {
-  db.function('GREATEST', { varargs: true }, (...args) => Math.max(...args.map(a => Number(a) || 0)));
-  db.function('LEAST', { varargs: true }, (...args) => Math.min(...args.map(a => Number(a) || 0)));
-} catch (_) {}
+  async query(sql, params = []) {
+    if (currentDriver === 'postgres') {
+      const pg = await getPgAdapter();
+      return pg.query(sql, params);
+    }
+    const tokenizedSql = tokenizeSqlForDriver(sql, 'sqlite');
+    const isSelect = /^\s*(SELECT|PRAGMA|WITH)/i.test(tokenizedSql);
+    if (isSelect) {
+      const rows = db.prepare(tokenizedSql).all(...params);
+      return { rows, rowCount: rows.length };
+    } else {
+      const res = db.prepare(tokenizedSql).run(...params);
+      return { rows: [], rowCount: res.changes, lastInsertRowid: res.lastInsertRowid };
+    }
+  },
+
+  async all(sql, params = []) {
+    if (currentDriver === 'postgres') {
+      const pg = await getPgAdapter();
+      return pg.all(sql, params);
+    }
+    const tokenizedSql = tokenizeSqlForDriver(sql, 'sqlite');
+    return db.prepare(tokenizedSql).all(...params);
+  },
+
+  async get(sql, params = []) {
+    if (currentDriver === 'postgres') {
+      const pg = await getPgAdapter();
+      return pg.get(sql, params);
+    }
+    const tokenizedSql = tokenizeSqlForDriver(sql, 'sqlite');
+    return db.prepare(tokenizedSql).get(...params);
+  },
+
+  async run(sql, params = []) {
+    if (currentDriver === 'postgres') {
+      const pg = await getPgAdapter();
+      return pg.run(sql, params);
+    }
+    const tokenizedSql = tokenizeSqlForDriver(sql, 'sqlite');
+    const res = db.prepare(tokenizedSql).run(...params);
+    return {
+      rowCount: res.changes,
+      lastInsertRowid: res.lastInsertRowid
+    };
+  },
+
+  async exec(sql) {
+    if (currentDriver === 'postgres') {
+      const pg = await getPgAdapter();
+      return pg.exec(sql);
+    }
+    return db.exec(sql);
+  },
+
+  async transaction(callback) {
+    if (currentDriver === 'postgres') {
+      const pg = await getPgAdapter();
+      return pg.transaction(callback);
+    }
+    db.prepare('BEGIN IMMEDIATE').run();
+    try {
+      const result = await callback(dualDb);
+      db.prepare('COMMIT').run();
+      return result;
+    } catch (err) {
+      try { db.prepare('ROLLBACK').run(); } catch (_) {}
+      throw err;
+    }
+  },
+
+  async getNextNumber(tenantId, counterType, prefix, padLength = 4) {
+    if (currentDriver === 'postgres') {
+      const pg = await getPgAdapter();
+      return pg.getNextNumber(tenantId, counterType, prefix, padLength);
+    }
+    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const fullType = `${counterType}_${today}`;
+    db.prepare(`
+      INSERT INTO counters (tenant_id, counter_type, last_number, updated_at)
+      VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+      ON CONFLICT (tenant_id, counter_type)
+      DO UPDATE SET last_number = counters.last_number + 1, updated_at = CURRENT_TIMESTAMP
+    `).run(tenantId, fullType);
+
+    const row = db.prepare('SELECT last_number FROM counters WHERE tenant_id = ? AND counter_type = ?').get(tenantId, fullType);
+    const num = row ? row.last_number : 1;
+    const formattedNum = String(num).padStart(padLength, '0');
+    return `${prefix}-${today}-${formattedNum}`;
+  },
+
+  async measureLatency() {
+    if (currentDriver === 'postgres') {
+      const pg = await getPgAdapter();
+      return pg.measureLatency();
+    }
+    const start = Date.now();
+    db.prepare('SELECT 1').get();
+    return Date.now() - start;
+  },
+
+  prepare(sql) {
+    const tokenizedSql = tokenizeSqlForDriver(sql, currentDriver);
+    if (currentDriver === 'sqlite') {
+      return db.prepare(tokenizedSql);
+    }
+    return {
+      get: (...args) => {
+        throw new Error(`Synchronous db.prepare().get() called in Postgres mode for query: ${sql}. Convert to await db.get()`);
+      },
+      all: (...args) => {
+        throw new Error(`Synchronous db.prepare().all() called in Postgres mode for query: ${sql}. Convert to await db.all()`);
+      },
+      run: (...args) => {
+        throw new Error(`Synchronous db.prepare().run() called in Postgres mode for query: ${sql}. Convert to await db.run()`);
+      }
+    };
+  },
+
+  pragma(p) {
+    if (currentDriver === 'sqlite') {
+      return db.pragma(p);
+    }
+    return null;
+  }
+};
 
 module.exports = {
-  db,
+  db: dualDb,
   sqliteDb: db,
+  getPgAdapter,
   initializeDatabase,
   DB_PATH,
-  DATA_DIR
+  DATA_DIR,
+  resolveDatabasePath
 };
-
-module.exports = {
-  db,
-  sqliteDb: db,
-  resolveDatabasePath,
   initializeDatabase,
   DB_PATH,
   DATA_DIR

@@ -161,8 +161,10 @@ exports.getDashboardMetrics = async (req, res) => {
         SELECT c.id, c.name, c.phone, c.customer_type, c.current_balance,
                MAX(s.created_at) as last_sale_at
         FROM customers c
+
         LEFT JOIN sales s ON s.customer_id = c.id AND s.tenant_id = ?
         WHERE c.tenant_id = ?
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
           AND NOT (c.name ILIKE '%Walk-in%' OR c.name ILIKE '%Counter%')
         GROUP BY c.id, c.name, c.phone, c.customer_type, c.current_balance
         ORDER BY
@@ -352,7 +354,9 @@ exports.getDailySalesReport = async (req, res) => {
 // Current Stock & Valuation Report
 exports.getStockReport = async (req, res) => {
   try {
+
     const tenantId = req.tenantId || req.tenant_id;
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     const stockReport = await db.all(`
       SELECT p.id, p.name, p.sku, p.barcode, p.brand, p.unit, p.min_stock_level,
         c.name as category_name,
@@ -696,7 +700,9 @@ exports.getProductSalesReport = async (req, res) => {
       JOIN sales s ON si.sale_id = s.id AND s.sale_date >= ? AND s.sale_date <= ? AND s.tenant_id = ?
       JOIN products p ON si.product_id = p.id
       LEFT JOIN categories c ON p.category_id = c.id
+
       WHERE p.tenant_id = ?
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       GROUP BY p.id, p.name, p.sku, p.unit, c.name
       HAVING COALESCE(SUM(si.quantity), 0) > 0
       ORDER BY total_revenue DESC

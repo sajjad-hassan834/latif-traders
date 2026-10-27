@@ -9,7 +9,7 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 
 // Fetch tenant settings & business profile
-exports.getSettings = (req, res) => {
+exports.getSettings = async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     const tenantId = req.tenant_id || req.user?.tenant_id;
@@ -17,14 +17,14 @@ exports.getSettings = (req, res) => {
       return res.status(401).json({ success: false, message: 'Authentication required. No tenant resolved.' });
     }
 
-    const rows = db.prepare('SELECT key, value FROM tenant_settings WHERE tenant_id = ?').all(tenantId);
+    const rows = await db.all('SELECT key, value FROM tenant_settings WHERE tenant_id = ?', [tenantId]);
     const settings = {};
     for (const r of rows) {
       settings[r.key] = r.value;
     }
 
     // Attach tenant profile & branding
-    const tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(tenantId);
+    const tenant = await db.get('SELECT * FROM tenants WHERE id = ?', [tenantId]);
     if (tenant) {
       settings.business_name = tenant.business_name;
       settings.shop_name = settings.shop_name || tenant.business_name;
@@ -46,7 +46,7 @@ exports.getSettings = (req, res) => {
 };
 
 // Update tenant settings & branding
-exports.updateSettings = (req, res) => {
+exports.updateSettings = async (req, res) => {
   try {
     const tenantId = req.tenant_id || req.user?.tenant_id;
     if (!tenantId) {
@@ -58,49 +58,40 @@ exports.updateSettings = (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid settings payload.' });
     }
 
-    const upsert = db.prepare(`
-      INSERT INTO tenant_settings (tenant_id, key, value) VALUES (?, ?, ?)
-      ON CONFLICT(tenant_id, key) DO UPDATE SET value = excluded.value
-    `);
-
-    const updateTransaction = db.transaction((entries) => {
-      for (const [key, val] of Object.entries(entries)) {
+    await db.transaction(async (tx) => {
+      const runner = tx.run ? tx : db;
+      for (const [key, val] of Object.entries(updates)) {
         if (val !== undefined && val !== null) {
-          upsert.run(tenantId, key, String(val));
+          await runner.run(`
+            INSERT INTO tenant_settings (tenant_id, key, value) VALUES (?, ?, ?)
+            ON CONFLICT(tenant_id, key) DO UPDATE SET value = excluded.value
+          `, [tenantId, key, String(val)]);
         }
       }
 
       // Sync business profile changes to tenants table
-      if (entries.shop_name || entries.business_name) {
-        const nameToSet = String(entries.shop_name || entries.business_name).trim();
-        db.prepare('UPDATE tenants SET business_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(nameToSet, tenantId);
+      if (updates.shop_name || updates.business_name) {
+        const nameToSet = String(updates.shop_name || updates.business_name).trim();
+        await runner.run('UPDATE tenants SET business_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [nameToSet, tenantId]);
       }
-      if (entries.logo_url !== undefined) {
-        db.prepare('UPDATE tenants SET logo_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(entries.logo_url ? String(entries.logo_url).trim() : null, tenantId);
+      if (updates.logo_url !== undefined) {
+        await runner.run('UPDATE tenants SET logo_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [updates.logo_url ? String(updates.logo_url).trim() : null, tenantId]);
       }
-      if (entries.phone) {
-        db.prepare('UPDATE tenants SET phone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(String(entries.phone).trim(), tenantId);
+      if (updates.phone) {
+        await runner.run('UPDATE tenants SET phone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [String(updates.phone).trim(), tenantId]);
       }
-      if (entries.email) {
-        db.prepare('UPDATE tenants SET email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(String(entries.email).trim(), tenantId);
+      if (updates.email) {
+        await runner.run('UPDATE tenants SET email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [String(updates.email).trim(), tenantId]);
       }
-      if (entries.address) {
-        db.prepare('UPDATE tenants SET address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(String(entries.address).trim(), tenantId);
+      if (updates.address) {
+        await runner.run('UPDATE tenants SET address = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [String(updates.address).trim(), tenantId]);
       }
-      if (entries.business_type) {
-        db.prepare('UPDATE tenants SET business_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-          .run(String(entries.business_type).trim(), tenantId);
+      if (updates.business_type) {
+        await runner.run('UPDATE tenants SET business_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [String(updates.business_type).trim(), tenantId]);
       }
     });
 
-    updateTransaction(updates);
-
-    logAudit(req.user.id, req.user.full_name, 'UPDATE', 'SETTINGS', null, `Updated business settings: ${Object.keys(updates).join(', ')}`, req);
+    await logAudit(req.user?.id, req.user?.full_name, 'UPDATE', 'SETTINGS', null, `Updated business settings: ${Object.keys(updates).join(', ')}`, req);
 
     return res.json({ success: true, message: 'Settings saved successfully.' });
   } catch (err) {
@@ -110,31 +101,34 @@ exports.updateSettings = (req, res) => {
 };
 
 // Plan & Billing Usage Analytics
-exports.getBillingInfo = (req, res) => {
+exports.getBillingInfo = async (req, res) => {
   try {
     const tenantId = req.tenant_id || req.user?.tenant_id;
     if (!tenantId) {
       return res.status(401).json({ success: false, message: 'Authentication required.' });
     }
 
-    const tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(tenantId);
-    const subscription = db.prepare(`
+    const tenant = await db.get('SELECT * FROM tenants WHERE id = ?', [tenantId]);
+    const subscription = await db.get(`
       SELECT * FROM subscriptions 
       WHERE tenant_id = ? 
       ORDER BY id DESC LIMIT 1
-    `).get(tenantId);
+    `, [tenantId]);
 
-    const subscriptionHistory = db.prepare(`
+    const subscriptionHistory = await db.all(`
       SELECT * FROM subscriptions 
       WHERE tenant_id = ? 
       ORDER BY id DESC LIMIT 10
-    `).all(tenantId);
+    `, [tenantId]);
 
     // Live usage metrics strictly for this tenant
-    const productsCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE tenant_id = ?').get(tenantId)?.count || 0;
+    const prodRow = await db.get('SELECT COUNT(*) as count FROM products WHERE tenant_id = ?', [tenantId]);
+    const productsCount = prodRow?.count || 0;
     const currentMonth = new Date().toISOString().slice(0, 7);
-    const invoicesThisMonth = db.prepare('SELECT COUNT(*) as count FROM sales WHERE tenant_id = ? AND sale_date LIKE ?').get(tenantId, `${currentMonth}%`)?.count || 0;
-    const staffCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE tenant_id = ? AND (is_hidden IS NULL OR is_hidden = 0) AND role != 'superowner'").get(tenantId)?.count || 0;
+    const invRow = await db.get('SELECT COUNT(*) as count FROM sales WHERE tenant_id = ? AND sale_date LIKE ?', [tenantId, `${currentMonth}%`]);
+    const invoicesThisMonth = invRow?.count || 0;
+    const staffRow = await db.get("SELECT COUNT(*) as count FROM users WHERE tenant_id = ? AND (is_hidden IS NULL OR is_hidden = 0) AND role != 'superowner'", [tenantId]);
+    const staffCount = staffRow?.count || 0;
 
     const currentPlan = tenant?.plan || 'free';
     const limits = {
@@ -181,7 +175,7 @@ exports.getBillingInfo = (req, res) => {
 };
 
 // Plan Upgrade Endpoint
-exports.upgradePlan = (req, res) => {
+exports.upgradePlan = async (req, res) => {
   try {
     const tenantId = req.tenant_id || req.user?.tenant_id;
     if (!tenantId) {
@@ -197,16 +191,16 @@ exports.upgradePlan = (req, res) => {
     const price = prices[plan];
     const expiresAt = new Date(Date.now() + 30 * 86400000).toISOString();
 
-    db.prepare(`
+    await db.run(`
       UPDATE tenants SET plan = ?, plan_expires_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-    `).run(plan, expiresAt, tenantId);
+    `, [plan, expiresAt, tenantId]);
 
-    db.prepare(`
+    await db.run(`
       INSERT INTO subscriptions (tenant_id, plan, price, expires_at, payment_status)
       VALUES (?, ?, ?, ?, 'active')
-    `).run(tenantId, plan, price, expiresAt);
+    `, [tenantId, plan, price, expiresAt]);
 
-    logAudit(req.user.id, req.user.full_name, 'UPGRADE_PLAN', 'TENANT', null, `Upgraded tenant ${tenantId} to ${plan.toUpperCase()}`, req);
+    await logAudit(req.user?.id, req.user?.full_name, 'UPGRADE_PLAN', 'TENANT', null, `Upgraded tenant ${tenantId} to ${plan.toUpperCase()}`, req);
 
     return res.json({
       success: true,
@@ -220,21 +214,24 @@ exports.upgradePlan = (req, res) => {
 };
 
 // Onboarding Status: Checks real tenant database counts
-exports.getOnboardingStatus = (req, res) => {
+exports.getOnboardingStatus = async (req, res) => {
   try {
     const tenantId = req.tenant_id || req.user?.tenant_id;
     if (!tenantId) {
       return res.status(401).json({ success: false, message: 'Authentication required.' });
     }
 
-    const prodCount = db.prepare('SELECT COUNT(*) as c FROM products WHERE tenant_id = ?').get(tenantId)?.c || 0;
-    const saleCount = db.prepare('SELECT COUNT(*) as c FROM sales WHERE tenant_id = ?').get(tenantId)?.c || 0;
-    const custCount = db.prepare("SELECT COUNT(*) as c FROM customers WHERE tenant_id = ? AND LOWER(name) NOT LIKE '%walk-in%'").get(tenantId)?.c || 0;
+    const pRow = await db.get('SELECT COUNT(*) as c FROM products WHERE tenant_id = ?', [tenantId]);
+    const prodCount = pRow?.c || 0;
+    const sRow = await db.get('SELECT COUNT(*) as c FROM sales WHERE tenant_id = ?', [tenantId]);
+    const saleCount = sRow?.c || 0;
+    const cRow = await db.get("SELECT COUNT(*) as c FROM customers WHERE tenant_id = ? AND LOWER(name) NOT LIKE '%walk-in%'", [tenantId]);
+    const custCount = cRow?.c || 0;
     
-    const tenant = db.prepare('SELECT logo_url, address, business_name FROM tenants WHERE id = ?').get(tenantId);
+    const tenant = await db.get('SELECT logo_url, address, business_name FROM tenants WHERE id = ?', [tenantId]);
     const hasProfileAndLogo = Boolean(tenant && tenant.logo_url && tenant.address);
 
-    const dismissedRow = db.prepare("SELECT value FROM tenant_settings WHERE tenant_id = ? AND key = 'onboarding_dismissed'").get(tenantId);
+    const dismissedRow = await db.get("SELECT value FROM tenant_settings WHERE tenant_id = ? AND key = 'onboarding_dismissed'", [tenantId]);
     const dismissed = dismissedRow?.value === 'true';
 
     const hasProduct = prodCount > 0;
@@ -260,14 +257,14 @@ exports.getOnboardingStatus = (req, res) => {
 };
 
 // Logo Upload Endpoint: stores in data/uploads/<tenant_id>/
-exports.uploadLogo = (req, res) => {
+exports.uploadLogo = async (req, res) => {
   try {
     const tenantId = req.tenant_id || req.user?.tenant_id;
     if (!tenantId) {
       return res.status(401).json({ success: false, message: 'Authentication required.' });
     }
 
-    const { data, filename } = req.body;
+    const { data } = req.body;
     if (!data) {
       return res.status(400).json({ success: false, message: 'Logo image data is required.' });
     }
@@ -300,13 +297,13 @@ exports.uploadLogo = (req, res) => {
     const logoUrl = `/api/settings/logo/${tenantId}/${outFilename}`;
 
     // Update tenant and settings
-    db.prepare('UPDATE tenants SET logo_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(logoUrl, tenantId);
-    db.prepare(`
+    await db.run('UPDATE tenants SET logo_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [logoUrl, tenantId]);
+    await db.run(`
       INSERT INTO tenant_settings (tenant_id, key, value) VALUES (?, 'logo_url', ?)
       ON CONFLICT(tenant_id, key) DO UPDATE SET value = excluded.value
-    `).run(tenantId, logoUrl);
+    `, [tenantId, logoUrl]);
 
-    logAudit(req.user.id, req.user.full_name, 'UPLOAD_LOGO', 'TENANT', null, `Uploaded new shop logo: ${outFilename}`, req);
+    await logAudit(req.user?.id, req.user?.full_name, 'UPLOAD_LOGO', 'TENANT', null, `Uploaded new shop logo: ${outFilename}`, req);
 
     return res.json({
       success: true,

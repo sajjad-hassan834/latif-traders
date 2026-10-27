@@ -6,7 +6,7 @@ const { db } = require('../config/database');
 const ALLOWED_THEMES = ['classic', 'dark', 'green', 'indigo'];
 
 // PATCH /api/me/preferences - Updates user personal preferences such as theme
-router.patch('/preferences', authenticate, (req, res) => {
+router.patch('/preferences', authenticate, async (req, res) => {
   try {
     const { theme } = req.body;
 
@@ -17,10 +17,10 @@ router.patch('/preferences', authenticate, (req, res) => {
       });
     }
 
-    db.prepare('UPDATE users SET theme = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(
+    await db.run('UPDATE users SET theme = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [
       theme,
       req.user.id
-    );
+    ]);
 
     return res.json({
       success: true,

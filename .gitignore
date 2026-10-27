@@ -23,6 +23,9 @@ data/backups/*
 !data/backups/.gitkeep
 data/uploads/*
 !data/uploads/.gitkeep
+*snapshot*
+*.dump
+data/
 
 # Environment variables & secrets
 .env

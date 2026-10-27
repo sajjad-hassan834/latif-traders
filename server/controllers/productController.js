@@ -140,7 +140,9 @@ exports.getProductById = async (req, res) => {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN suppliers s ON p.supplier_id = s.id
+
       WHERE p.id = ? AND p.tenant_id = ?
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     `, [String(id), tenantId]);
 
     if (!product) {
@@ -186,7 +188,9 @@ exports.getProductById = async (req, res) => {
 exports.createProduct = async (req, res) => {
   try {
     const newId = await db.transaction(async () => {
+
       const tenantId = req.tenantId || req.tenant_id;
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const {
         name, sku, barcode, category_id, brand, unit, supplier_id,
         purchase_price, sale_price, wholesale_price,
@@ -292,8 +296,10 @@ exports.updateProduct = async (req, res) => {
       min_stock_level, storage_location, status
     } = req.body;
 
+
     const tenantId = req.tenantId || req.tenant_id;
     const existing = await db.get('SELECT * FROM products WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Product not found in your catalog.' });
     }
@@ -378,7 +384,9 @@ exports.deleteProduct = async (req, res) => {
     const { force, archive } = req.query;
     const tenantId = req.tenantId || req.tenant_id;
 
+
     const product = await db.get('SELECT * FROM products WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found in your catalog.' });
     }
@@ -391,7 +399,9 @@ exports.deleteProduct = async (req, res) => {
 
     const salesRow = await db.get('SELECT COUNT(*) as c FROM sale_items WHERE product_id = ?', [product.id]);
     const purchasesRow = await db.get('SELECT COUNT(*) as c FROM purchase_items WHERE product_id = ?', [product.id]);
+
     const adjustmentsRow = await db.get('SELECT COUNT(*) as c FROM stock_adjustments WHERE product_id = ? AND tenant_id = ?', [product.id, tenantId]);
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     const returnsRow = await db.get('SELECT COUNT(*) as c FROM return_items WHERE product_id = ?', [product.id]);
 
     const salesCount = Number(salesRow?.c || 0);
@@ -415,12 +425,16 @@ exports.deleteProduct = async (req, res) => {
     await db.transaction(async () => {
       if (totalReferences > 0 && force === 'true') {
         await db.run('DELETE FROM return_items WHERE product_id = ?', [product.id]);
+
         await db.run('DELETE FROM stock_adjustments WHERE product_id = ? AND tenant_id = ?', [product.id, tenantId]);
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
         await db.run('DELETE FROM sale_items WHERE product_id = ?', [product.id]);
         await db.run('DELETE FROM purchase_items WHERE product_id = ?', [product.id]);
       }
 
+
       await db.run('DELETE FROM inventory_movements WHERE product_id = ? AND tenant_id = ?', [product.id, tenantId]);
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       await db.run('DELETE FROM batches WHERE product_id = ? AND tenant_id = ?', [product.id, tenantId]);
       await db.run('DELETE FROM products WHERE id = ? AND tenant_id = ?', [product.id, tenantId]);
 
@@ -442,7 +456,9 @@ exports.adjustStock = async (req, res) => {
   try {
     const result = await db.transaction(async () => {
       const { product_id, batch_id, type, quantity, reason } = req.body;
+
       const tenantId = req.tenantId || req.tenant_id;
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
 
       if (!product_id || !type || !quantity || !reason) {
         throw new Error('Product, adjustment type, quantity, and reason are required.');
@@ -508,7 +524,9 @@ exports.adjustStock = async (req, res) => {
 // Get stock adjustments history
 exports.getAdjustments = async (req, res) => {
   try {
+
     const tenantId = req.tenantId || req.tenant_id;
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     const adjustments = await db.all(`
       SELECT sa.*, p.name as product_name, p.sku, p.unit, b.batch_no, u.full_name as user_name
       FROM stock_adjustments sa
@@ -530,14 +548,18 @@ exports.getAdjustments = async (req, res) => {
 exports.restockProduct = async (req, res) => {
   try {
     const result = await db.transaction(async () => {
+
       const tenantId = req.tenantId || req.tenant_id;
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const { id } = req.params;
       const { quantity, purchase_price, sale_price, wholesale_price, supplier_id, batch_no, expiry_date, storage_location } = req.body;
 
       const qty = Number(quantity);
       if (!qty || qty <= 0) throw new Error('Quantity must be greater than 0.');
 
+
       const product = await db.get('SELECT * FROM products WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       if (!product) throw new Error('Product not found.');
 
       const pPrice = purchase_price !== undefined && purchase_price !== '' ? Number(purchase_price) : Number(product.purchase_price);
@@ -605,7 +627,9 @@ exports.restockProduct = async (req, res) => {
 // Categories CRUD
 exports.getCategories = async (req, res) => {
   try {
+
     const tenantId = req.tenantId || req.tenant_id;
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     const categories = await db.all(`
       SELECT c.*, COUNT(p.id) as product_count
       FROM categories c
@@ -637,11 +661,13 @@ exports.createCategory = async (req, res) => {
 
 exports.updateCategory = async (req, res) => {
   try {
+
     const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
     const { name, description } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Category name is required.' });
     await db.run('UPDATE categories SET name = ?, description = ? WHERE id = ? AND tenant_id = ?',
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       [name.trim(), description ? description.trim() : null, String(id), tenantId]);
     return res.json({ success: true, message: 'Category updated successfully.' });
   } catch (err) {
@@ -651,10 +677,12 @@ exports.updateCategory = async (req, res) => {
 
 exports.deleteCategory = async (req, res) => {
   try {
+
     const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
     await db.run('UPDATE products SET category_id = NULL WHERE category_id = ? AND tenant_id = ?', [String(id), tenantId]);
     await db.run('DELETE FROM categories WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     return res.json({ success: true, message: 'Category deleted successfully.' });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
@@ -664,7 +692,9 @@ exports.deleteCategory = async (req, res) => {
 // Units CRUD
 exports.getUnits = async (req, res) => {
   try {
+
     const tenantId = req.tenantId || req.tenant_id;
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     const units = await db.all('SELECT * FROM units WHERE tenant_id = ? ORDER BY name ASC', [tenantId]);
     return res.json({ success: true, units });
   } catch (err) {
@@ -689,11 +719,13 @@ exports.createUnit = async (req, res) => {
 
 exports.updateUnit = async (req, res) => {
   try {
+
     const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
     const { name, short_code } = req.body;
     if (!name || !short_code) return res.status(400).json({ success: false, message: 'Name and short code required.' });
     await db.run('UPDATE units SET name = ?, short_code = ? WHERE id = ? AND tenant_id = ?',
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       [name.trim(), short_code.trim().toLowerCase(), String(id), tenantId]);
     return res.json({ success: true, message: 'Unit updated successfully.' });
   } catch (err) {
@@ -703,9 +735,11 @@ exports.updateUnit = async (req, res) => {
 
 exports.deleteUnit = async (req, res) => {
   try {
+
     const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
     await db.run('DELETE FROM units WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     return res.json({ success: true, message: 'Unit deleted successfully.' });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
@@ -715,7 +749,9 @@ exports.deleteUnit = async (req, res) => {
 // Brands CRUD
 exports.getBrands = async (req, res) => {
   try {
+
     const tenantId = req.tenantId || req.tenant_id;
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     const brands = await db.all(`
       SELECT b.*, COUNT(p.id) as product_count
       FROM brands b
@@ -747,6 +783,7 @@ exports.createBrand = async (req, res) => {
 
 exports.updateBrand = async (req, res) => {
   try {
+
     const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
     const { name, description } = req.body;
@@ -756,6 +793,7 @@ exports.updateBrand = async (req, res) => {
       await db.run('UPDATE products SET brand = ? WHERE brand = ? AND tenant_id = ?', [name.trim(), existing.name, tenantId]);
     }
     await db.run('UPDATE brands SET name = ?, description = ? WHERE id = ? AND tenant_id = ?',
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       [name.trim(), description ? description.trim() : null, String(id), tenantId]);
     return res.json({ success: true, message: 'Brand updated successfully.' });
   } catch (err) {
@@ -767,11 +805,13 @@ exports.deleteBrand = async (req, res) => {
   try {
     const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
+
     const existing = await db.get('SELECT name FROM brands WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
     if (existing) {
       await db.run('UPDATE products SET brand = NULL WHERE brand = ? AND tenant_id = ?', [existing.name, tenantId]);
     }
     await db.run('DELETE FROM brands WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     return res.json({ success: true, message: 'Brand deleted successfully.' });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });

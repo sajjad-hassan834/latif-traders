@@ -1255,6 +1255,14 @@ export default function Settings({ initialTab: propInitialTab }) {
                 </tbody>
               </table>
             </div>
+
+            {/* Tenant isolation & storage notice */}
+            <div style={{ marginTop: '1.25rem', padding: '12px 16px', background: 'var(--hover-bg, #f8fafc)', borderRadius: '8px', border: '1px solid var(--border, #e2e8f0)', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+              <div style={{ color: '#10B981', marginTop: '2px' }}>🔒</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)', lineHeight: 1.5 }}>
+                <strong style={{ color: 'var(--text-title, #1e293b)' }}>Tenant Data Isolation Guaranteed:</strong> Backups created here export strictly your shop's proprietary data (products, sales, customers, suppliers, inventory, ledgers, and settings). Full platform snapshots and database-level disaster recovery are managed continuously at the superowner infrastructure level.
+              </div>
+            </div>
           </div>
         </div>
       )}

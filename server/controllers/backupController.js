@@ -289,7 +289,9 @@ exports.listBackups = async (req, res) => {
       }
     }
 
+
     if (tenantId === LEGACY_TENANT_ID && fs.existsSync(BACKUP_DIR)) {
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const rootFiles = fs.readdirSync(BACKUP_DIR, { withFileTypes: true });
       for (const entry of rootFiles) {
         if (!entry.isDirectory() && (entry.name.endsWith('.json') || entry.name.endsWith('.db'))) {

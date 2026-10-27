@@ -8,9 +8,11 @@ if (process.env.NODE_ENV === 'production' && (!JWT_SECRET || JWT_SECRET.length <
   process.exit(1);
 }
 
+
 // In test/development environment, ensure a valid fallback only if not in production
 const effectiveJwtSecret = JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test-jwt-secret-key-for-unit-tests-at-least-32-chars' : 'shopos-dev-jwt-secret-not-for-production-min-32-chars');
 
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
 async function authenticate(req, res, next) {
   let token = null;
 
@@ -27,9 +29,11 @@ async function authenticate(req, res, next) {
   }
 
   try {
+
     // Algorithm strictly pinned to HS256 to prevent algorithm confusion attacks
     const decoded = jwt.verify(token, effectiveJwtSecret, { algorithms: ['HS256'] });
 
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     const user = await db.get(`
       SELECT u.id, u.username, u.email, u.full_name, u.role, u.status, u.tenant_id,
              COALESCE(u.token_version, 1) as token_version,
@@ -43,12 +47,14 @@ async function authenticate(req, res, next) {
       return res.status(401).json({ success: false, message: 'User account is inactive or invalid.' });
     }
 
+
     // Session revocation check: verify token_version claim is present and matches current user token_version
     if (decoded.token_version === undefined || decoded.token_version === null) {
       return res.status(401).json({ success: false, message: 'Session token is invalid or missing token version. Please sign in again.' });
     }
     if (Number(decoded.token_version) !== Number(user.token_version)) {
       return res.status(401).json({ success: false, message: 'Session has been invalidated. Please sign in again.' });
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     }
 
     // Enforce forced password rotation: block all business routes except password change, logout, and me
@@ -73,8 +79,10 @@ async function authenticate(req, res, next) {
       }
     }
 
+
     req.user = user;
     req.isSuperOwner = user.role === 'superowner';
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     next();
   } catch (err) {
     return res.status(401).json({ success: false, message: 'Invalid or expired session. Please sign in again.' });

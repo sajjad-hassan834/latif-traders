@@ -140,8 +140,10 @@ exports.deleteTenant = async (req, res) => {
     }
 
     // Protect primary base tenant from accidental deletion
+
     if (id === LEGACY_TENANT_ID) {
       return res.status(400).json({ success: false, message: 'The primary base tenant cannot be permanently deleted. You can suspend it instead.' });
+ (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     }
 
     // Cascade delete tenant records
