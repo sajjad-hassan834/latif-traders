@@ -1,9 +1,17 @@
 const jwt = require('jsonwebtoken');
 const { db } = require('../config/database');
+const { tenantContext } = require('./tenantContext');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'latif-traders-secure-jwt-secret-key-2026';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (process.env.NODE_ENV === 'production' && (!JWT_SECRET || JWT_SECRET.length < 32)) {
+  console.error('FATAL: JWT_SECRET environment variable is missing or shorter than 32 characters in production.');
+  process.exit(1);
+}
 
-function authenticate(req, res, next) {
+// In test/development environment, ensure a valid fallback only if not in production
+const effectiveJwtSecret = JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test-jwt-secret-key-for-unit-tests-at-least-32-chars' : 'shopos-dev-jwt-secret-not-for-production-min-32-chars');
+
+async function authenticate(req, res, next) {
   let token = null;
 
   // Check Authorization header
@@ -19,80 +27,53 @@ function authenticate(req, res, next) {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = db.prepare(`
+    // Algorithm strictly pinned to HS256 to prevent algorithm confusion attacks
+    const decoded = jwt.verify(token, effectiveJwtSecret, { algorithms: ['HS256'] });
+
+    const user = await db.get(`
       SELECT u.id, u.username, u.email, u.full_name, u.role, u.status, u.tenant_id,
-             COALESCE(u.theme, 'classic') as theme,
-             COALESCE(t.business_name, 'ShopOS Business') as business_name,
-             COALESCE(t.business_type, 'retail_general') as business_type,
-             COALESCE(t.plan, 'free') as plan,
-             COALESCE(t.is_active, 1) as tenant_active,
-             t.logo_url
+             COALESCE(u.token_version, 1) as token_version,
+             COALESCE(u.must_change_password, 0) as must_change_password,
+             COALESCE(u.theme, 'classic') as theme
       FROM users u
-      LEFT JOIN tenants t ON u.tenant_id = t.id
       WHERE u.id = ?
-    `).get(decoded.id);
+    `, [decoded.id]);
 
     if (!user || user.status !== 'active') {
       return res.status(401).json({ success: false, message: 'User account is inactive or invalid.' });
     }
 
-    if (user.role === 'superowner') {
-      req.isSuperOwner = true;
-      const targetTenantId = req.headers['x-tenant-id'] || req.query.tenant_id || (req.body && req.body.tenant_id) || 'latif_001';
-      const tenantRow = db.prepare('SELECT * FROM tenants WHERE id = ?').get(targetTenantId);
-      
-      const tenantObj = {
-        id: targetTenantId,
-        business_name: tenantRow?.business_name || 'ShopOS SuperOwner View',
-        business_type: tenantRow?.business_type || 'retail_general',
-        plan: tenantRow?.plan || 'enterprise',
-        logo_url: tenantRow?.logo_url || null
-      };
-
-      req.user = {
-        ...user,
-        role: 'superowner',
-        tenant_id: targetTenantId,
-        business_name: tenantObj.business_name,
-        business_type: tenantObj.business_type,
-        plan: tenantObj.plan,
-        tenant: tenantObj
-      };
-      req.tenant_id = targetTenantId;
-      req.tenant = tenantObj;
-      return next();
+    // Session revocation check: verify token_version
+    if (decoded.token_version !== undefined && user.token_version !== undefined) {
+      if (Number(decoded.token_version) !== Number(user.token_version)) {
+        return res.status(401).json({ success: false, message: 'Session has been invalidated. Please sign in again.' });
+      }
     }
 
-    // For regular users, tenant_id MUST exist and be active in database
-    if (!user.tenant_id) {
-      return res.status(401).json({ success: false, message: 'No valid business tenant associated with this user. Access denied.' });
+    // Enforce forced password rotation: block all business routes except password change, logout, and me
+    if (user.must_change_password === 1) {
+      const fullPath = ((req.baseUrl || '') + req.path).replace(/\/+$/, '');
+      const pathOnly = req.path.replace(/\/+$/, '');
+      const isAllowed = pathOnly === '/change-password' ||
+                        pathOnly === '/logout' ||
+                        pathOnly === '/me' ||
+                        fullPath === '/api/auth/change-password' ||
+                        fullPath === '/api/auth/logout' ||
+                        fullPath === '/api/auth/me' ||
+                        fullPath === '/api/me' ||
+                        req.baseUrl === '/api/me';
+
+      if (!isAllowed) {
+        return res.status(403).json({
+          success: false,
+          must_change_password: true,
+          message: 'Password change required before accessing other features.'
+        });
+      }
     }
 
-    const tenantRow = db.prepare('SELECT id, business_name, business_type, plan, plan_expires_at, logo_url, is_active FROM tenants WHERE id = ?').get(user.tenant_id);
-    if (!tenantRow || tenantRow.is_active === 0) {
-      return res.status(403).json({ success: false, message: 'Your business account is suspended or inactive. Please contact support.' });
-    }
-
-    const tenantObj = {
-      id: tenantRow.id,
-      business_name: tenantRow.business_name,
-      business_type: tenantRow.business_type,
-      plan: tenantRow.plan || 'free',
-      plan_expires_at: tenantRow.plan_expires_at,
-      logo_url: tenantRow.logo_url
-    };
-
-    req.user = {
-      ...user,
-      business_name: tenantRow.business_name,
-      business_type: tenantRow.business_type,
-      plan: tenantRow.plan || 'free',
-      logo_url: tenantRow.logo_url,
-      tenant: tenantObj
-    };
-    req.tenant_id = user.tenant_id;
-    req.tenant = tenantObj;
+    req.user = user;
+    req.isSuperOwner = user.role === 'superowner';
     next();
   } catch (err) {
     return res.status(401).json({ success: false, message: 'Invalid or expired session. Please sign in again.' });
@@ -119,6 +100,7 @@ function requireRoles(...allowedRoles) {
 
 module.exports = {
   authenticate,
+  tenantContext,
   requireRoles,
-  JWT_SECRET
+  JWT_SECRET: effectiveJwtSecret
 };
