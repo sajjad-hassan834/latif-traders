@@ -455,6 +455,29 @@ function initializeDatabase() {
     console.error('Superowner initialization error:', err.message);
   }
 
+  // Idempotent migration: Backfill any NULL tenant_id rows with LEGACY_TENANT_ID (excluding superowner)
+  try {
+    const tablesWithTenant = [
+      'categories', 'units', 'expense_categories', 'products', 'customers',
+      'suppliers', 'sales', 'purchases', 'expenses', 'payments', 'batches',
+      'stock_adjustments', 'returns', 'counters', 'inventory_movements',
+      'purchase_items', 'sale_items', 'return_items', 'audit_logs',
+      'supplier_products', 'tenant_settings'
+    ];
+    for (const tbl of tablesWithTenant) {
+      try {
+        const cols = db.prepare(`PRAGMA table_info("${tbl}")`).all();
+        if (cols.some(c => c.name === 'tenant_id')) {
+          db.prepare(`UPDATE "${tbl}" SET tenant_id = ? WHERE tenant_id IS NULL`).run(LEGACY_TENANT_ID);
+        }
+      } catch (_) {}
+    }
+    // For users, backfill all non-superowner accounts
+    db.prepare("UPDATE users SET tenant_id = ? WHERE tenant_id IS NULL AND role != 'superowner'").run(LEGACY_TENANT_ID);
+  } catch (err) {
+    console.error('Migration error backfilling NULL tenant_id:', err.message);
+  }
+
   // Upgrade old tables with global single-column UNIQUE to composite (tenant_id, col)
   try {
     const catSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='categories'").get()?.sql || '';
@@ -471,7 +494,7 @@ function initializeDatabase() {
           UNIQUE(tenant_id, name)
         );
         INSERT INTO categories_new (id, name, description, created_at, tenant_id)
-        SELECT id, name, description, created_at, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM categories;
+        SELECT id, name, description, created_at, tenant_id FROM categories;
         DROP TABLE categories;
         ALTER TABLE categories_new RENAME TO categories;
       `);
@@ -495,7 +518,7 @@ function initializeDatabase() {
           UNIQUE(tenant_id, short_code)
         );
         INSERT INTO units_new (id, name, short_code, tenant_id)
-        SELECT id, name, short_code, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM units;
+        SELECT id, name, short_code, tenant_id FROM units;
         DROP TABLE units;
         ALTER TABLE units_new RENAME TO units;
       `);
@@ -519,7 +542,7 @@ function initializeDatabase() {
           UNIQUE(tenant_id, name)
         );
         INSERT INTO expense_categories_new (id, name, description, tenant_id)
-        SELECT id, name, description, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM expense_categories;
+        SELECT id, name, description, tenant_id FROM expense_categories;
         DROP TABLE expense_categories;
         ALTER TABLE expense_categories_new RENAME TO expense_categories;
       `);
@@ -556,7 +579,7 @@ function initializeDatabase() {
           UNIQUE(tenant_id, sku)
         );
         INSERT INTO products_new (id, name, sku, barcode, category_id, brand, unit, purchase_price, sale_price, wholesale_price, min_stock_level, status, storage_location, created_at, updated_at, supplier_id, tenant_id)
-        SELECT id, name, sku, barcode, category_id, brand, unit, purchase_price, sale_price, wholesale_price, min_stock_level, status, storage_location, created_at, updated_at, supplier_id, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM products;
+        SELECT id, name, sku, barcode, category_id, brand, unit, purchase_price, sale_price, wholesale_price, min_stock_level, status, storage_location, created_at, updated_at, supplier_id, tenant_id FROM products;
         DROP TABLE products;
         ALTER TABLE products_new RENAME TO products;
       `);
@@ -593,7 +616,7 @@ function initializeDatabase() {
           UNIQUE(tenant_id, invoice_no)
         );
         INSERT INTO sales_new (id, invoice_no, customer_id, sale_type, sale_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, order_status, created_at, tenant_id)
-        SELECT id, invoice_no, customer_id, sale_type, sale_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, COALESCE(order_status, 'Completed'), created_at, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM sales;
+        SELECT id, invoice_no, customer_id, sale_type, sale_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, COALESCE(order_status, 'Completed'), created_at, tenant_id FROM sales;
         DROP TABLE sales;
         ALTER TABLE sales_new RENAME TO sales;
       `);
@@ -629,7 +652,7 @@ function initializeDatabase() {
           UNIQUE(tenant_id, invoice_no)
         );
         INSERT INTO purchases_new (id, invoice_no, supplier_invoice_no, supplier_id, purchase_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, created_at, tenant_id)
-        SELECT id, invoice_no, supplier_invoice_no, supplier_id, purchase_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, created_at, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM purchases;
+        SELECT id, invoice_no, supplier_invoice_no, supplier_id, purchase_date, subtotal, discount, tax, grand_total, paid_amount, balance_due, payment_method, notes, user_id, created_at, tenant_id FROM purchases;
         DROP TABLE purchases;
         ALTER TABLE purchases_new RENAME TO purchases;
       `);
@@ -661,7 +684,7 @@ function initializeDatabase() {
           UNIQUE(tenant_id, adjustment_no)
         );
         INSERT INTO stock_adjustments_new (id, adjustment_no, product_id, batch_id, type, quantity, unit_cost, reason, user_id, created_at, tenant_id)
-        SELECT id, adjustment_no, product_id, batch_id, type, quantity, unit_cost, reason, user_id, created_at, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM stock_adjustments;
+        SELECT id, adjustment_no, product_id, batch_id, type, quantity, unit_cost, reason, user_id, created_at, tenant_id FROM stock_adjustments;
         DROP TABLE stock_adjustments;
         ALTER TABLE stock_adjustments_new RENAME TO stock_adjustments;
       `);
@@ -692,7 +715,7 @@ function initializeDatabase() {
           UNIQUE(tenant_id, return_no)
         );
         INSERT INTO returns_new (id, return_no, type, original_invoice_id, original_invoice_no, party_id, total_amount, reason, user_id, created_at, tenant_id)
-        SELECT id, return_no, type, original_invoice_id, original_invoice_no, party_id, total_amount, reason, user_id, created_at, COALESCE(tenant_id, '${LEGACY_TENANT_ID}') FROM returns;
+        SELECT id, return_no, type, original_invoice_id, original_invoice_no, party_id, total_amount, reason, user_id, created_at, tenant_id FROM returns;
         DROP TABLE returns;
         ALTER TABLE returns_new RENAME TO returns;
       `);
