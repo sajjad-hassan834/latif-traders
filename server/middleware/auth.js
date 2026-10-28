@@ -43,11 +43,12 @@ async function authenticate(req, res, next) {
       return res.status(401).json({ success: false, message: 'User account is inactive or invalid.' });
     }
 
-    // Session revocation check: verify token_version
-    if (decoded.token_version !== undefined && user.token_version !== undefined) {
-      if (Number(decoded.token_version) !== Number(user.token_version)) {
-        return res.status(401).json({ success: false, message: 'Session has been invalidated. Please sign in again.' });
-      }
+    // Session revocation check: verify token_version claim is present and matches current user token_version
+    if (decoded.token_version === undefined || decoded.token_version === null) {
+      return res.status(401).json({ success: false, message: 'Session token is invalid or missing token version. Please sign in again.' });
+    }
+    if (Number(decoded.token_version) !== Number(user.token_version)) {
+      return res.status(401).json({ success: false, message: 'Session has been invalidated. Please sign in again.' });
     }
 
     // Enforce forced password rotation: block all business routes except password change, logout, and me
