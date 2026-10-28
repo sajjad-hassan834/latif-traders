@@ -209,6 +209,25 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials. Please check your username/email and password.' });
     }
 
+    // Enforce 24h expiration and single use for temporary passwords
+    if (Number(user.must_change_password) === 1) {
+      if (user.temp_password_expires_at && new Date(user.temp_password_expires_at) < new Date()) {
+        return res.status(401).json({
+          success: false,
+          message: 'Temporary password has expired (24-hour limit). Please request a new password reset.'
+        });
+      }
+      if (Number(user.temp_password_used) === 1) {
+        return res.status(401).json({
+          success: false,
+          message: 'Temporary password has already been used. Please request a new password reset.'
+        });
+      }
+
+      // Mark temporary password as used (single-use enforcement)
+      await db.run('UPDATE users SET temp_password_used = 1 WHERE id = ?', [user.id]);
+    }
+
     const tokenTenantId = user.role === 'superowner' ? null : user.tenant_id;
     const token = jwt.sign(
       {
@@ -322,6 +341,8 @@ exports.changePassword = async (req, res) => {
       UPDATE users 
       SET password_hash = ?, 
           must_change_password = 0, 
+          temp_password_expires_at = NULL,
+          temp_password_used = 0,
           token_version = ?, 
           updated_at = CURRENT_TIMESTAMP 
       WHERE id = ?

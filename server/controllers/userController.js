@@ -245,16 +245,19 @@ exports.resolvePasswordResetRequest = async (req, res) => {
 
         const salt = bcrypt.genSaltSync(12);
         const hash = bcrypt.hashSync(new_password.trim(), salt);
+        const tempExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-        // Update user password, enforce password change on next login, and revoke prior sessions
+        // Update user password, set 24h temp_password_expires_at, temp_password_used=0, enforce password change on next login, and revoke prior sessions
         await runner.run(`
           UPDATE users 
           SET password_hash = ?, 
               must_change_password = 1, 
+              temp_password_expires_at = ?,
+              temp_password_used = 0,
               token_version = COALESCE(token_version, 1) + 1, 
               updated_at = CURRENT_TIMESTAMP 
           WHERE id = ? AND tenant_id = ?
-        `, [hash, user.id, tenantId]);
+        `, [hash, tempExpiresAt, user.id, tenantId]);
 
         // Update request record with admin approval, NULL temporary_password, and mark used
         await runner.run(`

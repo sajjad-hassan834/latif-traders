@@ -398,6 +398,12 @@ function initializeDatabase() {
     if (!userCols.some(c => c.name === 'must_change_password')) {
       db.prepare('ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0').run();
     }
+    if (!userCols.some(c => c.name === 'temp_password_expires_at')) {
+      db.prepare('ALTER TABLE users ADD COLUMN temp_password_expires_at DATETIME').run();
+    }
+    if (!userCols.some(c => c.name === 'temp_password_used')) {
+      db.prepare('ALTER TABLE users ADD COLUMN temp_password_used INTEGER DEFAULT 0').run();
+    }
   } catch (_) {}
 
   // Add security columns to password_reset_requests and NULL all plaintext temporary_password entries
@@ -414,6 +420,15 @@ function initializeDatabase() {
     }
     // Security cleanup: eliminate historical plaintext temporary passwords
     db.prepare('UPDATE password_reset_requests SET temporary_password = NULL WHERE temporary_password IS NOT NULL').run();
+  } catch (_) {}
+
+  // Add is_default column to tenants table
+  try {
+    const tenantCols = db.prepare('PRAGMA table_info("tenants")').all();
+    if (!tenantCols.some(c => c.name === 'is_default')) {
+      db.prepare('ALTER TABLE tenants ADD COLUMN is_default INTEGER DEFAULT 0').run();
+      db.prepare(`UPDATE tenants SET is_default = 1 WHERE id = '${LEGACY_TENANT_ID}'`).run();
+    }
   } catch (_) {}
 
   // Seed superowner account from environment variables if not already existing
