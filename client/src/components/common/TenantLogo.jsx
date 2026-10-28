@@ -1,10 +1,9 @@
 import React from 'react';
-import { LEGACY_TENANT_ID } from '../../constants/tenant';
 
 /**
  * TenantLogo renders the active tenant's brand logo.
  * If a custom logo_url is provided, it renders that image.
- * If the tenant is legacy tenant and no custom logo is uploaded, it renders the default logo.
+ * If the tenant is default tenant and no custom logo is uploaded, it renders the default logo.
  * For all other tenants without a logo, it renders a clean, professional monogram with the
  * first letter of the shop's name, guaranteeing zero logo leakage across tenants.
  */
@@ -40,12 +39,12 @@ export default function TenantLogo({ tenant, size = 32, style = {}, className = 
     );
   }
 
-  // Base legacy store
-  if (tenant?.id === LEGACY_TENANT_ID) {
+  // Base default store
+  if (tenant?.is_default) {
     return (
       <img
         src="/logo.png"
-        alt="Latif Traders"
+        alt={shopName}
         width={size}
         height={size}
         className={className}

@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { LEGACY_TENANT_ID } from '../constants/tenant';
 
 export default function SuperOwnerDashboard() {
   const navigate = (path) => {
@@ -303,7 +302,7 @@ export default function SuperOwnerDashboard() {
                 ) : (
                   filteredTenants.map((t) => {
                     const isActive = t.is_active === 1;
-                    const isBaseTenant = t.id === LEGACY_TENANT_ID;
+                    const isBaseTenant = Number(t.is_default) === 1;
 
                     return (
                       <tr key={t.id} style={{ borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.15s' }}>

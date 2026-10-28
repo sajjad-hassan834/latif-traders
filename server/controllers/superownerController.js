@@ -68,6 +68,7 @@ exports.getTenants = async (req, res) => {
         t.phone,
         t.plan,
         t.is_active,
+        COALESCE(t.is_default, CASE WHEN t.id = '${LEGACY_TENANT_ID}' THEN 1 ELSE 0 END) as is_default,
         t.created_at,
         (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id AND (u.is_hidden IS NULL OR u.is_hidden = 0) AND u.role != 'superowner') as user_count,
         (SELECT COUNT(*) FROM products p WHERE p.tenant_id = t.id) as product_count,
