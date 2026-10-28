@@ -391,7 +391,7 @@ exports.deleteProduct = async (req, res) => {
 
     const salesRow = await db.get('SELECT COUNT(*) as c FROM sale_items WHERE product_id = ?', [product.id]);
     const purchasesRow = await db.get('SELECT COUNT(*) as c FROM purchase_items WHERE product_id = ?', [product.id]);
-    const adjustmentsRow = await db.get('SELECT COUNT(*) as c FROM stock_adjustments WHERE product_id = ?', [product.id]);
+    const adjustmentsRow = await db.get('SELECT COUNT(*) as c FROM stock_adjustments WHERE product_id = ? AND tenant_id = ?', [product.id, tenantId]);
     const returnsRow = await db.get('SELECT COUNT(*) as c FROM return_items WHERE product_id = ?', [product.id]);
 
     const salesCount = Number(salesRow?.c || 0);
@@ -415,12 +415,12 @@ exports.deleteProduct = async (req, res) => {
     await db.transaction(async () => {
       if (totalReferences > 0 && force === 'true') {
         await db.run('DELETE FROM return_items WHERE product_id = ?', [product.id]);
-        await db.run('DELETE FROM stock_adjustments WHERE product_id = ?', [product.id]);
+        await db.run('DELETE FROM stock_adjustments WHERE product_id = ? AND tenant_id = ?', [product.id, tenantId]);
         await db.run('DELETE FROM sale_items WHERE product_id = ?', [product.id]);
         await db.run('DELETE FROM purchase_items WHERE product_id = ?', [product.id]);
       }
 
-      await db.run('DELETE FROM inventory_movements WHERE product_id = ?', [product.id]);
+      await db.run('DELETE FROM inventory_movements WHERE product_id = ? AND tenant_id = ?', [product.id, tenantId]);
       await db.run('DELETE FROM batches WHERE product_id = ? AND tenant_id = ?', [product.id, tenantId]);
       await db.run('DELETE FROM products WHERE id = ? AND tenant_id = ?', [product.id, tenantId]);
 
