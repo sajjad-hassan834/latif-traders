@@ -18,6 +18,7 @@ import CashFlow from './pages/CashFlow';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import SuperOwnerDashboard from './pages/SuperOwnerDashboard';
+import ForcedPasswordChange from './components/auth/ForcedPasswordChange';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Sparkles, CheckCircle2, Circle, X } from 'lucide-react';
 import { api } from './utils/api';
@@ -79,7 +80,7 @@ function resolveInitialTab() {
 }
 
 function MainApp() {
-  const { user, loading, role, roleLabel, defaultTab, hasTabAccess, tenant, plan, isSuperOwner, activeImpersonatedTenant, exitTenant, enterTenant } = useAuth();
+  const { user, loading, role, roleLabel, defaultTab, hasTabAccess, tenant, plan, isSuperOwner, activeImpersonatedTenant, exitTenant, enterTenant, mustChangePassword, completeForcedPasswordChange } = useAuth();
   const [superOwnerView, setSuperOwnerView] = useState(() => {
     return window.location.pathname === '/superowner/dashboard';
   });
@@ -390,6 +391,11 @@ function MainApp() {
         onNavigateRegister={() => navigatePublic('register')}
       />
     );
+  }
+
+  // ── Forced Password Change Screen ──
+  if (user && mustChangePassword) {
+    return <ForcedPasswordChange onSuccess={completeForcedPasswordChange} />;
   }
 
   // ── SuperOwner Direct Route ──

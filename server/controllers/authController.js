@@ -386,14 +386,11 @@ exports.updateProfile = async (req, res) => {
 };
 
 // Staff submits a password reset request to Admin
-// Security: Generic response returned in all scenarios to prevent username enumeration
+// Security: Generic response returned in all scenarios to prevent username enumeration,
+// including identical JSON shape with a 64-hex-char reset_token for existing and non-existing users
 exports.requestPasswordReset = async (req, res) => {
   try {
     const { username, request_note, contact_info } = req.body;
-    const genericResponse = {
-      success: true,
-      message: 'If an active account exists for this username, a reset request has been logged for your administrator.'
-    };
 
     if (!username || !username.trim()) {
       return res.status(400).json({ success: false, message: 'Please enter your Username or Staff ID.' });
@@ -402,9 +399,15 @@ exports.requestPasswordReset = async (req, res) => {
     const cleanUsername = username.trim().toLowerCase();
     const user = await db.get('SELECT id, username, full_name, role, status, tenant_id FROM users WHERE LOWER(username) = ?', [cleanUsername]);
 
-    // If user does not exist, or is superowner (superowner reset requests are silently blocked), or is inactive
+    // If user does not exist, or is superowner (superowner reset requests are silently blocked), or is inactive:
+    // Generate a meaningless random reset token so the response shape is identical
     if (!user || user.role === 'superowner' || user.status !== 'active') {
-      return res.json(genericResponse);
+      const meaninglessToken = crypto.randomBytes(32).toString('hex');
+      return res.json({
+        success: true,
+        message: 'If an active account exists for this username, a reset request has been logged for your administrator.',
+        reset_token: meaninglessToken
+      });
     }
 
     // Generate secure random reset token and store only its SHA-256 hash
@@ -423,7 +426,11 @@ exports.requestPasswordReset = async (req, res) => {
 
     await logAudit(user.id, user.full_name, 'FORGOT_PASSWORD_REQUEST', 'USER', user.id, 'Password reset requested via login terminal', req);
 
-    return res.json(genericResponse);
+    return res.json({
+      success: true,
+      message: 'If an active account exists for this username, a reset request has been logged for your administrator.',
+      reset_token: rawToken
+    });
   } catch (err) {
     console.error('Password reset request error:', err);
     return res.status(500).json({ success: false, message: 'Failed to process password reset request.' });

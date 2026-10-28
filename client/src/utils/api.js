@@ -81,10 +81,19 @@ export async function request(endpoint, options = {}) {
           if (hadToken) {
             localStorage.removeItem('lt_token');
             localStorage.removeItem('lt_user');
-            window.dispatchEvent(new CustomEvent('auth_expired'));
+            const isInvalidated = data?.message?.includes('invalidated') || data?.message?.includes('version') || data?.message?.includes('revoked');
+            if (isInvalidated) {
+              sessionStorage.setItem('auth_notice', 'Your session was terminated because your credentials or permissions were changed. Please sign in again.');
+            }
+            window.dispatchEvent(new CustomEvent('auth_expired', { detail: { message: data?.message } }));
           }
+        } else if (res.status === 403 && (data?.must_change_password || data?.message?.includes('Password change required'))) {
+          window.dispatchEvent(new CustomEvent('password_change_required', { detail: data }));
         }
-        throw new Error(data.message || 'Request failed');
+        const error = new Error(data.message || 'Request failed');
+        error.status = res.status;
+        error.data = data;
+        throw error;
       }
 
       if (isGet && data?.success) {

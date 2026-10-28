@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Plus, History, UserCheck, Lock, Edit, KeyRound, Check, XCircle, Clock, Sparkles, RefreshCw, Trash2, ChevronDown } from 'lucide-react';
+import { ShieldCheck, Plus, History, UserCheck, Lock, Edit, KeyRound, Check, XCircle, Clock, Sparkles, RefreshCw, Trash2, ChevronDown, Copy, AlertTriangle } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import ActionMenu from '../components/common/ActionMenu';
@@ -26,6 +26,8 @@ export default function Users() {
   const [newPassword, setNewPassword] = useState('');
   const [adminNote, setAdminNote] = useState('');
   const [resolving, setResolving] = useState(false);
+  const [approvedTempPassword, setApprovedTempPassword] = useState(null);
+  const [copiedTempPassword, setCopiedTempPassword] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -123,12 +125,21 @@ export default function Users() {
       });
 
       if (res.success) {
-        alert(res.message || 'Request successfully processed.');
         setShowResolveModal(false);
+        const reqUsername = selectedRequest?.username || 'Staff member';
         setSelectedRequest(null);
         setNewPassword('');
         setAdminNote('');
         loadData();
+
+        if (resolveAction === 'approve' && (res.temporary_password || newPassword.trim())) {
+          setApprovedTempPassword({
+            username: reqUsername,
+            password: res.temporary_password || newPassword.trim()
+          });
+        } else {
+          alert(res.message || 'Request successfully processed.');
+        }
       } else {
         alert(res.message || 'Failed to process request.');
       }
@@ -354,11 +365,9 @@ export default function Users() {
                       <td style={{ fontSize: '0.8rem' }}>
                         {r.status === 'approved' ? (
                           <div>
-                            {r.temporary_password && (
-                              <span style={{ fontWeight: 700, color: '#0f172a', background: '#dcfce7', padding: '2px 6px', borderRadius: '4px' }}>
-                                {r.temporary_password}
-                              </span>
-                            )}
+                            <span style={{ fontWeight: 600, color: '#15803d', background: '#dcfce7', padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem' }}>
+                              One-time temp password issued
+                            </span>
                             <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: '2px' }}>
                               By {r.resolved_by_name || 'Admin'}
                             </div>
@@ -998,7 +1007,7 @@ export default function Users() {
                       onChange={(e) => setNewPassword(e.target.value)}
                     />
                     <small style={{ color: '#64748b', fontSize: '0.72rem' }}>
-                      Staff can view this new password on the login screen's "Check Status" tab.
+                      Temporary password will be displayed once upon approval. Copy and provide it to the staff member.
                     </small>
                   </div>
                 )}
@@ -1029,6 +1038,111 @@ export default function Users() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ONE-TIME TEMPORARY PASSWORD DISPLAY MODAL */}
+      {approvedTempPassword && (
+        <div className="modal-backdrop">
+          <div className="modal-dialog" style={{ maxWidth: '480px' }}>
+            <div className="modal-header" style={{ background: '#f0fdf4', borderBottom: '1px solid #bbf7d0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <KeyRound size={20} style={{ color: '#15803d' }} />
+                <h5 className="modal-title" style={{ color: '#14532d', margin: 0 }}>
+                  Temporary Password Generated
+                </h5>
+              </div>
+            </div>
+
+            <div className="modal-body" style={{ padding: '1.5rem' }}>
+              <p style={{ fontSize: '0.875rem', color: '#334155', margin: '0 0 1rem' }}>
+                A temporary password has been successfully configured for user <strong>{approvedTempPassword.username}</strong>:
+              </p>
+
+              {/* Password Display Box */}
+              <div style={{
+                background: '#f8fafc',
+                border: '2px dashed #0266FE',
+                borderRadius: '8px',
+                padding: '1rem',
+                textAlign: 'center',
+                marginBottom: '1rem'
+              }}>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                  Temporary Password
+                </div>
+                <div style={{
+                  fontFamily: 'monospace',
+                  fontSize: '1.35rem',
+                  fontWeight: 700,
+                  color: '#0f172a',
+                  letterSpacing: '1px',
+                  wordBreak: 'break-all'
+                }}>
+                  {approvedTempPassword.password}
+                </div>
+              </div>
+
+              {/* Copy Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(approvedTempPassword.password);
+                  setCopiedTempPassword(true);
+                  setTimeout(() => setCopiedTempPassword(false), 2500);
+                }}
+                style={{
+                  width: '100%',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  background: copiedTempPassword ? '#15803d' : '#0266FE',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  marginBottom: '1rem'
+                }}
+              >
+                {copiedTempPassword ? <Check size={16} /> : <Copy size={16} />}
+                <span>{copiedTempPassword ? 'Copied to Clipboard!' : 'Copy Temporary Password'}</span>
+              </button>
+
+              {/* Warning Alert */}
+              <div style={{
+                padding: '0.75rem 1rem',
+                background: '#fffbeb',
+                border: '1px solid #fde68a',
+                borderRadius: '6px',
+                color: '#92400e',
+                fontSize: '0.8rem',
+                display: 'flex',
+                gap: '8px',
+                alignItems: 'flex-start',
+                lineHeight: 1.45
+              }}>
+                <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <strong>CRITICAL SECURITY NOTICE:</strong> This temporary password will only be displayed <strong>once</strong>. For security, it is not stored in plaintext on the server and cannot be viewed again. Please copy and securely deliver it to the staff member now.
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0' }}>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => setApprovedTempPassword(null)}
+                style={{ minWidth: '120px' }}
+              >
+                Done / Dismiss
+              </button>
+            </div>
           </div>
         </div>
       )}
