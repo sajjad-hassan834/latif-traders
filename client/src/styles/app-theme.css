@@ -197,6 +197,54 @@ html[data-app-theme="indigo"],
   --border-subtle: #E0E7FF;
 }
 
+/* 5. SHOPPYOS BRAND GREEN */
+html[data-app-theme="brand"],
+[data-app-theme="brand"] {
+  color-scheme: light;
+  --bg-page: #F2F6F3;
+  --bg-sidebar: #0F4D3A;
+  --text-sidebar: #CFE3D8;
+  --text-sidebar-section: #B9D3C6;
+  --bg-sidebar-active: #17624A;
+  --text-sidebar-active: #F4A62A;
+  --bg-card: #FFFFFF;
+  --border: #D3DFD8;
+  --text-title: #0C2B22;
+  --text-value: #0C2B22;
+  --text-muted: #4C6258;
+  --primary: #0F4D3A;
+  --primary-text: #FFFFFF;
+  --bg-table: #FFFFFF;
+  --bg-table-head: #E4EDE7;
+  --text-table: #0C2B22;
+  --money-green: #1B7A5A;
+  --money-purple: #7C3AED;
+  --money-red: #D92D5A;
+  --pill-green-bg: #E4EDE7;
+  --pill-green-text: #0F4D3A;
+  --logo-text: #FFFFFF;
+  --shadow-card: 0 1px 3px 0 rgba(15, 77, 58, 0.08), 0 1px 2px -1px rgba(15, 77, 58, 0.05);
+
+  /* Ancillary helper tokens */
+  --input-bg: #FFFFFF;
+  --input-border: #D3DFD8;
+  --input-text: #0C2B22;
+  --focus-ring: rgba(244, 166, 42, 0.35);
+  --modal-overlay: rgba(12, 43, 34, 0.55);
+  --header-bg: #FFFFFF;
+  --dropdown-bg: #FFFFFF;
+  --hover-bg: #E4EDE7;
+
+  /* Legacy shop tokens */
+  --bg-surface: #FFFFFF;
+  --bg-app: #F2F6F3;
+  --text-main: #0C2B22;
+  --text-light: #4C6258;
+  --secondary-light: #E4EDE7;
+  --border-card: #D3DFD8;
+  --border-subtle: #D3DFD8;
+}
+
 /* Smooth 200ms theme color transition */
 html[data-app-theme] {
   background-color: var(--bg-page);

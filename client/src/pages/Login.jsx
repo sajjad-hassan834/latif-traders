@@ -45,7 +45,8 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
       if (e?.detail) setTheme(e.detail);
     };
     window.addEventListener('public_theme_changed', handleThemeSync);
-    return () => window.removeEventListener('public_theme_changed', handleThemeSync);
+
+  return () => window.removeEventListener('public_theme_changed', handleThemeSync);
   }, []);
 
   const toggleTheme = () => {
@@ -55,21 +56,21 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
   };
 
   const t = {
-    pageBg: isDark ? '#0b1120' : '#F0F4F8',
-    textColor: isDark ? '#f8fafc' : '#111827',
-    headerBg: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-    headerBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
-    cardBg: isDark ? '#131d31' : '#FFFFFF',
-    cardBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
-    cardShadow: isDark ? '0 25px 60px -15px rgba(0, 0, 0, 0.7)' : '0 4px 24px rgba(0,0,0,0.08)',
-    inputBg: isDark ? '#0f172a' : '#ffffff',
-    inputBorder: isDark ? 'rgba(255, 255, 255, 0.14)' : '#E5E7EB',
-    inputText: isDark ? '#ffffff' : '#111827',
-    labelColor: isDark ? '#cbd5e1' : '#374151',
-    subText: isDark ? '#94a3b8' : '#6B7280',
-    titleColor: isDark ? '#ffffff' : '#111827',
-    noticeBg: isDark ? '#0f172a' : '#F9FAFB',
-    noticeBorder: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+    pageBg: 'var(--bg)',
+    textColor: 'var(--ink)',
+    headerBg: 'color-mix(in srgb, var(--bg) 92%, transparent)',
+    headerBorder: 'var(--line)',
+    cardBg: 'var(--paper)',
+    cardBorder: 'var(--line)',
+    cardShadow: 'var(--pub-card-shadow)',
+    inputBg: 'var(--pub-input-bg)',
+    inputBorder: 'var(--line)',
+    inputText: 'var(--ink)',
+    labelColor: 'var(--ink)',
+    subText: 'var(--mut)',
+    titleColor: 'var(--ink)',
+    noticeBg: 'var(--soft)',
+    noticeBorder: 'var(--line)'
   };
 
   const [authNotice, setAuthNotice] = useState(() => {
@@ -175,9 +176,13 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
   return (
     <div style={{
       minHeight: '100vh',
+      width: '100%',
+      maxWidth: '100vw',
+      boxSizing: 'border-box',
+      overflowX: 'hidden',
       background: t.pageBg,
       color: t.textColor,
-      fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+      fontFamily: 'var(--font-body)',
       display: 'flex',
       flexDirection: 'column'
     }}>
@@ -186,7 +191,9 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        padding: '16px 32px',
+        width: '100%',
+        boxSizing: 'border-box',
+        padding: '12px 16px',
         borderBottom: `1px solid ${t.headerBorder}`,
         display: 'flex',
         alignItems: 'center',
@@ -202,7 +209,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
         >
           <img
             src="/logo.png"
-            alt="ShopOS Logo"
+            alt="ShoppyOS Logo"
             style={{
               width: '36px',
               height: '36px',
@@ -212,7 +219,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
             }}
           />
           <span style={{ fontSize: '20px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
-            Shop<span style={{ color: '#0266FE' }}>OS</span>
+            Shoppy<span style={{ color: 'var(--leaf)' }}>OS</span>
           </span>
         </div>
 
@@ -224,13 +231,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
               padding: '8px 18px',
               borderRadius: '8px',
               border: '1px solid #0266FE',
-              background: '#0266FE',
-              color: '#ffffff',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: '13px',
-              boxShadow: '0 2px 8px rgba(2, 102, 254, 0.25)',
-              transition: 'background 0.2s'
+              background: 'var(--gold)', color: '#241800', fontWeight: 600, cursor: 'pointer', fontSize: '13px', borderRadius: '999px', border: 'none', transition: 'transform 0.15s'
             }}
             onMouseEnter={e => e.currentTarget.style.background = '#0052cc'}
             onMouseLeave={e => e.currentTarget.style.background = '#0266FE'}
@@ -243,19 +244,24 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
       {/* ═════════ CENTERED CARD CONTAINER ═════════ */}
       <main style={{
         flex: 1,
+        width: '100%',
+        maxWidth: '100vw',
+        boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: '36px 20px'
+        justifyContent: 'flex-start',
+        padding: '32px 16px 48px',
+        overflowX: 'hidden'
       }}>
         <div style={{
-          width: '480px',
-          maxWidth: '90vw',
+          width: 'min(440px, 100%)',
+          maxWidth: '100%',
+          margin: 'auto 0',
           background: t.cardBg,
           borderRadius: '16px',
           boxShadow: t.cardShadow,
-          padding: '40px 48px',
+          padding: '32px 24px',
           border: `1px solid ${t.cardBorder}`,
           boxSizing: 'border-box'
         }}>
@@ -276,7 +282,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
             }}>
               <img
                 src="/logo.png"
-                alt="ShopOS Logo"
+                alt="ShoppyOS Logo"
                 style={{
                   width: '46px',
                   height: '46px',
@@ -286,7 +292,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                 }}
               />
               <span style={{ fontSize: '24px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
-                Shop<span style={{ color: '#0266FE' }}>OS</span>
+                Shoppy<span style={{ color: 'var(--leaf)' }}>OS</span>
               </span>
             </div>
             <div style={{ fontSize: '13px', color: t.subText, margin: 0, textAlign: 'center' }}>
@@ -351,8 +357,12 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   style={{
                     position: 'absolute',
                     left: '14px',
-                    top: '15px',
-                    color: focusedField === 'username' ? '#0266FE' : '#9CA3AF',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: focusedField === 'username' ? 'var(--deep)' : 'var(--mut)',
                     transition: 'color 0.2s'
                   }}
                 />
@@ -369,8 +379,8 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                     width: '100%',
                     height: '48px',
                     borderRadius: '10px',
-                    border: focusedField === 'username' ? '1px solid #0266FE' : `1px solid ${t.inputBorder}`,
-                    boxShadow: focusedField === 'username' ? '0 0 0 3px rgba(2, 102, 254, 0.15)' : 'none',
+                    border: focusedField === 'username' ? '2px solid var(--gold)' : '1px solid var(--line)',
+                    boxShadow: focusedField === 'username' ? '0 0 0 3px rgba(244, 166, 42, 0.25)' : 'none',
                     background: t.inputBg,
                     color: t.inputText,
                     fontSize: '14px',
@@ -400,7 +410,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   }}
                   style={{
                     fontSize: '12px',
-                    color: '#0266FE',
+                    color: 'var(--leaf)',
                     fontWeight: 600,
                     background: 'none',
                     border: 'none',
@@ -418,8 +428,12 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   style={{
                     position: 'absolute',
                     left: '14px',
-                    top: '15px',
-                    color: focusedField === 'password' ? '#0266FE' : '#9CA3AF',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: focusedField === 'password' ? 'var(--deep)' : 'var(--mut)',
                     transition: 'color 0.2s'
                   }}
                 />
@@ -435,8 +449,8 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                     width: '100%',
                     height: '48px',
                     borderRadius: '10px',
-                    border: focusedField === 'password' ? '1px solid #0266FE' : `1px solid ${t.inputBorder}`,
-                    boxShadow: focusedField === 'password' ? '0 0 0 3px rgba(2, 102, 254, 0.15)' : 'none',
+                    border: focusedField === 'password' ? '2px solid var(--gold)' : '1px solid var(--line)',
+                    boxShadow: focusedField === 'password' ? '0 0 0 3px rgba(244, 166, 42, 0.25)' : 'none',
                     background: t.inputBg,
                     color: t.inputText,
                     fontSize: '14px',
@@ -452,7 +466,8 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   style={{
                     position: 'absolute',
                     right: '14px',
-                    top: '15px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
                     color: '#9CA3AF',
@@ -477,7 +492,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
                 style={{
-                  accentColor: '#0266FE',
+                  accentColor: 'var(--deep)',
                   width: '16px',
                   height: '16px',
                   cursor: 'pointer',
@@ -506,21 +521,12 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                 height: '48px',
                 borderRadius: '10px',
                 border: 'none',
-                background: '#0266FE',
-                color: '#ffffff',
-                fontSize: '15px',
-                fontWeight: 600,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                boxShadow: '0 4px 14px rgba(2, 102, 254, 0.35)',
+                background: 'var(--gold)', color: '#241800', fontSize: '15px', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderRadius: '999px', border: 'none', boxShadow: '0 4px 14px rgba(244, 166, 42, 0.35)',
                 transition: 'background 0.2s, opacity 0.2s',
                 opacity: loading ? 0.8 : 1
               }}
-              onMouseEnter={e => !loading && (e.currentTarget.style.background = '#0052cc')}
-              onMouseLeave={e => !loading && (e.currentTarget.style.background = '#0266FE')}
+              onMouseEnter={e => !loading && (e.currentTarget.style.background = '#e59920')}
+              onMouseLeave={e => !loading && (e.currentTarget.style.background = 'var(--gold)')}
             >
               {loading ? (
                 <>
@@ -555,7 +561,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#0266FE',
+                color: 'var(--leaf)',
                 fontWeight: 600,
                 cursor: 'pointer',
                 padding: 0

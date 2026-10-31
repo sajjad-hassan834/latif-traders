@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ShopOS – Business Management & POS</title>
+    <title>ShoppyOS – Run the whole dukaan from one screen</title>
     <link rel="icon" type="image/png" href="/logo.png" />
     <script>
       /* Pre-mount zero-flash theme initialization */
@@ -14,7 +14,8 @@
           var isExplicitPublic = path === '/login' || path === '/register' || (!token && path === '');
           
           if (isExplicitPublic || !token) {
-            var pubTheme = localStorage.getItem('shopos-public-theme') || 'light';
+            var params = new URLSearchParams(window.location.search);
+            var pubTheme = params.get('theme') || localStorage.getItem('shopos-public-theme') || 'light';
             if (pubTheme !== 'dark') pubTheme = 'light';
             document.documentElement.removeAttribute('data-app-theme');
             document.documentElement.setAttribute('data-public-theme', pubTheme);
@@ -23,7 +24,7 @@
             var appTheme = localStorage.getItem('shopos-app-theme') || localStorage.getItem('lt_theme') || 'classic';
             if (appTheme === 'light') appTheme = 'classic';
             if (appTheme === 'emerald') appTheme = 'green';
-            if (['classic', 'dark', 'green', 'indigo'].indexOf(appTheme) === -1) appTheme = 'classic';
+            if (['brand', 'classic', 'dark', 'green', 'indigo'].indexOf(appTheme) === -1) appTheme = 'classic';
             document.documentElement.removeAttribute('data-public-theme');
             document.documentElement.setAttribute('data-app-theme', appTheme);
             document.documentElement.style.colorScheme = (appTheme === 'dark' ? 'dark' : 'light');
