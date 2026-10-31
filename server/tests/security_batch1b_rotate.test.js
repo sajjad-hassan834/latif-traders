@@ -41,8 +41,8 @@ async function testRotateCredentials() {
   const testUser = `rot_test_${Date.now()}`;
   await db.run(`
     INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, token_version, must_change_password)
-    VALUES (?, 'rot@test.com', 'initial_hash', 'Rotation Test', 'admin', 'active', ?, 1, 0)
-  `, [testUser, LEGACY_TENANT_ID]);
+    VALUES (?, ?, 'initial_hash', 'Rotation Test', 'admin', 'active', ?, 1, 0)
+  `, [testUser, `rot_${Date.now()}@test.com`, LEGACY_TENANT_ID]);
 
   const execRes = spawnSync('node', [scriptPath, '--user', testUser, '--yes'], { encoding: 'utf8' });
   assert.strictEqual(execRes.status, 0, 'Rotation with --yes must succeed');

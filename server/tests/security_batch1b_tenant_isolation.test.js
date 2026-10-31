@@ -101,17 +101,18 @@ async function runTests() {
     // User A credentials (belongs strictly to Tenant A)
     const salt = bcrypt.genSaltSync(12);
     const hash = bcrypt.hashSync('Pass123!@#', salt);
+    const uSuffix = Date.now();
     const userARes = await db.run(`
       INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, token_version, must_change_password)
-      VALUES ('user_alpha', 'alpha@shop.com', ?, 'Alpha Staff', 'admin', 'active', ?, 1, 0)
-    `, [hash, tenantA]);
+      VALUES (?, ?, ?, 'Alpha Staff', 'admin', 'active', ?, 1, 0)
+    `, [`user_alpha_${uSuffix}`, `alpha_${uSuffix}@shop.com`, hash, tenantA]);
     const userAId = userARes.lastInsertRowid;
 
     // User B credentials (belongs strictly to Tenant B)
     await db.run(`
       INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, token_version, must_change_password)
-      VALUES ('user_beta_secret', 'beta@shop.com', ?, 'Beta Confidential Staff', 'admin', 'active', ?, 1, 0)
-    `, [hash, tenantB]);
+      VALUES (?, ?, ?, 'Beta Confidential Staff', 'admin', 'active', ?, 1, 0)
+    `, [`user_beta_${uSuffix}`, `beta_${uSuffix}@shop.com`, hash, tenantB]);
 
     // Token for User A
     const tokenA = jwt.sign(

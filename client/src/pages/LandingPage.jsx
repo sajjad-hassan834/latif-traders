@@ -1242,7 +1242,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
               Ready to Digitize Your Shop?
             </h2>
             <p style={{ fontSize: '18px', color: '#e0f2fe', maxWidth: '640px', margin: '0 auto 32px', lineHeight: 1.6 }}>
-              Join thousands of traders moving from messy registers to ShopOS. Setup in under 60 seconds.
+              Move from manual registers to organized point-of-sale management. Setup in under 60 seconds.
             </p>
             <button
               onClick={onNavigateRegister}
@@ -1375,7 +1375,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
               <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A', marginBottom: '14px' }}>Connect with us</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: '#64748B' }}>
                 <a
-                  href="mailto:support@shopos.pk"
+                  href={`mailto:${import.meta.env.VITE_SUPPORT_EMAIL || "shopos.help@gmail.com"}`}
                   style={{
                     color: '#0266FE',
                     fontWeight: 600,
@@ -1385,7 +1385,7 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
                     gap: '6px'
                   }}
                 >
-                  <span>📧</span> support@shopos.pk
+                  <span>📧</span> {import.meta.env.VITE_SUPPORT_EMAIL || 'shopos.help@gmail.com'}
                 </a>
               </div>
             </div>

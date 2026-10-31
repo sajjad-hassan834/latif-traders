@@ -9,7 +9,57 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const DB_PATH = process.env.DB_PATH || (fs.existsSync(path.join(DATA_DIR, 'shopos.db')) ? path.join(DATA_DIR, 'shopos.db') : (fs.existsSync(path.join(DATA_DIR, 'latif_traders.db')) ? path.join(DATA_DIR, 'latif_traders.db') : path.join(DATA_DIR, 'shopos.db')));
+/**
+ * Resolves the active database file path explicitly and safely.
+ * Rules:
+ * 1. DB_PATH wins if set.
+ * 2. If not set, checks shopos.db, then latif_traders.db, defaulting to shopos.db.
+ * 3. In production, refuses to start if chosen path does not exist while other .db files exist in DATA_DIR.
+ * 4. Logs selected file name (name only).
+ */
+function resolveDatabasePath(dataDir, envDbPath, isProduction = process.env.NODE_ENV === 'production') {
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
+  let selectedPath;
+  if (envDbPath && envDbPath.trim()) {
+    selectedPath = path.isAbsolute(envDbPath.trim()) ? envDbPath.trim() : path.resolve(dataDir, envDbPath.trim());
+  } else {
+    const shoposPath = path.join(dataDir, 'shopos.db');
+    const latifPath = path.join(dataDir, 'latif_traders.db');
+    if (fs.existsSync(shoposPath)) {
+      selectedPath = shoposPath;
+    } else if (fs.existsSync(latifPath)) {
+      selectedPath = latifPath;
+    } else {
+      selectedPath = shoposPath;
+    }
+  }
+
+  // Refuse to start in production if target database does not exist but another .db file exists in DATA_DIR
+  if (isProduction && !fs.existsSync(selectedPath)) {
+    let existingDbFiles = [];
+    try {
+      existingDbFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.db') && !f.includes('-shm') && !f.includes('-wal'));
+    } catch (_) {}
+    if (existingDbFiles.length > 0) {
+      const selectedName = path.basename(selectedPath);
+      console.error(`[FATAL] Configured database file "${selectedName}" does not exist in DATA_DIR, but other database file(s) exist: [${existingDbFiles.join(', ')}].`);
+      console.error('[FATAL] Startup refused in production to prevent accidental empty database creation. Explicitly configure DB_PATH to point to your existing database.');
+      if (process.env.NODE_ENV !== 'test') {
+        process.exit(1);
+      }
+      throw new Error(`Refusing to create empty database "${selectedName}" when other database files exist in production: ${existingDbFiles.join(', ')}`);
+    }
+  }
+
+  const selectedName = path.basename(selectedPath);
+  console.log(`[ShopOS Database] Connected to SQLite database: ${selectedName}`);
+  return selectedPath;
+}
+
+const DB_PATH = resolveDatabasePath(DATA_DIR, process.env.DB_PATH);
 const db = new Database(DB_PATH);
 
 // Enable WAL mode for high concurrency and performance
@@ -1058,16 +1108,22 @@ db.run = async (sql, params = []) => {
   const res = db.prepare(sql).run(...params);
   return { rowCount: res.changes, lastInsertRowid: res.lastInsertRowid };
 };
-db.transaction = async (callback) => {
-  db.prepare('BEGIN IMMEDIATE').run();
-  try {
-    const result = await callback(db);
-    db.prepare('COMMIT').run();
-    return result;
-  } catch (err) {
-    try { db.prepare('ROLLBACK').run(); } catch (_) {}
-    throw err;
+const originalNativeTransaction = db.transaction.bind(db);
+db.transaction = (callback) => {
+  if (callback && callback.constructor && callback.constructor.name === 'AsyncFunction') {
+    return (async () => {
+      db.prepare('BEGIN IMMEDIATE').run();
+      try {
+        const result = await callback(db);
+        db.prepare('COMMIT').run();
+        return result;
+      } catch (err) {
+        try { db.prepare('ROLLBACK').run(); } catch (_) {}
+        throw err;
+      }
+    })();
   }
+  return originalNativeTransaction(callback);
 };
 db.measureLatency = async () => {
   const start = Date.now();
@@ -1104,8 +1160,11 @@ module.exports = {
   DB_PATH,
   DATA_DIR
 };
+
 module.exports = {
   db,
+  sqliteDb: db,
+  resolveDatabasePath,
   initializeDatabase,
   DB_PATH,
   DATA_DIR

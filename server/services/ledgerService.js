@@ -1,4 +1,5 @@
 const { db } = require('../config/database');
+const { LEGACY_TENANT_ID } = require('../constants/tenant');
 
 /**
  * Single Source of Truth for Ledger Calculations (Customers & Suppliers)
@@ -18,7 +19,7 @@ function calculateCustomerLedger(customerId, tenantId, options = {}) {
     throw new Error('Customer not found');
   }
 
-  const isFasialLatif = tenantId === 'latif_001' && customer.name && (customer.name.toLowerCase().includes('fasial') || customer.name.toLowerCase().includes('faisal'));
+  const isFasialLatif = tenantId === LEGACY_TENANT_ID && customer.name && (customer.name.toLowerCase().includes('fasial') || customer.name.toLowerCase().includes('faisal'));
 
   // Sanitize duplicate / corrupted opening balance of 21,940 for Fasial Walton
   if (isFasialLatif || Number(customer.opening_balance) === 21940) {

@@ -1467,7 +1467,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>📧</span>
-                <span><strong>Email:</strong> support@shopos.pk</span>
+                <span><strong>Email:</strong> {import.meta.env.VITE_SUPPORT_EMAIL || 'shopos.help@gmail.com'}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>🕐</span>
