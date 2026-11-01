@@ -132,3 +132,4 @@ runBackupSecurityTests().catch(err => {
   console.error('\n❌ Backup security test failed:', err);
   process.exit(1);
 });
+

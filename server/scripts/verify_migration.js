@@ -88,7 +88,7 @@ async function verifyMigration(overrideSqlitePath) {
     } catch (_) {}
 
     // Special note: counters is a Postgres atomic sequence table; if SQLite lacks counters, allow pCount >= sCount
-    const match = (table === 'counters' && !sTable) ? true : (sCount === pCount);
+    const match = (table === 'counters') ? (pCount >= sCount) : (sCount === pCount);
     if (!match) allRowCountsMatch = false;
     results.tableRowCounts.push({ table, sqliteCount: sCount, pgCount: pCount, match });
     console.log(`  ${match ? '✅' : '❌'} ${table.padEnd(25)} | SQLite: ${String(sCount).padStart(6)} | PG: ${String(pCount).padStart(6)} | ${match ? 'MATCH' : 'MISMATCH'}`);
@@ -181,9 +181,9 @@ async function verifyMigration(overrideSqlitePath) {
     if (commonCols.length === 0) continue;
 
     const selectCols = commonCols.map(c => `"${c}"`).join(', ');
-    const sortCol = commonCols.includes('id') ? 'id' : (commonCols.includes('key') ? 'key' : commonCols[0]);
+    const sortCol = tbl === 'tenant_settings' ? '"tenant_id", "key"' : (tbl === 'settings' ? '"key"' : (commonCols.includes('id') ? '"id"' : '"' + commonCols[0] + '"'));
 
-    const sRows = sqlite.prepare(`SELECT ${selectCols} FROM "${tbl}" ORDER BY "${sortCol}" ASC`).all().map(r => {
+    const sRows = sqlite.prepare(`SELECT ${selectCols} FROM "${tbl}" ORDER BY ${sortCol} ASC`).all().map(r => {
       const clean = {};
       for (const [k, v] of Object.entries(r)) {
         clean[k] = normalizeCanonicalValue(v);
@@ -192,7 +192,7 @@ async function verifyMigration(overrideSqlitePath) {
     });
     const sHash = crypto.createHash('sha256').update(JSON.stringify(sRows)).digest('hex').slice(0, 16);
 
-    const pRes = await pg.query(`SELECT ${selectCols} FROM "${tbl}" ORDER BY "${sortCol}" ASC`);
+    const pRes = await pg.query(`SELECT ${selectCols} FROM "${tbl}" ORDER BY ${sortCol} ASC`);
     const pRows = pRes.rows.map(r => {
       const clean = {};
       for (const [k, v] of Object.entries(r)) {

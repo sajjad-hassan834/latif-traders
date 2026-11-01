@@ -1,4 +1,5 @@
 const { getPKTDate } = require('../utils/timezone');
+const { LEGACY_TENANT_ID } = require('../constants/tenant');
 /**
  * Idempotent SQLite to PostgreSQL 16 Migration Script
  * 
@@ -48,7 +49,8 @@ const MIGRATION_TABLES = [
   'tenant_settings',
   'subscriptions',
   'audit_logs',
-  'password_reset_requests'
+  'password_reset_requests',
+  'settings'
 ];
 
 async function migrate(overrideSqlitePath, overrideDryRun) {
@@ -141,19 +143,23 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
       const valPlaceholders = sharedCols.map((_, idx) => `$${idx + 1}`).join(', ');
       const insertSql = `INSERT INTO "${table}" (${colList}) VALUES (${valPlaceholders})`;
 
+      let validTenants = new Set();
       let validTenantUserKeys = new Set();
       if (table === 'audit_logs') {
+        const tRes = await pg.query('SELECT id FROM tenants');
+        validTenants = new Set(tRes.rows.map(r => r.id));
         const uRes = await pg.query('SELECT tenant_id, id FROM users');
         validTenantUserKeys = new Set(uRes.rows.map(r => `${r.tenant_id}:${r.id}`));
       }
 
       for (const row of rows) {
-        const rowTenantId = row.tenant_id || LEGACY_TENANT_ID;
+        let rowTenantId = row.tenant_id || LEGACY_TENANT_ID;
+        if (table === 'audit_logs' && !validTenants.has(rowTenantId)) rowTenantId = LEGACY_TENANT_ID;
         const values = sharedCols.map(c => {
           let val = row[c];
           if (val === undefined) return null;
           // Clean default tenant_id if null
-          if (c === 'tenant_id' && (val === null || val === '')) {
+          if (c === 'tenant_id' && (val === null || val === '' || (table === 'audit_logs' && !validTenants.has(val)))) {
             val = LEGACY_TENANT_ID;
           }
           // Set orphaned user_id in audit_logs to null (respecting ON DELETE SET NULL)

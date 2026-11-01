@@ -97,3 +97,4 @@ runDocumentNumberingTests().catch(err => {
   console.error('\n❌ Test suite failed:', err);
   process.exit(1);
 });
+
