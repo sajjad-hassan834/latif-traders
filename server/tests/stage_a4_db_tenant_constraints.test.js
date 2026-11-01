@@ -17,7 +17,16 @@ async function testDatabaseTenantConstraints() {
 
   try {
     // Clean test tables
-    await client.query("DELETE FROM tenants WHERE id IN ('tenant_alpha', 'tenant_beta')");
+        const testTenants = "('tenant_alpha', 'tenant_beta', 'ghost_tenant_xyz')";
+    await client.query(`DELETE FROM sale_items WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM sales WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM batches WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM products WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM categories WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM suppliers WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM customers WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM expense_categories WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM tenants WHERE id IN ${testTenants}`);
 
     // 1. Seed two isolated tenants
     await client.query(`
@@ -195,7 +204,16 @@ async function testDatabaseTenantConstraints() {
     console.log('🎉 ALL DATABASE-LEVEL TENANT CONSTRAINT TESTS PASSED WITH 100% SUCCESS');
     console.log('========================================================================\n');
   } finally {
-    await client.query("DELETE FROM tenants WHERE id IN ('tenant_alpha', 'tenant_beta')");
+    const testTenants = "('tenant_alpha', 'tenant_beta', 'ghost_tenant_xyz')";
+    await client.query(`DELETE FROM sale_items WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM sales WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM batches WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM products WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM categories WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM suppliers WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM customers WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM expense_categories WHERE tenant_id IN ${testTenants}`);
+    await client.query(`DELETE FROM tenants WHERE id IN ${testTenants}`);
     await client.end();
   }
 }

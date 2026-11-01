@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS users (
   temp_password_used INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_users_tenant_username UNIQUE(tenant_id, username),
   CONSTRAINT uq_users_tenant_id UNIQUE(tenant_id, id)
 );
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS categories (
   name TEXT NOT NULL,
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_categories_tenant_name UNIQUE(tenant_id, name),
   CONSTRAINT uq_categories_tenant_id UNIQUE(tenant_id, id)
 );
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS units (
   id BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   short_code TEXT NOT NULL,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_units_tenant_code UNIQUE(tenant_id, short_code),
   CONSTRAINT uq_units_tenant_id UNIQUE(tenant_id, id)
 );
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS brands (
   name TEXT NOT NULL,
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_brands_tenant_name UNIQUE(tenant_id, name),
   CONSTRAINT uq_brands_tenant_id UNIQUE(tenant_id, id)
 );
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
   current_balance NUMERIC(14,2) NOT NULL DEFAULT 0.00,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_suppliers_tenant_name UNIQUE(tenant_id, name),
   CONSTRAINT uq_suppliers_tenant_id UNIQUE(tenant_id, id)
 );
@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS customers (
   current_balance NUMERIC(14,2) NOT NULL DEFAULT 0.00,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_customers_tenant_name UNIQUE(tenant_id, name),
   CONSTRAINT uq_customers_tenant_id UNIQUE(tenant_id, id)
 );
@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS products (
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   supplier_id BIGINT,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_products_tenant_sku UNIQUE(tenant_id, sku),
   CONSTRAINT uq_products_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_products_category_tenant FOREIGN KEY (tenant_id, category_id) REFERENCES categories(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE,
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS batches (
   status TEXT DEFAULT 'active',
   supplier_id BIGINT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_batches_tenant_prod_batch UNIQUE(tenant_id, product_id, batch_no),
   CONSTRAINT uq_batches_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_batches_product_tenant FOREIGN KEY (tenant_id, product_id) REFERENCES products(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
@@ -180,7 +180,7 @@ CREATE TABLE IF NOT EXISTS sales (
   user_id BIGINT,
   order_status TEXT NOT NULL DEFAULT 'Completed',
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_sales_tenant_invoice UNIQUE(tenant_id, invoice_no),
   CONSTRAINT uq_sales_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_sales_customer_tenant FOREIGN KEY (tenant_id, customer_id) REFERENCES customers(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE,
@@ -202,7 +202,7 @@ CREATE TABLE IF NOT EXISTS sale_items (
   discount NUMERIC(14,2) NOT NULL DEFAULT 0.00,
   total_price NUMERIC(14,2) NOT NULL,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_sale_items_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_sale_items_sale_tenant FOREIGN KEY (tenant_id, sale_id) REFERENCES sales(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
   CONSTRAINT fk_sale_items_product_tenant FOREIGN KEY (tenant_id, product_id) REFERENCES products(tenant_id, id) ON DELETE RESTRICT DEFERRABLE INITIALLY IMMEDIATE,
@@ -227,7 +227,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   notes TEXT,
   user_id BIGINT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_purchases_tenant_invoice UNIQUE(tenant_id, invoice_no),
   CONSTRAINT uq_purchases_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_purchases_supplier_tenant FOREIGN KEY (tenant_id, supplier_id) REFERENCES suppliers(tenant_id, id) ON DELETE RESTRICT DEFERRABLE INITIALLY IMMEDIATE,
@@ -249,7 +249,7 @@ CREATE TABLE IF NOT EXISTS purchase_items (
   total_price NUMERIC(14,2) NOT NULL,
   brand TEXT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_purchase_items_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_purchase_items_purchase_tenant FOREIGN KEY (tenant_id, purchase_id) REFERENCES purchases(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
   CONSTRAINT fk_purchase_items_product_tenant FOREIGN KEY (tenant_id, product_id) REFERENCES products(tenant_id, id) ON DELETE RESTRICT DEFERRABLE INITIALLY IMMEDIATE
@@ -270,7 +270,7 @@ CREATE TABLE IF NOT EXISTS payments (
   notes TEXT,
   user_id BIGINT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_payments_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_payments_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
 );
@@ -281,7 +281,7 @@ CREATE TABLE IF NOT EXISTS expense_categories (
   id BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_exp_categories_tenant_name UNIQUE(tenant_id, name),
   CONSTRAINT uq_exp_categories_tenant_id UNIQUE(tenant_id, id)
 );
@@ -298,7 +298,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   receipt_path TEXT,
   user_id BIGINT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_expenses_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_expenses_category_tenant FOREIGN KEY (tenant_id, category_id) REFERENCES expense_categories(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE,
   CONSTRAINT fk_expenses_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
@@ -316,7 +316,7 @@ CREATE TABLE IF NOT EXISTS returns (
   reason TEXT,
   user_id BIGINT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_returns_tenant_no UNIQUE(tenant_id, return_no),
   CONSTRAINT uq_returns_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_returns_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
@@ -332,7 +332,7 @@ CREATE TABLE IF NOT EXISTS return_items (
   unit_price NUMERIC(14,2) NOT NULL,
   total_amount NUMERIC(14,2) NOT NULL,
   condition TEXT NOT NULL DEFAULT 'good',
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_return_items_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_return_items_return_tenant FOREIGN KEY (tenant_id, return_id) REFERENCES returns(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
   CONSTRAINT fk_return_items_product_tenant FOREIGN KEY (tenant_id, product_id) REFERENCES products(tenant_id, id) ON DELETE RESTRICT DEFERRABLE INITIALLY IMMEDIATE,
@@ -351,7 +351,7 @@ CREATE TABLE IF NOT EXISTS stock_adjustments (
   reason TEXT NOT NULL,
   user_id BIGINT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_stock_adj_tenant_no UNIQUE(tenant_id, adjustment_no),
   CONSTRAINT uq_stock_adj_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_stock_adj_product_tenant FOREIGN KEY (tenant_id, product_id) REFERENCES products(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
@@ -373,7 +373,7 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
   reason TEXT,
   user_id BIGINT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_inv_movements_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_inv_mov_product_tenant FOREIGN KEY (tenant_id, product_id) REFERENCES products(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
   CONSTRAINT fk_inv_mov_batch_tenant FOREIGN KEY (tenant_id, batch_id) REFERENCES batches(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE,
@@ -389,7 +389,7 @@ CREATE TABLE IF NOT EXISTS settings (
 
 CREATE TABLE IF NOT EXISTS tenant_settings (
   id BIGSERIAL PRIMARY KEY,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   key TEXT NOT NULL,
   value TEXT NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -400,7 +400,7 @@ CREATE INDEX IF NOT EXISTS idx_tenant_settings_tenant ON tenant_settings(tenant_
 
 CREATE TABLE IF NOT EXISTS subscriptions (
   id BIGSERIAL PRIMARY KEY,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT DEFERRABLE INITIALLY IMMEDIATE,
   plan TEXT NOT NULL DEFAULT 'free',
   price NUMERIC(14,2) NOT NULL DEFAULT 0.00,
   started_at TIMESTAMPTZ,
@@ -422,7 +422,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   details TEXT,
   ip_address TEXT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_audit_logs_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_audit_logs_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
 );
@@ -437,7 +437,7 @@ CREATE TABLE IF NOT EXISTS supplier_products (
   last_purchased_at TIMESTAMPTZ,
   is_preferred BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_supplier_products UNIQUE(tenant_id, supplier_id, product_id),
   CONSTRAINT uq_supplier_products_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_sup_prod_supplier_tenant FOREIGN KEY (tenant_id, supplier_id) REFERENCES suppliers(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
@@ -447,7 +447,7 @@ CREATE INDEX IF NOT EXISTS idx_supplier_products_tenant ON supplier_products(ten
 
 CREATE TABLE IF NOT EXISTS password_reset_requests (
   id BIGSERIAL PRIMARY KEY,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   user_id BIGINT,
   username TEXT NOT NULL,
   full_name TEXT,
@@ -469,7 +469,7 @@ CREATE INDEX IF NOT EXISTS idx_pw_resets_tenant ON password_reset_requests(tenan
 
 CREATE TABLE IF NOT EXISTS counters (
   id BIGSERIAL PRIMARY KEY,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   counter_type TEXT NOT NULL,
   last_number BIGINT NOT NULL DEFAULT 0,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
