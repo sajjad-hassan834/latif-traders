@@ -209,6 +209,7 @@ async function runStageA2() {
   // 9. Multi-Tenant Query-Level Isolation
   console.log('\n--- 9. API-Level Multi-Tenant Isolation ---');
   await adapter.run("INSERT INTO customers (tenant_id, name, current_balance) VALUES ('t_pid_test', 'Tenant A Exclusive Customer', 5000)");
+  await adapter.run("INSERT INTO tenants (id, business_name, owner_name) VALUES ('t_other_test', 'Other Test Co', 'Tester B') ON CONFLICT (id) DO NOTHING");
   await adapter.run("INSERT INTO customers (tenant_id, name, current_balance) VALUES ('t_other_test', 'Tenant B Exclusive Customer', 7000)");
 
   const custTenantA = await adapter.all("SELECT * FROM customers WHERE tenant_id = 't_pid_test'");

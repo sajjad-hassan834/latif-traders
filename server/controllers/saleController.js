@@ -133,7 +133,6 @@ exports.getSaleById = async (req, res) => {
       LEFT JOIN customers c ON s.customer_id = c.id AND c.tenant_id = s.tenant_id
       LEFT JOIN users u ON s.user_id = u.id AND u.tenant_id = s.tenant_id
       WHERE (s.id = ? OR s.invoice_no = ?) AND s.tenant_id = ?
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     `, [String(id), String(id), tenantId]);
 
     if (!sale) {
@@ -147,7 +146,6 @@ exports.getSaleById = async (req, res) => {
       LEFT JOIN suppliers sup ON pr.supplier_id = sup.id
 
       WHERE si.sale_id = ? AND si.tenant_id = ?
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     `, [sale.id, tenantId]);
 
     const settingsList = await db.all('SELECT key, value FROM tenant_settings WHERE tenant_id = ?', [tenantId]);
@@ -176,7 +174,6 @@ exports.createSale = async (req, res) => {
     const result = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const tenantPlan = req.tenant?.plan || 'free';
 
       // Plan limit enforcement: Free plan max 100 invoices/month
@@ -473,7 +470,6 @@ exports.createSaleReturn = async (req, res) => {
     const result = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const { original_sale_id, reason, items } = req.body;
 
       if (!original_sale_id || !items || !Array.isArray(items) || items.length === 0) {
@@ -559,7 +555,6 @@ exports.deleteSale = async (req, res) => {
     const result = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const { id } = req.params;
       const { reason } = req.body || {};
 
@@ -628,7 +623,6 @@ exports.updateOrderStatus = async (req, res) => {
     const result = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const { id } = req.params;
       const { status, reason } = req.body;
 
@@ -703,7 +697,6 @@ exports.recordOrderPayment = async (req, res) => {
     const result = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const { id } = req.params;
       const { amount, payment_method, notes, payment_date } = req.body;
 
@@ -771,7 +764,6 @@ exports.bulkUpdateStatus = async (req, res) => {
       const runner = tx.run ? tx : db;
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const { ids, status } = req.body;
       if (!Array.isArray(ids) || ids.length === 0) {
         throw new Error('No order IDs provided.');
@@ -824,7 +816,6 @@ exports.updateSale = async (req, res) => {
       const runner = tx.run ? tx : db;
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const { id } = req.params;
       const { items = [], discount, paid_amount, notes, reason } = req.body;
 

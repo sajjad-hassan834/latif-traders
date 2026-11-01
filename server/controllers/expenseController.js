@@ -121,7 +121,6 @@ exports.updateExpense = async (req, res) => {
 
 
     const existing = await db.get('SELECT * FROM expenses WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     if (!existing) return res.status(404).json({ success: false, message: 'Expense record not found.' });
 
     if (!title || !amount || Number(amount) <= 0) {
@@ -135,7 +134,6 @@ exports.updateExpense = async (req, res) => {
       SET category_id = ?, title = ?, amount = ?, payment_method = ?, expense_date = ?, description = ?, receipt_path = ?
 
       WHERE id = ? AND tenant_id = ?
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     `, [
       category_id || null,
       title.trim(),
@@ -166,7 +164,6 @@ exports.deleteExpense = async (req, res) => {
     if (!existing) return res.status(404).json({ success: false, message: 'Expense record not found.' });
 
     await db.run('DELETE FROM expenses WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     await logAudit(req.user?.id || 1, req.user?.full_name || 'Admin', 'DELETE', 'EXPENSE', existing.id, `Deleted expense #${id}: ${existing.title} (₨ ${existing.amount})`, req);
 
     return res.json({ success: true, message: 'Expense deleted.' });
@@ -180,7 +177,6 @@ exports.getCategories = async (req, res) => {
   try {
 
     const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     const categories = await db.all(`
       SELECT ec.*, COUNT(e.id) as expense_count, COALESCE(SUM(e.amount), 0) as total_spent
       FROM expense_categories ec

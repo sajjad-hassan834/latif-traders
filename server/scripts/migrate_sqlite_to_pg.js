@@ -147,13 +147,13 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
       }
 
       for (const row of rows) {
-        const rowTenantId = row.tenant_id || 'latif_001';
+        const rowTenantId = row.tenant_id || LEGACY_TENANT_ID;
         const values = sharedCols.map(c => {
           let val = row[c];
           if (val === undefined) return null;
           // Clean default tenant_id if null
           if (c === 'tenant_id' && (val === null || val === '')) {
-            val = 'latif_001';
+            val = LEGACY_TENANT_ID;
           }
           // Set orphaned user_id in audit_logs to null (respecting ON DELETE SET NULL)
           if (table === 'audit_logs' && c === 'user_id' && val !== null && !validTenantUserKeys.has(`${rowTenantId}:${val}`)) {

@@ -111,7 +111,6 @@ exports.getPurchaseById = async (req, res) => {
       LEFT JOIN users u ON p.user_id = u.id AND u.tenant_id = p.tenant_id
 
       WHERE p.id = ? AND p.tenant_id = ?
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     `, [String(id), tenantId]);
 
     if (!purchase) {
@@ -137,7 +136,6 @@ exports.createPurchase = async (req, res) => {
     const result = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const {
         supplier_id, supplier_invoice_no, purchase_date,
         items, discount, tax, paid_amount, payment_method, notes
@@ -352,7 +350,6 @@ exports.createPurchaseReturn = async (req, res) => {
     const result = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const { original_purchase_id, reason, items } = req.body;
 
       if (!original_purchase_id || !items || !Array.isArray(items) || items.length === 0) {
@@ -426,7 +423,6 @@ exports.deletePurchase = async (req, res) => {
     const result = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const { id } = req.params;
 
       const purchase = await db.get('SELECT * FROM purchases WHERE id = ? AND tenant_id = ?', [id, tenantId]);
@@ -482,7 +478,6 @@ exports.deletePurchase = async (req, res) => {
 exports.updatePurchase = async (req, res) => {
 
   const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
   const { id } = req.params;
   const { supplier_id, supplier_invoice_no, purchase_date, paid_amount, payment_method, notes } = req.body;
 
@@ -552,7 +547,6 @@ exports.getProductStockPreview = async (req, res) => {
       LEFT JOIN suppliers s ON p.supplier_id = s.id AND s.tenant_id = p.tenant_id
 
       WHERE p.id = ? AND p.tenant_id = ?
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     `, [String(productId), tenantId]);
 
     if (!product) {

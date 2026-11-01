@@ -26,7 +26,6 @@ async function calculateCustomerLedger(customerId, tenantId, options = {}) {
   if (isFasialLatif || Number(customer.opening_balance) === 21940) {
     customer.opening_balance = 0;
   }
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
   // 1. Fetch sales invoices
   const rawSales = await db.all(`
     SELECT id, invoice_no as ref_no, sale_date as date, 'SALE' as type,

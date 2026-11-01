@@ -89,7 +89,6 @@ exports.register = async (req, res) => {
       const userRes = await db.run(`
         INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, token_version, must_change_password)
         VALUES (?, ?, ?, ?, 'admin', 'active', ?, 1, 0)
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       `, [username, normalizedEmail, passwordHash, fullName.trim(), tenantId]);
 
       newUserId = userRes.lastInsertRowid;
@@ -132,7 +131,6 @@ exports.register = async (req, res) => {
 
 
     await logAudit(newUserId, fullName.trim(), 'REGISTER', 'TENANT', newUserId, `Registered new ${chosenPlan} business`, req);
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
 
     const tenantObj = {
       id: tenantId,
@@ -259,7 +257,6 @@ exports.login = async (req, res) => {
     } else {
 
       await logAudit(user.id, user.full_name, 'LOGIN', 'USER', user.id, `User logged in`, req);
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     }
 
     const tenantObj = user.role === 'superowner' ? {
@@ -314,7 +311,6 @@ exports.logout = async (req, res) => {
   } catch (err) {
     console.error('Logout error:', err);
     return res.status(500).json({ success: false, message: 'Server error during sign out.' });
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
   }
 };
 
@@ -339,7 +335,6 @@ exports.changePassword = async (req, res) => {
     const user = await db.get('SELECT * FROM users WHERE id = ?', [req.user.id]);
 
     if (!user || !bcrypt.compareSync(currentPassword, user.password_hash)) {
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       return res.status(400).json({ success: false, message: 'Incorrect current password.' });
     }
 
@@ -358,7 +353,6 @@ exports.changePassword = async (req, res) => {
           updated_at = CURRENT_TIMESTAMP 
       WHERE id = ?
     `, [newHash, newTokenVersion, req.user.id]);
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
 
     await logAudit(req.user.id, req.user.full_name, 'CHANGE_PASSWORD', 'USER', req.user.id, 'Changed personal password', req);
 
@@ -422,7 +416,6 @@ exports.updateProfile = async (req, res) => {
 
 // Security: Generic response returned in all scenarios to prevent username enumeration,
 // including identical JSON shape with a 64-hex-char reset_token for existing and non-existing users
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
 exports.requestPasswordReset = async (req, res) => {
   try {
     const { username, request_note, contact_info } = req.body;
@@ -439,7 +432,6 @@ exports.requestPasswordReset = async (req, res) => {
     // Generate a meaningless random reset token so the response shape is identical
     if (!user || user.role === 'superowner' || user.status !== 'active') {
       const meaninglessToken = crypto.randomBytes(32).toString('hex');
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       return res.json({
         success: true,
         message: 'If an active account exists for this username, a reset request has been logged for your administrator.',
@@ -463,7 +455,6 @@ exports.requestPasswordReset = async (req, res) => {
     `, [user.tenant_id, user.id, user.username, user.full_name, note, resetTokenHash, expiresAt]);
 
     await logAudit(user.id, user.full_name, 'FORGOT_PASSWORD_REQUEST', 'USER', user.id, 'Password reset requested via login terminal', req);
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
 
     return res.json({
       success: true,

@@ -90,9 +90,6 @@ app.get('/api/health', async (req, res) => {
       driver: db.getDriver ? db.getDriver() : 'sqlite',
       latency_ms: latencyMs,
       timestamp: new Date().toISOString()
-    }); (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
-      latency_ms: latencyMs,
-      timestamp: new Date().toISOString()
     });
   } catch (err) {
     res.status(503).json({
@@ -160,9 +157,6 @@ if (process.env.NODE_ENV !== 'test' || require.main === module) {
     console.log('======================================================\n');
   });
 }
-
-module.exports = app;
-module.exports.server = server; (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
 
 module.exports = app;
 module.exports.server = server;

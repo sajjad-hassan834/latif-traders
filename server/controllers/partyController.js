@@ -305,7 +305,6 @@ exports.auditCustomerBalances = async (req, res) => {
   try {
 
     const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     const audit = await ledgerService.auditCustomerBalances(tenantId);
     return res.json({ success: true, ...audit });
   } catch (err) {
@@ -347,7 +346,6 @@ exports.auditSupplierBalances = async (req, res) => {
   try {
 
     const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
     const audit = await ledgerService.auditSupplierBalances(tenantId);
     return res.json({ success: true, ...audit });
   } catch (err) {

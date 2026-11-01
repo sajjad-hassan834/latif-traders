@@ -57,7 +57,6 @@ exports.recordCustomerReceipt = async (req, res) => {
     const resultData = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const { customer_id, amount, payment_method, payment_date, reference_no, notes } = req.body;
 
       if (!customer_id || !amount || Number(amount) <= 0) {
@@ -96,7 +95,6 @@ exports.recordSupplierPayment = async (req, res) => {
     const resultData = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const { supplier_id, amount, payment_method, payment_date, reference_no, notes } = req.body;
 
       if (!supplier_id || !amount || Number(amount) <= 0) {
@@ -231,7 +229,6 @@ exports.deletePayment = async (req, res) => {
     const result = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
- (feat(stage-a4): complete Stage A4 database-level tenant isolation, deep verification, and http parity)
       const { id } = req.params;
       const payment = await db.get('SELECT * FROM payments WHERE id = ? AND tenant_id = ?', [id, tenantId]);
       if (!payment) {

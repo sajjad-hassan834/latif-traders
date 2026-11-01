@@ -2,13 +2,14 @@
  * Realistic Multi-Tenant Synthetic Dataset Generator
  * 
  * Generates test data with seeded random numbers across all 27 tables:
- *  - 3 Distinct Tenants: 'latif_001', 't_super_frozen_food', 't_gourmet_foods'
+ *  - 3 Distinct Tenants: LEGACY_TENANT_ID, 't_super_frozen_food', 't_gourmet_foods'
  *  - Over 1,000 Sales Invoices (Cash, Full Udhaar, Partial Udhaar)
  *  - Hundreds of Purchases, Suppliers, Batches, Stock Movements, Returns, Expenses
  *  - Seeded PRNG ensures 100% deterministic, reproducible datasets for tests
  */
 
 const { PostgresAdapter } = require('../config/database-pg');
+const { LEGACY_TENANT_ID } = require('../constants/tenant');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -41,7 +42,7 @@ async function generateSyntheticDataset(targetAdapter) {
   await adapter.exec(schemaSql);
 
   const tenants = [
-    { id: 'latif_001', name: 'Latif Traders Main', owner: 'Mudassir Arif' },
+    { id: LEGACY_TENANT_ID, name: 'Latif Traders Main', owner: 'Mudassir Arif' },
     { id: 't_super_frozen_food', name: 'Super Frozen Foods', owner: 'Tariq Mehmood' },
     { id: 't_gourmet_foods', name: 'Gourmet Cold Chain', owner: 'Farhan Ali' }
   ];

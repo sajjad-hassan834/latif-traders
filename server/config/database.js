@@ -1277,7 +1277,3 @@ module.exports = {
   DATA_DIR,
   resolveDatabasePath
 };
-  initializeDatabase,
-  DB_PATH,
-  DATA_DIR
-};
