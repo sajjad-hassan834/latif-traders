@@ -1,3 +1,4 @@
+const { getPKTDate } = require('../utils/timezone');
 /**
  * Idempotent SQLite to PostgreSQL 16 Migration Script
  * 

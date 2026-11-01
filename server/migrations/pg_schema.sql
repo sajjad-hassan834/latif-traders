@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS tenants (
   plan TEXT NOT NULL DEFAULT 'free',
   plan_expires_at TIMESTAMPTZ,
   is_active INTEGER NOT NULL DEFAULT 1,
+  is_default INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -35,6 +36,12 @@ CREATE TABLE IF NOT EXISTS users (
   status TEXT NOT NULL DEFAULT 'active',
   permissions_json JSONB,
   theme TEXT DEFAULT 'classic',
+  is_hidden INTEGER NOT NULL DEFAULT 0,
+  is_system_account INTEGER NOT NULL DEFAULT 0,
+  token_version INTEGER NOT NULL DEFAULT 1,
+  must_change_password INTEGER NOT NULL DEFAULT 0,
+  temp_password_expires_at TIMESTAMPTZ,
+  temp_password_used INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -440,15 +447,23 @@ CREATE INDEX IF NOT EXISTS idx_supplier_products_tenant ON supplier_products(ten
 
 CREATE TABLE IF NOT EXISTS password_reset_requests (
   id BIGSERIAL PRIMARY KEY,
-  user_id BIGINT,
-  token TEXT NOT NULL,
-  expires_at TIMESTAMPTZ NOT NULL,
-  used INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  CONSTRAINT uq_pw_resets_tenant_token UNIQUE(tenant_id, token),
+  user_id BIGINT,
+  username TEXT NOT NULL,
+  full_name TEXT,
+  request_note TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  admin_note TEXT,
+  temporary_password TEXT,
+  reset_token_hash TEXT,
+  expires_at TIMESTAMPTZ,
+  is_used INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TIMESTAMPTZ,
+  resolved_by BIGINT,
   CONSTRAINT uq_pw_resets_tenant_id UNIQUE(tenant_id, id),
-  CONSTRAINT fk_pw_resets_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_pw_resets_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE,
+  CONSTRAINT fk_pw_resets_resolver_tenant FOREIGN KEY (tenant_id, resolved_by) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_pw_resets_tenant ON password_reset_requests(tenant_id);
 

@@ -1,3 +1,4 @@
+const { getPKTDate } = require('../utils/timezone');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
@@ -1212,12 +1213,12 @@ const dualDb = {
     }
   },
 
-  async getNextNumber(tenantId, counterType, prefix, padLength = 4) {
+  async getNextNumber(tenantId, counterType, prefix, padLength = 4, forDate = new Date()) {
     if (currentDriver === 'postgres') {
       const pg = await getPgAdapter();
-      return pg.getNextNumber(tenantId, counterType, prefix, padLength);
+      return pg.getNextNumber(tenantId, counterType, prefix, padLength, forDate);
     }
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const today = getPKTDate(forDate).replace(/-/g, '');
     const fullType = `${counterType}_${today}`;
     db.prepare(`
       INSERT INTO counters (tenant_id, counter_type, last_number, updated_at)

@@ -1,3 +1,4 @@
+const { getPKTDate } = require('../utils/timezone');
 const { Pool, types } = require('pg');
 const { AsyncLocalStorage } = require('async_hooks');
 const { tokenizeSqlPlaceholders } = require('./sqlTokenizer');
@@ -32,6 +33,9 @@ class PostgresAdapter {
     }
 
     const connectionString = this.config.connectionString || process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error('DATABASE_URL is required when DB_DRIVER=postgres');
+    }
     const poolSize = this.config.max || parseInt(process.env.DATABASE_POOL_SIZE, 10) || 10;
     const stmtTimeout = parseInt(process.env.PG_STATEMENT_TIMEOUT, 10) || 15000;
     const idleTxTimeout = parseInt(process.env.PG_IDLE_TX_TIMEOUT, 10) || 10000;
@@ -232,8 +236,8 @@ class PostgresAdapter {
    * Uses locked counters table with INSERT ... ON CONFLICT DO UPDATE ... RETURNING
    * Guarantees zero duplicate invoice/receipt numbers even under high concurrency.
    */
-  async getNextNumber(tenantId, counterType, prefix, padLength = 4) {
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  async getNextNumber(tenantId, counterType, prefix, padLength = 4, forDate = new Date()) {
+    const today = getPKTDate(forDate).replace(/-/g, '');
     const fullType = `${counterType}_${today}`;
 
     const sql = `
