@@ -1,3 +1,4 @@
+import BrandLogo from '../components/common/BrandLogo';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getSavedPublicTheme, applyPublicTheme } from '../utils/theme';
@@ -251,22 +252,9 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
       }}>
         <div
           onClick={onNavigateLanding}
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
         >
-          <img
-            src="/logo.png"
-            alt="ShoppyOS Logo"
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '9px',
-              objectFit: 'contain',
-              boxShadow: '0 2px 8px rgba(2, 102, 254, 0.25)'
-            }}
-          />
-          <span style={{ fontSize: '20px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
-            Shoppy<span style={{ color: 'var(--leaf)' }}>OS</span>
-          </span>
+          <BrandLogo variant="horizontal" size={32} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '14px' }}>

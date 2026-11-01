@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PublicThemeToggle from '../components/common/PublicThemeToggle';
+import BrandLogo from '../components/common/BrandLogo';
 
 const TRADES_DATA = [
   {
@@ -185,8 +186,8 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
       {/* Sticky Navigation */}
       <nav aria-label="Main Navigation">
         <div className="wrap">
-          <a className="logo" href="#top">
-            Shoppy<i>OS</i>
+          <a className="logo" href="#top" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+            <BrandLogo variant="horizontal" size={32} />
           </a>
           <ul>
             <li><a href="#trades">Trades</a></li>
@@ -540,10 +541,12 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
       </div>
 
       {/* Footer */}
-      <footer>
+      <footer id="footer">
         <div className="wrap">
           <div>
-            <a className="logo" href="#top">Shoppy<i>OS</i></a>
+            <a className="logo" href="#top" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none', marginBottom: '8px' }}>
+              <BrandLogo variant="horizontal" tone="auto" size={28} />
+            </a>
             <br />
             Operating system for smart businesses. Made in Pakistan.
           </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BrandLogo from '../components/common/BrandLogo';
 import { 
   Lock, 
   User, 
@@ -205,22 +206,9 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
       }}>
         <div
           onClick={onNavigateLanding}
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
         >
-          <img
-            src="/logo.png"
-            alt="ShoppyOS Logo"
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '9px',
-              objectFit: 'contain',
-              boxShadow: '0 2px 8px rgba(2, 102, 254, 0.25)'
-            }}
-          />
-          <span style={{ fontSize: '20px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
-            Shoppy<span style={{ color: 'var(--leaf)' }}>OS</span>
-          </span>
+          <BrandLogo variant="horizontal" size={32} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '14px' }}>
@@ -277,23 +265,9 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '12px',
               marginBottom: '8px'
             }}>
-              <img
-                src="/logo.png"
-                alt="ShoppyOS Logo"
-                style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '12px',
-                  objectFit: 'contain',
-                  boxShadow: '0 4px 14px rgba(2, 102, 254, 0.28)'
-                }}
-              />
-              <span style={{ fontSize: '24px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
-                Shoppy<span style={{ color: 'var(--leaf)' }}>OS</span>
-              </span>
+              <BrandLogo variant="horizontal" size={40} />
             </div>
             <div style={{ fontSize: '13px', color: t.subText, margin: 0, textAlign: 'center' }}>
               Sign in to your account

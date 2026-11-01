@@ -20,6 +20,7 @@ import Settings from './pages/Settings';
 import SuperOwnerDashboard from './pages/SuperOwnerDashboard';
 import ForcedPasswordChange from './components/auth/ForcedPasswordChange';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import BrandPreview from './pages/BrandPreview';
 import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Sparkles, CheckCircle2, Circle, X } from 'lucide-react';
 import { api } from './utils/api';
 import { applyAppTheme as applyThemeHelper } from './utils/theme';
@@ -173,7 +174,9 @@ function MainApp() {
         setSuperOwnerView(false);
       }
 
-      if (path === '/login') {
+      if (path === '/brand') {
+        setPublicView('brand');
+      } else if (path === '/login') {
         setPublicView('login');
       } else if (path === '/register') {
         setPublicView('register');
@@ -201,7 +204,7 @@ function MainApp() {
       } catch (_) {}
     } else if (!user) {
       const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
-      if (path !== '/' && path !== '/login' && path !== '/register') {
+      if (path !== '/' && path !== '/login' && path !== '/register' && path !== '/brand') {
         try {
           window.history.replaceState({}, '', '/login');
           setPublicView('login');
@@ -365,6 +368,11 @@ function MainApp() {
         Loading ShopOS Workspace...
       </div>
     );
+  }
+
+  // ── Brand Preview Route (Dev Only) ──
+  if (publicView === 'brand' || window.location.pathname.toLowerCase().replace(/\/$/, '') === '/brand') {
+    return <BrandPreview />;
   }
 
   // ── Unauthenticated Views: Landing, Login, Register ──

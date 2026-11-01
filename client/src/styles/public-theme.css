@@ -45,6 +45,11 @@ html[data-public-theme="light"],
   --pub-input-placeholder: var(--mut);
   --pub-focus-ring: rgba(244, 166, 42, 0.4);
   --pub-card-shadow: 0 10px 25px -5px rgba(12, 43, 34, 0.08), 0 8px 10px -6px rgba(12, 43, 34, 0.04);
+
+  /* ShoppyOS Brand Vector Tokens (Light) */
+  --shoppy-wordmark-ink: var(--ink);
+  --shoppy-wordmark-accent: var(--leaf);
+  --shoppy-symbol-stroke: none;
 }
 
 /* 2. PUBLIC DARK (ShoppyOS Brand Dark) */
@@ -89,6 +94,11 @@ html[data-public-theme="dark"],
   --pub-input-placeholder: var(--mut);
   --pub-focus-ring: rgba(244, 166, 42, 0.45);
   --pub-card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.45);
+
+  /* ShoppyOS Brand Vector Tokens (Dark) */
+  --shoppy-wordmark-ink: var(--ink);
+  --shoppy-wordmark-accent: #4ADE80;
+  --shoppy-symbol-stroke: rgba(255, 255, 255, 0.18);
 }
 
 /* Base public scope font & surface */
@@ -1050,13 +1060,24 @@ html[data-public-theme] h6,
   color: #FFFFFF !important;
 }
 
+/* Explicit override for trades panel title inside the dark green panel */
+.public-landing .panel h3 {
+  color: #FFFFFF !important;
+}
+
+/* Explicit override for printed paper receipts (always dark on white paper) */
+.public-landing .rc h3 {
+  color: #14201B !important;
+}
+
 /* Explicit override for close CTA which is paper on deep ink */
 .public-landing .close h2 {
   color: var(--bg) !important;
 }
 
 /* Explicit override for Pro plan card which has dark green background */
-.public-landing .plan.pro h3 {
+.public-landing .plan.pro h3,
+.public-landing .plan.pro .pr {
   color: #FFFFFF !important;
 }
 

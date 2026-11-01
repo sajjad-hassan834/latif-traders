@@ -534,6 +534,9 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
                 <div className="divider"></div>
                 <div className="center" style={{ fontSize: '9px', marginTop: '4px' }}>
                   <p>{footerNote}</p>
+                  <div style={{ marginTop: '6px', paddingTop: '4px', borderTop: '1px dotted #ccc', fontSize: '8px', color: '#666', textAlign: 'center' }}>
+                    Powered by <strong style={{ color: '#0F4D3A' }}>ShoppyOS</strong> (shoppyos.com)
+                  </div>
                 </div>
               </div>
             ) : (
@@ -658,6 +661,9 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
                 <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b' }}>
                   <div>{footerNote}</div>
                   <div>Authorized Stamp / Signature</div>
+                </div>
+                <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.72rem', color: '#94a3b8' }}>
+                  Powered by <strong style={{ color: '#0F4D3A' }}>ShoppyOS</strong> — Modern Cloud POS &amp; Inventory Management (shoppyos.com)
                 </div>
               </div>
             )}
