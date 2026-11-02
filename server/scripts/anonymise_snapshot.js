@@ -15,6 +15,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { LEGACY_TENANT_ID } = require('../constants/tenant');
 
 async function anonymiseSnapshot(sourceDbPath, targetDbPath) {
   const src = sourceDbPath || path.join(__dirname, '..', '..', 'data', 'latif_traders.db');
@@ -108,7 +109,7 @@ async function anonymiseSnapshot(sourceDbPath, targetDbPath) {
 
     // Ensure all users have valid tenant_id
     copyDb.prepare(`
-      UPDATE users SET tenant_id = 'latif_001' WHERE tenant_id IS NULL OR tenant_id = '';
+      UPDATE users SET tenant_id = '" + LEGACY_TENANT_ID + "' WHERE tenant_id IS NULL OR tenant_id = '';
     `).run();
 
     // Re-align cross-tenant reference leaks from automated test artifacts

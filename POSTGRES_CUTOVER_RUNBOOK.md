@@ -159,3 +159,4 @@ curl http://localhost:5000/api/health
 # Expected: {"status":"ok","driver":"sqlite",...}
 ```
 *Tenants resume operations immediately on their existing SQLite database without data corruption or loss.*
+

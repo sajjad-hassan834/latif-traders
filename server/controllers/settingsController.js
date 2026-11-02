@@ -125,7 +125,7 @@ exports.getBillingInfo = async (req, res) => {
     const prodRow = await db.get('SELECT COUNT(*) as count FROM products WHERE tenant_id = ?', [tenantId]);
     const productsCount = prodRow?.count || 0;
     const currentMonth = new Date().toISOString().slice(0, 7);
-    const invRow = await db.get('SELECT COUNT(*) as count FROM sales WHERE tenant_id = ? AND sale_date LIKE ?', [tenantId, `${currentMonth}%`]);
+    const invRow = await db.get('SELECT COUNT(*) as count FROM sales WHERE tenant_id = ? AND CAST(sale_date AS TEXT) LIKE ?', [tenantId, `${currentMonth}%`]);
     const invoicesThisMonth = invRow?.count || 0;
     const staffRow = await db.get("SELECT COUNT(*) as count FROM users WHERE tenant_id = ? AND (is_hidden IS NULL OR is_hidden = 0) AND role != 'superowner'", [tenantId]);
     const staffCount = staffRow?.count || 0;

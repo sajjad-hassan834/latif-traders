@@ -118,6 +118,60 @@ async function runBackupSecurityTests() {
   const backdoorUser = await db.get("SELECT * FROM users WHERE username = 'backdoor_admin'");
   assert(!backdoorUser, 'Injected user row was completely ignored and NOT inserted into users table');
 
+  // --- Test 4: Injected Extra / Unknown Columns are Stripped by Allowed Whitelist ---
+  console.log('\n--- Test 4: Injected Extra Columns Protection ---');
+  const extraColsPayload = {
+    version: '2.0',
+    tenant_id: tenantId,
+    tables: {
+      categories: [
+        { name: 'Legit Category', description: 'Test', malicious_column: 'DROP TABLE', is_admin_payload: true }
+      ]
+    }
+  };
+  const extraColsFilename = 'extra_cols_test.json';
+  fs.writeFileSync(path.join(backupDir, extraColsFilename), JSON.stringify(extraColsPayload), 'utf8');
+
+  mockReqRestore.body.filename = extraColsFilename;
+  await backupController.restoreBackup(mockReqRestore, mockResRestore);
+  const restoredCat = await db.get("SELECT * FROM categories WHERE tenant_id = ? AND name = 'Legit Category'", [tenantId]);
+  assert(restoredCat && restoredCat.name === 'Legit Category', 'Row with extra columns inserted safely with only allowed columns');
+
+  // --- Test 5: Oversized File (>25MB) is Strictly Blocked ---
+  console.log('\n--- Test 5: Oversized File Rejection ---');
+  const oversizedFilename = 'oversized_backup_test.json';
+  const oversizedPath = path.join(backupDir, oversizedFilename);
+  // Create a 26MB dummy file
+  const buffer26MB = Buffer.alloc(26 * 1024 * 1024);
+  fs.writeFileSync(oversizedPath, buffer26MB);
+
+  let oversizeErrorStatus = null;
+  let oversizeErrorBody = null;
+  const mockResOversize = {
+    status: (code) => { oversizeErrorStatus = code; return mockResOversize; },
+    json: (body) => { oversizeErrorBody = body; return mockResOversize; }
+  };
+  mockReqRestore.body.filename = oversizedFilename;
+  await backupController.restoreBackup(mockReqRestore, mockResOversize);
+  fs.unlinkSync(oversizedPath);
+
+  assert(oversizeErrorStatus === 400, 'Oversized file rejected with HTTP 400');
+  assert(oversizeErrorBody.message.includes('exceeds maximum allowed size'), 'Oversized rejection message matches policy');
+
+  // --- Test 6: Dry-Run Diff Preview Mode (No DB Mutation) ---
+  console.log('\n--- Test 6: Dry-Run Diff Preview ---');
+  let dryRunRes = null;
+  const mockResDryRun = {
+    json: (body) => { dryRunRes = body; return mockResDryRun; },
+    status: () => mockResDryRun
+  };
+  mockReqRestore.body = { filename: maliciousFilename, dry_run: true };
+  await backupController.restoreBackup(mockReqRestore, mockResDryRun);
+
+  assert(dryRunRes && dryRunRes.dry_run === true, 'Dry-run preview flag returned true');
+  assert(dryRunRes.diff && dryRunRes.diff.products, 'Dry-run diff calculated for products table');
+  assert(dryRunRes.message.includes('No changes written'), 'Dry-run confirmed zero database mutations');
+
   // Clean up
   await db.run('DELETE FROM products WHERE tenant_id IN (?, ?)', [tenantId, victimId]);
   await db.run('DELETE FROM customers WHERE tenant_id IN (?, ?)', [tenantId, victimId]);

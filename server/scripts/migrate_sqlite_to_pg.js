@@ -145,16 +145,63 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
 
       let validTenants = new Set();
       let validTenantUserKeys = new Set();
+      let validTenantCustomerKeys = new Set();
+      let validTenantSupplierKeys = new Set();
+      let tenantFirstCustomer = new Map();
+      let tenantFirstSupplier = new Map();
+
       if (table === 'audit_logs') {
         const tRes = await pg.query('SELECT id FROM tenants');
         validTenants = new Set(tRes.rows.map(r => r.id));
         const uRes = await pg.query('SELECT tenant_id, id FROM users');
         validTenantUserKeys = new Set(uRes.rows.map(r => `${r.tenant_id}:${r.id}`));
+      } else if (table === 'payments') {
+        const cRes = await pg.query('SELECT tenant_id, id FROM customers ORDER BY id ASC');
+        for (const r of cRes.rows) {
+          validTenantCustomerKeys.add(`${r.tenant_id}:${r.id}`);
+          if (!tenantFirstCustomer.has(r.tenant_id)) tenantFirstCustomer.set(r.tenant_id, r.id);
+        }
+        const sRes = await pg.query('SELECT tenant_id, id FROM suppliers ORDER BY id ASC');
+        for (const r of sRes.rows) {
+          validTenantSupplierKeys.add(`${r.tenant_id}:${r.id}`);
+          if (!tenantFirstSupplier.has(r.tenant_id)) tenantFirstSupplier.set(r.tenant_id, r.id);
+        }
       }
-
       for (const row of rows) {
         let rowTenantId = row.tenant_id || LEGACY_TENANT_ID;
         if (table === 'audit_logs' && !validTenants.has(rowTenantId)) rowTenantId = LEGACY_TENANT_ID;
+
+        let rowPartyId = row.party_id;
+        let rowPartyType = row.party_type ? String(row.party_type).toUpperCase() : null;
+
+        if (table === 'payments') {
+          if (rowPartyType === 'CUSTOMER' && !validTenantCustomerKeys.has(`${rowTenantId}:${rowPartyId}`)) {
+            let fallbackCustId = tenantFirstCustomer.get(rowTenantId);
+            if (!fallbackCustId) {
+              const cIns = await pg.query(
+                "INSERT INTO customers (name, phone, address, customer_type, opening_balance, credit_limit, current_balance, tenant_id) VALUES ('Counter Customer', '', 'Counter', 'Retail', 0, 0, 0, $1) RETURNING id",
+                [rowTenantId]
+              );
+              fallbackCustId = cIns.rows[0].id;
+              tenantFirstCustomer.set(rowTenantId, fallbackCustId);
+              validTenantCustomerKeys.add(`${rowTenantId}:${fallbackCustId}`);
+            }
+            rowPartyId = fallbackCustId;
+          } else if (rowPartyType === 'SUPPLIER' && !validTenantSupplierKeys.has(`${rowTenantId}:${rowPartyId}`)) {
+            let fallbackSupId = tenantFirstSupplier.get(rowTenantId);
+            if (!fallbackSupId) {
+              const sIns = await pg.query(
+                "INSERT INTO suppliers (name, company_name, opening_balance, current_balance, tenant_id) VALUES ('Default Supplier', 'Counter', 0, 0, $1) RETURNING id",
+                [rowTenantId]
+              );
+              fallbackSupId = sIns.rows[0].id;
+              tenantFirstSupplier.set(rowTenantId, fallbackSupId);
+              validTenantSupplierKeys.add(`${rowTenantId}:${fallbackSupId}`);
+            }
+            rowPartyId = fallbackSupId;
+          }
+        }
+
         const values = sharedCols.map(c => {
           let val = row[c];
           if (val === undefined) return null;
@@ -166,6 +213,12 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
           if (table === 'audit_logs' && c === 'user_id' && val !== null && !validTenantUserKeys.has(`${rowTenantId}:${val}`)) {
             val = null;
           }
+          if (table === 'payments' && c === 'party_id') {
+            val = rowPartyId;
+          }
+          if (table === 'payments' && c === 'party_type') {
+            val = rowPartyType;
+          }
           // Convert integer to boolean if PG expects boolean
           const pgType = pgColMap.get(c);
           if (pgType === 'boolean' && typeof val === 'number') {
@@ -173,7 +226,6 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
           }
           return val;
         });
-
         await pg.query(insertSql, values);
       }
 

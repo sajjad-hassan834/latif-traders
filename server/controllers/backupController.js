@@ -390,11 +390,36 @@ exports.restoreBackup = async (req, res) => {
       });
     }
 
+    const stats = fs.statSync(filePath);
+    if (stats.size > 25 * 1024 * 1024) {
+      return res.status(400).json({ success: false, message: 'Backup file exceeds maximum allowed size (25MB).' });
+    }
+
     const content = fs.readFileSync(filePath, 'utf8');
     const backup = JSON.parse(content);
 
     if (!backup || !backup.tables || typeof backup.tables !== 'object') {
       return res.status(400).json({ success: false, message: 'Invalid backup structure. Restore aborted.' });
+    }
+
+    // Dry-run diff mode: compare current counts with incoming counts without mutating DB
+    if (req.body?.dry_run === true || req.query?.dry_run === 'true') {
+      const diff = {};
+      for (const table of TENANT_TABLES) {
+        const currentCountRow = await db.get(`SELECT COUNT(*) as c FROM ${table} WHERE tenant_id = ?`, [tenantId]);
+        const incomingRows = Array.isArray(backup.tables[table]) ? backup.tables[table].length : 0;
+        diff[table] = {
+          current_rows: Number(currentCountRow?.c || 0),
+          incoming_rows: incomingRows,
+          net_delta: incomingRows - Number(currentCountRow?.c || 0)
+        };
+      }
+      return res.json({
+        success: true,
+        dry_run: true,
+        message: `Dry-run preview successful for ${filename}. No changes written to database.`,
+        diff
+      });
     }
 
     const safetyFilename = `pre_restore_safety_${Date.now()}.json`;
@@ -450,8 +475,34 @@ exports.restoreBackup = async (req, res) => {
         const rows = backup.tables[table];
         if (!Array.isArray(rows) || rows.length === 0) continue;
 
+        const ALLOWED_COLUMNS = {
+          categories: ['id', 'tenant_id', 'name', 'description', 'created_at'],
+          units: ['id', 'tenant_id', 'name', 'abbreviation', 'created_at'],
+          brands: ['id', 'tenant_id', 'name', 'created_at'],
+          products: ['id', 'tenant_id', 'category_id', 'brand_id', 'unit_id', 'name', 'sku', 'barcode', 'purchase_price', 'sale_price', 'retail_price', 'wholesale_price', 'min_stock_level', 'stock_quantity', 'description', 'is_active', 'created_at', 'updated_at'],
+          batches: ['id', 'tenant_id', 'product_id', 'batch_number', 'expiry_date', 'quantity', 'purchase_price', 'sale_price', 'created_at'],
+          customers: ['id', 'tenant_id', 'name', 'phone', 'email', 'address', 'opening_balance', 'current_balance', 'credit_limit', 'created_at', 'updated_at'],
+          suppliers: ['id', 'tenant_id', 'name', 'contact_person', 'phone', 'email', 'address', 'opening_balance', 'current_balance', 'created_at', 'updated_at'],
+          sales: ['id', 'tenant_id', 'invoice_no', 'customer_id', 'sale_type', 'sale_date', 'subtotal', 'discount', 'tax', 'grand_total', 'paid_amount', 'balance_due', 'payment_status', 'payment_method', 'notes', 'user_id', 'created_at'],
+          sale_items: ['id', 'tenant_id', 'sale_id', 'product_id', 'batch_id', 'batch_no', 'quantity', 'unit', 'unit_price', 'cost_price', 'discount', 'total_price'],
+          purchases: ['id', 'tenant_id', 'purchase_order_no', 'supplier_id', 'purchase_date', 'total_amount', 'paid_amount', 'balance_due', 'payment_status', 'notes', 'user_id', 'created_at'],
+          purchase_items: ['id', 'tenant_id', 'purchase_id', 'product_id', 'batch_no', 'expiry_date', 'quantity', 'unit_cost', 'subtotal', 'unit_price', 'total_price'],
+          payments: ['id', 'tenant_id', 'payment_no', 'type', 'party_type', 'party_id', 'sale_id', 'purchase_id', 'reference_id', 'reference_no', 'amount', 'payment_date', 'payment_method', 'notes', 'user_id', 'created_at'],
+          expenses: ['id', 'tenant_id', 'category_id', 'title', 'amount', 'expense_date', 'payment_method', 'notes', 'user_id', 'created_at'],
+          expense_categories: ['id', 'tenant_id', 'name', 'description', 'created_at'],
+          inventory_movements: ['id', 'tenant_id', 'product_id', 'batch_id', 'movement_type', 'quantity', 'reference_id', 'notes', 'created_at'],
+          stock_adjustments: ['id', 'tenant_id', 'adjustment_no', 'product_id', 'batch_id', 'adjustment_type', 'quantity', 'reason', 'user_id', 'created_at'],
+          tenant_settings: ['id', 'tenant_id', 'key', 'value', 'created_at', 'updated_at']
+        };
+
         for (const row of rows) {
-          const rowData = { ...row, tenant_id: tenantId };
+          const allowed = ALLOWED_COLUMNS[table] || [];
+          const rowData = { tenant_id: tenantId };
+          for (const key of Object.keys(row)) {
+            if (key !== 'tenant_id' && (allowed.length === 0 || allowed.includes(key))) {
+              rowData[key] = row[key];
+            }
+          }
           const cols = Object.keys(rowData);
           const placeholders = cols.map(() => '?').join(', ');
           const sql = `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`;

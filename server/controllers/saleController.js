@@ -181,7 +181,7 @@ exports.createSale = async (req, res) => {
         const currentMonth = new Date().toISOString().slice(0, 7);
         const invoiceRow = await db.get(`
           SELECT COUNT(*) as count FROM sales 
-          WHERE tenant_id = ? AND sale_date LIKE ?
+          WHERE tenant_id = ? AND CAST(sale_date AS TEXT) LIKE ?
         `, [tenantId, `${currentMonth}%`]);
 
         if (invoiceRow && invoiceRow.count >= 100) {
@@ -427,6 +427,20 @@ exports.createSale = async (req, res) => {
 
       // Record initial payment entry in payments table if paid > 0
       if (paid > 0) {
+        let effectivePartyId = customer_id;
+        if (!effectivePartyId) {
+          let walkin = await db.get("SELECT id FROM customers WHERE tenant_id = ? AND (name LIKE '%Walk-in%' OR name LIKE '%Counter%') LIMIT 1", [tenantId]);
+          if (!walkin) {
+            walkin = await db.get("SELECT id FROM customers WHERE tenant_id = ? ORDER BY id ASC LIMIT 1", [tenantId]);
+          }
+          if (!walkin) {
+            const wRes = await db.run("INSERT INTO customers (tenant_id, name, phone, current_balance) VALUES (?, 'Walk-in Customer', '0000000000', 0)", [tenantId]);
+            effectivePartyId = wRes.lastInsertRowid;
+          } else {
+            effectivePartyId = walkin.id;
+          }
+        }
+
         await db.run(`
           INSERT INTO payments (
             tenant_id, type, party_type, party_id, reference_id, reference_no,
@@ -434,7 +448,7 @@ exports.createSale = async (req, res) => {
           ) VALUES (?, 'CUSTOMER_RECEIPT', 'CUSTOMER', ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           tenantId,
-          customer_id || 1,
+          effectivePartyId,
           saleId,
           invoice_no,
           paid,

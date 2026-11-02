@@ -1109,6 +1109,63 @@ function seedInitialData() {
     db.prepare("CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id)").run();
     db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_adjustments_tenant_no ON stock_adjustments(tenant_id, adjustment_no)").run();
     db.prepare("CREATE INDEX IF NOT EXISTS idx_customers_tenant_phone ON customers(tenant_id, phone)").run();
+
+    // Polymorphic Foreign Key Isolation Triggers for Payments (Customers & Suppliers)
+    db.exec(`
+      CREATE TRIGGER IF NOT EXISTS trg_payments_customer_tenant_check_ins
+      BEFORE INSERT ON payments
+      WHEN NEW.party_type = 'CUSTOMER'
+      BEGIN
+        SELECT RAISE(ABORT, 'Foreign key violation: customer does not exist in tenant')
+        WHERE NOT EXISTS (
+          SELECT 1 FROM customers WHERE id = NEW.party_id AND tenant_id = NEW.tenant_id
+        );
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS trg_payments_supplier_tenant_check_ins
+      BEFORE INSERT ON payments
+      WHEN NEW.party_type = 'SUPPLIER'
+      BEGIN
+        SELECT RAISE(ABORT, 'Foreign key violation: supplier does not exist in tenant')
+        WHERE NOT EXISTS (
+          SELECT 1 FROM suppliers WHERE id = NEW.party_id AND tenant_id = NEW.tenant_id
+        );
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS trg_payments_customer_tenant_check_upd
+      BEFORE UPDATE OF party_id, party_type, tenant_id ON payments
+      WHEN NEW.party_type = 'CUSTOMER'
+      BEGIN
+        SELECT RAISE(ABORT, 'Foreign key violation: customer does not exist in tenant')
+        WHERE NOT EXISTS (
+          SELECT 1 FROM customers WHERE id = NEW.party_id AND tenant_id = NEW.tenant_id
+        );
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS trg_payments_supplier_tenant_check_upd
+      BEFORE UPDATE OF party_id, party_type, tenant_id ON payments
+      WHEN NEW.party_type = 'SUPPLIER'
+      BEGIN
+        SELECT RAISE(ABORT, 'Foreign key violation: supplier does not exist in tenant')
+        WHERE NOT EXISTS (
+          SELECT 1 FROM suppliers WHERE id = NEW.party_id AND tenant_id = NEW.tenant_id
+        );
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS trg_customers_prevent_del_with_payments
+      BEFORE DELETE ON customers
+      BEGIN
+        SELECT RAISE(ABORT, 'Cannot delete customer: referencing payments exist in tenant')
+        WHERE EXISTS (SELECT 1 FROM payments WHERE party_type = 'CUSTOMER' AND party_id = OLD.id AND tenant_id = OLD.tenant_id);
+      END;
+
+      CREATE TRIGGER IF NOT EXISTS trg_suppliers_prevent_del_with_payments
+      BEFORE DELETE ON suppliers
+      BEGIN
+        SELECT RAISE(ABORT, 'Cannot delete supplier: referencing payments exist in tenant')
+        WHERE EXISTS (SELECT 1 FROM payments WHERE party_type = 'SUPPLIER' AND party_id = OLD.id AND tenant_id = OLD.tenant_id);
+      END;
+    `);
   } catch (mErr) {
     console.warn('Multi-tenancy auto-migration notice:', mErr.message);
   }
@@ -1128,7 +1185,7 @@ async function getPgAdapter() {
     if (!connStr) {
       throw new Error('DATABASE_URL is required when DB_DRIVER=postgres');
     }
-    pgAdapter = new PostgresAdapter({ connectionString: connStr, max: 20 });
+    pgAdapter = new PostgresAdapter({ connectionString: connStr, max: parseInt(process.env.DATABASE_POOL_SIZE, 10) || 10 });
     await pgAdapter.init();
   }
   return pgAdapter;

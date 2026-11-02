@@ -64,14 +64,15 @@ async function runNegativeControls() {
     // Negative Control 2: Shift One Date By One Day
     // --------------------------------------------------------------------
     console.log('\n--- Control 2: Shift One Date By One Day ---');
-    const s2 = (await pg.query("SELECT id, sale_date FROM sales WHERE sale_date = '2026-10-15' LIMIT 1")).rows[0];
+    const s2 = (await pg.query("SELECT id, sale_date FROM sales WHERE sale_date IS NOT NULL LIMIT 1")).rows[0];
     const origDate = s2.sale_date;
-    const shiftedDate = '2026-10-16';
+    const origDateStr = origDate instanceof Date ? origDate.toISOString().slice(0, 10) : String(origDate).slice(0, 10);
+    const shiftedDate = '2099-01-01';
 
     await pg.query('UPDATE sales SET sale_date = $1 WHERE id = $2', [shiftedDate, s2.id]);
 
-    const sDaySum = sqlite.prepare("SELECT COUNT(*) as c, SUM(grand_total) as s FROM sales WHERE sale_date = '2026-10-15'").get();
-    const pDaySum = (await pg.query("SELECT COUNT(*) as c, SUM(grand_total) as s FROM sales WHERE sale_date::date = '2026-10-15'")).rows[0];
+    const sDaySum = sqlite.prepare("SELECT COUNT(*) as c, SUM(grand_total) as s FROM sales WHERE sale_date LIKE ?").get(origDateStr + '%');
+    const pDaySum = (await pg.query("SELECT COUNT(*) as c, SUM(grand_total) as s FROM sales WHERE sale_date::text LIKE $1", [origDateStr + '%'])).rows[0];
 
     const dateShiftDetected = (Number(sDaySum.c) !== Number(pDaySum.c));
     if (dateShiftDetected) {

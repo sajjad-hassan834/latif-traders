@@ -279,6 +279,68 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE INDEX IF NOT EXISTS idx_payments_tenant ON payments(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_payments_party ON payments(party_type, party_id);
 
+-- Polymorphic Foreign Key Isolation for Payments (Customers & Suppliers)
+CREATE OR REPLACE FUNCTION check_payment_party_tenant()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.party_type := UPPER(NEW.party_type);
+  IF NEW.party_type = 'CUSTOMER' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM customers c
+      WHERE c.id = NEW.party_id AND c.tenant_id = NEW.tenant_id
+    ) THEN
+      RAISE EXCEPTION 'Foreign key violation: customer % does not exist in tenant %', NEW.party_id, NEW.tenant_id
+        USING ERRCODE = 'foreign_key_violation';
+    END IF;
+  ELSIF NEW.party_type = 'SUPPLIER' THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM suppliers s
+      WHERE s.id = NEW.party_id AND s.tenant_id = NEW.tenant_id
+    ) THEN
+      RAISE EXCEPTION 'Foreign key violation: supplier % does not exist in tenant %', NEW.party_id, NEW.tenant_id
+        USING ERRCODE = 'foreign_key_violation';
+    END IF;
+  ELSE
+    RAISE EXCEPTION 'Invalid party_type % for payment: must be CUSTOMER or SUPPLIER', NEW.party_type
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_payments_party_tenant ON payments;
+CREATE TRIGGER trg_payments_party_tenant
+  BEFORE INSERT OR UPDATE OF party_id, party_type, tenant_id ON payments
+  FOR EACH ROW EXECUTE FUNCTION check_payment_party_tenant();
+
+CREATE OR REPLACE FUNCTION check_delete_party_has_payments()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_TABLE_NAME = 'customers' THEN
+    IF EXISTS (SELECT 1 FROM payments WHERE UPPER(party_type) = 'CUSTOMER' AND party_id = OLD.id AND tenant_id = OLD.tenant_id) THEN
+      RAISE EXCEPTION 'Cannot delete customer %: referencing payments exist in tenant %', OLD.id, OLD.tenant_id
+        USING ERRCODE = 'foreign_key_violation';
+    END IF;
+  ELSIF TG_TABLE_NAME = 'suppliers' THEN
+    IF EXISTS (SELECT 1 FROM payments WHERE UPPER(party_type) = 'SUPPLIER' AND party_id = OLD.id AND tenant_id = OLD.tenant_id) THEN
+      RAISE EXCEPTION 'Cannot delete supplier %: referencing payments exist in tenant %', OLD.id, OLD.tenant_id
+        USING ERRCODE = 'foreign_key_violation';
+    END IF;
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_customers_check_payments ON customers;
+CREATE TRIGGER trg_customers_check_payments
+  BEFORE DELETE ON customers
+  FOR EACH ROW EXECUTE FUNCTION check_delete_party_has_payments();
+
+DROP TRIGGER IF EXISTS trg_suppliers_check_payments ON suppliers;
+CREATE TRIGGER trg_suppliers_check_payments
+  BEFORE DELETE ON suppliers
+  FOR EACH ROW EXECUTE FUNCTION check_delete_party_has_payments();
+
 CREATE TABLE IF NOT EXISTS expense_categories (
   id BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL,

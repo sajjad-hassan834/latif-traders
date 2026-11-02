@@ -462,7 +462,7 @@ function generateSyntheticV2(outputPath) {
   const pwdHash = bcrypt.hashSync('testpassword123', 8);
 
   const tenantConfigs = [
-    { id: 'latif_001', name: 'لطیف ٹریڈرز ہول سیل', type: 'wholesale_fmcg', owner: 'محمد لطیف', isDef: 1, invPrefix: 'LT' },
+    { id: LEGACY_TENANT_ID, name: 'لطیف ٹریڈرز ہول سیل', type: 'wholesale_fmcg', owner: 'محمد لطیف', isDef: 1, invPrefix: 'LT' },
     { id: 't_super_frozen', name: 'سپر فروزن فوڈز', type: 'cold_chain_retail', owner: 'طارق محمود', isDef: 0, invPrefix: 'SFF' },
     { id: 't_al_madina_cloth', name: 'المدینہ کلوتھ ہاؤس', type: 'textile_clothing', owner: 'حاجی عبدالرشید', isDef: 0, invPrefix: 'AMC' },
     { id: 't_punjab_general', name: 'پنجاب جنرل سٹور', type: 'retail_grocery', owner: 'چودھری اسلم', isDef: 0, invPrefix: 'PGS' },

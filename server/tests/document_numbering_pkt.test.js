@@ -31,6 +31,7 @@ async function runDocumentNumberingTests() {
   // Test 2: SQLite Document Types & Numbering
   console.log('\n--- Test Group 2: SQLite Document Numbering Across Types ---');
   db.setDriver('sqlite');
+  await db.run("DELETE FROM counters WHERE tenant_id = 't_doc_test'");
 
   const testDocTypes = [
     { type: 'sale_invoice', prefix: 'INV' },

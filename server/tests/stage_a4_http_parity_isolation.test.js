@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const app = require('../index');
 const { db } = require('../config/database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'latif-traders-secure-jwt-secret-key-2026';
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test-jwt-secret-key-for-unit-tests-at-least-32-chars' : 'shopos-dev-jwt-secret-not-for-production-min-32-chars');
 
 function assert(condition, message) {
   if (!condition) {
@@ -52,7 +52,7 @@ async function setupTenant(driver, tenantId, businessName, username, password) {
   `, [username, hash, tenantId]);
 
   const userId = userRes.lastInsertRowid || 1;
-  const token = jwt.sign({ id: userId, username, role: 'admin', tenant_id: tenantId }, JWT_SECRET, { expiresIn: '2h' });
+  const token = jwt.sign({ id: userId, username, role: 'admin', tenant_id: tenantId, token_version: 1 }, JWT_SECRET, { expiresIn: '2h' });
 
   return { tenantId, userId, username, password, token };
 }
