@@ -14,7 +14,9 @@
     "test:pg": "node server/tests/stage_a_parity_and_concurrency.test.js",
     "test:stage-a2": "node server/tests/stage_a2_real_postgres.test.js",
     "test:parity": "node server/tests/stage_a2_api_parity.test.js",
-    "schema:diff": "node server/scripts/schema_diff.js"
+    "schema:diff": "node server/scripts/schema_diff.js",
+    "test": "node server/tests/negative_controls.test.js",
+    "test:rehearsal": "node server/tests/dress_rehearsal.test.js"
   },
   "keywords": [
     "pos",

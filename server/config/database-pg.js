@@ -36,7 +36,9 @@ class PostgresAdapter {
     if (!connectionString) {
       throw new Error('DATABASE_URL is required when DB_DRIVER=postgres');
     }
-    const poolSize = this.config.max || parseInt(process.env.DATABASE_POOL_SIZE, 10) || 10;
+    const poolSize = this.config.max || parseInt(process.env.DATABASE_POOL_SIZE, 10) || 20;
+    const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
+    const sslConfig = this.config.ssl !== undefined ? this.config.ssl : (process.env.DATABASE_SSL === 'true' || (process.env.NODE_ENV === 'production' && !isLocal) ? { rejectUnauthorized: false } : false);
     const stmtTimeout = parseInt(process.env.PG_STATEMENT_TIMEOUT, 10) || 15000;
     const idleTxTimeout = parseInt(process.env.PG_IDLE_TX_TIMEOUT, 10) || 10000;
 
@@ -47,7 +49,7 @@ class PostgresAdapter {
       connectionTimeoutMillis: this.config.connectionTimeoutMillis || 5000,
       statement_timeout: stmtTimeout,
       idle_in_transaction_session_timeout: idleTxTimeout,
-      ssl: this.config.ssl || false
+      ssl: sslConfig
     });
 
     // Connection verification with retry loop
