@@ -40,7 +40,7 @@ async function logAudit(userId, userName, action, entityType, entityId, details,
 
     
     // Never attribute unattributed or superowner logs to any specific tenant
-    const finalTenantId = tenantId || (isSuperOwner ? 'system' : null);
+    const finalTenantId = tenantId || null;
 
     const sanitizedDetails = sanitizeAuditDetails(details);
     await db.run(`

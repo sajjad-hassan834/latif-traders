@@ -26,7 +26,7 @@ exports.getStats = async (req, res) => {
     
     // Current month sales volume
     const currentMonth = new Date().toISOString().slice(0, 7);
-    const mRow = await db.get("SELECT COALESCE(SUM(grand_total), 0) as total FROM sales WHERE sale_date LIKE ?", [`${currentMonth}%`]);
+    const mRow = await db.get("SELECT COALESCE(SUM(grand_total), 0) as total FROM sales WHERE CAST(sale_date AS TEXT) LIKE ?", [`${currentMonth}%`]);
     const monthlySales = mRow?.total || 0;
 
     // Subscription estimated MRR based on plans
@@ -73,7 +73,7 @@ exports.getTenants = async (req, res) => {
         (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id AND (u.is_hidden IS NULL OR u.is_hidden = 0) AND u.role != 'superowner') as user_count,
         (SELECT COUNT(*) FROM products p WHERE p.tenant_id = t.id) as product_count,
         (SELECT COALESCE(SUM(s.grand_total), 0) FROM sales s WHERE s.tenant_id = t.id) as total_sales,
-        (SELECT COALESCE(SUM(s.grand_total), 0) FROM sales s WHERE s.tenant_id = t.id AND s.sale_date LIKE ?) as monthly_sales,
+        (SELECT COALESCE(SUM(s.grand_total), 0) FROM sales s WHERE s.tenant_id = t.id AND CAST(s.sale_date AS TEXT) LIKE ?) as monthly_sales,
         (SELECT MAX(s.sale_date) FROM sales s WHERE s.tenant_id = t.id) as last_sale_date,
         (SELECT MAX(a.created_at) FROM audit_logs a WHERE a.user_id IN (SELECT id FROM users WHERE tenant_id = t.id)) as last_active
       FROM tenants t

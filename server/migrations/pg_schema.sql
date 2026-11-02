@@ -44,11 +44,13 @@ CREATE TABLE IF NOT EXISTS users (
   temp_password_used INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+  tenant_id TEXT REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_users_tenant_username UNIQUE(tenant_id, username),
-  CONSTRAINT uq_users_tenant_id UNIQUE(tenant_id, id)
+  CONSTRAINT uq_users_tenant_id UNIQUE(tenant_id, id),
+  CONSTRAINT chk_users_tenant CHECK (role = 'superowner' OR tenant_id IS NOT NULL)
 );
 CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_users_superowner_username ON users(username) WHERE role = 'superowner';
 
 CREATE TABLE IF NOT EXISTS categories (
   id BIGSERIAL PRIMARY KEY,
@@ -422,7 +424,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   details TEXT,
   ip_address TEXT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+  tenant_id TEXT REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_audit_logs_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_audit_logs_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
 );
@@ -483,6 +485,14 @@ CREATE OR REPLACE FUNCTION julianday(val text) RETURNS double precision LANGUAGE
   SELECT EXTRACT(EPOCH FROM val::timestamp) / 86400.0 + 2440587.5;
 $$;
 
+CREATE OR REPLACE FUNCTION julianday(val date) RETURNS double precision LANGUAGE sql IMMUTABLE AS $$
+  SELECT EXTRACT(EPOCH FROM val::timestamp) / 86400.0 + 2440587.5;
+$$;
+
+CREATE OR REPLACE FUNCTION julianday(val timestamptz) RETURNS double precision LANGUAGE sql IMMUTABLE AS $$
+  SELECT EXTRACT(EPOCH FROM val) / 86400.0 + 2440587.5;
+$$;
+
 CREATE OR REPLACE FUNCTION group_concat_trans(state text, val text, delim text) RETURNS text LANGUAGE sql IMMUTABLE AS $$
   SELECT CASE WHEN state IS NULL OR state = '' THEN val ELSE state || delim || val END;
 $$;
@@ -492,3 +502,20 @@ CREATE AGGREGATE group_concat(text, text) (
   SFUNC = group_concat_trans,
   STYPE = text
 );
+
+-- Date / Timestamp SUBSTR compatibility for SQLite parity
+CREATE OR REPLACE FUNCTION substr(val date, s int, l int) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+  SELECT substr(val::text, s, l);
+$$;
+
+CREATE OR REPLACE FUNCTION substr(val date, s int) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+  SELECT substr(val::text, s);
+$$;
+
+CREATE OR REPLACE FUNCTION substr(val timestamptz, s int, l int) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+  SELECT substr(val::text, s, l);
+$$;
+
+CREATE OR REPLACE FUNCTION substr(val timestamptz, s int) RETURNS text LANGUAGE sql IMMUTABLE AS $$
+  SELECT substr(val::text, s);
+$$;

@@ -261,8 +261,8 @@ exports.createPurchase = async (req, res) => {
         await db.run(`
           UPDATE products SET
             purchase_price = ?,
-            sale_price = CASE WHEN ? > 0 THEN ? ELSE sale_price END,
-            wholesale_price = CASE WHEN ? > 0 THEN ? ELSE wholesale_price END,
+            sale_price = CASE WHEN ? > 0.0 THEN ? ELSE sale_price END,
+            wholesale_price = CASE WHEN ? > 0.0 THEN ? ELSE wholesale_price END,
             supplier_id = COALESCE(supplier_id, ?),
             brand = COALESCE(brand, ?),
             updated_at = CURRENT_TIMESTAMP
