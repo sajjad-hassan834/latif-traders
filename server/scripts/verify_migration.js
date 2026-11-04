@@ -24,6 +24,7 @@ const { Client } = require('pg');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { LEGACY_TENANT_ID } = require('../constants/tenant');
 
 const defaultDbPath = path.join(__dirname, '..', '..', 'data', 'latif_traders.db');
 const pgUrl = process.env.TEST_DATABASE_URL || 'postgresql://postgres:testpassword123@localhost:5434/latif_test';
@@ -211,7 +212,7 @@ async function verifyMigration(overrideSqlitePath) {
   const lRes = await pg.query('SELECT original_payment_id FROM legacy_unlinked_payments');
   const quarantinedIds = new Set(lRes.rows.map(r => Number(r.original_payment_id)));
   const validTenantUserKeys = new Set(
-    sqlite.prepare("SELECT (COALESCE(tenant_id, 'latif_001') || ':' || id) as k FROM users").all().map(r => r.k)
+    sqlite.prepare(`SELECT (COALESCE(tenant_id, '${LEGACY_TENANT_ID}') || ':' || id) as k FROM users`).all().map(r => r.k)
   );
 
   for (const tbl of VERIFICATION_TABLES) {
@@ -237,8 +238,8 @@ async function verifyMigration(overrideSqlitePath) {
       const clean = {};
       for (const [k, v] of Object.entries(r)) {
         let val = v;
-        if (tbl === 'users' && k === 'tenant_id' && val === null) val = 'latif_001';
-        if (tbl === 'audit_logs' && k === 'user_id' && val !== null && !validTenantUserKeys.has(`${r.tenant_id || 'latif_001'}:${val}`)) {
+        if (tbl === 'users' && k === 'tenant_id' && val === null) val = LEGACY_TENANT_ID;
+        if (tbl === 'audit_logs' && k === 'user_id' && val !== null && !validTenantUserKeys.has(`${r.tenant_id || LEGACY_TENANT_ID}:${val}`)) {
           val = null;
         }
         clean[k] = normalizeCanonicalValue(val);

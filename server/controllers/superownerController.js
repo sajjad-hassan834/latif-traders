@@ -130,42 +130,47 @@ exports.updateTenantPlan = async (req, res) => {
   }
 };
 
-// DELETE /api/superowner/tenants/:id
+// DELETE /api/superowner/tenants/:id (Safe Soft-Deletion)
 exports.deleteTenant = async (req, res) => {
   try {
     const { id } = req.params;
+    const { confirm_tenant_id } = req.body || {};
+
+    if (!confirm_tenant_id || confirm_tenant_id !== id) {
+      return res.status(400).json({
+        success: false,
+        message: `To delete this tenant, you must confirm by passing confirm_tenant_id: "${id}".`
+      });
+    }
+
     const tenant = await db.get('SELECT * FROM tenants WHERE id = ?', [id]);
     if (!tenant) {
       return res.status(404).json({ success: false, message: 'Tenant not found.' });
     }
 
-    // Protect primary base tenant from accidental deletion
-
     if (id === LEGACY_TENANT_ID) {
-      return res.status(400).json({ success: false, message: 'The primary base tenant cannot be permanently deleted. You can suspend it instead.' });
+      return res.status(400).json({ success: false, message: 'The primary base tenant cannot be deleted. You can suspend it instead.' });
     }
 
-    // Cascade delete tenant records
+    // Create safety backup snapshot before soft deletion
+    const backupDir = path.join(DATA_DIR, 'backups');
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+    const snapshotPath = path.join(backupDir, `tenant_soft_delete_${id}_${Date.now()}.json`);
+    fs.writeFileSync(snapshotPath, JSON.stringify({ tenant, deleted_at: new Date().toISOString() }, null, 2));
+
+    // Safe Soft-Deletion: Deactivate tenant, revoke all active sessions
     await db.transaction(async (tx) => {
       const runner = tx.run ? tx : db;
-      await runner.run('DELETE FROM sale_items WHERE sale_id IN (SELECT id FROM sales WHERE tenant_id = ?)', [id]);
-      await runner.run('DELETE FROM sales WHERE tenant_id = ?', [id]);
-      await runner.run('DELETE FROM purchase_items WHERE purchase_id IN (SELECT id FROM purchases WHERE tenant_id = ?)', [id]);
-      await runner.run('DELETE FROM purchases WHERE tenant_id = ?', [id]);
-      await runner.run('DELETE FROM inventory_movements WHERE tenant_id = ?', [id]);
-      await runner.run('DELETE FROM batches WHERE tenant_id = ?', [id]);
-      await runner.run('DELETE FROM products WHERE tenant_id = ?', [id]);
-      await runner.run('DELETE FROM customers WHERE tenant_id = ?', [id]);
-      await runner.run('DELETE FROM suppliers WHERE tenant_id = ?', [id]);
-      await runner.run('DELETE FROM expenses WHERE tenant_id = ?', [id]);
-      await runner.run('DELETE FROM payments WHERE tenant_id = ?', [id]);
-      await runner.run('DELETE FROM users WHERE tenant_id = ?', [id]);
-      await runner.run('DELETE FROM tenant_settings WHERE tenant_id = ?', [id]);
-      await runner.run('DELETE FROM subscriptions WHERE tenant_id = ?', [id]);
-      await runner.run('DELETE FROM tenants WHERE id = ?', [id]);
+      await runner.run("UPDATE tenants SET status = 'suspended', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [id]);
+      await runner.run("UPDATE users SET is_active = 0, token_version = token_version + 1 WHERE tenant_id = ?", [id]);
     });
 
-    return res.json({ success: true, message: `Tenant "${tenant.business_name}" and all associated data have been permanently deleted.` });
+    return res.json({
+      success: true,
+      message: `Tenant "${tenant.business_name}" has been deactivated and soft-deleted. All sessions revoked. Snapshot archived. To permanently hard-purge, run: node server/scripts/hard_purge_tenant.js --tenant ${id} --confirm-purge`
+    });
   } catch (err) {
     console.error('Superowner deleteTenant error:', err);
     return res.status(500).json({ success: false, message: 'Failed to delete tenant: ' + err.message });

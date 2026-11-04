@@ -1,7 +1,11 @@
-# ShopOS Security Hardening Batch 1 & 1b Rollout Guide
+# ShoppyOS SQLite Release Candidate & Security Rollout Guide
 
 ## Overview
-This document details the production deployment procedure for the **ShopOS Security Release (Batch 1 & 1b)** on Railway. This release enforces strict multi-tenant isolation, cryptographic session revocation, password reset flow hardening, and production pre-flight checks while preserving the SQLite database path and live tenant data (`latif_001`).
+This document details the production deployment procedure for the **ShoppyOS SQLite Release Candidate (`rc/sqlite-2026-11-04`)** on Railway. This release unites:
+1. **Multi-Tenant Security Hardening (Batch 1 & 1b)**: Strict tenant isolation, cryptographic session revocation, password reset flow hardening, rate limiting, and production pre-flight checks.
+2. **ShoppyOS Brand System & public tokens**: Unified ShoppyOS branding, themes engine (`brand` default), clean non-conflicting tokens.
+3. **Multi-Trade Capabilities**: Backend support for batchless and dated trades, auto-lot generation, and NULL-expiry ordering.
+4. **Platform Hygiene**: Safe soft-deletion with snapshot archiving, hard purge CLI, and Bcrypt 12 rounds.
 
 > **CRITICAL NOTICE**: Deploying this release **will immediately invalidate all active sessions and log every user out** due to algorithm pinning (`HS256`), mandatory `token_version` claims, and the required rotation of `JWT_SECRET`.
 
@@ -15,15 +19,14 @@ Before triggering the deployment build, ensure the following variables are confi
 | :--- | :--- | :---: | :--- |
 | `NODE_ENV` | Existing | **YES** | Set to `production`. Activates strict startup pre-flight checks. |
 | `DATA_DIR` | Existing | **YES** | Absolute path to the persistent volume mount (e.g. `/data` or `/app/data`). |
-| `DB_PATH` | **NEW** | **RECOMMENDED** | Explicit path to active SQLite database (e.g. `/data/latif_traders.db`). If unset, system checks `shopos.db`, then `latif_traders.db`. |
-| `JWT_SECRET` | Existing | **YES** | Must be rotated to a fresh, cryptographically secure 64-character random string. **Server will exit on boot if length < 32 characters in production.** |
-| `SUPEROWNER_USERNAME` | **NEW** | **YES** | Unique username for the platform system operator (do NOT use the old default `superowner`). |
-| `SUPEROWNER_PASSWORD` | **NEW** | **YES** | High-entropy password for initial superowner bootstrap. |
-| `FRONTEND_URL` | Existing | Optional | Comma-separated list of allowed web origins (e.g. `https://shopos.pk,https://app.shopos.pk`). |
-| `CLIENT_URL` | **NEW** | Optional | Alternate alias for allowed CORS origins. |
-| `INITIAL_ADMIN_PASSWORD`| **NEW** | Optional | Password used only when seeding a brand new database. Unused on existing databases. |
-| `SUPPORT_EMAIL` | **NEW** | Optional | Public customer support email (defaults to `shopos.help@gmail.com`). |
-| `SUPPORT_INBOX` | **NEW** | Optional | Destination inbox for support tickets and bug reports (defaults to `shopos.help@gmail.com`). |
+| `DB_PATH` | Existing | **RECOMMENDED** | Explicit path to active SQLite database (e.g. `/data/latif_traders.db`). |
+| `JWT_SECRET` | Existing | **YES** | Must be rotated to a fresh, cryptographically secure 64-character random string. **Server exits on boot if length < 32 characters in production.** |
+| `SUPEROWNER_USERNAME` | Existing | **YES** | Unique username for the platform system operator (do NOT use the old default `superowner`). |
+| `SUPEROWNER_PASSWORD` | Existing | **YES** | High-entropy password for initial superowner bootstrap. |
+| `ALLOWED_ORIGINS` | **NEW** | **RECOMMENDED** | Comma-separated list of allowed origins (e.g. `https://shoppyos.com,https://www.shoppyos.com`). |
+| `FRONTEND_URL` | Existing | Optional | Comma-separated list of allowed web origins. |
+| `TRUST_PROXY_HOPS` | **NEW** | Optional | Set to `1` (default) for single reverse-proxy setups (Railway/Cloudflare). |
+| `SUPPORT_EMAIL` | Existing | Optional | Public customer support email (defaults to `support@shoppyos.com`). |
 
 ---
 
@@ -36,20 +39,20 @@ Before triggering the deployment build, ensure the following variables are confi
      - Generate a new 64-character hex string for `JWT_SECRET` (`node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`).
      - Set `SUPEROWNER_USERNAME` and a strong `SUPEROWNER_PASSWORD`.
      - Explicitly set `DB_PATH` pointing to your existing database in the volume (e.g. `${DATA_DIR}/latif_traders.db`).
-     - Verify `SUPPORT_EMAIL=shopos.help@gmail.com`.
+     - Set `ALLOWED_ORIGINS=https://shoppyos.com,https://www.shoppyos.com`.
 3. **Deploy the Release**:
-   - Deploy the commit from `release/security-batch1`.
+   - Deploy from the release tag `rc/sqlite-2026-11-04` on `integration/local-all`.
 4. **Monitor Boot Logs**:
-   - Verify log line: `[ShopOS Database] Connected to SQLite database: latif_traders.db`.
-   - Verify log line: `[ShopOS Security] SuperOwner account initialized from environment` (or existing).
+   - Verify log line: `[ShoppyOS Database] Connected to SQLite database: latif_traders.db`.
+   - Verify log line: `[ShoppyOS Security] SuperOwner account initialized from environment`.
    - Ensure NO `[FATAL]` startup errors occur.
 
 ---
 
 ## 3. Post-Deployment Account Management
 
-### A. Deactivate or Rotate Legacy Superowner Account
-If an old default `superowner` account exists in the database, run the credential rotation utility via Railway CLI / SSH:
+### A. Deactivate Legacy Superowner Account
+If an old default `superowner` account exists in the database, run the credential rotation utility:
 ```bash
 # Dry run preview (prints affected account names only):
 node server/scripts/rotate_credentials.js --disable-legacy-superowner
@@ -67,7 +70,6 @@ node server/scripts/rotate_credentials.js --tenant latif_001 --admin-only
 # Execute rotation:
 node server/scripts/rotate_credentials.js --tenant latif_001 --admin-only --yes
 ```
-The script will output a single-use random password. Give this to the shop administrator; the UI will force a password change upon their first login.
 
 ---
 
@@ -75,7 +77,7 @@ The script will output a single-use random password. Give this to the shop admin
 
 Execute these verification checks immediately following deployment:
 1. **Health & Latency Check**:
-   - `GET /api/health` -> verify HTTP 200, `status: "ok"`, `app: "ShopOS Management System"`, `driver: "sqlite"`.
+   - `GET /api/health` -> verify HTTP 200, `status: "ok"`, `app: "ShoppyOS Management System"`, `driver: "sqlite"`.
 2. **Session Invalidation**:
    - Confirm that previously saved browser sessions are logged out and redirected to `/login`.
 3. **Admin Sign-In**:
@@ -85,7 +87,7 @@ Execute these verification checks immediately following deployment:
    - Verify that sales, inventory, and customer ledger show only `latif_001` records.
    - Confirm no cross-tenant leakage occurs.
 5. **Support & Contact Links**:
-   - Verify Header and Landing Page footer display `shopos.help@gmail.com` with zero references to placeholder emails.
+   - Verify Header and Landing Page footer display `support@shoppyos.com` with zero references to placeholder emails.
 6. **Transaction & Receipt Test**:
    - Create a test sale or receipt voucher preview; verify thermal (80mm) and A4 print popups render without glyph corruption.
 
@@ -97,7 +99,7 @@ If an unexpected critical issue occurs post-deployment:
 1. **Code Rollback**:
    - Revert Railway deployment to the previous stable deployment commit (`6f72dc8`).
 2. **Database Non-Destructive Guarantee**:
-   - All migrations applied by this release are **strictly additive** (`token_version`, `must_change_password`, `reset_token_hash`, `tenant_id` columns).
+   - All migrations applied by this release are **strictly additive** (`token_version`, `must_change_password`, `reset_token_hash`, `tenant_id` columns, `batches_temp` relaxation).
    - No existing columns or tables are dropped or renamed destructively.
    - The previous codebase version will run against the database without schema errors.
 3. **Session Notice**:

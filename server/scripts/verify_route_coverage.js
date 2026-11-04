@@ -18,6 +18,7 @@ const app = require('../index');
 
 const PUBLIC_ALLOW_LIST = new Set([
   'GET /api/health',
+  'GET /api/plans',
   'POST /api/auth/register',
   'POST /api/auth/login',
   'POST /api/auth/forgot-password',

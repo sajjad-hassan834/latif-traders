@@ -1,5 +1,6 @@
 const { BRAND_NAME } = require('./config/brand');
 const express = require('express');
+const helmet = require('helmet');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const path = require('path');
@@ -17,6 +18,16 @@ if (process.env.NODE_ENV === 'production') {
 const { db, DATA_DIR } = require('./config/database');
 
 const app = express();
+
+// Trust reverse proxy hops (e.g. Railway, Cloudflare)
+const trustProxyHops = parseInt(process.env.TRUST_PROXY_HOPS, 10);
+app.set('trust proxy', isNaN(trustProxyHops) ? 1 : trustProxyHops);
+
+// HTTP Security Headers
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
 const PORT = process.env.PORT || 5000;
 
 // Configured allowed origins (local + custom frontend URLs)
@@ -26,6 +37,15 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5000'
 ];
+
+
+if (process.env.ALLOWED_ORIGINS) {
+  process.env.ALLOWED_ORIGINS.split(',').forEach(url => {
+    const trimmed = url.trim();
+    if (trimmed) allowedOrigins.push(trimmed);
+  });
+}
+allowedOrigins.push('https://shoppyos.com', 'https://www.shoppyos.com');
 
 if (process.env.FRONTEND_URL) {
   process.env.FRONTEND_URL.split(',').forEach(url => {

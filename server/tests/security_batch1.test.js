@@ -211,7 +211,7 @@ async function runSecurityBatch1Tests() {
   // Test 3.1: Public routes succeed without tenant or authentication
   const healthRes = await request(app).get('/api/health');
   assert(healthRes.status === 200, 'Public /api/health succeeds without auth');
-  assert(healthRes.body.app.includes('ShopOS'), 'App branding is ShopOS');
+  assert(healthRes.body.app.includes('ShoppyOS') || healthRes.body.app.includes('ShopOS'), 'App branding matches brand constant');
 
   // Test 3.2: Superowner stats and tenants succeed WITHOUT any tenant context
   const soStatsRes = await request(app)

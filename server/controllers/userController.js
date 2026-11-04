@@ -64,7 +64,7 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Username is already taken by another account.' });
     }
 
-    const salt = bcrypt.genSaltSync(10);
+    const salt = bcrypt.genSaltSync(12);
     const hash = bcrypt.hashSync(password, salt);
 
     const result = await db.run(`
@@ -113,7 +113,7 @@ exports.updateUser = async (req, res) => {
 
     let passwordHash = user.password_hash;
     if (password && password.trim().length >= 6) {
-      const salt = bcrypt.genSaltSync(10);
+      const salt = bcrypt.genSaltSync(12);
       passwordHash = bcrypt.hashSync(password.trim(), salt);
     }
 

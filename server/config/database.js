@@ -872,6 +872,7 @@ function initializeDatabase() {
       if (expiryCol && expiryCol.notnull === 1) {
         db.exec(`
           PRAGMA foreign_keys=OFF;
+          DROP TABLE IF EXISTS batches_temp;
           CREATE TABLE batches_temp (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -888,7 +889,7 @@ function initializeDatabase() {
             tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
             UNIQUE(tenant_id, product_id, batch_no)
           );
-          INSERT INTO batches_temp SELECT * FROM batches;
+          INSERT INTO batches_temp (id, product_id, batch_no, expiry_date, quantity, purchase_price, storage_location, status, created_at, supplier_id, sale_price, wholesale_price, tenant_id) SELECT id, product_id, batch_no, expiry_date, quantity, purchase_price, storage_location, COALESCE(status, 'active'), created_at, supplier_id, sale_price, wholesale_price, tenant_id FROM batches;
           DROP TABLE batches;
           ALTER TABLE batches_temp RENAME TO batches;
           CREATE INDEX IF NOT EXISTS idx_batches_tenant ON batches(tenant_id);
