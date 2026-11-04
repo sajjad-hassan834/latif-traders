@@ -120,7 +120,7 @@ export default function ForcedPasswordChange({ onSuccess }) {
             background: 'rgba(239, 68, 68, 0.1)',
             border: '1px solid rgba(239, 68, 68, 0.3)',
             borderRadius: '10px',
-            color: '#ef4444',
+            color: 'var(--red, #D92D5A)',
             fontSize: '0.85rem',
             display: 'flex',
             alignItems: 'center',
@@ -138,7 +138,7 @@ export default function ForcedPasswordChange({ onSuccess }) {
             background: 'rgba(16, 185, 129, 0.1)',
             border: '1px solid rgba(16, 185, 129, 0.3)',
             borderRadius: '10px',
-            color: '#10b981',
+            color: 'var(--green, #10b981)',
             fontSize: '0.85rem',
             display: 'flex',
             alignItems: 'center',
@@ -261,8 +261,8 @@ export default function ForcedPasswordChange({ onSuccess }) {
               boxShadow: '0 4px 14px rgba(244, 166, 42, 0.35)',
               transition: 'background 0.15s ease, transform 0.15s ease'
             }}
-            onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = '#e59920'; }}
-            onMouseLeave={(e) => { if (!loading) e.currentTarget.style.background = 'var(--gold, #F4A62A)'; }}
+            onMouseEnter={(e) => { if (!loading) e.currentTarget.style.filter = 'brightness(0.95)'; }}
+            onMouseLeave={(e) => { if (!loading) e.currentTarget.style.filter = 'none'; }}
           >
             <span>{loading ? 'Updating Password...' : 'Update Password & Continue'}</span>
             <ArrowRight size={16} />

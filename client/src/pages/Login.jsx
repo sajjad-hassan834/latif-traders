@@ -218,11 +218,11 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
             style={{
               padding: '8px 18px',
               borderRadius: '8px',
-              border: '1px solid #0266FE',
+              border: 'none',
               background: 'var(--gold)', color: '#241800', fontWeight: 600, cursor: 'pointer', fontSize: '13px', borderRadius: '999px', border: 'none', transition: 'transform 0.15s'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = '#0052cc'}
-            onMouseLeave={e => e.currentTarget.style.background = '#0266FE'}
+            onMouseEnter={e => e.currentTarget.style.filter = 'brightness(0.95)'}
+            onMouseLeave={e => e.currentTarget.style.filter = 'none'}
           >
             Sign Up
           </button>
@@ -575,11 +575,11 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   flex: 1,
                   padding: '0.75rem',
                   border: 'none',
-                  borderBottom: forgotTab === 'request' ? '2px solid #0266FE' : '2px solid transparent',
+                  borderBottom: forgotTab === 'request' ? '2px solid var(--primary, #0F4D3A)' : '2px solid transparent',
                   background: 'none',
                   fontWeight: 600,
                   fontSize: '0.8rem',
-                  color: forgotTab === 'request' ? '#0266FE' : '#64748b',
+                  color: forgotTab === 'request' ? 'var(--primary, #0F4D3A)' : '#64748b',
                   cursor: 'pointer'
                 }}
               >
@@ -592,11 +592,11 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   flex: 1,
                   padding: '0.75rem',
                   border: 'none',
-                  borderBottom: forgotTab === 'status' ? '2px solid #0266FE' : '2px solid transparent',
+                  borderBottom: forgotTab === 'status' ? '2px solid var(--primary, #0F4D3A)' : '2px solid transparent',
                   background: 'none',
                   fontWeight: 600,
                   fontSize: '0.8rem',
-                  color: forgotTab === 'status' ? '#0266FE' : '#64748b',
+                  color: forgotTab === 'status' ? 'var(--primary, #0F4D3A)' : '#64748b',
                   cursor: 'pointer'
                 }}
               >
@@ -653,7 +653,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                           }}
                           style={{
                             padding: '4px 8px',
-                            background: tokenCopied ? '#15803d' : '#0266FE',
+                            background: tokenCopied ? '#15803d' : 'var(--primary, #0F4D3A)',
                             color: '#ffffff',
                             border: 'none',
                             borderRadius: '4px',
@@ -753,7 +753,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                       justifyContent: 'center',
                       alignItems: 'center',
                       gap: '0.5rem',
-                      background: '#0266FE'
+                      background: 'var(--primary, #0F4D3A)'
                     }}
                   >
                     <Send size={16} />
@@ -780,7 +780,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                       type="submit"
                       disabled={statusLoading}
                       className="login-submit-btn"
-                      style={{ padding: '0 1rem', whiteSpace: 'nowrap', width: 'auto', background: '#0266FE' }}
+                      style={{ padding: '0 1rem', whiteSpace: 'nowrap', width: 'auto', background: 'var(--primary, #0F4D3A)' }}
                     >
                       {statusLoading ? 'Checking...' : 'Check Status'}
                     </button>

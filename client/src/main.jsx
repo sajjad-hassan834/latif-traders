@@ -15,6 +15,15 @@ import './styles/theme-buttons.css'
 import App from './App.jsx'
 import { initButtonLabels } from './utils/buttonLabels'
 
+// Expose and log build version in console
+fetch('/version.json')
+  .then(res => res.json())
+  .then(ver => {
+    window.__SHOPPYOS_VERSION__ = ver;
+    console.log(`%c[ShoppyOS] Build ${ver.shortHash} (${ver.branch}) · ${ver.buildTime}`, 'color: #0F4D3A; font-weight: bold; background: #E6F3EE; padding: 2px 6px; border-radius: 4px;');
+  })
+  .catch(() => {});
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />

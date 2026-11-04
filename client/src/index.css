@@ -9,12 +9,12 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Brand Colors - Logo Vibrant Royal Blue & Electric Blue */
-  --primary: #0266fe;
-  --primary-hover: #0052cc;
+  --primary: #0F4D3A;
+  --primary-hover: #0A3528;
   --primary-light: #eff6ff;
   --primary-border: #bfdbfe;
-  --primary-dark: #1d4ed8;
-  --primary-gradient: linear-gradient(135deg, #0266fe 0%, #1d4ed8 100%);
+  --primary-dark: #0A3528;
+  --primary-gradient: linear-gradient(135deg, #0F4D3A 0%, #1B7A5A 100%);
   
   --secondary: #475569;
   --secondary-light: #f8fafc;

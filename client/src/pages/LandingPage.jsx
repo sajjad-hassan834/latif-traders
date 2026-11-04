@@ -559,6 +559,11 @@ export default function LandingPage({ onNavigateLogin, onNavigateRegister }) {
             <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
             <br />
             © 2026 ShoppyOS. All rights reserved.
+            {import.meta.env.DEV && (
+              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--mut)', marginTop: '4px', fontFamily: 'monospace' }}>
+                build: {window.__SHOPPYOS_VERSION__?.shortHash || 'dev'}
+              </span>
+            )}
           </div>
         </div>
       </footer>

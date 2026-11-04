@@ -1063,7 +1063,7 @@ export default function Users() {
               {/* Password Display Box */}
               <div style={{
                 background: '#f8fafc',
-                border: '2px dashed #0266FE',
+                border: '2px dashed var(--primary, #0F4D3A)',
                 borderRadius: '8px',
                 padding: '1rem',
                 textAlign: 'center',
@@ -1099,7 +1099,7 @@ export default function Users() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  background: copiedTempPassword ? '#15803d' : '#0266FE',
+                  background: copiedTempPassword ? '#15803d' : 'var(--primary, #0F4D3A)',
                   color: '#ffffff',
                   border: 'none',
                   borderRadius: '6px',
