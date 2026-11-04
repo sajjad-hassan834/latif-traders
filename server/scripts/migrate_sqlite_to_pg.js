@@ -243,6 +243,27 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
       console.log(`  ✓ ${table.padEnd(25)}: ${String(rows.length).padStart(8)} rows migrated`);
     }
 
+    // 2b. Quarantine Audit Report
+    const quarRes = await pg.query(`
+      SELECT tenant_id, COUNT(*) as cnt, COALESCE(SUM(amount), 0) as total_amt
+      FROM legacy_unlinked_payments
+      GROUP BY tenant_id
+      ORDER BY tenant_id
+    `);
+    console.log('\n--- Quarantined Unlinked Payments Report ---');
+    if (quarRes.rows.length === 0) {
+      console.log('  ✓ No quarantined payments found across tenants.');
+    } else {
+      let totalQuarantinedRows = 0;
+      let totalQuarantinedAmt = 0;
+      for (const q of quarRes.rows) {
+        totalQuarantinedRows += Number(q.cnt);
+        totalQuarantinedAmt += Number(q.total_amt);
+        console.log(`  ⚠ Tenant [${q.tenant_id}]: ${q.cnt} orphan payments quarantined, Total Amount: ₨ ${Number(q.total_amt).toFixed(2)}`);
+      }
+      console.log(`  ✓ Total Quarantined: ${totalQuarantinedRows} payments, ₨ ${totalQuarantinedAmt.toFixed(2)} (Drawer cash preserved, excluded from party ledgers)`);
+    }
+
     // 3. Reset Sequences to MAX(id)
     console.log('\n--- Resetting PostgreSQL Primary Key Sequences ---');
     const seqListRes = await pg.query(`

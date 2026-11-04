@@ -140,9 +140,9 @@ exports.getCashbook = async (req, res) => {
     // 1. Cash In:
     const receipts = await db.all(`
       SELECT p.id, p.payment_date as date, p.reference_no as ref_no, 'Customer Receipt' as title,
-        c.name as party_name, p.amount, 'IN' as flow, p.notes, 'CUSTOMER_RECEIPT' as source_type
+        COALESCE(c.name, 'Unlinked Customer') as party_name, p.amount, 'IN' as flow, p.notes, 'CUSTOMER_RECEIPT' as source_type
       FROM payments p
-      JOIN customers c ON p.party_id = c.id AND c.tenant_id = p.tenant_id
+      LEFT JOIN customers c ON p.party_id = c.id AND c.tenant_id = p.tenant_id
       WHERE p.type = 'CUSTOMER_RECEIPT' AND p.payment_method = 'Cash'
         AND (p.reference_no IS NULL OR p.reference_no NOT LIKE 'INV-%')
         AND p.reference_id IS NULL
@@ -150,6 +150,20 @@ exports.getCashbook = async (req, res) => {
         AND p.payment_date >= ? AND p.payment_date <= ?
         AND p.tenant_id = ?
     `, [sDate, eDate, tenantId]);
+
+    // Quarantined legacy unlinked customer receipts (included in drawer cash, excluded from party ledgers)
+    let quarantinedReceipts = [];
+    try {
+      quarantinedReceipts = await db.all(`
+        SELECT id, payment_date as date, ('LEGACY-' || id) as ref_no, 'Quarantined Unlinked Receipt' as title,
+          'Unlinked Customer' as party_name, amount, 'IN' as flow, notes, 'CUSTOMER_RECEIPT' as source_type
+        FROM legacy_unlinked_payments
+        WHERE UPPER(original_party_type) = 'CUSTOMER' AND payment_method = 'Cash'
+          AND (notes IS NULL OR (notes NOT LIKE '%Receipt for Invoice%' AND notes NOT LIKE '%INV-%' AND notes NOT LIKE '%invoice%'))
+          AND payment_date >= ? AND payment_date <= ?
+          AND tenant_id = ?
+      `, [sDate, eDate, tenantId]);
+    } catch (_) {}
 
     // Direct Cash Sales
     const cashSales = await db.all(`
@@ -166,9 +180,9 @@ exports.getCashbook = async (req, res) => {
     // 2. Cash Out:
     const disbursements = await db.all(`
       SELECT p.id, p.payment_date as date, p.reference_no as ref_no, 'Supplier Payment' as title,
-        s.name as party_name, p.amount, 'OUT' as flow, p.notes, 'SUPPLIER_PAYMENT' as source_type
+        COALESCE(s.name, 'Unlinked Supplier') as party_name, p.amount, 'OUT' as flow, p.notes, 'SUPPLIER_PAYMENT' as source_type
       FROM payments p
-      JOIN suppliers s ON p.party_id = s.id AND s.tenant_id = p.tenant_id
+      LEFT JOIN suppliers s ON p.party_id = s.id AND s.tenant_id = p.tenant_id
       WHERE p.type = 'SUPPLIER_PAYMENT' AND p.payment_method = 'Cash'
         AND (p.reference_no IS NULL OR p.reference_no NOT LIKE 'PUR-%')
         AND p.reference_id IS NULL
@@ -176,6 +190,20 @@ exports.getCashbook = async (req, res) => {
         AND p.payment_date >= ? AND p.payment_date <= ?
         AND p.tenant_id = ?
     `, [sDate, eDate, tenantId]);
+
+    // Quarantined legacy unlinked supplier disbursements
+    let quarantinedDisbursements = [];
+    try {
+      quarantinedDisbursements = await db.all(`
+        SELECT id, payment_date as date, ('LEGACY-' || id) as ref_no, 'Quarantined Unlinked Disbursement' as title,
+          'Unlinked Supplier' as party_name, amount, 'OUT' as flow, notes, 'SUPPLIER_PAYMENT' as source_type
+        FROM legacy_unlinked_payments
+        WHERE UPPER(original_party_type) = 'SUPPLIER' AND payment_method = 'Cash'
+          AND (notes IS NULL OR (notes NOT LIKE '%purchase bill%' AND notes NOT LIKE '%PUR-%' AND notes NOT LIKE '%bill%'))
+          AND payment_date >= ? AND payment_date <= ?
+          AND tenant_id = ?
+      `, [sDate, eDate, tenantId]);
+    } catch (_) {}
 
     const cashPurchases = await db.all(`
       SELECT pu.id, pu.purchase_date as date, pu.invoice_no as ref_no, 'Cash Purchase' as title,
@@ -198,7 +226,7 @@ exports.getCashbook = async (req, res) => {
         AND e.tenant_id = ?
     `, [sDate, eDate, tenantId]);
 
-    const entries = [...receipts, ...cashSales, ...disbursements, ...cashPurchases, ...cashExpenses];
+    const entries = [...receipts, ...quarantinedReceipts, ...cashSales, ...disbursements, ...quarantinedDisbursements, ...cashPurchases, ...cashExpenses];
     entries.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     let totalIn = 0;

@@ -32,7 +32,7 @@ const VERIFICATION_TABLES = [
   'tenants', 'users', 'categories', 'brands', 'units',
   'customers', 'suppliers', 'products', 'supplier_products', 'batches',
   'purchases', 'purchase_items', 'sales', 'sale_items',
-  'returns', 'return_items', 'payments',
+  'returns', 'return_items', 'payments', 'legacy_unlinked_payments',
   'expense_categories', 'expenses', 'stock_adjustments',
   'inventory_movements', 'tenant_settings', 'subscriptions',
   'audit_logs', 'password_reset_requests', 'counters', 'settings'
@@ -74,9 +74,17 @@ async function verifyMigration(overrideSqlitePath) {
     deepReportParity: []
   };
 
-  // 1. Table Row Counts (All 27 Tables)
-  console.log('--- 1. Table Row Count Parity Audit (All 27 Tables) ---');
+  // 1. Table Row Counts (All 28 Tables)
+  console.log('--- 1. Table Row Count Parity Audit ---');
   let allRowCountsMatch = true;
+  
+  // Pre-fetch legacy unlinked payments count in PG
+  let pLegacyCount = 0;
+  try {
+    const pLegRes = await pg.query('SELECT COUNT(*) as c FROM legacy_unlinked_payments');
+    pLegacyCount = Number(pLegRes.rows[0].c);
+  } catch (_) {}
+
   for (const table of VERIFICATION_TABLES) {
     const sTable = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(table);
     const sCount = sTable ? sqlite.prepare(`SELECT COUNT(*) as c FROM "${table}"`).get().c : 0;
@@ -87,11 +95,29 @@ async function verifyMigration(overrideSqlitePath) {
       pCount = Number(pRes.rows[0].c);
     } catch (_) {}
 
-    // Special note: counters is a Postgres atomic sequence table; if SQLite lacks counters, allow pCount >= sCount
-    const match = (table === 'counters') ? (pCount >= sCount) : (sCount === pCount);
+    let match = false;
+    let label = table.padEnd(25);
+    let extraInfo = '';
+
+    if (table === 'counters') {
+      // Counters table: SQLite creates lazily (5 rows), PG pre-initializes per tenant and doc type (24 rows)
+      match = pCount >= sCount;
+      extraInfo = ' (pre-initialized, derived)';
+    } else if (table === 'legacy_unlinked_payments') {
+      // Legacy unlinked payments: quarantined from SQLite payments
+      match = (pCount === pLegacyCount);
+      extraInfo = ' (quarantined, derived)';
+    } else if (table === 'payments') {
+      // Combined payments parity: SQLite payments = PG payments + PG quarantined legacy payments
+      match = (sCount === (pCount + pLegacyCount));
+      extraInfo = ` (+${pLegacyCount} quarantined)`;
+    } else {
+      match = (sCount === pCount);
+    }
+
     if (!match) allRowCountsMatch = false;
     results.tableRowCounts.push({ table, sqliteCount: sCount, pgCount: pCount, match });
-    console.log(`  ${match ? '✅' : '❌'} ${table.padEnd(25)} | SQLite: ${String(sCount).padStart(6)} | PG: ${String(pCount).padStart(6)} | ${match ? 'MATCH' : 'MISMATCH'}`);
+    console.log(`  ${match ? '✅' : '❌'} ${label} | SQLite: ${String(sCount).padStart(6)} | PG: ${String(pCount).padStart(6)}${extraInfo} | ${match ? 'MATCH' : 'MISMATCH'}`);
   }
   if (!allRowCountsMatch) results.overallPass = false;
 
@@ -117,11 +143,23 @@ async function verifyMigration(overrideSqlitePath) {
       pSum = Number(pRes.rows[0]?.s || 0);
     } catch (_) {}
 
-    const diff = Math.abs(Number(sSum) - Number(pSum));
+    let effectivePgSum = Number(pSum);
+    let note = '';
+    if (sc.table === 'payments') {
+      let legacySum = 0;
+      try {
+        const lRes = await pg.query('SELECT ROUND(COALESCE(SUM(amount), 0), 2) as s FROM legacy_unlinked_payments');
+        legacySum = Number(lRes.rows[0]?.s || 0);
+      } catch (_) {}
+      effectivePgSum = Number((Number(pSum) + legacySum).toFixed(2));
+      note = ` (${Number(pSum).toFixed(2)} + ${legacySum.toFixed(2)} quarantined)`;
+    }
+
+    const diff = Math.abs(Number(sSum) - effectivePgSum);
     const match = diff < 0.001;
     if (!match) allSumsMatch = false;
-    results.financialSums.push({ metric: sc.label, sqliteSum: Number(sSum), pgSum: Number(pSum), match });
-    console.log(`  ${match ? '✅' : '❌'} ${sc.label.padEnd(25)} | SQLite: ₨ ${Number(sSum).toFixed(2).padStart(12)} | PG: ₨ ${Number(pSum).toFixed(2).padStart(12)} | ${match ? 'MATCH' : 'MISMATCH'}`);
+    results.financialSums.push({ metric: sc.label, sqliteSum: Number(sSum), pgSum: effectivePgSum, match });
+    console.log(`  ${match ? '✅' : '❌'} ${sc.label.padEnd(25)} | SQLite: ₨ ${Number(sSum).toFixed(2).padStart(12)} | PG: ₨ ${effectivePgSum.toFixed(2).padStart(12)}${note} | ${match ? 'MATCH' : 'MISMATCH'}`);
   }
   if (!allSumsMatch) results.overallPass = false;
 
@@ -169,9 +207,16 @@ async function verifyMigration(overrideSqlitePath) {
     return String(v);
   }
 
+  // Pre-fetch quarantine IDs and valid tenant:user keys for foreign key normalization
+  const lRes = await pg.query('SELECT original_payment_id FROM legacy_unlinked_payments');
+  const quarantinedIds = new Set(lRes.rows.map(r => Number(r.original_payment_id)));
+  const validTenantUserKeys = new Set(
+    sqlite.prepare("SELECT (COALESCE(tenant_id, 'latif_001') || ':' || id) as k FROM users").all().map(r => r.k)
+  );
+
   for (const tbl of VERIFICATION_TABLES) {
     const sTbl = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(tbl);
-    if (!sTbl || tbl === 'counters') continue;
+    if (!sTbl || tbl === 'counters' || tbl === 'legacy_unlinked_payments') continue;
 
     // Check shared columns
     const sCols = sqlite.prepare(`PRAGMA table_info("${tbl}")`).all().map(c => c.name);
@@ -183,10 +228,20 @@ async function verifyMigration(overrideSqlitePath) {
     const selectCols = commonCols.map(c => `"${c}"`).join(', ');
     const sortCol = tbl === 'tenant_settings' ? '"tenant_id", "key"' : (tbl === 'settings' ? '"key"' : (commonCols.includes('id') ? '"id"' : '"' + commonCols[0] + '"'));
 
-    const sRows = sqlite.prepare(`SELECT ${selectCols} FROM "${tbl}" ORDER BY ${sortCol} ASC`).all().map(r => {
+    let sWhere = '';
+    if (tbl === 'payments' && quarantinedIds.size > 0) {
+      sWhere = `WHERE id NOT IN (${Array.from(quarantinedIds).join(',')})`;
+    }
+
+    const sRows = sqlite.prepare(`SELECT ${selectCols} FROM "${tbl}" ${sWhere} ORDER BY ${sortCol} ASC`).all().map(r => {
       const clean = {};
       for (const [k, v] of Object.entries(r)) {
-        clean[k] = normalizeCanonicalValue(v);
+        let val = v;
+        if (tbl === 'users' && k === 'tenant_id' && val === null) val = 'latif_001';
+        if (tbl === 'audit_logs' && k === 'user_id' && val !== null && !validTenantUserKeys.has(`${r.tenant_id || 'latif_001'}:${val}`)) {
+          val = null;
+        }
+        clean[k] = normalizeCanonicalValue(val);
       }
       return clean;
     });

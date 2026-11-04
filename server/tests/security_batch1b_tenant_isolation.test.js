@@ -156,6 +156,20 @@ async function runTests() {
     console.log('======================================================\n');
   } finally {
     if (server) server.close();
+    try {
+      const tables = [
+        'sale_items', 'sales', 'purchase_items', 'purchases', 'payments',
+        'expenses', 'inventory_movements', 'stock_adjustments', 'batches',
+        'products', 'customers', 'suppliers', 'categories', 'units', 'brands',
+        'counters', 'tenant_settings', 'users'
+      ];
+      for (const tid of [tenantA, tenantB]) {
+        for (const t of tables) {
+          try { await db.run(`DELETE FROM ${t} WHERE tenant_id = ?`, [tid]); } catch (_) {}
+        }
+        try { await db.run('DELETE FROM tenants WHERE id = ?', [tid]); } catch (_) {}
+      }
+    } catch (_) {}
   }
 }
 

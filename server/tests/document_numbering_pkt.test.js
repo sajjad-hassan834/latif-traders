@@ -88,6 +88,10 @@ async function runDocumentNumberingTests() {
   await pgAdapter.query("DELETE FROM counters WHERE tenant_id = 't_doc_test'");
   await pgAdapter.query("DELETE FROM tenants WHERE id = 't_doc_test'");
   await pgAdapter.close();
+  try {
+    db.setDriver('sqlite');
+    await db.run("DELETE FROM counters WHERE tenant_id = 't_doc_test'");
+  } catch (_) {}
 
   console.log('\n======================================================');
   console.log('  🎉 ALL DOCUMENT NUMBERING & PKT MIDNIGHT TESTS PASSED!');

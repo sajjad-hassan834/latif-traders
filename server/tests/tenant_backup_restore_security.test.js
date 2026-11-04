@@ -11,7 +11,8 @@ function assert(condition, message) {
   console.log(`  ✅ ${message}`);
 }
 
-async function runBackupSecurityTests() {
+async function runBackupSecurityTestsBody() {
+  try {
   console.log('\n======================================================');
   console.log('  TENANT BACKUP & RESTORE SECURITY TEST SUITE');
   console.log('======================================================\n');
@@ -172,18 +173,25 @@ async function runBackupSecurityTests() {
   assert(dryRunRes.diff && dryRunRes.diff.products, 'Dry-run diff calculated for products table');
   assert(dryRunRes.message.includes('No changes written'), 'Dry-run confirmed zero database mutations');
 
-  // Clean up
-  await db.run('DELETE FROM products WHERE tenant_id IN (?, ?)', [tenantId, victimId]);
-  await db.run('DELETE FROM customers WHERE tenant_id IN (?, ?)', [tenantId, victimId]);
-  await db.run('DELETE FROM tenants WHERE id IN (?, ?)', [tenantId, victimId]);
-
-  console.log('\n======================================================');
-  console.log('  🎉 ALL TENANT BACKUP & RESTORE SECURITY TESTS PASSED!');
-  console.log('======================================================\n');
+  } finally {
+    // Clean up
+    try {
+      await db.run('DELETE FROM products WHERE tenant_id IN (?, ?)', [tenantId, victimId]);
+      await db.run('DELETE FROM categories WHERE tenant_id IN (?, ?)', [tenantId, victimId]);
+      await db.run('DELETE FROM customers WHERE tenant_id IN (?, ?)', [tenantId, victimId]);
+      await db.run('DELETE FROM tenants WHERE id IN (?, ?)', [tenantId, victimId]);
+    } catch (_) {}
+  }
 }
 
-runBackupSecurityTests().catch(err => {
-  console.error('\n❌ Backup security test failed:', err);
-  process.exit(1);
-});
+async function runBackupSecurityTests() {
+  try {
+    await runBackupSecurityTestsBody();
+  } catch (err) {
+    console.error('\n❌ Backup security test failed:', err);
+    process.exit(1);
+  }
+}
+
+runBackupSecurityTests();
 

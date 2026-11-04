@@ -460,6 +460,23 @@ exports.getDayRegister = async (req, res) => {
       WHERE payment_date = ? AND UPPER(party_type) = 'CUSTOMER' AND reference_id IS NULL AND tenant_id = ?
     `, [date, tenantId]) || { cash_recovered: 0, bank_recovered: 0 };
 
+    // Include quarantined receipts in daily cash drawer summary
+    try {
+      const legacyRec = await db.get(`
+        SELECT
+          COALESCE(SUM(CASE WHEN payment_method = 'Cash' THEN amount ELSE 0 END), 0) as cash_recovered,
+          COALESCE(SUM(CASE WHEN payment_method != 'Cash' THEN amount ELSE 0 END), 0) as bank_recovered
+        FROM legacy_unlinked_payments
+        WHERE payment_date = ? AND UPPER(original_party_type) = 'CUSTOMER'
+          AND (notes IS NULL OR (notes NOT LIKE '%invoice%' AND notes NOT LIKE '%INV-%'))
+          AND tenant_id = ?
+      `, [date, tenantId]);
+      if (legacyRec) {
+        customerReceipts.cash_recovered = Number(customerReceipts.cash_recovered) + Number(legacyRec.cash_recovered || 0);
+        customerReceipts.bank_recovered = Number(customerReceipts.bank_recovered) + Number(legacyRec.bank_recovered || 0);
+      }
+    } catch (_) {}
+
     const expenseData = await db.get(`
       SELECT
         COALESCE(SUM(CASE WHEN payment_method = 'Cash' THEN amount ELSE 0 END), 0) as cash_expenses,
@@ -484,6 +501,23 @@ exports.getDayRegister = async (req, res) => {
       FROM payments
       WHERE payment_date = ? AND UPPER(party_type) = 'SUPPLIER' AND reference_id IS NULL AND tenant_id = ?
     `, [date, tenantId]) || { cash_disbursed: 0, bank_disbursed: 0 };
+
+    // Include quarantined disbursements in daily cash drawer summary
+    try {
+      const legacyDisb = await db.get(`
+        SELECT
+          COALESCE(SUM(CASE WHEN payment_method = 'Cash' THEN amount ELSE 0 END), 0) as cash_disbursed,
+          COALESCE(SUM(CASE WHEN payment_method != 'Cash' THEN amount ELSE 0 END), 0) as bank_disbursed
+        FROM legacy_unlinked_payments
+        WHERE payment_date = ? AND UPPER(original_party_type) = 'SUPPLIER'
+          AND (notes IS NULL OR (notes NOT LIKE '%bill%' AND notes NOT LIKE '%PUR-%'))
+          AND tenant_id = ?
+      `, [date, tenantId]);
+      if (legacyDisb) {
+        supplierDisbursements.cash_disbursed = Number(supplierDisbursements.cash_disbursed) + Number(legacyDisb.cash_disbursed || 0);
+        supplierDisbursements.bank_disbursed = Number(supplierDisbursements.bank_disbursed) + Number(legacyDisb.bank_disbursed || 0);
+      }
+    } catch (_) {}
 
     const totalCashIn = Number(salesData.cash_sales) + Number(customerReceipts.cash_recovered);
     const totalCashOut = Number(expenseData.cash_expenses) + Number(supplierDisbursements.cash_disbursed);
