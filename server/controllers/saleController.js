@@ -303,7 +303,7 @@ exports.createSale = async (req, res) => {
         const batches = await db.all(`
           SELECT * FROM batches
           WHERE product_id = ? AND status = 'active' AND quantity > 0 AND tenant_id = ?
-          ORDER BY id ASC FOR UPDATE
+          ORDER BY (expiry_date IS NULL), expiry_date, created_at, id ASC FOR UPDATE
         `, [item.product_id, tenantId]);
 
         let totalCostForLine = 0;
@@ -859,7 +859,7 @@ exports.updateSale = async (req, res) => {
           }
         } else if (qtyDelta > 0.0001) {
           let toDeduct = qtyDelta;
-          const batches = await runner.all("SELECT * FROM batches WHERE product_id = ? AND status = 'active' AND quantity > 0 AND tenant_id = ? ORDER BY id ASC", [item.product_id, tenantId]);
+          const batches = await runner.all("SELECT * FROM batches WHERE product_id = ? AND status = 'active' AND quantity > 0 AND tenant_id = ? ORDER BY (expiry_date IS NULL), expiry_date, created_at, id ASC", [item.product_id, tenantId]);
           for (const b of batches) {
             if (toDeduct <= 0) break;
             const d = Math.min(Number(b.quantity), toDeduct);

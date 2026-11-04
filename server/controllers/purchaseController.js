@@ -1,3 +1,4 @@
+const { resolvePurchaseBatch } = require('../utils/tradeBatch');
 const { db } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
 
@@ -388,7 +389,7 @@ exports.createPurchaseReturn = async (req, res) => {
         if (item.batch_id) {
           await db.run('UPDATE batches SET quantity = GREATEST(0, quantity - ?) WHERE id = ? AND tenant_id = ?', [qty, item.batch_id, tenantId]);
         } else {
-          const b = await db.get("SELECT id, quantity FROM batches WHERE product_id = ? AND status = 'active' AND quantity > 0 AND tenant_id = ? ORDER BY expiry_date ASC LIMIT 1", [item.product_id, tenantId]);
+          const b = await db.get("SELECT id, quantity FROM batches WHERE product_id = ? AND status = 'active' AND quantity > 0 AND tenant_id = ? ORDER BY (expiry_date IS NULL), expiry_date, created_at, id LIMIT 1", [item.product_id, tenantId]);
           if (b) {
             await db.run('UPDATE batches SET quantity = GREATEST(0, quantity - ?) WHERE id = ? AND tenant_id = ?', [qty, b.id, tenantId]);
           }

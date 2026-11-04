@@ -1,4 +1,29 @@
 {
+  "version": "1.0.0",
+  "defaultTrade": "frozen_food",
+  "aliases": {
+    "retail": "retail_general",
+    "general": "retail_general",
+    "kirana": "grocery",
+    "supermarket": "grocery",
+    "food": "restaurant",
+    "cafe": "restaurant",
+    "medical": "pharmacy",
+    "pharma": "pharmacy",
+    "rx": "pharmacy",
+    "apparel": "clothing",
+    "garments": "clothing",
+    "fashion": "clothing",
+    "boutique": "clothing",
+    "distributor": "wholesale",
+    "distribution": "wholesale",
+    "sanitary": "hardware",
+    "tools": "hardware",
+    "construction": "hardware",
+    "meat": "frozen_food",
+    "poultry": "frozen_food",
+    "frozen": "frozen_food"
+  },
   "trades": {
     "frozen_food": {
       "id": "frozen_food",
@@ -117,14 +142,14 @@
       "enableDeliveryChallan": false,
       "enableBulkPricingTiers": false,
       "enableFastBarcodeScan": false,
-      "defaultUnits": ["portion", "serving", "cup", "glass", "piece"],
-      "suggestedCategories": ["Burgers & Sandwiches", "Pizza", "Karahi & Handi", "BBQ & Grills", "Rice & Biryani", "Beverages & Shakes", "Desserts"]
+      "defaultUnits": ["portion", "serving", "plate", "cup", "glass", "deal"],
+      "suggestedCategories": ["Fast Food & Burgers", "BBQ & Karahi", "Chinese & Rice", "Beverages & Shakes", "Pizza & Pasta", "Desserts & Ice Cream"]
     },
     "hardware": {
       "id": "hardware",
-      "name": "Hardware, Sanitary & Building",
+      "name": "Hardware, Paint & Sanitary",
       "icon": "🔧",
-      "posMode": "bulk_wholesale",
+      "posMode": "fast_retail",
       "enableBatches": false,
       "enableExpiry": false,
       "enableColdChain": false,
@@ -141,14 +166,14 @@
       "enableDeliveryChallan": true,
       "enableBulkPricingTiers": true,
       "enableFastBarcodeScan": true,
-      "defaultUnits": ["feet", "meter", "bag", "bundle", "kg", "ton", "piece"],
-      "suggestedCategories": ["Paints & Chemicals", "Pipes & Sanitary Fittings", "Power Tools & Hand Tools", "Electrical & Wiring", "Cement & Steel", "Nuts, Bolts & Fasteners"]
+      "defaultUnits": ["piece", "kg", "meter", "foot", "set", "roll", "liter"],
+      "suggestedCategories": ["Hand Tools", "Power Tools", "Paints & Solvents", "Plumbing & Sanitary", "Electrical & Cables", "Fasteners & Screws"]
     },
     "wholesale": {
       "id": "wholesale",
-      "name": "Wholesale & B2B Distribution",
+      "name": "Wholesale & Distribution",
       "icon": "📦",
-      "posMode": "bulk_wholesale",
+      "posMode": "wholesale_bulk",
       "enableBatches": true,
       "enableExpiry": true,
       "enableColdChain": false,
@@ -216,27 +241,5 @@
       "defaultUnits": ["piece", "unit", "set", "box"],
       "suggestedCategories": ["General Items", "Miscellaneous", "Supplies"]
     }
-  },
-  "aliases": {
-    "retail": "retail_general",
-    "general": "retail_general",
-    "kirana": "grocery",
-    "supermarket": "grocery",
-    "food": "restaurant",
-    "cafe": "restaurant",
-    "medical": "pharmacy",
-    "pharma": "pharmacy",
-    "apparel": "clothing",
-    "garments": "clothing",
-    "fashion": "clothing",
-    "boutique": "clothing",
-    "distributor": "wholesale",
-    "distribution": "wholesale",
-    "sanitary": "hardware",
-    "tools": "hardware",
-    "construction": "hardware",
-    "meat": "frozen_food",
-    "poultry": "frozen_food"
   }
 }
-

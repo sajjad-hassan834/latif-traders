@@ -131,7 +131,7 @@ function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
       batch_no TEXT NOT NULL,
-      expiry_date TEXT NOT NULL,
+      expiry_date TEXT,
       quantity REAL NOT NULL DEFAULT 0,
       purchase_price REAL NOT NULL DEFAULT 0,
       sale_price REAL NOT NULL DEFAULT 0,
@@ -864,7 +864,43 @@ function initializeDatabase() {
     db.prepare("ALTER TABLE sales ADD COLUMN order_status TEXT NOT NULL DEFAULT 'Completed'").run();
   } catch (_) {}
 
-  // Safe migration for user theme preferences
+  
+    // Relax batches.expiry_date NOT NULL constraint for batchless trade profile support
+    try {
+      const batchCols = db.prepare("PRAGMA table_info(batches)").all();
+      const expiryCol = batchCols.find(c => c.name === 'expiry_date');
+      if (expiryCol && expiryCol.notnull === 1) {
+        db.exec(`
+          PRAGMA foreign_keys=OFF;
+          CREATE TABLE batches_temp (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+            batch_no TEXT NOT NULL,
+            expiry_date TEXT,
+            quantity REAL NOT NULL DEFAULT 0,
+            purchase_price REAL NOT NULL DEFAULT 0,
+            sale_price REAL DEFAULT 0,
+            wholesale_price REAL DEFAULT 0,
+            storage_location TEXT,
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            supplier_id INTEGER REFERENCES suppliers(id),
+            tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
+            UNIQUE(tenant_id, product_id, batch_no)
+          );
+          INSERT INTO batches_temp SELECT * FROM batches;
+          DROP TABLE batches;
+          ALTER TABLE batches_temp RENAME TO batches;
+          CREATE INDEX IF NOT EXISTS idx_batches_tenant ON batches(tenant_id);
+          CREATE INDEX IF NOT EXISTS idx_batches_product ON batches(product_id);
+          PRAGMA foreign_keys=ON;
+        `);
+      }
+    } catch (migErr) {
+      console.error('Migration error for batches.expiry_date nullable relaxation:', migErr.message);
+    }
+
+    // Safe migration for user theme preferences
   try {
     const userCols = db.prepare("PRAGMA table_info(users)").all();
     if (!userCols.some(c => c.name === 'theme')) {
@@ -1124,6 +1160,7 @@ function seedInitialData() {
     db.prepare("CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id)").run();
     db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_adjustments_tenant_no ON stock_adjustments(tenant_id, adjustment_no)").run();
     db.prepare("CREATE INDEX IF NOT EXISTS idx_customers_tenant_phone ON customers(tenant_id, phone)").run();
+    db.prepare("CREATE INDEX IF NOT EXISTS idx_products_tenant_barcode ON products(tenant_id, barcode)").run();
 
     // Polymorphic Foreign Key Isolation Triggers for Payments (Customers & Suppliers)
     db.exec(`

@@ -15,7 +15,9 @@
     "test:stage-a2": "node server/tests/stage_a2_real_postgres.test.js",
     "test:parity": "node server/tests/stage_a2_api_parity.test.js",
     "schema:diff": "node server/scripts/schema_diff.js",
-    "test": "node scripts/assert_branch.js && node scripts/check_no_old_ui.js && node server/tests/negative_controls.test.js",
+    "test:ui": "node scripts/ui_smoke_test.js",
+    "test:trade": "node server/tests/trade_shared_json.test.js && node server/tests/trade_batchless_lifecycle.test.js",
+    "test": "node scripts/assert_branch.js && node scripts/check_no_old_ui.js && node server/tests/trade_shared_json.test.js && node server/tests/trade_batchless_lifecycle.test.js && node server/tests/negative_controls.test.js",
     "test:rehearsal": "node server/tests/dress_rehearsal.test.js"
   },
   "keywords": [

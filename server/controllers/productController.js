@@ -1,3 +1,4 @@
+const { resolveOpeningBatch } = require('../utils/tradeBatch');
 const { getPlanLimits } = require('../config/plans');
 const { db } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
@@ -471,7 +472,7 @@ exports.adjustStock = async (req, res) => {
       if (batch_id) {
         targetBatch = await db.get('SELECT * FROM batches WHERE id = ? AND product_id = ? AND tenant_id = ?', [batch_id, product_id, tenantId]);
       } else {
-        targetBatch = await db.get("SELECT * FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ? ORDER BY expiry_date ASC LIMIT 1", [product_id, tenantId]);
+        targetBatch = await db.get("SELECT * FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ? ORDER BY (expiry_date IS NULL), expiry_date, created_at, id LIMIT 1", [product_id, tenantId]);
       }
 
       if (!targetBatch) {

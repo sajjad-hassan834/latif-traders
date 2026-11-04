@@ -12,7 +12,7 @@
 CREATE TABLE IF NOT EXISTS tenants (
   id TEXT PRIMARY KEY,
   business_name TEXT NOT NULL,
-  business_type TEXT NOT NULL DEFAULT 'retail',
+  business_type TEXT NOT NULL DEFAULT 'retail_general',
   owner_name TEXT NOT NULL,
   email TEXT,
   phone TEXT,
@@ -143,6 +143,7 @@ CREATE TABLE IF NOT EXISTS products (
   CONSTRAINT fk_products_supplier_tenant FOREIGN KEY (tenant_id, supplier_id) REFERENCES suppliers(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_products_tenant ON products(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_products_tenant_barcode ON products(tenant_id, barcode);
 
 CREATE TABLE IF NOT EXISTS batches (
   id BIGSERIAL PRIMARY KEY,
