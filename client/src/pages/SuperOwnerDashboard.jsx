@@ -1,3 +1,4 @@
+import { BRAND_NAME } from '../config/brand';
 import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
@@ -116,7 +117,7 @@ export default function SuperOwnerDashboard() {
               </div>
               <div>
                 <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', margin: 0 }}>
-                  ShopOS Control Panel
+                  {BRAND_NAME} Control Panel
                 </h1>
                 <p style={{ fontSize: 13, color: '#64748B', margin: '2px 0 0' }}>
                   SuperOwner Master Console & Multi-Tenant Management

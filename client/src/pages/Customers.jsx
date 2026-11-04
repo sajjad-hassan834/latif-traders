@@ -263,7 +263,7 @@ export default function Customers() {
     if (clean.startsWith('03')) clean = '92' + clean.slice(1);
     else if (!clean.startsWith('92')) clean = '92' + clean;
 
-    const msg = `Assalam-o-Alaikum ${customer.name},\nThis is a friendly reminder that your outstanding udhaar balance with Latif Traders is ${formatPKR(balance)}.\nKindly settle your pending dues at your earliest convenience.\nThank you!`;
+    const msg = `Assalam-o-Alaikum ${customer.name},\nThis is a friendly reminder that your outstanding udhaar balance with ${tenant?.business_name || 'our shop'} is ${formatPKR(balance)}.\nKindly settle your pending dues at your earliest convenience.\nThank you!`;
     window.open(`https://wa.me/${clean}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 

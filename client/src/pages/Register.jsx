@@ -1,3 +1,4 @@
+import { BRAND_NAME } from '../config/brand';
 import BrandLogo from '../components/common/BrandLogo';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -882,7 +883,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
               </div>
 
               <h2 style={{ fontSize: '24px', fontWeight: 800, color: t.titleColor, margin: '0 0 8px 0' }}>
-                Welcome to ShopOS, {completedInfo.name || formData.full_name}! 🎉
+                Welcome to ${BRAND_NAME}, {completedInfo.name || formData.full_name}! 🎉
               </h2>
 
               <p style={{ fontSize: '14px', color: t.subText, margin: '0 0 24px 0', lineHeight: 1.5 }}>

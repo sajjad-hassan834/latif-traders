@@ -1,3 +1,4 @@
+import { BRAND_NAME } from './config/brand';
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/layout/Sidebar';
@@ -267,7 +268,7 @@ function MainApp() {
         if (res && res.success && res.settings) {
           const shopName = res.settings.shop_name || res.settings.business_name || tenant?.business_name || 'Shop';
           localStorage.setItem('lt_shop_name', shopName);
-          document.title = `${shopName} - ShopOS`;
+          document.title = `${shopName} - ${BRAND_NAME}`;
           if (res.settings.tagline) localStorage.setItem('lt_shop_tagline', res.settings.tagline);
           if (res.settings.phone) localStorage.setItem('lt_phone', res.settings.phone);
           if (res.settings.email) localStorage.setItem('lt_email', res.settings.email);
@@ -365,7 +366,7 @@ function MainApp() {
         fontWeight: 600,
         fontSize: '15px'
       }}>
-        Loading ShopOS Workspace...
+        Loading ${BRAND_NAME} Workspace...
       </div>
     );
   }
@@ -578,7 +579,7 @@ function MainApp() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                 <Sparkles size={18} style={{ color: 'var(--primary)' }} />
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-title)' }}>
-                  Welcome to ShopOS, {tenant?.business_name || 'Partner'}! 🎉
+                  Welcome to ${BRAND_NAME}, {tenant?.business_name || 'Partner'}! 🎉
                 </h3>
               </div>
               <p style={{ margin: '0 0 12px 0', fontSize: '0.825rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>

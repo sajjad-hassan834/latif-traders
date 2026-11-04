@@ -1,3 +1,4 @@
+const { BRAND_NAME } = require('./config/brand');
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -86,7 +87,7 @@ app.get('/api/health', async (req, res) => {
     const latencyMs = db.measureLatency ? await db.measureLatency() : 0;
     res.json({
       status: 'ok',
-      app: 'ShopOS Management System',
+      app: `${BRAND_NAME} Management System`,
       driver: db.getDriver ? db.getDriver() : 'sqlite',
       latency_ms: latencyMs,
       timestamp: new Date().toISOString()
@@ -150,7 +151,7 @@ let server = null;
 if (process.env.NODE_ENV !== 'test' || require.main === module) {
   server = app.listen(PORT, () => {
     console.log('\n======================================================');
-    console.log('  ShopOS - Multi-Tenant Point of Sale Server');
+    console.log(`  ${BRAND_NAME} - Multi-Tenant Point of Sale Server`);
     console.log(`  Local:   http://localhost:${PORT}`);
     console.log('  Network: Accessible across LAN devices');
     console.log(`  API:     http://localhost:${PORT}/api`);

@@ -1,3 +1,4 @@
+const { BRAND_NAME } = require('../config/brand');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -142,7 +143,7 @@ exports.register = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: `Welcome to ShopOS, ${businessName}! Your business environment is ready.`,
+      message: `Welcome to ${BRAND_NAME}, ${businessName}! Your business environment is ready.`,
       token,
       user: {
         id: newUserId,
@@ -178,7 +179,7 @@ exports.login = async (req, res) => {
       SELECT u.*, 
              COALESCE(u.token_version, 1) as token_version,
              COALESCE(u.must_change_password, 0) as must_change_password,
-             COALESCE(t.business_name, 'ShopOS Business') as business_name,
+             COALESCE(t.business_name, '${BRAND_NAME} Business') as business_name,
              COALESCE(t.business_type, 'retail_general') as business_type,
              COALESCE(t.plan, 'free') as plan,
              COALESCE(t.plan_expires_at, null) as plan_expires_at,
@@ -261,7 +262,7 @@ exports.login = async (req, res) => {
 
     const tenantObj = user.role === 'superowner' ? {
       id: 'superowner',
-      business_name: 'ShopOS SuperOwner',
+      business_name: '${BRAND_NAME} SuperOwner',
       business_type: 'retail_general',
       plan: 'enterprise',
       logo_url: null

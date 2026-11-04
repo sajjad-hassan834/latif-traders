@@ -1,3 +1,4 @@
+import { BRAND_NAME, BRAND_DOMAIN } from '../../config/brand';
 import React, { useState, useEffect, useRef } from 'react';
 import { Printer, X, FileText, Share2, MessageSquare, Check, RefreshCw, ChevronDown } from 'lucide-react';
 import { formatPKR, formatDate, formatDateTime } from '../../utils/formatters';
@@ -535,7 +536,7 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
                 <div className="center" style={{ fontSize: '9px', marginTop: '4px' }}>
                   <p>{footerNote}</p>
                   <div style={{ marginTop: '6px', paddingTop: '4px', borderTop: '1px dotted #ccc', fontSize: '8px', color: '#666', textAlign: 'center' }}>
-                    Powered by <strong style={{ color: '#0F4D3A' }}>ShoppyOS</strong> (shoppyos.com)
+                    Powered by <strong style={{ color: '#0F4D3A' }}>{BRAND_NAME}</strong> ({BRAND_DOMAIN})
                   </div>
                 </div>
               </div>
@@ -663,7 +664,7 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
                   <div>Authorized Stamp / Signature</div>
                 </div>
                 <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.72rem', color: '#94a3b8' }}>
-                  Powered by <strong style={{ color: '#0F4D3A' }}>ShoppyOS</strong> — Modern Cloud POS &amp; Inventory Management (shoppyos.com)
+                  Powered by <strong style={{ color: '#0F4D3A' }}>{BRAND_NAME}</strong> — Modern Cloud POS &amp; Inventory Management ({BRAND_DOMAIN})
                 </div>
               </div>
             )}

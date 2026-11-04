@@ -1,3 +1,4 @@
+import { BRAND_NAME } from '../config/brand';
 import React, { useState, useEffect } from 'react';
 import {
   Sliders,
@@ -215,7 +216,7 @@ export default function Settings({ initialTab: propInitialTab }) {
         }
         if (settings.shop_name) {
           localStorage.setItem('lt_shop_name', settings.shop_name);
-          document.title = `${settings.shop_name} - ShopOS`;
+          document.title = `${settings.shop_name} - ${BRAND_NAME}`;
           updateTenantInfo({ business_name: settings.shop_name, logo_url: settings.logo_url, business_type: settings.business_type });
         } else if (settings.business_type) {
           updateTenantInfo({ business_type: settings.business_type });

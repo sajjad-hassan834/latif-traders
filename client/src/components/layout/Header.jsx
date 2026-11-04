@@ -1,3 +1,4 @@
+import { BRAND_NAME } from '../../config/brand';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Menu,
@@ -1233,7 +1234,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
       <Modal
         isOpen={supportModal === 'help'}
         onClose={() => setSupportModal(null)}
-        title="ShopOS Knowledge Base & User Guide"
+        title={`${BRAND_NAME} Knowledge Base & User Guide`}
         subtitle="Quick reference guide, workflows, and hotkeys"
         icon={<BookOpen size={22} color="#0F766E" />}
         maxWidth="560px"
@@ -1275,7 +1276,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               </span>
             </div>
             <p style={{ margin: '6px 0 0 0', color: '#374151', fontSize: '14px', lineHeight: 1.6 }}>
-              Manage multiple expiry dates and batch lots per item. ShopOS enforces FIFO (First In, First Out) deduction and displays alert badges for items near expiry in the top notification tray.
+              Manage multiple expiry dates and batch lots per item. ${BRAND_NAME} enforces FIFO (First In, First Out) deduction and displays alert badges for items near expiry in the top notification tray.
             </p>
           </div>
 
@@ -1360,7 +1361,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
       <Modal
         isOpen={supportModal === 'contact'}
         onClose={() => setSupportModal(null)}
-        title="Contact ShopOS Support"
+        title={`Contact ${BRAND_NAME} Support`}
         subtitle="Dedicated assistance for your store operations"
         icon={<MessageSquare size={22} color="#0F766E" />}
         maxWidth="520px"
@@ -1585,7 +1586,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               Issue Report Logged!
             </h4>
             <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-              Thank you for helping us improve ShopOS. Our engineering team has received your report with diagnostic details.
+              Thank you for helping us improve ${BRAND_NAME}. Our engineering team has received your report with diagnostic details.
             </p>
             <button
               type="button"
