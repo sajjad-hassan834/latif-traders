@@ -40,6 +40,13 @@ async function runConcurrencyDrill() {
   const token = loginRes.body.token;
   assert(token, 'Must obtain admin JWT');
 
+  // Ensure Walk-in Customer (id = 1) exists first so Wholesale Customer has id > 1
+  await db.run(`
+    INSERT INTO customers (id, name, customer_type, tenant_id)
+    VALUES (1, 'Walk-in Customer', 'Walk-in', ?)
+    ON CONFLICT (id) DO NOTHING
+  `, [testTid]);
+
   // Ensure Wholesale Customer (id > 1) with ample credit limit for concurrency testing
   let testCust = await db.get('SELECT id, current_balance, credit_limit FROM customers WHERE tenant_id = ? AND id > 1 LIMIT 1', [testTid]);
   if (!testCust) {

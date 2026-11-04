@@ -139,8 +139,8 @@ CREATE TABLE IF NOT EXISTS products (
   tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_products_tenant_sku UNIQUE(tenant_id, sku),
   CONSTRAINT uq_products_tenant_id UNIQUE(tenant_id, id),
-  CONSTRAINT fk_products_category_tenant FOREIGN KEY (tenant_id, category_id) REFERENCES categories(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE,
-  CONSTRAINT fk_products_supplier_tenant FOREIGN KEY (tenant_id, supplier_id) REFERENCES suppliers(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_products_category_tenant FOREIGN KEY (tenant_id, category_id) REFERENCES categories(tenant_id, id) ON DELETE SET NULL (category_id) DEFERRABLE INITIALLY IMMEDIATE,
+  CONSTRAINT fk_products_supplier_tenant FOREIGN KEY (tenant_id, supplier_id) REFERENCES suppliers(tenant_id, id) ON DELETE SET NULL (supplier_id) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_products_tenant ON products(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_products_tenant_barcode ON products(tenant_id, barcode);
@@ -162,7 +162,7 @@ CREATE TABLE IF NOT EXISTS batches (
   CONSTRAINT uq_batches_tenant_prod_batch UNIQUE(tenant_id, product_id, batch_no),
   CONSTRAINT uq_batches_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_batches_product_tenant FOREIGN KEY (tenant_id, product_id) REFERENCES products(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
-  CONSTRAINT fk_batches_supplier_tenant FOREIGN KEY (tenant_id, supplier_id) REFERENCES suppliers(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_batches_supplier_tenant FOREIGN KEY (tenant_id, supplier_id) REFERENCES suppliers(tenant_id, id) ON DELETE SET NULL (supplier_id) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_batches_tenant ON batches(tenant_id);
 
@@ -186,8 +186,8 @@ CREATE TABLE IF NOT EXISTS sales (
   tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_sales_tenant_invoice UNIQUE(tenant_id, invoice_no),
   CONSTRAINT uq_sales_tenant_id UNIQUE(tenant_id, id),
-  CONSTRAINT fk_sales_customer_tenant FOREIGN KEY (tenant_id, customer_id) REFERENCES customers(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE,
-  CONSTRAINT fk_sales_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_sales_customer_tenant FOREIGN KEY (tenant_id, customer_id) REFERENCES customers(tenant_id, id) ON DELETE SET NULL (customer_id) DEFERRABLE INITIALLY IMMEDIATE,
+  CONSTRAINT fk_sales_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL (user_id) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_sales_tenant ON sales(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS sale_items (
   CONSTRAINT uq_sale_items_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_sale_items_sale_tenant FOREIGN KEY (tenant_id, sale_id) REFERENCES sales(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
   CONSTRAINT fk_sale_items_product_tenant FOREIGN KEY (tenant_id, product_id) REFERENCES products(tenant_id, id) ON DELETE RESTRICT DEFERRABLE INITIALLY IMMEDIATE,
-  CONSTRAINT fk_sale_items_batch_tenant FOREIGN KEY (tenant_id, batch_id) REFERENCES batches(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_sale_items_batch_tenant FOREIGN KEY (tenant_id, batch_id) REFERENCES batches(tenant_id, id) ON DELETE SET NULL (batch_id) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_sale_items_tenant ON sale_items(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_sale_items_sale ON sale_items(sale_id);
@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   CONSTRAINT uq_purchases_tenant_invoice UNIQUE(tenant_id, invoice_no),
   CONSTRAINT uq_purchases_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_purchases_supplier_tenant FOREIGN KEY (tenant_id, supplier_id) REFERENCES suppliers(tenant_id, id) ON DELETE RESTRICT DEFERRABLE INITIALLY IMMEDIATE,
-  CONSTRAINT fk_purchases_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_purchases_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL (user_id) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_purchases_tenant ON purchases(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_purchases_supplier ON purchases(supplier_id);
@@ -275,7 +275,7 @@ CREATE TABLE IF NOT EXISTS payments (
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_payments_tenant_id UNIQUE(tenant_id, id),
-  CONSTRAINT fk_payments_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_payments_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL (user_id) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_payments_tenant ON payments(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_payments_party ON payments(party_type, party_id);
@@ -381,8 +381,8 @@ CREATE TABLE IF NOT EXISTS expenses (
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_expenses_tenant_id UNIQUE(tenant_id, id),
-  CONSTRAINT fk_expenses_category_tenant FOREIGN KEY (tenant_id, category_id) REFERENCES expense_categories(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE,
-  CONSTRAINT fk_expenses_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_expenses_category_tenant FOREIGN KEY (tenant_id, category_id) REFERENCES expense_categories(tenant_id, id) ON DELETE SET NULL (category_id) DEFERRABLE INITIALLY IMMEDIATE,
+  CONSTRAINT fk_expenses_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL (user_id) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_expenses_tenant ON expenses(tenant_id);
 
@@ -400,7 +400,7 @@ CREATE TABLE IF NOT EXISTS returns (
   tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_returns_tenant_no UNIQUE(tenant_id, return_no),
   CONSTRAINT uq_returns_tenant_id UNIQUE(tenant_id, id),
-  CONSTRAINT fk_returns_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_returns_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL (user_id) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_returns_tenant ON returns(tenant_id);
 
@@ -417,7 +417,7 @@ CREATE TABLE IF NOT EXISTS return_items (
   CONSTRAINT uq_return_items_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_return_items_return_tenant FOREIGN KEY (tenant_id, return_id) REFERENCES returns(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
   CONSTRAINT fk_return_items_product_tenant FOREIGN KEY (tenant_id, product_id) REFERENCES products(tenant_id, id) ON DELETE RESTRICT DEFERRABLE INITIALLY IMMEDIATE,
-  CONSTRAINT fk_return_items_batch_tenant FOREIGN KEY (tenant_id, batch_id) REFERENCES batches(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_return_items_batch_tenant FOREIGN KEY (tenant_id, batch_id) REFERENCES batches(tenant_id, id) ON DELETE SET NULL (batch_id) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_return_items_tenant ON return_items(tenant_id);
 
@@ -436,8 +436,8 @@ CREATE TABLE IF NOT EXISTS stock_adjustments (
   CONSTRAINT uq_stock_adj_tenant_no UNIQUE(tenant_id, adjustment_no),
   CONSTRAINT uq_stock_adj_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_stock_adj_product_tenant FOREIGN KEY (tenant_id, product_id) REFERENCES products(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
-  CONSTRAINT fk_stock_adj_batch_tenant FOREIGN KEY (tenant_id, batch_id) REFERENCES batches(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE,
-  CONSTRAINT fk_stock_adj_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_stock_adj_batch_tenant FOREIGN KEY (tenant_id, batch_id) REFERENCES batches(tenant_id, id) ON DELETE SET NULL (batch_id) DEFERRABLE INITIALLY IMMEDIATE,
+  CONSTRAINT fk_stock_adj_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL (user_id) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_stock_adj_tenant ON stock_adjustments(tenant_id);
 
@@ -457,8 +457,8 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
   tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_inv_movements_tenant_id UNIQUE(tenant_id, id),
   CONSTRAINT fk_inv_mov_product_tenant FOREIGN KEY (tenant_id, product_id) REFERENCES products(tenant_id, id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
-  CONSTRAINT fk_inv_mov_batch_tenant FOREIGN KEY (tenant_id, batch_id) REFERENCES batches(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE,
-  CONSTRAINT fk_inv_mov_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_inv_mov_batch_tenant FOREIGN KEY (tenant_id, batch_id) REFERENCES batches(tenant_id, id) ON DELETE SET NULL (batch_id) DEFERRABLE INITIALLY IMMEDIATE,
+  CONSTRAINT fk_inv_mov_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL (user_id) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_inv_movements_tenant ON inventory_movements(tenant_id);
 
@@ -505,7 +505,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   tenant_id TEXT REFERENCES tenants(id) ON DELETE RESTRICT,
   CONSTRAINT uq_audit_logs_tenant_id UNIQUE(tenant_id, id),
-  CONSTRAINT fk_audit_logs_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_audit_logs_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL (user_id) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_audit_logs_tenant ON audit_logs(tenant_id);
 
@@ -543,8 +543,8 @@ CREATE TABLE IF NOT EXISTS password_reset_requests (
   resolved_at TIMESTAMPTZ,
   resolved_by BIGINT,
   CONSTRAINT uq_pw_resets_tenant_id UNIQUE(tenant_id, id),
-  CONSTRAINT fk_pw_resets_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE,
-  CONSTRAINT fk_pw_resets_resolver_tenant FOREIGN KEY (tenant_id, resolved_by) REFERENCES users(tenant_id, id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE
+  CONSTRAINT fk_pw_resets_user_tenant FOREIGN KEY (tenant_id, user_id) REFERENCES users(tenant_id, id) ON DELETE SET NULL (user_id) DEFERRABLE INITIALLY IMMEDIATE,
+  CONSTRAINT fk_pw_resets_resolver_tenant FOREIGN KEY (tenant_id, resolved_by) REFERENCES users(tenant_id, id) ON DELETE SET NULL (resolved_by) DEFERRABLE INITIALLY IMMEDIATE
 );
 CREATE INDEX IF NOT EXISTS idx_pw_resets_tenant ON password_reset_requests(tenant_id);
 
