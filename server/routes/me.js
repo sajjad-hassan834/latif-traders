@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { db } = require('../config/database');
-
-const ALLOWED_THEMES = ['classic', 'dark', 'green', 'indigo'];
+const { ALLOWED_THEMES } = require('../config/themes');
 
 // PATCH /api/me/preferences - Updates user personal preferences such as theme
 router.patch('/preferences', authenticate, async (req, res) => {

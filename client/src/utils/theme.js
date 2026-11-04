@@ -1,12 +1,9 @@
 import { api } from './api';
+import sharedThemes from '../../../shared/themes.json';
 
-export const APP_THEMES = [
-  { id: 'brand', name: 'ShoppyOS Brand', icon: '🌿', color: '#0F4D3A' },
-  { id: 'classic', name: 'Classic Light', icon: '☀️', color: '#0284C7' },
-  { id: 'dark', name: 'Midnight Dark', icon: '🌙', color: '#0EA5E9' },
-  { id: 'green', name: 'Emerald Green', icon: '🍃', color: '#059669' },
-  { id: 'indigo', name: 'Royal Indigo', icon: '🔮', color: '#4F46E5' }
-];
+export const APP_THEMES = sharedThemes.themes;
+export const ALLOWED_THEMES = sharedThemes.allowedThemes;
+export const DEFAULT_THEME = sharedThemes.defaultTheme;
 
 export const PUBLIC_THEMES = [
   { id: 'light', name: 'Light' },
@@ -24,8 +21,8 @@ const PUBLIC_THEME_KEY = 'shopos-public-theme';
 export function normalizeAppTheme(raw) {
   if (raw === 'light') return 'classic';
   if (raw === 'emerald') return 'green';
-  if (['brand', 'classic', 'dark', 'green', 'indigo'].includes(raw)) return raw;
-  return 'classic';
+  if (ALLOWED_THEMES.includes(raw)) return raw;
+  return DEFAULT_THEME;
 }
 
 export function normalizePublicTheme(raw) {
@@ -80,14 +77,10 @@ export function applyAppTheme(themeId, skipServerSync = false) {
       });
     }
   }
-
-  window.dispatchEvent(new CustomEvent('app_theme_changed', { detail: active }));
-  window.dispatchEvent(new CustomEvent('theme_changed', { detail: active }));
-  return active;
 }
 
 /**
- * Activate Scope A: Public Site Theme (Landing, Login, Register)
+ * Activate Scope A: Public Theme
  * Sets `data-public-theme` on <html> and removes `data-app-theme`.
  */
 export function applyPublicTheme(themeId) {
@@ -96,56 +89,52 @@ export function applyPublicTheme(themeId) {
 
   const root = document.documentElement;
   root.removeAttribute('data-app-theme');
+  root.removeAttribute('data-theme');
   root.setAttribute('data-public-theme', active);
-  root.style.colorScheme = active === 'dark' ? 'dark' : 'light';
+  root.style.colorScheme = active;
 
   if (document.body) {
     document.body.className = `public-theme-${active}`;
+    document.body.setAttribute('data-public-theme', active);
+    document.body.removeAttribute('data-app-theme');
+    document.body.removeAttribute('data-theme');
   }
-
-  window.dispatchEvent(new CustomEvent('public_theme_changed', { detail: active }));
-  return active;
 }
 
-/**
- * Toggle between Public Light and Dark
- */
+export function cycleAppTheme() {
+  const current = getSavedAppTheme();
+  const themeIds = ALLOWED_THEMES;
+  const currentIndex = themeIds.indexOf(current);
+  const nextTheme = themeIds[(currentIndex + 1) % themeIds.length];
+  applyAppTheme(nextTheme);
+  return nextTheme;
+}
+
 export function togglePublicTheme() {
   const current = getSavedPublicTheme();
-  const next = current === 'dark' ? 'light' : 'dark';
-  return applyPublicTheme(next);
+  const nextTheme = current === 'dark' ? 'light' : 'dark';
+  applyPublicTheme(nextTheme);
+  return nextTheme;
 }
 
-/**
- * Toggle between App Themes (Classic -> Dark -> Green -> Indigo -> Classic)
- */
-export function toggleAppTheme() {
-  const current = getSavedAppTheme();
-  const themeIds = APP_THEMES.map(t => t.id);
-  const nextIndex = (themeIds.indexOf(current) + 1) % themeIds.length;
-  return applyAppTheme(themeIds[nextIndex]);
+export function getCurrentTheme() {
+  return getSavedAppTheme();
 }
 
-/**
- * Called when logging out or navigating to public pages:
- * Clears app theme attribute so portals and public pages don't leak.
- */
-export function activatePublicScope() {
-  const pubTheme = getSavedPublicTheme();
-  applyPublicTheme(pubTheme);
+export function setTheme(themeId) {
+  applyAppTheme(themeId);
 }
 
-/**
- * Called when logging in or entering authenticated app:
- * Ensures app theme attribute is active on <html>.
- */
-export function activateAppScope(preferredTheme) {
-  const appTheme = preferredTheme ? normalizeAppTheme(preferredTheme) : getSavedAppTheme();
-  applyAppTheme(appTheme, true);
-}
-
-// Backwards-compatible aliases
-export const applyTheme = applyAppTheme;
-export const toggleTheme = toggleAppTheme;
 export const AVAILABLE_THEMES = APP_THEMES;
-
+export default {
+  applyAppTheme,
+  applyPublicTheme,
+  getSavedAppTheme,
+  getSavedPublicTheme,
+  cycleAppTheme,
+  togglePublicTheme,
+  getCurrentTheme,
+  setTheme,
+  APP_THEMES,
+  PUBLIC_THEMES
+};

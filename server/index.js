@@ -81,6 +81,12 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 app.use('/uploads', express.static(UPLOADS_DIR));
 
+// Public subscription plans endpoint
+const { PLANS } = require('./config/plans');
+app.get('/api/plans', (req, res) => {
+  res.json({ success: true, plans: Object.values(PLANS) });
+});
+
 // Health check with database latency measurement
 app.get('/api/health', async (req, res) => {
   try {

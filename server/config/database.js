@@ -84,7 +84,7 @@ function initializeDatabase() {
       role TEXT NOT NULL DEFAULT 'sales',
       status TEXT NOT NULL DEFAULT 'active',
       permissions_json TEXT,
-      theme TEXT DEFAULT 'classic',
+      theme TEXT DEFAULT 'brand',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );

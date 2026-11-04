@@ -1,3 +1,4 @@
+const { getPlanLimits } = require('../config/plans');
 const bcrypt = require('bcryptjs');
 const { db } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
