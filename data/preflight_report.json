@@ -1,0 +1,211 @@
+{
+  "dbPath": "C:\\Users\\ALLAH\\OneDrive\\Documents\\Projects\\LATIF TRADERS\\data\\temp_corrupt_ctrl_8.db",
+  "scannedAt": "2026-11-04T06:49:52.475Z",
+  "issuesFound": 0,
+  "details": {
+    "numericPrecision": {
+      "totalExceedingPrecision": 0,
+      "proposals": [
+        {
+          "table": "sales",
+          "column": "subtotal",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "sales",
+          "column": "discount",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "sales",
+          "column": "tax",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "sales",
+          "column": "grand_total",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "sales",
+          "column": "paid_amount",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "sales",
+          "column": "balance_due",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "sale_items",
+          "column": "quantity",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "sale_items",
+          "column": "unit_price",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "sale_items",
+          "column": "cost_price",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "sale_items",
+          "column": "discount",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "sale_items",
+          "column": "total_price",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "purchases",
+          "column": "subtotal",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "purchases",
+          "column": "discount",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "purchases",
+          "column": "tax",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "purchases",
+          "column": "grand_total",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "purchases",
+          "column": "paid_amount",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "purchases",
+          "column": "balance_due",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "purchase_items",
+          "column": "quantity",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "purchase_items",
+          "column": "unit_price",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "purchase_items",
+          "column": "discount",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "purchase_items",
+          "column": "total_price",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "payments",
+          "column": "amount",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "expenses",
+          "column": "amount",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "batches",
+          "column": "quantity",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "batches",
+          "column": "purchase_price",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "batches",
+          "column": "sale_price",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "batches",
+          "column": "wholesale_price",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "customers",
+          "column": "opening_balance",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "customers",
+          "column": "current_balance",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "customers",
+          "column": "credit_limit",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "suppliers",
+          "column": "opening_balance",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        },
+        {
+          "table": "suppliers",
+          "column": "current_balance",
+          "excessCount": 0,
+          "proposed": "NUMERIC(14,2)"
+        }
+      ]
+    },
+    "invalidDates": 0,
+    "businessDayMismatches": 0,
+    "orphanForeignKeys": 0,
+    "duplicateKeyCount": 0,
+    "nullTenantCount": 1,
+    "negativeStockBatches": 0,
+    "customerBalanceMismatches": 3
+  }
+}
