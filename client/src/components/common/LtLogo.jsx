@@ -1,28 +1,29 @@
 import React from 'react';
+import BrandLogo from './BrandLogo';
 
 /**
- * ShopOS brand logo image.
+ * ShoppyOS brand logo wrapper.
  * Props:
- *   size  – width & height in px (default 36)
+ *   size      – width & height in px (default 36)
+ *   variant   – 'symbol' | 'horizontal' | 'stacked' | 'wordmark'
+ *   tone      – 'auto' | 'dark' | 'light' | 'mono'
  *   className – optional CSS class
- *   style – optional inline styles
+ *   style     – optional inline styles
  */
-export default function LtLogo({ size = 36, className = '', style = {} }) {
+export default function LtLogo({
+  size = 36,
+  variant = 'symbol',
+  tone = 'auto',
+  className = '',
+  style = {}
+}) {
   return (
-    <img
-      src="/logo.png"
-      alt="ShopOS Logo"
-      width={size}
-      height={size}
+    <BrandLogo
+      variant={variant}
+      tone={tone}
+      size={size}
       className={className}
-      style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        borderRadius: '8px',
-        objectFit: 'contain',
-        display: 'block',
-        ...style
-      }}
+      style={style}
     />
   );
 }

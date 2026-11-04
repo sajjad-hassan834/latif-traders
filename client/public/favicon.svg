@@ -1,26 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <!-- Navy L shape -->
-  <rect x="8" y="8" width="18" height="68" rx="2" fill="#1a2e5e"/>
-  <rect x="8" y="62" width="46" height="18" rx="2" fill="#1a2e5e"/>
-  <!-- Cyan T shape -->
-  <rect x="32" y="8" width="60" height="18" rx="2" fill="#00aeef"/>
-  <rect x="72" y="8" width="18" height="54" rx="2" fill="#00aeef"/>
-  <!-- Snowflake in centre of intersection -->
-  <g transform="translate(50,45)" fill="#00aeef">
-    <!-- vertical bar -->
-    <rect x="-2" y="-14" width="4" height="28" rx="2"/>
-    <!-- horizontal bar -->
-    <rect x="-14" y="-2" width="28" height="4" rx="2"/>
-    <!-- diagonal 1 -->
-    <rect x="-2" y="-14" width="4" height="28" rx="2" transform="rotate(60)"/>
-    <!-- diagonal 2 -->
-    <rect x="-2" y="-14" width="4" height="28" rx="2" transform="rotate(-60)"/>
-    <!-- arm tips -->
-    <rect x="-2" y="-18" width="4" height="8" rx="2" transform="rotate(0) translate(0,-4)"/>
-    <rect x="-2" y="-18" width="4" height="8" rx="2" transform="rotate(60) translate(0,-4)"/>
-    <rect x="-2" y="-18" width="4" height="8" rx="2" transform="rotate(120) translate(0,-4)"/>
-    <rect x="-2" y="-18" width="4" height="8" rx="2" transform="rotate(180) translate(0,-4)"/>
-    <rect x="-2" y="-18" width="4" height="8" rx="2" transform="rotate(240) translate(0,-4)"/>
-    <rect x="-2" y="-18" width="4" height="8" rx="2" transform="rotate(300) translate(0,-4)"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="#0F4D3A"/>
+  <path d="M17 17C17 15.3 18.3 14 20 14H37L47 24V47L42.5 44L38 47L33.5 44L29 47L24.5 44L20 47L17 44V17Z" fill="#FFFFFF"/>
+  <path d="M37 14V24H47L37 14Z" fill="#D3DFD8"/>
+  <rect x="22" y="27" width="16" height="3" rx="1.5" fill="#0F4D3A"/>
+  <rect x="22" y="33" width="10" height="3" rx="1.5" fill="#0F4D3A"/>
+  <circle cx="39.5" cy="37.5" r="5.5" fill="#F4A62A"/>
+  <circle cx="39.5" cy="37.5" r="3.2" fill="#0F4D3A" opacity="0.15"/>
 </svg>

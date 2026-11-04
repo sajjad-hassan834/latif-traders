@@ -162,7 +162,7 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
                 color: plan === 'pro' ? '#38bdf8' : (plan === 'enterprise' ? '#c084fc' : '#94a3b8'),
                 border: `1px solid ${plan === 'pro' ? 'rgba(56, 189, 248, 0.4)' : (plan === 'enterprise' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(148, 163, 184, 0.3)')}`
               }}>
-                ShopOS {plan === 'enterprise' ? 'Enterprise' : (plan === 'pro' ? 'Pro' : 'Free')}
+                ShoppyOS {plan === 'enterprise' ? 'Enterprise' : (plan === 'pro' ? 'Pro' : 'Free')}
               </span>
             </div>
           </div>

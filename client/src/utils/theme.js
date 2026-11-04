@@ -1,6 +1,7 @@
 import { api } from './api';
 
 export const APP_THEMES = [
+  { id: 'brand', name: 'ShoppyOS Brand', icon: '🌿', color: '#0F4D3A' },
   { id: 'classic', name: 'Classic Light', icon: '☀️', color: '#0284C7' },
   { id: 'dark', name: 'Midnight Dark', icon: '🌙', color: '#0EA5E9' },
   { id: 'green', name: 'Emerald Green', icon: '🍃', color: '#059669' },
@@ -23,7 +24,7 @@ const PUBLIC_THEME_KEY = 'shopos-public-theme';
 export function normalizeAppTheme(raw) {
   if (raw === 'light') return 'classic';
   if (raw === 'emerald') return 'green';
-  if (['classic', 'dark', 'green', 'indigo'].includes(raw)) return raw;
+  if (['brand', 'classic', 'dark', 'green', 'indigo'].includes(raw)) return raw;
   return 'classic';
 }
 
@@ -38,6 +39,10 @@ export function getSavedAppTheme() {
 }
 
 export function getSavedPublicTheme() {
+  if (typeof window !== 'undefined' && window.location?.search) {
+    const qTheme = new URLSearchParams(window.location.search).get('theme');
+    if (qTheme === 'dark' || qTheme === 'light') return qTheme;
+  }
   const saved = localStorage.getItem(PUBLIC_THEME_KEY);
   return normalizePublicTheme(saved);
 }

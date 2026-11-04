@@ -1,3 +1,4 @@
+import BrandLogo from '../components/common/BrandLogo';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getSavedPublicTheme, applyPublicTheme } from '../utils/theme';
@@ -7,6 +8,8 @@ import {
   User,
   Mail,
   Lock,
+  Eye,
+  EyeOff,
   Phone,
   Building,
   MapPin,
@@ -32,6 +35,8 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
 
   const [step, setStep] = useState(1); // 1: Account, 2: Business, 3: Done
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [theme, setTheme] = useState(() => getSavedPublicTheme());
   const isDark = theme === 'dark';
@@ -81,23 +86,23 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
   });
 
   const t = {
-    pageBg: isDark ? '#0b1120' : '#f0f4f8',
-    textColor: isDark ? '#f8fafc' : '#0f172a',
-    headerBg: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-    headerBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
-    cardBg: isDark ? '#131d31' : '#ffffff',
-    cardBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
-    cardShadow: isDark ? '0 25px 60px -15px rgba(0, 0, 0, 0.7)' : '0 20px 60px rgba(0,0,0,0.08)',
-    inputBg: isDark ? '#0f172a' : '#ffffff',
-    inputBorder: isDark ? 'rgba(255, 255, 255, 0.14)' : '#cbd5e1',
-    inputText: isDark ? '#ffffff' : '#0f172a',
-    labelColor: isDark ? '#cbd5e1' : '#334155',
-    subText: isDark ? '#94a3b8' : '#64748b',
-    titleColor: isDark ? '#ffffff' : '#0f172a',
-    boxBg: isDark ? '#0f172a' : '#f8fafc',
-    boxBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
-    tealBtn: 'linear-gradient(135deg, #0266FE 0%, #1D4ED8 100%)',
-    tealSolid: '#0266FE'
+    pageBg: 'var(--bg)',
+    textColor: 'var(--ink)',
+    headerBg: 'color-mix(in srgb, var(--bg) 92%, transparent)',
+    headerBorder: 'var(--line)',
+    cardBg: 'var(--paper)',
+    cardBorder: 'var(--line)',
+    cardShadow: 'var(--pub-card-shadow)',
+    inputBg: 'var(--pub-input-bg)',
+    inputBorder: 'var(--line)',
+    inputText: 'var(--ink)',
+    labelColor: 'var(--ink)',
+    subText: 'var(--mut)',
+    titleColor: 'var(--ink)',
+    boxBg: 'var(--soft)',
+    boxBorder: 'var(--line)',
+    goldBtn: 'var(--gold)',
+    goldBtnText: '#241800'
   };
 
   const handleChange = (field, value) => {
@@ -218,9 +223,13 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
   return (
     <div style={{
       minHeight: '100vh',
+      width: '100%',
+      maxWidth: '100vw',
+      boxSizing: 'border-box',
+      overflowX: 'hidden',
       background: t.pageBg,
       color: t.textColor,
-      fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+      fontFamily: 'var(--font-body)',
       display: 'flex',
       flexDirection: 'column'
     }}>
@@ -229,7 +238,9 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        padding: '16px 32px',
+        width: '100%',
+        boxSizing: 'border-box',
+        padding: '12px 16px',
         borderBottom: `1px solid ${t.headerBorder}`,
         display: 'flex',
         alignItems: 'center',
@@ -241,22 +252,9 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
       }}>
         <div
           onClick={onNavigateLanding}
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
         >
-          <img
-            src="/logo.png"
-            alt="ShopOS Logo"
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '9px',
-              objectFit: 'contain',
-              boxShadow: '0 2px 8px rgba(2, 102, 254, 0.25)'
-            }}
-          />
-          <span style={{ fontSize: '20px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
-            Shop<span style={{ color: '#0266FE' }}>OS</span>
-          </span>
+          <BrandLogo variant="horizontal" size={32} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '14px' }}>
@@ -267,17 +265,11 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
               style={{
                 padding: '8px 18px',
                 borderRadius: '8px',
-                border: '1px solid #0266FE',
-                background: '#0266FE',
-                color: '#ffffff',
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontSize: '13px',
-                boxShadow: '0 2px 8px rgba(2, 102, 254, 0.25)',
-                transition: 'background 0.2s'
+                border: '1px solid var(--gold)',
+                background: 'var(--gold)', color: '#241800', fontWeight: 600, cursor: 'pointer', fontSize: '13px', borderRadius: '999px', border: 'none'
               }}
-              onMouseEnter={e => e.currentTarget.style.background = '#0052cc'}
-              onMouseLeave={e => e.currentTarget.style.background = '#0266FE'}
+              onMouseEnter={e => e.currentTarget.style.background = '#e59920'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--gold)'}
             >
               Sign In
             </button>
@@ -288,19 +280,24 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
       {/* Main Registration Content */}
       <main style={{
         flex: 1,
+        width: '100%',
+        maxWidth: '100vw',
+        boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: '36px 20px'
+        justifyContent: 'flex-start',
+        padding: '32px 16px 48px',
+        overflowX: 'hidden'
       }}>
         <div style={{
-          width: '100%',
-          maxWidth: '560px',
+          width: 'min(560px, 100%)',
+          maxWidth: '100%',
+          margin: 'auto 0',
           background: t.cardBg,
           borderRadius: '20px',
           border: `1px solid ${t.cardBorder}`,
-          padding: '36px 32px',
+          padding: '32px 20px',
           boxShadow: t.cardShadow,
           transition: 'all 0.3s ease'
         }}>
@@ -319,8 +316,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                 width: '28px',
                 height: '28px',
                 borderRadius: '50%',
-                background: step >= 1 ? '#0266FE' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
-                color: step >= 1 ? '#fff' : (isDark ? '#94a3b8' : '#64748b'),
+                background: step >= 1 ? (isDark ? 'var(--leaf)' : 'var(--deep)') : 'var(--line)', color: step >= 1 ? (isDark ? '#0C2B22' : '#ffffff') : 'var(--mut)',
                 fontSize: '13px',
                 fontWeight: 700,
                 display: 'flex',
@@ -334,7 +330,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
             <div style={{
               width: '36px',
               height: '2px',
-              background: step >= 2 ? '#0266FE' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
+              background: step >= 2 ? (isDark ? 'var(--leaf)' : 'var(--deep)') : 'var(--line)',
               transition: 'all 0.2s'
             }} />
 
@@ -344,8 +340,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                 width: '28px',
                 height: '28px',
                 borderRadius: '50%',
-                background: step >= 2 ? '#0266FE' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
-                color: step >= 2 ? '#fff' : (isDark ? '#94a3b8' : '#64748b'),
+                background: step >= 2 ? (isDark ? 'var(--leaf)' : 'var(--deep)') : 'var(--line)', color: step >= 2 ? (isDark ? '#0C2B22' : '#ffffff') : 'var(--mut)',
                 fontSize: '13px',
                 fontWeight: 700,
                 display: 'flex',
@@ -359,7 +354,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
             <div style={{
               width: '36px',
               height: '2px',
-              background: step >= 3 ? '#0266FE' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
+              background: step >= 3 ? (isDark ? 'var(--leaf)' : 'var(--deep)') : 'var(--line)',
               transition: 'all 0.2s'
             }} />
 
@@ -369,8 +364,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                 width: '28px',
                 height: '28px',
                 borderRadius: '50%',
-                background: step >= 3 ? '#10b981' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0'),
-                color: step >= 3 ? '#fff' : (isDark ? '#94a3b8' : '#64748b'),
+                background: step >= 3 ? (isDark ? 'var(--leaf)' : 'var(--deep)') : 'var(--line)', color: step >= 3 ? (isDark ? '#0C2B22' : '#ffffff') : 'var(--mut)',
                 fontSize: '13px',
                 fontWeight: 700,
                 display: 'flex',
@@ -419,8 +413,8 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: t.labelColor, marginBottom: '6px' }}>
                     Full Name *
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <User className="w-4 h-4 text-slate-400" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <User size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--mut)', pointerEvents: 'none' }} />
                     <input
                       type="text"
                       required
@@ -429,14 +423,16 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       onChange={e => handleChange('full_name', e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '10px 14px 10px 38px',
-                        borderRadius: '8px',
+                        height: '46px',
+                        padding: '0 14px 0 44px',
+                        borderRadius: '10px',
                         background: t.inputBg,
                         border: `1px solid ${t.inputBorder}`,
                         color: t.inputText,
                         fontSize: '14px',
                         boxSizing: 'border-box',
-                        outline: 'none'
+                        outline: 'none',
+                        transition: 'border-color 0.2s, box-shadow 0.2s'
                       }}
                     />
                   </div>
@@ -447,8 +443,8 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: t.labelColor, marginBottom: '6px' }}>
                     Email Address *
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <Mail className="w-4 h-4 text-slate-400" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <Mail size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--mut)', pointerEvents: 'none' }} />
                     <input
                       type="email"
                       required
@@ -457,14 +453,16 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       onChange={e => handleChange('email', e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '10px 14px 10px 38px',
-                        borderRadius: '8px',
+                        height: '46px',
+                        padding: '0 14px 0 44px',
+                        borderRadius: '10px',
                         background: t.inputBg,
                         border: `1px solid ${t.inputBorder}`,
                         color: t.inputText,
                         fontSize: '14px',
                         boxSizing: 'border-box',
-                        outline: 'none'
+                        outline: 'none',
+                        transition: 'border-color 0.2s, box-shadow 0.2s'
                       }}
                     />
                   </div>
@@ -482,33 +480,56 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       </span>
                     )}
                   </div>
-                  <div style={{ position: 'relative' }}>
-                    <Lock className="w-4 h-4 text-slate-400" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <Lock size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--mut)', pointerEvents: 'none' }} />
                     <input
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       required
                       placeholder="At least 8 characters"
                       value={formData.password}
                       onChange={e => handleChange('password', e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '10px 14px 10px 38px',
-                        borderRadius: '8px',
+                        height: '46px',
+                        padding: '0 44px 0 44px',
+                        borderRadius: '10px',
                         background: t.inputBg,
                         border: `1px solid ${t.inputBorder}`,
                         color: t.inputText,
                         fontSize: '14px',
                         boxSizing: 'border-box',
-                        outline: 'none'
+                        outline: 'none',
+                        transition: 'border-color 0.2s, box-shadow 0.2s'
                       }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '14px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--mut)',
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
 
                   {/* Password Strength Bar */}
                   {formData.password && (
                     <div style={{
-                      marginTop: '6px',
-                      height: '4px',
+                      marginTop: '10px',
+                      height: '5px',
                       background: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
                       borderRadius: '4px',
                       overflow: 'hidden'
@@ -528,26 +549,49 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: t.labelColor, marginBottom: '6px' }}>
                     Confirm Password *
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <Lock className="w-4 h-4 text-slate-400" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <Lock size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--mut)', pointerEvents: 'none' }} />
                     <input
-                      type="password"
+                      type={showConfirmPassword ? 'text' : 'password'}
                       required
                       placeholder="Re-enter your password"
                       value={formData.confirm_password}
                       onChange={e => handleChange('confirm_password', e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '10px 14px 10px 38px',
-                        borderRadius: '8px',
+                        height: '46px',
+                        padding: '0 44px 0 44px',
+                        borderRadius: '10px',
                         background: t.inputBg,
                         border: `1px solid ${t.inputBorder}`,
                         color: t.inputText,
                         fontSize: '14px',
                         boxSizing: 'border-box',
-                        outline: 'none'
+                        outline: 'none',
+                        transition: 'border-color 0.2s, box-shadow 0.2s'
                       }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '14px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--mut)',
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
 
@@ -556,8 +600,8 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: t.labelColor, marginBottom: '6px' }}>
                     Phone Number *
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <Phone className="w-4 h-4 text-slate-400" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <Phone size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--mut)', pointerEvents: 'none' }} />
                     <input
                       type="text"
                       required
@@ -566,14 +610,16 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       onChange={e => handleChange('phone', e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '10px 14px 10px 38px',
-                        borderRadius: '8px',
+                        height: '46px',
+                        padding: '0 14px 0 44px',
+                        borderRadius: '10px',
                         background: t.inputBg,
                         border: `1px solid ${t.inputBorder}`,
                         color: t.inputText,
                         fontSize: '14px',
                         boxSizing: 'border-box',
-                        outline: 'none'
+                        outline: 'none',
+                        transition: 'border-color 0.2s, box-shadow 0.2s'
                       }}
                     />
                   </div>
@@ -588,8 +634,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                     padding: '13px',
                     borderRadius: '8px',
                     border: 'none',
-                    background: '#0266FE',
-                    color: '#ffffff',
+                    background: 'var(--gold)', color: '#241800', borderRadius: '999px', boxShadow: '0 4px 14px rgba(244, 166, 42, 0.35)',
                     fontSize: '15px',
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -597,11 +642,11 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    boxShadow: '0 4px 14px rgba(2, 102, 254, 0.35)',
+                    boxShadow: '0 4px 14px rgba(244, 166, 42, 0.35)',
                     transition: 'all 0.2s'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#0052cc'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#0266FE'}
+                  onMouseEnter={e => e.currentTarget.style.background = '#e59920'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'var(--gold)'}
                 >
                   <span>Continue</span>
                 </button>
@@ -615,7 +660,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#0266FE',
+                      color: 'var(--leaf)',
                       fontWeight: 700,
                       cursor: 'pointer',
                       padding: 0
@@ -646,8 +691,8 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: t.labelColor, marginBottom: '6px' }}>
                     Business Name *
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <Building className="w-4 h-4 text-slate-400" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <Building size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--mut)', pointerEvents: 'none' }} />
                     <input
                       type="text"
                       required
@@ -656,14 +701,16 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       onChange={e => handleChange('business_name', e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '10px 14px 10px 38px',
-                        borderRadius: '8px',
+                        height: '46px',
+                        padding: '0 14px 0 44px',
+                        borderRadius: '10px',
                         background: t.inputBg,
                         border: `1px solid ${t.inputBorder}`,
                         color: t.inputText,
                         fontSize: '14px',
                         boxSizing: 'border-box',
-                        outline: 'none'
+                        outline: 'none',
+                        transition: 'border-color 0.2s, box-shadow 0.2s'
                       }}
                     />
                   </div>
@@ -680,8 +727,9 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       onChange={e => handleChange('business_type', e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '8px',
+                        height: '46px',
+                        padding: '0 14px',
+                        borderRadius: '10px',
                         background: t.inputBg,
                         border: `1px solid ${t.inputBorder}`,
                         color: t.inputText,
@@ -732,8 +780,8 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: t.labelColor, marginBottom: '6px' }}>
                     City / Location *
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <MapPin className="w-4 h-4 text-slate-400" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <MapPin size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--mut)', pointerEvents: 'none' }} />
                     <input
                       type="text"
                       required
@@ -742,14 +790,16 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       onChange={e => handleChange('city', e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '10px 14px 10px 38px',
-                        borderRadius: '8px',
+                        height: '46px',
+                        padding: '0 14px 0 44px',
+                        borderRadius: '10px',
                         background: t.inputBg,
                         border: `1px solid ${t.inputBorder}`,
                         color: t.inputText,
                         fontSize: '14px',
                         boxSizing: 'border-box',
-                        outline: 'none'
+                        outline: 'none',
+                        transition: 'border-color 0.2s, box-shadow 0.2s'
                       }}
                     />
                   </div>
@@ -765,8 +815,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                     padding: '13px',
                     borderRadius: '8px',
                     border: 'none',
-                    background: '#0266FE',
-                    color: '#ffffff',
+                    background: 'var(--gold)', color: '#241800', borderRadius: '999px', boxShadow: '0 4px 14px rgba(244, 166, 42, 0.35)',
                     fontSize: '15px',
                     fontWeight: 700,
                     cursor: loading ? 'not-allowed' : 'pointer',
@@ -774,12 +823,12 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
-                    boxShadow: '0 4px 14px rgba(2, 102, 254, 0.35)',
+                    boxShadow: '0 4px 14px rgba(244, 166, 42, 0.35)',
                     transition: 'all 0.2s',
                     opacity: loading ? 0.8 : 1
                   }}
-                  onMouseEnter={e => !loading && (e.currentTarget.style.background = '#0052cc')}
-                  onMouseLeave={e => !loading && (e.currentTarget.style.background = '#0266FE')}
+                  onMouseEnter={e => !loading && (e.currentTarget.style.background = '#e59920')}
+                  onMouseLeave={e => !loading && (e.currentTarget.style.background = 'var(--gold)')}
                 >
                   {loading ? (
                     <>
@@ -870,9 +919,9 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       type="checkbox"
                       checked={checkedItems.product}
                       onChange={() => {}}
-                      style={{ accentColor: '#0266FE', width: '16px', height: '16px', cursor: 'pointer' }}
+                      style={{ accentColor: 'var(--deep)', width: '16px', height: '16px', cursor: 'pointer' }}
                     />
-                    <Package className="w-4 h-4 text-slate-400" />
+                    <Package className="w-4 h-4" style={{ color: 'var(--mut)', position: 'absolute', left: '12px', top: '12px' }} />
                     <span style={{ textDecoration: checkedItems.product ? 'line-through' : 'none' }}>
                       Add your first product
                     </span>
@@ -894,9 +943,9 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       type="checkbox"
                       checked={checkedItems.sale}
                       onChange={() => {}}
-                      style={{ accentColor: '#0266FE', width: '16px', height: '16px', cursor: 'pointer' }}
+                      style={{ accentColor: 'var(--deep)', width: '16px', height: '16px', cursor: 'pointer' }}
                     />
-                    <ShoppingCart className="w-4 h-4 text-slate-400" />
+                    <ShoppingCart className="w-4 h-4" style={{ color: 'var(--mut)', position: 'absolute', left: '12px', top: '12px' }} />
                     <span style={{ textDecoration: checkedItems.sale ? 'line-through' : 'none' }}>
                       Make your first sale
                     </span>
@@ -918,9 +967,9 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       type="checkbox"
                       checked={checkedItems.customer}
                       onChange={() => {}}
-                      style={{ accentColor: '#0266FE', width: '16px', height: '16px', cursor: 'pointer' }}
+                      style={{ accentColor: 'var(--deep)', width: '16px', height: '16px', cursor: 'pointer' }}
                     />
-                    <Users className="w-4 h-4 text-slate-400" />
+                    <Users className="w-4 h-4" style={{ color: 'var(--mut)', position: 'absolute', left: '12px', top: '12px' }} />
                     <span style={{ textDecoration: checkedItems.customer ? 'line-through' : 'none' }}>
                       Add a customer
                     </span>
@@ -942,9 +991,9 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                       type="checkbox"
                       checked={checkedItems.invoice}
                       onChange={() => {}}
-                      style={{ accentColor: '#0266FE', width: '16px', height: '16px', cursor: 'pointer' }}
+                      style={{ accentColor: 'var(--deep)', width: '16px', height: '16px', cursor: 'pointer' }}
                     />
-                    <ReceiptText className="w-4 h-4 text-slate-400" />
+                    <ReceiptText className="w-4 h-4" style={{ color: 'var(--mut)', position: 'absolute', left: '12px', top: '12px' }} />
                     <span style={{ textDecoration: checkedItems.invoice ? 'line-through' : 'none' }}>
                       Set up invoice details
                     </span>
@@ -961,8 +1010,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                   padding: '14px',
                   borderRadius: '10px',
                   border: 'none',
-                  background: '#0266FE',
-                  color: '#ffffff',
+                  background: 'var(--gold)', color: '#241800', borderRadius: '999px', boxShadow: '0 4px 14px rgba(244, 166, 42, 0.35)',
                   fontSize: '16px',
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -973,8 +1021,8 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                   boxShadow: '0 6px 20px rgba(2, 102, 254, 0.4)',
                   transition: 'all 0.2s'
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#0052cc'}
-                onMouseLeave={e => e.currentTarget.style.background = '#0266FE'}
+                onMouseEnter={e => e.currentTarget.style.background = '#e59920'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--gold)'}
               >
                 <span>Go to Dashboard</span>
               </button>

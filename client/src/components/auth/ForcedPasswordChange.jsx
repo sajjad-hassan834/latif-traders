@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, ShieldAlert, CheckCircle, AlertTriangle, ArrowRight, LogOut } from 'lucide-react';
 import { api } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import BrandLogo from '../common/BrandLogo';
 
 export default function ForcedPasswordChange({ onSuccess }) {
   const { user, logout } = useAuth();
@@ -61,39 +62,54 @@ export default function ForcedPasswordChange({ onSuccess }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+      background: 'var(--bg, #F2F6F3)',
+      color: 'var(--ink, #0C2B22)',
       padding: '1.5rem',
-      fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+      fontFamily: 'var(--font-body, system-ui, -apple-system, sans-serif)',
+      boxSizing: 'border-box'
     }}>
       <div style={{
         width: '100%',
         maxWidth: '460px',
-        background: '#ffffff',
-        borderRadius: '16px',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
-        padding: '2rem',
+        background: 'var(--paper, #FFFFFF)',
+        border: '1px solid var(--line, #D3DFD8)',
+        borderRadius: '20px',
+        boxShadow: 'var(--pub-card-shadow, 0 20px 25px -5px rgba(0, 0, 0, 0.1))',
+        padding: '2.25rem',
         boxSizing: 'border-box'
       }}>
-        {/* Header Icon & Title */}
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        {/* Brand Logo Lockup */}
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+          <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'center' }}>
+            <BrandLogo variant="horizontal" size={32} />
+          </div>
+
           <div style={{
-            width: '56px',
-            height: '56px',
+            width: '52px',
+            height: '52px',
             borderRadius: '14px',
-            background: '#FEF3C7',
-            color: '#D97706',
+            background: 'rgba(244, 166, 42, 0.15)',
+            color: 'var(--gold, #F4A62A)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: '1rem'
+            marginBottom: '0.75rem'
           }}>
-            <ShieldAlert size={30} />
+            <ShieldAlert size={28} />
           </div>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0F172A', margin: '0 0 0.5rem' }}>
+
+          <h2 style={{
+            fontFamily: 'var(--font-display, inherit)',
+            fontSize: '1.4rem',
+            fontWeight: 800,
+            color: 'var(--ink, #0C2B22)',
+            margin: '0 0 0.5rem',
+            letterSpacing: '-0.02em'
+          }}>
             Password Change Required
           </h2>
-          <p style={{ fontSize: '0.875rem', color: '#64748B', margin: 0, lineHeight: 1.45 }}>
-            Hello <strong>{user?.username}</strong>, your account requires a password update before you can access the application.
+          <p style={{ fontSize: '0.9rem', color: 'var(--mut, #4C6258)', margin: 0, lineHeight: 1.5 }}>
+            Hello <strong style={{ color: 'var(--ink, #0C2B22)' }}>{user?.username}</strong>, your account requires a password update before you can access the application.
           </p>
         </div>
 
@@ -101,10 +117,10 @@ export default function ForcedPasswordChange({ onSuccess }) {
         {errorMsg && (
           <div style={{
             padding: '0.75rem 1rem',
-            background: '#FEF2F2',
-            border: '1px solid #FECACA',
-            borderRadius: '8px',
-            color: '#DC2626',
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '10px',
+            color: '#ef4444',
             fontSize: '0.85rem',
             display: 'flex',
             alignItems: 'center',
@@ -119,10 +135,10 @@ export default function ForcedPasswordChange({ onSuccess }) {
         {successMsg && (
           <div style={{
             padding: '0.75rem 1rem',
-            background: '#ECFDF5',
-            border: '1px solid #A7F3D0',
-            borderRadius: '8px',
-            color: '#065F46',
+            background: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            borderRadius: '10px',
+            color: '#10b981',
             fontSize: '0.85rem',
             display: 'flex',
             alignItems: 'center',
@@ -135,13 +151,13 @@ export default function ForcedPasswordChange({ onSuccess }) {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--ink, #0C2B22)', marginBottom: '0.4rem' }}>
               Current (or Temporary) Password *
             </label>
             <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: '#94A3B8' }} />
+              <Lock size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--mut, #4C6258)', pointerEvents: 'none' }} />
               <input
                 type="password"
                 required
@@ -150,24 +166,27 @@ export default function ForcedPasswordChange({ onSuccess }) {
                 placeholder="Enter temporary password"
                 style={{
                   width: '100%',
-                  height: '42px',
-                  borderRadius: '8px',
-                  border: '1px solid #CBD5E1',
-                  padding: '0 12px 0 38px',
-                  fontSize: '0.875rem',
+                  height: '44px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--line, #D3DFD8)',
+                  background: 'var(--pub-input-bg, var(--paper, #FFFFFF))',
+                  color: 'var(--ink, #0C2B22)',
+                  padding: '0 14px 0 42px',
+                  fontSize: '0.9rem',
                   boxSizing: 'border-box',
-                  outline: 'none'
+                  outline: 'none',
+                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
                 }}
               />
             </div>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--ink, #0C2B22)', marginBottom: '0.4rem' }}>
               New Password * (min 8 characters)
             </label>
             <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: '#94A3B8' }} />
+              <Lock size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--mut, #4C6258)', pointerEvents: 'none' }} />
               <input
                 type="password"
                 required
@@ -177,24 +196,27 @@ export default function ForcedPasswordChange({ onSuccess }) {
                 placeholder="Enter new strong password"
                 style={{
                   width: '100%',
-                  height: '42px',
-                  borderRadius: '8px',
-                  border: '1px solid #CBD5E1',
-                  padding: '0 12px 0 38px',
-                  fontSize: '0.875rem',
+                  height: '44px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--line, #D3DFD8)',
+                  background: 'var(--pub-input-bg, var(--paper, #FFFFFF))',
+                  color: 'var(--ink, #0C2B22)',
+                  padding: '0 14px 0 42px',
+                  fontSize: '0.9rem',
                   boxSizing: 'border-box',
-                  outline: 'none'
+                  outline: 'none',
+                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
                 }}
               />
             </div>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.35rem' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--ink, #0C2B22)', marginBottom: '0.4rem' }}>
               Confirm New Password *
             </label>
             <div style={{ position: 'relative' }}>
-              <Lock size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: '#94A3B8' }} />
+              <Lock size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--mut, #4C6258)', pointerEvents: 'none' }} />
               <input
                 type="password"
                 required
@@ -204,13 +226,16 @@ export default function ForcedPasswordChange({ onSuccess }) {
                 placeholder="Re-enter new password"
                 style={{
                   width: '100%',
-                  height: '42px',
-                  borderRadius: '8px',
-                  border: '1px solid #CBD5E1',
-                  padding: '0 12px 0 38px',
-                  fontSize: '0.875rem',
+                  height: '44px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--line, #D3DFD8)',
+                  background: 'var(--pub-input-bg, var(--paper, #FFFFFF))',
+                  color: 'var(--ink, #0C2B22)',
+                  padding: '0 14px 0 42px',
+                  fontSize: '0.9rem',
                   boxSizing: 'border-box',
-                  outline: 'none'
+                  outline: 'none',
+                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
                 }}
               />
             </div>
@@ -220,21 +245,24 @@ export default function ForcedPasswordChange({ onSuccess }) {
             type="submit"
             disabled={loading}
             style={{
-              height: '44px',
+              height: '46px',
               marginTop: '0.5rem',
-              background: '#0F766E',
-              color: '#FFFFFF',
-              borderRadius: '8px',
+              background: 'var(--gold, #F4A62A)',
+              color: '#241800',
+              borderRadius: '999px',
               border: 'none',
-              fontSize: '0.9rem',
-              fontWeight: 600,
+              fontSize: '0.95rem',
+              fontWeight: 700,
               cursor: loading ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.5rem',
-              transition: 'background 0.15s ease'
+              boxShadow: '0 4px 14px rgba(244, 166, 42, 0.35)',
+              transition: 'background 0.15s ease, transform 0.15s ease'
             }}
+            onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = '#e59920'; }}
+            onMouseLeave={(e) => { if (!loading) e.currentTarget.style.background = 'var(--gold, #F4A62A)'; }}
           >
             <span>{loading ? 'Updating Password...' : 'Update Password & Continue'}</span>
             <ArrowRight size={16} />
@@ -242,20 +270,24 @@ export default function ForcedPasswordChange({ onSuccess }) {
         </form>
 
         {/* Footer sign out option */}
-        <div style={{ marginTop: '1.5rem', textAlign: 'center', borderTop: '1px solid #F1F5F9', paddingTop: '1rem' }}>
+        <div style={{ marginTop: '1.75rem', textAlign: 'center', borderTop: '1px solid var(--line, #D3DFD8)', paddingTop: '1rem' }}>
           <button
             type="button"
             onClick={logout}
             style={{
               background: 'none',
               border: 'none',
-              color: '#64748B',
-              fontSize: '0.8rem',
+              color: 'var(--mut, #4C6258)',
+              fontSize: '0.85rem',
+              fontWeight: 500,
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.35rem'
+              gap: '0.4rem',
+              transition: 'color 0.15s ease'
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--ink, #0C2B22)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--mut, #4C6258)'; }}
           >
             <LogOut size={14} />
             <span>Sign out instead</span>
