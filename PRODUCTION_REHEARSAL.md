@@ -94,3 +94,4 @@ If `verify_migration.js` reports a discrepancy or critical issues occur post-cut
 3. Restart application workers.
 4. Verify application loads cleanly on SQLite driver.
 5. All operations resume normally with zero data loss.
+

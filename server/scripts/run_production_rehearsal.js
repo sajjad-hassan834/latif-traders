@@ -77,3 +77,4 @@ runProductionRehearsal().catch(err => {
   console.error('Fatal rehearsal error:', err);
   process.exit(1);
 });
+
