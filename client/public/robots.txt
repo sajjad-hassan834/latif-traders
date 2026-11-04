@@ -6,3 +6,4 @@ Disallow: /admin/
 Disallow: /dashboard/
 
 Sitemap: https://www.shoppyos.com/sitemap.xml
+
