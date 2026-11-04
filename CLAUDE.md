@@ -1,5 +1,12 @@
 # ShoppyOS Engineering & Architectural Guide (CLAUDE.md)
 
+### One Trunk Policy & Development Rules
+- **Trunk Branch**: **`integration/local-all`** is the single source of truth and only working trunk.
+- **Strict Prohibition**: Never branch from `main` or from `6f72dc8` (the old production commit). Any work branched from them reintroduces obsolete UI elements.
+- **Safety**: Always commit or stash WIP before switching branches.
+- **Diagnostics**: Print current branch (`git branch --show-current`) and short hash (`git rev-parse --short HEAD`) before beginning every task.
+- **Branch Enforcement**: Guarded by `scripts/assert_branch.js` on every build, test, and dev run.
+
 ### Brand & Product Identity
 - **Product Name**: **ShoppyOS** (domain `shoppyos.com`).
 - **Brand Tokens**: Deep green (`#0F4D3A`), Marigold gold (`#F4A62A`), Chili red (`#D92D5A`), Paper white (`#FFFFFF`/`#F8FAF8`), Leaf green (`#1B7A5A`/`#3DB88A`).

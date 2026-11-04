@@ -7,15 +7,15 @@
     "start": "node server/index.js",
     "server": "node --watch server/index.js",
     "client": "npm --prefix client run dev",
-    "build": "npm --prefix client run build",
-    "dev": "concurrently \"node --watch server/index.js\" \"npm --prefix client run dev\"",
+    "build": "node scripts/assert_branch.js && npm --prefix client run build",
+    "dev": "node scripts/assert_branch.js && concurrently \"node --watch server/index.js\" \"npm --prefix client run dev\"",
     "test:pg:up": "docker compose -f docker-compose.test.yml up -d",
     "test:pg:down": "docker compose -f docker-compose.test.yml down",
     "test:pg": "node server/tests/stage_a_parity_and_concurrency.test.js",
     "test:stage-a2": "node server/tests/stage_a2_real_postgres.test.js",
     "test:parity": "node server/tests/stage_a2_api_parity.test.js",
     "schema:diff": "node server/scripts/schema_diff.js",
-    "test": "node server/tests/negative_controls.test.js",
+    "test": "node scripts/assert_branch.js && node server/tests/negative_controls.test.js",
     "test:rehearsal": "node server/tests/dress_rehearsal.test.js"
   },
   "keywords": [
