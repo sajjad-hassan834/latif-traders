@@ -279,6 +279,22 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE INDEX IF NOT EXISTS idx_payments_tenant ON payments(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_payments_party ON payments(party_type, party_id);
 
+-- Quarantine Table for Legacy Unlinked / Orphan Payments (Party references that do not exist in tenant)
+CREATE TABLE IF NOT EXISTS legacy_unlinked_payments (
+  id BIGSERIAL PRIMARY KEY,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+  original_party_type TEXT NOT NULL,
+  original_party_id BIGINT,
+  amount NUMERIC(14,2) NOT NULL,
+  payment_date DATE NOT NULL,
+  original_payment_id BIGINT,
+  payment_method TEXT NOT NULL DEFAULT 'Cash',
+  notes TEXT,
+  reason TEXT NOT NULL,
+  quarantined_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_legacy_unlinked_payments_tenant ON legacy_unlinked_payments(tenant_id);
+
 -- Polymorphic Foreign Key Isolation for Payments (Customers & Suppliers)
 CREATE OR REPLACE FUNCTION check_payment_party_tenant()
 RETURNS TRIGGER AS $$

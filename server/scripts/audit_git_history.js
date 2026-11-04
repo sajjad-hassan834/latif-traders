@@ -93,3 +93,4 @@ pgFinalToPush.forEach(c => console.log('  ' + c));
 const secBatchToPush = execSync('git log origin/main..release/security-batch1 --oneline', { encoding: 'utf8' }).trim().split('\n');
 console.log(`\nrelease/security-batch1 (vs origin/main): ${secBatchToPush.filter(Boolean).length} commits:`);
 secBatchToPush.forEach(c => console.log('  ' + c));
+

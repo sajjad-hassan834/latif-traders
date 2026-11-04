@@ -275,6 +275,21 @@ function initializeDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS legacy_unlinked_payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      original_party_type TEXT NOT NULL,
+      original_party_id INTEGER,
+      amount REAL NOT NULL,
+      payment_date TEXT NOT NULL,
+      original_payment_id INTEGER,
+      payment_method TEXT NOT NULL DEFAULT 'Cash',
+      notes TEXT,
+      reason TEXT NOT NULL,
+      quarantined_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_legacy_unlinked_payments_tenant ON legacy_unlinked_payments(tenant_id);
+
     CREATE TABLE IF NOT EXISTS expense_categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,

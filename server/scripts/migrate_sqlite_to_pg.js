@@ -103,6 +103,9 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
     if (existingPgTables.has('counters')) {
       await pg.query('TRUNCATE TABLE counters CASCADE');
     }
+    if (existingPgTables.has('legacy_unlinked_payments')) {
+      await pg.query('TRUNCATE TABLE legacy_unlinked_payments CASCADE');
+    }
     console.log('✓ Target tables truncated cleanly.\n');
 
     // 2. Migrate Tables in Dependency Order
@@ -175,30 +178,34 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
         let rowPartyType = row.party_type ? String(row.party_type).toUpperCase() : null;
 
         if (table === 'payments') {
+          let isOrphan = false;
+          let orphanReason = '';
           if (rowPartyType === 'CUSTOMER' && !validTenantCustomerKeys.has(`${rowTenantId}:${rowPartyId}`)) {
-            let fallbackCustId = tenantFirstCustomer.get(rowTenantId);
-            if (!fallbackCustId) {
-              const cIns = await pg.query(
-                "INSERT INTO customers (name, phone, address, customer_type, opening_balance, credit_limit, current_balance, tenant_id) VALUES ('Counter Customer', '', 'Counter', 'Retail', 0, 0, 0, $1) RETURNING id",
-                [rowTenantId]
-              );
-              fallbackCustId = cIns.rows[0].id;
-              tenantFirstCustomer.set(rowTenantId, fallbackCustId);
-              validTenantCustomerKeys.add(`${rowTenantId}:${fallbackCustId}`);
-            }
-            rowPartyId = fallbackCustId;
+            isOrphan = true;
+            orphanReason = `Referenced customer ${rowPartyId} does not exist in tenant ${rowTenantId}`;
           } else if (rowPartyType === 'SUPPLIER' && !validTenantSupplierKeys.has(`${rowTenantId}:${rowPartyId}`)) {
-            let fallbackSupId = tenantFirstSupplier.get(rowTenantId);
-            if (!fallbackSupId) {
-              const sIns = await pg.query(
-                "INSERT INTO suppliers (name, company_name, opening_balance, current_balance, tenant_id) VALUES ('Default Supplier', 'Counter', 0, 0, $1) RETURNING id",
-                [rowTenantId]
-              );
-              fallbackSupId = sIns.rows[0].id;
-              tenantFirstSupplier.set(rowTenantId, fallbackSupId);
-              validTenantSupplierKeys.add(`${rowTenantId}:${fallbackSupId}`);
-            }
-            rowPartyId = fallbackSupId;
+            isOrphan = true;
+            orphanReason = `Referenced supplier ${rowPartyId} does not exist in tenant ${rowTenantId}`;
+          }
+
+          if (isOrphan) {
+            await pg.query(`
+              INSERT INTO legacy_unlinked_payments (
+                tenant_id, original_party_type, original_party_id, amount,
+                payment_date, original_payment_id, payment_method, notes, reason
+              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `, [
+              rowTenantId,
+              rowPartyType,
+              rowPartyId,
+              row.amount,
+              row.payment_date,
+              row.id,
+              row.payment_method || 'Cash',
+              row.notes || null,
+              orphanReason
+            ]);
+            continue;
           }
         }
 
@@ -218,6 +225,9 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
           }
           if (table === 'payments' && c === 'party_type') {
             val = rowPartyType;
+          }
+          if (table === 'payments' && c === 'party_type' && val) {
+            val = String(val).toUpperCase();
           }
           // Convert integer to boolean if PG expects boolean
           const pgType = pgColMap.get(c);
