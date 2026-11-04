@@ -1,9 +1,22 @@
-# ShopOS Engineering & Architectural Guide (CLAUDE.md)
+# ShoppyOS Engineering & Architectural Guide (CLAUDE.md)
+
+### Brand & Product Identity
+- **Product Name**: **ShoppyOS** (domain `shoppyos.com`).
+- **Brand Tokens**: Deep green (`#0F4D3A`), Marigold gold (`#F4A62A`), Chili red (`#D92D5A`), Paper white (`#FFFFFF`/`#F8FAF8`), Leaf green (`#1B7A5A`/`#3DB88A`).
+- **Typography**: Display: *Bricolage Grotesque*; Body: *Instrument Sans*; Mono: *DM Mono*; Urdu: *Noto Nastaliq Urdu*. Zero external font CDNs (all self-hosted in `client/src/fonts/` & `@fontsource`).
+- **Logo Component**: `<BrandLogo variant="symbol|horizontal|stacked|wordmark" tone="auto|dark|light|mono" size={...} />` uses outlined vector paths (0 font dependencies) and reacts dynamically to light/dark themes.
 
 ### Stack & Architecture
-- **Backend**: Node.js (v20+), Express 4, SQLite (`better-sqlite3`, WAL mode) in production (Railway).
+- **Backend**: Node.js (v20+), Express 4, Dual-driver database (`better-sqlite3` on SQLite and `pg` on PostgreSQL 16).
 - **Frontend**: React 19, Vite 8, Lucide React, CSS variables.
 - **Theming**: Scope A (Public: light/dark via `data-public-theme`), Scope B (Shop App: 4 active themes — `classic`, `dark`, `green`, `indigo` via `data-app-theme`).
+
+### PostgreSQL 16 Connection & Concurrency Guidelines
+1. **Connection Pool**: Default pool size is strictly **10** (configured via `DATABASE_POOL_SIZE=10`).
+2. **Statement & Idle Timeouts**: `statement_timeout = 15000` (15s), `idle_in_transaction_session_timeout = 10000` (10s) prevent lock hoarding.
+3. **Zero Fallback**: `DATABASE_URL` must be explicitly provided in production; missing URL causes instant fatal error.
+4. **Quarantined Payments Policy**: Unlinked orphan payments without customer or supplier references are safely isolated into `legacy_unlinked_payments`. Cashbook drawers and daily summaries include them to maintain exact cash-in-drawer balance to the paisa (verified at ₨ 84.00, ₨ 0.00 delta), while party ledgers and customer balances strictly exclude them.
+5. **Document Numbering**: Sequential counters for 6 document types per tenant per business day in `Asia/Karachi` (PKT, UTC+5) timezone. Roll over atomically at PKT midnight (19:00:00 UTC).
 
 ### Multi-Tenant Isolation Rules
 1. **Source of Truth**: Business routes resolve tenant strictly via `tenantContext` middleware (`req.tenantId` and `req.tenant_id`).
@@ -17,34 +30,17 @@
 3. In `production`, system refuses to boot if the target database is missing while other `.db` files exist in `DATA_DIR`, preventing accidental empty database creation.
 4. Active database file name is logged on boot (name only).
 
-### Security Release & Branching Rules
-1. `release/security-batch1`: Contains pure SQLite security hardening (Batch 1/1b) decoupled from Postgres migrations.
-2. `feature/postgres-migration`: Contains Stage A dual-driver code and Postgres migrations (`pg_schema.sql`, `database-pg.js`).
-3. Never merge Postgres code into `main` until Stage C staging cut-over rehearsals are signed off.
-
-### Core Safety Rules
-1. Never execute migrations, seed scripts, or write commands against the live production database.
-2. Never print secrets, passwords, hashes, JWTs, or customer row-level data in logs, terminal, or chat.
-3. Never commit `.env`, `*.db`, `*.sqlite`, backups, snapshots, or builds to git.
-4. All database migrations on the SQLite path must be strictly additive and idempotent.
-
 ### Essential Commands
 - Start Development: `npm run dev`
+- Run Production Rehearsal: `node server/scripts/run_production_rehearsal.js`
 - Run Client Lint: `npm --prefix client run lint`
 - Run Client Build: `npm --prefix client run build`
-- Run Security Tests: `node server/tests/security_batch1.test.js && node --test server/tests/security_batch1b_*.test.js`
-- Run Static Security Audits: `node server/scripts/verify_route_coverage.js && node server/scripts/verify_tenant_queries.js && node server/scripts/ci_grep_legacy_tenant.js`
-- Rotate Credentials: `node server/scripts/rotate_credentials.js --user <username> --yes`
-- Disable Legacy Superowner: `node server/scripts/rotate_credentials.js --disable-legacy-superowner --yes`
+- Run Concurrency Drill: `node server/tests/concurrency_pool10_drill.test.js`
+- Run Document Numbering Test: `node server/tests/document_numbering_pkt.test.js`
+- Run Cashbook Quarantine Test: `node server/tests/cashbook_quarantine_parity.test.js`
+- Clean Test Artifacts: `node server/scripts/clean_test_artifacts.js`
 
-### Current Status (Release Security-Batch1)
-1. Branch `release/security-batch1` created cleanly from `main` (6f72dc8).
-2. All 14 security hardening commits cherry-picked in order with SQLite-only adaptations.
-3. Zero Postgres dependencies (`database-pg.js`, `sqlTokenizer`, `::text` casts eliminated).
-4. All 117 Express routes audited with 100% security coverage.
-5. All 341 SQL tenant queries enforce tenant isolation with verified allow-list.
-6. DB file selection safety guard implemented and tested.
-7. Support email centralized to `shopos.help@gmail.com` with unproven claims purged.
-8. Client lint (`oxlint`) and client build (`vite build`) pass with 0 errors.
-9. All 9 security and ledger test suites pass with 100% success rate.
-10. Ready for staging review and production deployment to Railway.
+### Production Cutover & Rehearsal Runbooks
+- Production Rehearsal Kit: See [`PRODUCTION_REHEARSAL.md`](file:///c:/Users/ALLAH/OneDrive/Documents/Projects/LATIF%20TRADERS/PRODUCTION_REHEARSAL.md)
+- Postgres Cutover Guide: See [`POSTGRES_CUTOVER_RUNBOOK.md`](file:///c:/Users/ALLAH/OneDrive/Documents/Projects/LATIF%20TRADERS/POSTGRES_CUTOVER_RUNBOOK.md)
+- Brand System Specs: See [`BRAND.md`](file:///c:/Users/ALLAH/OneDrive/Documents/Projects/LATIF%20TRADERS/BRAND.md)
