@@ -3,29 +3,28 @@ import { useAuth } from '../context/AuthContext';
 import { getTradeCapabilities } from '../utils/tradeCapabilities';
 
 /**
- * useTradeProfile Hook
+ * useTradeProfile hook
  *
- * Provides current business trade settings, capability flags, and industry terminology.
- * When a merchant is on 'frozen_food', it safely preserves 100% of the cold-chain & batch workflows.
- * When on 'pharmacy', 'retail_general', etc., it activates category-specific features.
+ * Exposes current tenant trade capabilities, UI feature flags, and localized terminology.
+ * Defaults cleanly to frozen_food if tenant context is loading or unassigned.
  */
 export function useTradeProfile() {
-  const { tenant, user } = useAuth();
-  
-  const rawBusinessType = tenant?.business_type || user?.business_type || 'frozen_food';
+  const { tenant } = useAuth();
+
+  const businessType = tenant?.business_type || 'frozen_food';
 
   const tradeProfile = useMemo(() => {
-    return getTradeCapabilities(rawBusinessType);
-  }, [rawBusinessType]);
+    return getTradeCapabilities(businessType);
+  }, [businessType]);
 
   return {
     ...tradeProfile,
-    rawBusinessType,
+    businessType,
     isFrozenFood: tradeProfile.id === 'frozen_food',
     isPharmacy: tradeProfile.id === 'pharmacy',
-    isRetail: tradeProfile.id === 'retail_general',
     isClothing: tradeProfile.id === 'clothing',
     isRestaurant: tradeProfile.id === 'restaurant',
+    isRetailGeneral: tradeProfile.id === 'retail_general',
     isHardware: tradeProfile.id === 'hardware',
     isWholesale: tradeProfile.id === 'wholesale',
     isGrocery: tradeProfile.id === 'grocery'
@@ -33,4 +32,3 @@ export function useTradeProfile() {
 }
 
 export default useTradeProfile;
-

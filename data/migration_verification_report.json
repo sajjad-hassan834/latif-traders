@@ -1,0 +1,568 @@
+{
+  "verifiedAt": "2026-11-04T06:50:53.728Z",
+  "overallPass": true,
+  "tableRowCounts": [
+    {
+      "table": "tenants",
+      "sqliteCount": 14,
+      "pgCount": 14,
+      "match": true
+    },
+    {
+      "table": "users",
+      "sqliteCount": 45,
+      "pgCount": 45,
+      "match": true
+    },
+    {
+      "table": "categories",
+      "sqliteCount": 35,
+      "pgCount": 35,
+      "match": true
+    },
+    {
+      "table": "brands",
+      "sqliteCount": 8,
+      "pgCount": 8,
+      "match": true
+    },
+    {
+      "table": "units",
+      "sqliteCount": 27,
+      "pgCount": 27,
+      "match": true
+    },
+    {
+      "table": "customers",
+      "sqliteCount": 12,
+      "pgCount": 12,
+      "match": true
+    },
+    {
+      "table": "suppliers",
+      "sqliteCount": 3,
+      "pgCount": 3,
+      "match": true
+    },
+    {
+      "table": "products",
+      "sqliteCount": 7,
+      "pgCount": 7,
+      "match": true
+    },
+    {
+      "table": "supplier_products",
+      "sqliteCount": 1,
+      "pgCount": 1,
+      "match": true
+    },
+    {
+      "table": "batches",
+      "sqliteCount": 5,
+      "pgCount": 5,
+      "match": true
+    },
+    {
+      "table": "purchases",
+      "sqliteCount": 3,
+      "pgCount": 3,
+      "match": true
+    },
+    {
+      "table": "purchase_items",
+      "sqliteCount": 1,
+      "pgCount": 1,
+      "match": true
+    },
+    {
+      "table": "sales",
+      "sqliteCount": 13,
+      "pgCount": 13,
+      "match": true
+    },
+    {
+      "table": "sale_items",
+      "sqliteCount": 10,
+      "pgCount": 10,
+      "match": true
+    },
+    {
+      "table": "returns",
+      "sqliteCount": 1,
+      "pgCount": 1,
+      "match": true
+    },
+    {
+      "table": "return_items",
+      "sqliteCount": 1,
+      "pgCount": 1,
+      "match": true
+    },
+    {
+      "table": "payments",
+      "sqliteCount": 8,
+      "pgCount": 5,
+      "match": true
+    },
+    {
+      "table": "legacy_unlinked_payments",
+      "sqliteCount": 0,
+      "pgCount": 3,
+      "match": true
+    },
+    {
+      "table": "expense_categories",
+      "sqliteCount": 37,
+      "pgCount": 37,
+      "match": true
+    },
+    {
+      "table": "expenses",
+      "sqliteCount": 3,
+      "pgCount": 3,
+      "match": true
+    },
+    {
+      "table": "stock_adjustments",
+      "sqliteCount": 1,
+      "pgCount": 1,
+      "match": true
+    },
+    {
+      "table": "inventory_movements",
+      "sqliteCount": 14,
+      "pgCount": 14,
+      "match": true
+    },
+    {
+      "table": "tenant_settings",
+      "sqliteCount": 119,
+      "pgCount": 119,
+      "match": true
+    },
+    {
+      "table": "subscriptions",
+      "sqliteCount": 9,
+      "pgCount": 9,
+      "match": true
+    },
+    {
+      "table": "audit_logs",
+      "sqliteCount": 302,
+      "pgCount": 302,
+      "match": true
+    },
+    {
+      "table": "password_reset_requests",
+      "sqliteCount": 11,
+      "pgCount": 11,
+      "match": true
+    },
+    {
+      "table": "counters",
+      "sqliteCount": 5,
+      "pgCount": 28,
+      "match": true
+    },
+    {
+      "table": "settings",
+      "sqliteCount": 19,
+      "pgCount": 19,
+      "match": true
+    }
+  ],
+  "financialSums": [
+    {
+      "metric": "Total Sales Gross",
+      "sqliteSum": 16384,
+      "pgSum": 16384,
+      "match": true
+    },
+    {
+      "metric": "Sales Paid Amount",
+      "sqliteSum": 6984,
+      "pgSum": 6984,
+      "match": true
+    },
+    {
+      "metric": "Sales Balance Due",
+      "sqliteSum": 9400,
+      "pgSum": 9400,
+      "match": true
+    },
+    {
+      "metric": "Total Purchases",
+      "sqliteSum": 34000,
+      "pgSum": 34000,
+      "match": true
+    },
+    {
+      "metric": "Total Payment Vouchers",
+      "sqliteSum": 15084,
+      "pgSum": 15084,
+      "match": true
+    },
+    {
+      "metric": "Total Operating Expenses",
+      "sqliteSum": 8350,
+      "pgSum": 8350,
+      "match": true
+    }
+  ],
+  "ledgerBalances": [
+    {
+      "type": "Customer Receivables",
+      "sqlite": 3600,
+      "pg": 3600,
+      "match": true
+    },
+    {
+      "type": "Supplier Payables",
+      "sqlite": 9000,
+      "pg": 9000,
+      "match": true
+    }
+  ],
+  "canonicalHashes": [
+    {
+      "table": "tenants",
+      "sqliteHash": "9f41cb2ba3dba52f",
+      "pgHash": "9f41cb2ba3dba52f",
+      "match": true
+    },
+    {
+      "table": "users",
+      "sqliteHash": "521a92665c5e2e6c",
+      "pgHash": "521a92665c5e2e6c",
+      "match": true
+    },
+    {
+      "table": "categories",
+      "sqliteHash": "052cfdef261d2945",
+      "pgHash": "052cfdef261d2945",
+      "match": true
+    },
+    {
+      "table": "brands",
+      "sqliteHash": "335de205797f2876",
+      "pgHash": "335de205797f2876",
+      "match": true
+    },
+    {
+      "table": "units",
+      "sqliteHash": "f0ee14f3d2651a37",
+      "pgHash": "f0ee14f3d2651a37",
+      "match": true
+    },
+    {
+      "table": "customers",
+      "sqliteHash": "0bd1e54bf18fc3c7",
+      "pgHash": "0bd1e54bf18fc3c7",
+      "match": true
+    },
+    {
+      "table": "suppliers",
+      "sqliteHash": "13535414e7cb80e7",
+      "pgHash": "13535414e7cb80e7",
+      "match": true
+    },
+    {
+      "table": "products",
+      "sqliteHash": "a60c54e3873cf797",
+      "pgHash": "a60c54e3873cf797",
+      "match": true
+    },
+    {
+      "table": "supplier_products",
+      "sqliteHash": "476380c2151e3c23",
+      "pgHash": "476380c2151e3c23",
+      "match": true
+    },
+    {
+      "table": "batches",
+      "sqliteHash": "cb41d13b1fac67d3",
+      "pgHash": "cb41d13b1fac67d3",
+      "match": true
+    },
+    {
+      "table": "purchases",
+      "sqliteHash": "f02d65a2425ad013",
+      "pgHash": "f02d65a2425ad013",
+      "match": true
+    },
+    {
+      "table": "purchase_items",
+      "sqliteHash": "c96adea1d29ac70c",
+      "pgHash": "c96adea1d29ac70c",
+      "match": true
+    },
+    {
+      "table": "sales",
+      "sqliteHash": "727162e52fcee60f",
+      "pgHash": "727162e52fcee60f",
+      "match": true
+    },
+    {
+      "table": "sale_items",
+      "sqliteHash": "a878fa0f31b10c3e",
+      "pgHash": "a878fa0f31b10c3e",
+      "match": true
+    },
+    {
+      "table": "returns",
+      "sqliteHash": "9d17e120f1a50c83",
+      "pgHash": "9d17e120f1a50c83",
+      "match": true
+    },
+    {
+      "table": "return_items",
+      "sqliteHash": "c003902d6468fd81",
+      "pgHash": "c003902d6468fd81",
+      "match": true
+    },
+    {
+      "table": "payments",
+      "sqliteHash": "72c5af3b28c876d1",
+      "pgHash": "72c5af3b28c876d1",
+      "match": true
+    },
+    {
+      "table": "expense_categories",
+      "sqliteHash": "795cec143a43742d",
+      "pgHash": "795cec143a43742d",
+      "match": true
+    },
+    {
+      "table": "expenses",
+      "sqliteHash": "930fd4977ab836dd",
+      "pgHash": "930fd4977ab836dd",
+      "match": true
+    },
+    {
+      "table": "stock_adjustments",
+      "sqliteHash": "566164095807d06a",
+      "pgHash": "566164095807d06a",
+      "match": true
+    },
+    {
+      "table": "inventory_movements",
+      "sqliteHash": "ea51c136934e328d",
+      "pgHash": "ea51c136934e328d",
+      "match": true
+    },
+    {
+      "table": "tenant_settings",
+      "sqliteHash": "2fdd243e904f7e14",
+      "pgHash": "2fdd243e904f7e14",
+      "match": true
+    },
+    {
+      "table": "subscriptions",
+      "sqliteHash": "fc307264458036f9",
+      "pgHash": "fc307264458036f9",
+      "match": true
+    },
+    {
+      "table": "audit_logs",
+      "sqliteHash": "da0dbc6159e07865",
+      "pgHash": "da0dbc6159e07865",
+      "match": true
+    },
+    {
+      "table": "password_reset_requests",
+      "sqliteHash": "4b788b65885e078b",
+      "pgHash": "4b788b65885e078b",
+      "match": true
+    },
+    {
+      "table": "settings",
+      "sqliteHash": "a8a27dc749f00528",
+      "pgHash": "a8a27dc749f00528",
+      "match": true
+    }
+  ],
+  "orphanKeys": 0,
+  "reportDateRanges": [],
+  "deepReportParity": [
+    {
+      "range": "Today",
+      "sqlite": {
+        "invoices": 4,
+        "revenue": 16000,
+        "collected": 6600,
+        "expenses": 3350,
+        "purchases": 24000
+      },
+      "pg": {
+        "invoices": 4,
+        "revenue": 16000,
+        "collected": 6600,
+        "expenses": 3350,
+        "purchases": 24000
+      },
+      "match": true
+    },
+    {
+      "range": "Yesterday",
+      "sqlite": {
+        "invoices": 3,
+        "revenue": 84,
+        "collected": 84,
+        "expenses": 0,
+        "purchases": 0
+      },
+      "pg": {
+        "invoices": 3,
+        "revenue": 84,
+        "collected": 84,
+        "expenses": 0,
+        "purchases": 0
+      },
+      "match": true
+    },
+    {
+      "range": "Last 7 Days",
+      "sqlite": {
+        "invoices": 12,
+        "revenue": 16354,
+        "collected": 6954,
+        "expenses": 8350,
+        "purchases": 24000
+      },
+      "pg": {
+        "invoices": 12,
+        "revenue": 16354,
+        "collected": 6954,
+        "expenses": 8350,
+        "purchases": 24000
+      },
+      "match": true
+    },
+    {
+      "range": "October 2026 MTD",
+      "sqlite": {
+        "invoices": 13,
+        "revenue": 16384,
+        "collected": 6984,
+        "expenses": 8350,
+        "purchases": 24000
+      },
+      "pg": {
+        "invoices": 13,
+        "revenue": 16384,
+        "collected": 6984,
+        "expenses": 8350,
+        "purchases": 24000
+      },
+      "match": true
+    },
+    {
+      "range": "September 2026",
+      "sqlite": {
+        "invoices": 0,
+        "revenue": 0,
+        "collected": 0,
+        "expenses": 0,
+        "purchases": 10000
+      },
+      "pg": {
+        "invoices": 0,
+        "revenue": 0,
+        "collected": 0,
+        "expenses": 0,
+        "purchases": 10000
+      },
+      "match": true
+    },
+    {
+      "range": "August 2026",
+      "sqlite": {
+        "invoices": 0,
+        "revenue": 0,
+        "collected": 0,
+        "expenses": 0,
+        "purchases": 0
+      },
+      "pg": {
+        "invoices": 0,
+        "revenue": 0,
+        "collected": 0,
+        "expenses": 0,
+        "purchases": 0
+      },
+      "match": true
+    },
+    {
+      "range": "Q3 2026",
+      "sqlite": {
+        "invoices": 0,
+        "revenue": 0,
+        "collected": 0,
+        "expenses": 0,
+        "purchases": 10000
+      },
+      "pg": {
+        "invoices": 0,
+        "revenue": 0,
+        "collected": 0,
+        "expenses": 0,
+        "purchases": 10000
+      },
+      "match": true
+    },
+    {
+      "range": "Q4 2026",
+      "sqlite": {
+        "invoices": 13,
+        "revenue": 16384,
+        "collected": 6984,
+        "expenses": 8350,
+        "purchases": 24000
+      },
+      "pg": {
+        "invoices": 13,
+        "revenue": 16384,
+        "collected": 6984,
+        "expenses": 8350,
+        "purchases": 24000
+      },
+      "match": true
+    },
+    {
+      "range": "YTD 2026",
+      "sqlite": {
+        "invoices": 13,
+        "revenue": 16384,
+        "collected": 6984,
+        "expenses": 8350,
+        "purchases": 34000
+      },
+      "pg": {
+        "invoices": 13,
+        "revenue": 16384,
+        "collected": 6984,
+        "expenses": 8350,
+        "purchases": 34000
+      },
+      "match": true
+    },
+    {
+      "range": "All Time Range",
+      "sqlite": {
+        "invoices": 13,
+        "revenue": 16384,
+        "collected": 6984,
+        "expenses": 8350,
+        "purchases": 34000
+      },
+      "pg": {
+        "invoices": 13,
+        "revenue": 16384,
+        "collected": 6984,
+        "expenses": 8350,
+        "purchases": 34000
+      },
+      "match": true
+    }
+  ]
+}
