@@ -1466,10 +1466,12 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                 <span>📱</span>
                 <span><strong>WhatsApp:</strong> +92 300 0746767</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>📧</span>
-                <span><strong>Email:</strong> {SUPPORT_EMAIL}</span>
-              </div>
+              {SUPPORT_EMAIL && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📧</span>
+                  <span><strong>Email:</strong> {SUPPORT_EMAIL}</span>
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>🕐</span>
                 <span><strong>Hours:</strong> Mon – Sat: 9:00 AM – 10:00 PM PKT</span>

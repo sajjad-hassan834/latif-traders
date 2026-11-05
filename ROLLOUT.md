@@ -15,18 +15,19 @@ This document details the production deployment procedure for the **ShoppyOS SQL
 
 Before triggering the deployment build, ensure the following variables are configured in the Railway dashboard:
 
-| Variable Name | Status | Required? | Description & Constraints |
+| Variable Name | Status on Railway | Required? | Value / Setting Rule |
 | :--- | :--- | :---: | :--- |
-| `NODE_ENV` | Existing | **YES** | Set to `production`. Activates strict startup pre-flight checks. |
-| `DATA_DIR` | Existing | **YES** | Absolute path to the persistent volume mount (e.g. `/data` or `/app/data`). |
-| `DB_PATH` | Existing | **RECOMMENDED** | Explicit path to active SQLite database (e.g. `/data/latif_traders.db`). |
-| `JWT_SECRET` | Existing | **YES** | Must be rotated to a fresh, cryptographically secure 64-character random string. **Server exits on boot if length < 32 characters in production.** |
-| `SUPEROWNER_USERNAME` | Existing | **YES** | Unique username for the platform system operator (do NOT use the old default `superowner`). |
-| `SUPEROWNER_PASSWORD` | Existing | **YES** | High-entropy password for initial superowner bootstrap. |
-| `ALLOWED_ORIGINS` | **NEW** | **RECOMMENDED** | Comma-separated list of allowed origins (e.g. `https://shoppyos.com,https://www.shoppyos.com`). |
-| `FRONTEND_URL` | Existing | Optional | Comma-separated list of allowed web origins. |
-| `TRUST_PROXY_HOPS` | **NEW** | Optional | Set to `1` (default) for single reverse-proxy setups (Railway/Cloudflare). |
-| `SUPPORT_EMAIL` | Existing | Optional | Public customer support email (defaults to `support@shoppyos.com`). |
+| `NODE_ENV` | Existing | **YES** | `production` (activates production guards & rate limiting). |
+| `DATA_DIR` | Existing | **YES** | `/app/data` (matches your Railway persistent volume mount; do NOT use `/data`). |
+| `DB_PATH` | **NEW to set** | **RECOMMENDED** | `/app/data/latif_traders.db` (Rule: must always be `${DATA_DIR}/latif_traders.db`). |
+| `JWT_SECRET` | Existing | **YES (Rotate)** | Fresh 64-char hex string (min 32 chars). Deployment will invalidate prior sessions. |
+| `FRONTEND_URL` | Existing | Optional | `https://www.shoppyos.com,https://shoppyos.com` |
+| `SUPEROWNER_USERNAME` | **NEW to set** | **YES** | Custom username for system operator (never use legacy `superowner`). |
+| `SUPEROWNER_PASSWORD` | **NEW to set** | **YES** | High-entropy random password. |
+| `ALLOWED_ORIGINS` | **NEW to set** | **YES** | `https://shoppyos.com,https://www.shoppyos.com` |
+| `TRUST_PROXY_HOPS` | **NEW to set** | Optional | `1` (Railway reverse proxy). |
+| `SUPPORT_EMAIL` | **NEW to set** | Optional | `shopos.help@gmail.com` (until domain mailbox is active). Falls back to `SUPPORT_INBOX`, then empty. |
+| `PORT` | **DO NOT SET** | **NO** | Provided dynamically by Railway platform; never configure manually. |
 
 ---
 
