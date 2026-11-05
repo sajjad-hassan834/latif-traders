@@ -31,24 +31,16 @@ exports.createUser = async (req, res) => {
     }
 
     // Plan limits on staff users
-    if (plan === 'free') {
+    const userPlan = (req.user?.plan || plan || 'free').toLowerCase();
+    const planLimits = getPlanLimits(userPlan);
+    if (planLimits.users !== null) {
       const uRow = await db.get("SELECT COUNT(*) as count FROM users WHERE tenant_id = ? AND (is_hidden IS NULL OR is_hidden = 0) AND role != 'superowner'", [tenantId]);
-      const userCount = uRow?.count || 0;
-      if (userCount >= 1) {
+      const userCount = Number(uRow?.count || 0);
+      if (userCount >= planLimits.users) {
         return res.status(403).json({
           success: false,
           limitReached: 'users',
-          message: 'The Free plan is limited to 1 user account (owner only). Upgrade to Pro to add staff members.'
-        });
-      }
-    } else if (plan === 'pro') {
-      const uRow = await db.get("SELECT COUNT(*) as count FROM users WHERE tenant_id = ? AND (is_hidden IS NULL OR is_hidden = 0) AND role != 'superowner'", [tenantId]);
-      const userCount = uRow?.count || 0;
-      if (userCount >= 5) {
-        return res.status(403).json({
-          success: false,
-          limitReached: 'users',
-          message: 'The Pro plan is limited to 5 staff accounts. Upgrade to Enterprise for unlimited users.'
+          message: `The ${userPlan.toUpperCase()} plan is limited to ${planLimits.users} user account(s). Upgrade your plan to add more staff members.`
         });
       }
     }

@@ -51,7 +51,7 @@ const PLANS = {
       { id: 'barcodes_labels', name: 'Barcode scanning & sticker printing', available: true },
       { id: 'supplier_ledger', name: 'Supplier ledger & purchase tracking', available: true },
       { id: 'analytics_reports', name: 'Profit & loss and expense analytics', available: true },
-      { id: 'manual_backups', name: 'One-click full system data backups', available: true },
+      { id: 'manual_backups', name: 'One-click data export and backup', available: true },
       { id: 'daily_cloud_backups', name: 'Automated daily cloud backups', available: false, comingSoon: true }
     ]
   },
@@ -72,8 +72,8 @@ const PLANS = {
     features: [
       { id: 'unlimited_everything', name: 'Unlimited products, invoices & staff users', available: true },
       { id: 'advanced_roles', name: 'Full role-based security & audit logging', available: true },
-      { id: 'priority_support', name: 'Priority WhatsApp & phone setup assistance', available: true },
-      { id: 'data_migration', name: 'Assisted data migration from Excel/desktop', available: true },
+      { id: 'priority_support', name: 'Priority WhatsApp & phone setup assistance (Service)', available: true, isService: true },
+      { id: 'data_migration', name: 'Assisted data migration from Excel/desktop (Service)', available: true, isService: true },
       { id: 'daily_cloud_backups', name: 'Automated daily cloud backups', available: false, comingSoon: true },
       { id: 'multi_branch', name: 'Multi-branch sync', available: false, comingSoon: true },
       { id: 'dedicated_db', name: 'Dedicated cloud database', available: false, comingSoon: true },

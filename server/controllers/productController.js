@@ -191,6 +191,18 @@ exports.createProduct = async (req, res) => {
     const newId = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
+      const plan = (req.user?.plan || req.tenant?.plan || 'free').toLowerCase();
+      const planLimits = getPlanLimits(plan);
+      if (planLimits.products !== null) {
+        const prodCountRes = await db.get('SELECT COUNT(*) as count FROM products WHERE tenant_id = ?', [tenantId]);
+        const currentCount = Number(prodCountRes?.count || 0);
+        if (currentCount >= planLimits.products) {
+          const err = new Error(`The ${plan.toUpperCase()} plan limit of ${planLimits.products} products has been reached. Upgrade to Pro for unlimited products.`);
+          err.statusCode = 403;
+          err.limitReached = 'products';
+          throw err;
+        }
+      }
       const {
         name, sku, barcode, category_id, brand, unit, supplier_id,
         purchase_price, sale_price, wholesale_price,

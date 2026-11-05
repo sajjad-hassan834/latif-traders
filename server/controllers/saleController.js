@@ -175,18 +175,23 @@ exports.createSale = async (req, res) => {
     const result = await db.transaction(async () => {
 
       const tenantId = req.tenantId || req.tenant_id;
-      const tenantPlan = req.tenant?.plan || 'free';
-
-      // Plan limit enforcement: Free plan max 100 invoices/month
-      if (tenantPlan === 'free') {
-        const currentMonth = new Date().toISOString().slice(0, 7);
+      // Plan limit enforcement: Karachi month invoice limit
+      const tenantPlan = (req.user?.plan || req.tenant?.plan || 'free').toLowerCase();
+      const planLimits = getPlanLimits(tenantPlan);
+      if (planLimits.invoicesPerMonth !== null) {
+        const pktDate = new Date(Date.now() + 5 * 60 * 60 * 1000); // Karachi PKT = UTC+5
+        const currentMonth = pktDate.toISOString().slice(0, 7);
         const invoiceRow = await db.get(`
           SELECT COUNT(*) as count FROM sales 
           WHERE tenant_id = ? AND CAST(sale_date AS TEXT) LIKE ?
         `, [tenantId, `${currentMonth}%`]);
 
-        if (invoiceRow && invoiceRow.count >= 100) {
-          throw new Error("You have reached the Free Plan limit of 100 invoices this month. Please upgrade to Pro for unlimited invoices.");
+        const currentInvoices = Number(invoiceRow?.count || 0);
+        if (currentInvoices >= planLimits.invoicesPerMonth) {
+          const err = new Error(`You have reached the ${tenantPlan.toUpperCase()} plan limit of ${planLimits.invoicesPerMonth} invoices this month. Please upgrade to Pro for unlimited invoices.`);
+          err.statusCode = 403;
+          err.limitReached = 'invoices';
+          throw err;
         }
       }
 
