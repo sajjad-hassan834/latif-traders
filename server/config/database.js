@@ -558,7 +558,7 @@ function initializeDatabase() {
     const seededAdmin = db.prepare(`
       SELECT id, username, token_version, must_change_password, password_changed_at
       FROM users
-      WHERE (tenant_id = ? OR tenant_id = 'latif_001')
+      WHERE tenant_id = ?
         AND role = 'admin'
         AND username = 'admin'
     `).get(LEGACY_TENANT_ID);

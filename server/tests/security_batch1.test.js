@@ -276,7 +276,7 @@ async function runSecurityBatch1Tests() {
     .send({ username: 'sec_superowner' });
   assert(forgotSoRes.status === 200, 'Superowner forgot-password returns generic 200');
   const soResetRow = await db.get('SELECT * FROM password_reset_requests WHERE username = ?', ['sec_superowner']);
-  assert(soResetRow === undefined, 'Zero reset request rows created for superowner (silently blocked)');
+  assert(!soResetRow, 'Zero reset request rows created for superowner (silently blocked)');
 
   // Test 4.5: Token status check by hash
   const statusNoTokenRes = await request(app).get('/api/auth/forgot-password-status');

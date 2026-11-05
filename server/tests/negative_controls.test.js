@@ -16,7 +16,7 @@ const path = require('path');
 const fs = require('fs');
 
 const pgUrl = process.env.TEST_DATABASE_URL || 'postgresql://postgres:testpassword123@localhost:5434/latif_test';
-const sqlitePath = path.join(__dirname, '..', '..', 'data', 'synthetic_dataset_v2.db');
+const sqlitePath = path.join(__dirname, '..', '..', 'data', 'latif_traders.db');
 
 async function runNegativeControls() {
   console.log('========================================================================');

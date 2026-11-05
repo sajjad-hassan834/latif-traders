@@ -5,7 +5,7 @@
  *   node server/scripts/verify_migration.js [path/to/sqlite.db]
  * 
  * Verifies:
- *   1. Exact row count parity across ALL 27 tables
+ *   1. Exact row count parity across 25 primary business tables + derived table reconciliation (counters & quarantine payments)
  *   2. Monthly financial aggregate sums (Sales, Purchases, Payments, Expenses)
  *   3. Customer and Supplier ledger balance reconciliation
  *   4. Canonical row hashes (SHA-256 checksums) across all business tables

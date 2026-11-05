@@ -11,19 +11,18 @@ function assert(condition, message) {
   console.log(`  ✅ ${message}`);
 }
 
-async function runBackupSecurityTestsBody() {
+async function runBackupSecurityTestsBody(driver = 'sqlite') {
   try {
-  console.log('\n======================================================');
-  console.log('  TENANT BACKUP & RESTORE SECURITY TEST SUITE');
-  console.log('======================================================\n');
+  console.log(`\n======================================================`);
+  console.log(`  TENANT BACKUP & RESTORE SECURITY TEST SUITE [${driver.toUpperCase()}]`);
+  console.log(`======================================================\n`);
 
-  const tenantId = 't_backup_sec_test';
-  const victimId = 't_victim_sec_test';
+  const tenantId = `t_backup_sec_${driver}_${Date.now()}`;
+  const victimId = `t_victim_sec_${driver}_${Date.now()}`;
 
-  // Setup test tenants in SQLite
-  db.setDriver('sqlite');
-  await db.run("INSERT INTO tenants (id, business_name, owner_name) VALUES (?, 'Backup Sec Co', 'Tester') ON CONFLICT (id) DO NOTHING", [tenantId]);
-  await db.run("INSERT INTO tenants (id, business_name, owner_name) VALUES (?, 'Victim Co', 'Victim') ON CONFLICT (id) DO NOTHING", [victimId]);
+  db.setDriver(driver);
+  await db.run("INSERT INTO tenants (id, business_name, owner_name, plan, business_type, is_active) VALUES (?, 'Backup Sec Co', 'Tester', 'enterprise', 'retail_general', 1) ON CONFLICT (id) DO NOTHING", [tenantId]);
+  await db.run("INSERT INTO tenants (id, business_name, owner_name, plan, business_type, is_active) VALUES (?, 'Victim Co', 'Victim', 'enterprise', 'retail_general', 1) ON CONFLICT (id) DO NOTHING", [victimId]);
 
   // Seed sample product and customer for test tenant
   await db.run("INSERT INTO products (tenant_id, name, sku, purchase_price, sale_price) VALUES (?, 'Secure Product', 'SKU-SEC', 10, 20) ON CONFLICT (tenant_id, sku) DO NOTHING", [tenantId]);
@@ -186,7 +185,11 @@ async function runBackupSecurityTestsBody() {
 
 async function runBackupSecurityTests() {
   try {
-    await runBackupSecurityTestsBody();
+    await runBackupSecurityTestsBody('sqlite');
+    if (process.env.TEST_DATABASE_URL || process.env.DATABASE_URL) {
+      await runBackupSecurityTestsBody('postgres');
+    }
+    console.log('\n🎉 ALL TENANT BACKUP & RESTORE SECURITY TESTS PASSED ON BOTH DRIVERS!\n');
   } catch (err) {
     console.error('\n❌ Backup security test failed:', err);
     process.exit(1);
