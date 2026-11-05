@@ -162,7 +162,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
       return false;
     }
     if (!formData.city.trim()) {
-      setError('City / Location is required.');
+      setError('Location is required.');
       return false;
     }
     return true;
@@ -776,10 +776,10 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                   </div>
                 )}
 
-                {/* City / Location * */}
+                {/* Location * */}
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: t.labelColor, marginBottom: '6px' }}>
-                    City / Location *
+                    Location *
                   </label>
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <MapPin size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--mut)', pointerEvents: 'none' }} />

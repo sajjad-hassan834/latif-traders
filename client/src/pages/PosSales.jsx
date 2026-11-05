@@ -1906,7 +1906,7 @@ export default function PosSales() {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Area / Location</label>
+                    <label className="form-label">Location</label>
                     <input
                       type="text"
                       className="form-control"

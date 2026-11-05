@@ -1389,7 +1389,7 @@ export default function Customers() {
 
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Address / Shop Location</label>
+                    <label className="form-label">Location</label>
                     <input
                       type="text"
                       className="form-control"
