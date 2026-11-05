@@ -104,8 +104,56 @@ function resetLimitersForTesting() {
   registrationAttempts.clear();
 }
 
+
+const forgotPasswordAttempts = new Map(); // key: ip -> { count, expiresAt }
+const changePasswordAttempts = new Map(); // key: ip -> { count, expiresAt }
+
+function forgotPasswordRateLimiter(req, res, next) {
+  if (process.env.NODE_ENV === 'test' && !process.env.TEST_RATE_LIMITS) return next();
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const record = forgotPasswordAttempts.get(ip);
+  if (record && record.expiresAt > now && record.count >= 5) {
+    const waitMins = Math.ceil((record.expiresAt - now) / 60000);
+    return res.status(429).json({
+      success: false,
+      message: `Too many password reset requests. Please try again in ${waitMins} minute(s).`
+    });
+  }
+  const cur = forgotPasswordAttempts.get(ip);
+  if (!cur || cur.expiresAt <= now) {
+    forgotPasswordAttempts.set(ip, { count: 1, expiresAt: now + 15 * 60 * 1000 });
+  } else {
+    cur.count++;
+  }
+  next();
+}
+
+function changePasswordRateLimiter(req, res, next) {
+  if (process.env.NODE_ENV === 'test' && !process.env.TEST_RATE_LIMITS) return next();
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const record = changePasswordAttempts.get(ip);
+  if (record && record.expiresAt > now && record.count >= 10) {
+    const waitMins = Math.ceil((record.expiresAt - now) / 60000);
+    return res.status(429).json({
+      success: false,
+      message: `Too many password change attempts. Please try again in ${waitMins} minute(s).`
+    });
+  }
+  const cur = changePasswordAttempts.get(ip);
+  if (!cur || cur.expiresAt <= now) {
+    changePasswordAttempts.set(ip, { count: 1, expiresAt: now + 15 * 60 * 1000 });
+  } else {
+    cur.count++;
+  }
+  next();
+}
+
 module.exports = {
   loginRateLimiter,
   registerRateLimiter,
+  forgotPasswordRateLimiter,
+  changePasswordRateLimiter,
   resetLimitersForTesting
 };

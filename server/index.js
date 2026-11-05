@@ -81,7 +81,12 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // Allow and reflect origin
+    // In production, reject unallowed origins
+    if (process.env.NODE_ENV === 'production') {
+      return callback(new Error('CORS policy: Origin not allowed.'));
+    }
+
+    // In local development, allow and reflect origin
     return callback(null, true);
   },
   credentials: true,
@@ -167,10 +172,13 @@ if (fs.existsSync(clientDist)) {
   });
 }
 
-// Global Error Handler
+// Global Error Handler (Sanitised in production)
 app.use((err, req, res, next) => {
   console.error('Unhandled server error:', err);
-  res.status(500).json({ success: false, message: err.message || 'Internal server error' });
+  const isProd = process.env.NODE_ENV === 'production';
+  const status = err.status || err.statusCode || 500;
+  const message = (isProd && status === 500) ? 'An unexpected server error occurred. Please contact support.' : (err.message || 'Internal server error');
+  res.status(status).json({ success: false, message });
 });
 
 let server = null;
