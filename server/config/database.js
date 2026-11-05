@@ -534,6 +534,47 @@ function initializeDatabase() {
   } catch (err) {
     console.error('Superowner initialization error:', err.message);
   }
+  // Security Boot Check: Detect legacy default superowner or unrotated default admin (no values printed)
+  try {
+    const envSuperOwner = (process.env.SUPEROWNER_USERNAME || '').trim().toLowerCase();
+
+    // Ensure password_changed_at column exists in users
+    const userCols = db.prepare('PRAGMA table_info("users")').all().map(c => c.name);
+    if (!userCols.includes('password_changed_at')) {
+      db.prepare('ALTER TABLE users ADD COLUMN password_changed_at DATETIME').run();
+    }
+
+    // 1. Check for legacy/non-environment superowner accounts
+    const superowners = db.prepare("SELECT id, username FROM users WHERE role = 'superowner'").all();
+    const hasUnrotatedSO = superowners.some(so => {
+      const u = (so.username || '').toLowerCase();
+      return u === 'superowner' || (envSuperOwner && u !== envSuperOwner);
+    });
+    if (hasUnrotatedSO) {
+      console.warn('[SECURITY WARNING] Legacy default or non-environment superowner account detected in database. Rotate or disable using rotate_credentials.js.');
+    }
+
+    // 2. Check for legacy seeded admin on default tenant with unrotated credentials
+    const seededAdmin = db.prepare(`
+      SELECT id, username, token_version, must_change_password, password_changed_at
+      FROM users
+      WHERE (tenant_id = ? OR tenant_id = 'latif_001')
+        AND role = 'admin'
+        AND username = 'admin'
+    `).get(LEGACY_TENANT_ID);
+
+    if (seededAdmin) {
+      const neverRotated = (seededAdmin.token_version === null || seededAdmin.token_version <= 1)
+        && !seededAdmin.password_changed_at
+        && Number(seededAdmin.must_change_password || 0) === 0;
+      if (neverRotated) {
+        console.warn('[SECURITY WARNING] Legacy default admin account has never rotated initial credentials. Enforce credential rotation or disable using rotate_credentials.js.');
+      }
+    }
+  } catch (err) {
+    console.error('Security boot check error:', err.message);
+  }
+
 
   // Idempotent migration: Backfill any NULL tenant_id rows with LEGACY_TENANT_ID (excluding superowner)
   try {

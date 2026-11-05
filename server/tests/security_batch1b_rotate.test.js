@@ -55,6 +55,35 @@ async function testRotateCredentials() {
   assert.strictEqual(userAfterRot.must_change_password, 1, 'must_change_password must be 1');
   console.log('  ✅ Execution with --yes updates hash, sets must_change_password=1, and increments token_version');
 
+  // 4. Deactivation with --disable
+  const disableUser = `dis_test_${Date.now()}`;
+  await db.run(`
+    INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, token_version, must_change_password)
+    VALUES (?, ?, 'initial_hash', 'Disable Test', 'admin', 'active', ?, 1, 0)
+  `, [disableUser, `dis_${Date.now()}@test.com`, LEGACY_TENANT_ID]);
+
+  // 4a. Dry run with --disable (zero modification)
+  const dryDisableRes = spawnSync('node', [scriptPath, '--disable', '--user', disableUser], { encoding: 'utf8' });
+  assert.strictEqual(dryDisableRes.status, 0, 'Disable dry run must exit 0');
+  assert.ok(dryDisableRes.stdout.includes('DRY RUN'), 'Disable dry run must state DRY RUN');
+  assert.ok(dryDisableRes.stdout.includes(disableUser), 'Disable dry run must list target user');
+
+  const userAfterDryDis = await db.get('SELECT status, token_version FROM users WHERE username = ?', [disableUser]);
+  assert.strictEqual(userAfterDryDis.status, 'active', 'User status must remain active during dry run');
+  assert.strictEqual(userAfterDryDis.token_version, 1, 'token_version must NOT change during dry run');
+  console.log('  ✅ Deactivation dry run shows targeted user and makes zero changes');
+
+  // 4b. Execution with --disable --yes
+  const execDisableRes = spawnSync('node', [scriptPath, '--disable', '--user', disableUser, '--yes'], { encoding: 'utf8' });
+  assert.strictEqual(execDisableRes.status, 0, 'Disable execution must exit 0');
+  assert.ok(execDisableRes.stdout.includes('Successfully deactivated account'), 'Output must confirm deactivation');
+
+  const userAfterExecDis = await db.get('SELECT status, token_version FROM users WHERE username = ?', [disableUser]);
+  assert.strictEqual(userAfterExecDis.status, 'inactive', 'User status must be set to inactive');
+  assert.strictEqual(userAfterExecDis.token_version, 2, 'token_version must be bumped to revoke sessions');
+  console.log('  ✅ Execution with --disable --yes sets status=inactive and bumps token_version');
+
+
   console.log('\n======================================================');
   console.log('  🎉 ALL rotate_credentials.js TESTS PASSED!          ');
   console.log('======================================================\n');

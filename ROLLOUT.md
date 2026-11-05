@@ -49,27 +49,38 @@ Before triggering the deployment build, ensure the following variables are confi
 
 ---
 
-## 3. Post-Deployment Account Management
+## 3. Post-Deployment Account Management (Execute in this exact order)
 
-### A. Deactivate Legacy Superowner Account
-If an old default `superowner` account exists in the database, run the credential rotation utility:
-```bash
-# Dry run preview (prints affected account names only):
-node server/scripts/rotate_credentials.js --disable-legacy-superowner
+### Step 1: Disable the Legacy SuperOwner Account
+The database may contain the old seeded `superowner` account whose default credentials were in the old codebase.
+1. Run a dry-run preview (verifies target account without making changes):
+   ```bash
+   node server/scripts/rotate_credentials.js --disable --user superowner
+   ```
+2. Confirm the account details and execute deactivation:
+   ```bash
+   node server/scripts/rotate_credentials.js --disable --user superowner --yes
+   ```
+   *Result*: Status is set to `inactive`, `token_version` is incremented (revoking all sessions), and the account cannot be logged into.
 
-# Execute deactivation:
-node server/scripts/rotate_credentials.js --disable-legacy-superowner --yes
-```
+### Step 2: Rotate the Default Admin Credentials for the Primary Tenant (`latif_001`)
+The initial tenant administrator seeded with old default credentials must be rotated to a fresh, cryptographically secure password with mandatory forced password change:
+1. Run a dry-run preview:
+   ```bash
+   node server/scripts/rotate_credentials.js --tenant latif_001 --admin-only
+   ```
+2. Execute the credential rotation:
+   ```bash
+   node server/scripts/rotate_credentials.js --tenant latif_001 --admin-only --yes
+   ```
+   *Result*: Generates a one-time random password (minimum 19 characters), sets `must_change_password = 1`, increments `token_version` to terminate old sessions, and updates `password_changed_at`.
+   *(Optionally, if an explicit password is preferred, pass `--password "YourStrongPasswordHere123!"`)*.
 
-### B. Rotate Default Admin of First Tenant (`latif_001`)
-To issue a fresh one-time random password for the primary shop administrator:
-```bash
-# Dry run preview:
-node server/scripts/rotate_credentials.js --tenant latif_001 --admin-only
-
-# Execute rotation:
-node server/scripts/rotate_credentials.js --tenant latif_001 --admin-only --yes
-```
+### Step 3: Verify Boot Warnings Disappear
+Restart or observe server boot logs. Verify that both warnings:
+- `[SECURITY WARNING] Legacy default or non-environment superowner account detected...`
+- `[SECURITY WARNING] Legacy default admin account has never rotated initial credentials...`
+are no longer logged.
 
 ---
 

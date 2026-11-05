@@ -1,5 +1,5 @@
 /**
- * ShopOS Security Credential Rotation Utility
+ * ShopOS Security Credential Rotation & Account Deactivation Utility
  *
  * Requirements:
  * 1. Must act on ONE explicitly named account:
@@ -10,17 +10,20 @@
  * 3. Never touches other tenants' admins.
  * 4. Requires --yes confirmation; without --yes, prints dry-run list of affected accounts (usernames only).
  * 5. Bumps token_version to invalidate prior sessions and sets must_change_password = 1.
+ * 6. Supports --disable flag to set status = 'inactive' and bump token_version for ONE named account.
  *
  * Usage:
  *   # Dry-run preview (no changes made):
  *   node server/scripts/rotate_credentials.js --superowner
  *   node server/scripts/rotate_credentials.js --user cashier_01
  *   node server/scripts/rotate_credentials.js --tenant t_shop_01 --admin-only
+ *   node server/scripts/rotate_credentials.js --disable --user old_superowner
  *
  *   # Execute rotation with confirmation:
  *   node server/scripts/rotate_credentials.js --superowner --yes
  *   node server/scripts/rotate_credentials.js --user cashier_01 --password "NewPass123!@#" --yes
  *   node server/scripts/rotate_credentials.js --tenant t_shop_01 --admin-only --yes
+ *   node server/scripts/rotate_credentials.js --disable --user old_superowner --yes
  */
 
 require('dotenv').config();
@@ -45,6 +48,7 @@ async function rotateCredentials() {
   let targetUsername = null;
   let targetTenantId = null;
   let adminOnly = false;
+  let isDisable = false;
   let explicitPassword = process.env.NEW_PASSWORD || null;
   let confirmedYes = false;
 
@@ -60,6 +64,8 @@ async function rotateCredentials() {
       i++;
     } else if (arg === '--admin-only') {
       adminOnly = true;
+    } else if (arg === '--disable') {
+      isDisable = true;
     } else if (arg === '--password' && args[i + 1]) {
       explicitPassword = args[i + 1];
       i++;
@@ -83,22 +89,64 @@ async function rotateCredentials() {
     process.exit(1);
   }
 
+  if (isDisable && targetTenantId) {
+    console.error('\n❌ ERROR: The --disable flag must act on ONE named account (--user <username> or --superowner), not an entire tenant.\n');
+    process.exit(1);
+  }
+
   // Find targeted accounts
   let targetUsers = [];
   if (isSuperOwner) {
-    const rows = await db.all("SELECT id, username, role, tenant_id FROM users WHERE role = 'superowner'");
+    const rows = await db.all("SELECT id, username, role, status, tenant_id FROM users WHERE role = 'superowner'");
     targetUsers = rows;
   } else if (targetUsername) {
-    const row = await db.get("SELECT id, username, role, tenant_id FROM users WHERE LOWER(username) = ?", [targetUsername.toLowerCase()]);
+    const row = await db.get("SELECT id, username, role, status, tenant_id FROM users WHERE LOWER(username) = ?", [targetUsername.toLowerCase()]);
     if (row) targetUsers = [row];
   } else if (targetTenantId && adminOnly) {
-    const rows = await db.all("SELECT id, username, role, tenant_id FROM users WHERE tenant_id = ? AND role = 'admin'", [targetTenantId]);
+    const rows = await db.all("SELECT id, username, role, status, tenant_id FROM users WHERE tenant_id = ? AND role = 'admin'", [targetTenantId]);
     targetUsers = rows;
   }
 
   if (targetUsers.length === 0) {
     console.error('\n❌ ERROR: No matching account found for specified target.\n');
     process.exit(1);
+  }
+
+  if (isDisable && targetUsers.length !== 1) {
+    console.error(`\n❌ ERROR: --disable can only operate on exactly one account (${targetUsers.length} found). Specify --user <username> directly.\n`);
+    process.exit(1);
+  }
+
+  // DEACTIVATION MODE (--disable)
+  if (isDisable) {
+    const target = targetUsers[0];
+    if (!confirmedYes) {
+      console.log('\n======================================================');
+      console.log('   ShopOS Security Account Deactivation: DRY RUN');
+      console.log('======================================================');
+      console.log(`Target Mode: Disable Single User`);
+      console.log(`Account to Deactivate:`);
+      console.log(`  - Username: ${target.username} (Role: ${target.role}, Current Status: ${target.status || 'active'}${target.tenant_id ? `, Tenant: ${target.tenant_id}` : ''})`);
+      console.log('\n[DRY RUN ONLY] Zero accounts were modified.');
+      console.log('To execute this deactivation, re-run with the --yes confirmation flag:');
+      console.log(`  node server/scripts/rotate_credentials.js --disable --user ${target.username} --yes\n======================================================\n`);
+      return { dryRun: true, disabled: false, count: 1, user: target.username };
+    }
+
+    await db.run(`
+      UPDATE users
+      SET status = 'inactive',
+          token_version = COALESCE(token_version, 1) + 1,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [target.id]);
+
+    console.log('\n======================================================');
+    console.log(`✅ Successfully deactivated account '${target.username}'.`);
+    console.log('  - Status set to: inactive');
+    console.log('  - All existing active sessions revoked (token_version incremented).');
+    console.log('======================================================\n');
+    return { dryRun: false, disabled: true, count: 1, user: target.username };
   }
 
   // DRY-RUN PREVIEW (if --yes is not supplied)
@@ -155,6 +203,7 @@ async function rotateCredentials() {
       SET password_hash = ?,
           must_change_password = 1,
           token_version = COALESCE(token_version, 1) + 1,
+          password_changed_at = CURRENT_TIMESTAMP,
           updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `, [hash, u.id]);
@@ -173,6 +222,7 @@ async function rotateCredentials() {
   console.log('\n[SECURITY STATUS]');
   console.log('  - All existing active sessions revoked (token_version incremented).');
   console.log('  - must_change_password flag set to 1 (users forced to change password on next login).');
+  console.log('  - password_changed_at timestamp updated.');
   console.log('======================================================\n');
 
   return { dryRun: false, count: targetUsers.length, accounts: targetUsers.map(u => u.username) };
