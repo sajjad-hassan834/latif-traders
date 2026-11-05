@@ -1,9 +1,10 @@
+process.env.NODE_ENV = 'test';
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const app = require('../index');
 const { db } = require('../config/database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'latif-traders-secure-jwt-secret-key-2026';
+const { JWT_SECRET } = require('../middleware/auth');
 
 function assert(cond, msg) {
   if (!cond) {
@@ -18,6 +19,7 @@ async function runThroughputBenchmark() {
   console.log('STAGE A3: THROUGHPUT & LATENCY BENCHMARK ON POSTGRES 16 (LATE COUNTERS)');
   console.log('========================================================================\n');
 
+  process.env.DATABASE_URL = process.env.DATABASE_URL || process.env.TEST_DATABASE_URL || 'postgresql://postgres:testpassword123@localhost:5434/latif_test';
   db.setDriver('postgres');
 
   // Requirement 2: Print version & port
@@ -53,7 +55,7 @@ async function runThroughputBenchmark() {
     VALUES ('admin_bench', 'hash', 'Admin Bench', 'admin', 'active', ?)
   `, [tenantId]);
 
-  const token = jwt.sign({ id: uRes.lastInsertRowid || 1, username: 'admin_bench', role: 'admin', tenant_id: tenantId }, JWT_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ id: uRes.lastInsertRowid || 1, username: 'admin_bench', role: 'admin', tenant_id: tenantId, token_version: 1 }, JWT_SECRET, { expiresIn: '1h' });
 
   // Setup product with 1,000 units in stock
   const pRes = await db.run(`

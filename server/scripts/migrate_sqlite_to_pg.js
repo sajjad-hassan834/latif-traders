@@ -217,6 +217,7 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
             val = LEGACY_TENANT_ID;
           }
           // Set orphaned user_id in audit_logs to null (respecting ON DELETE SET NULL)
+          if (table === 'tenants' && c === 'owner_name' && (!val || !String(val).trim())) val = 'Business Owner';
           if (table === 'audit_logs' && c === 'user_id' && val !== null && !validTenantUserKeys.has(`${rowTenantId}:${val}`)) {
             val = null;
           }

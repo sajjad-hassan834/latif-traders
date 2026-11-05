@@ -185,7 +185,7 @@ async function testPreflightNegativeControls() {
     // CONTROL 9: Scan Anonymized Copy
     // ═════════════════════════════════════════════════════════════════════════
     console.log('--- Scan on Anonymized Copy ---');
-    const anonScript = path.join(__dirname, '..', 'scripts', 'anonymize_snapshot.js');
+    const anonScript = path.join(__dirname, '..', 'scripts', 'anonymise_snapshot.js');
     const anonDbPath = path.join(__dirname, '..', '..', 'data', 'temp_anon_preflight_ctrl.db');
     createdFiles.push(anonDbPath);
     if (fs.existsSync(anonDbPath)) fs.unlinkSync(anonDbPath);

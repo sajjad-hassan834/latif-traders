@@ -1,383 +1,383 @@
 {
-  "verifiedAt": "2026-11-04T14:09:02.480Z",
+  "verifiedAt": "2026-11-05T07:52:06.111Z",
   "overallPass": true,
   "tableRowCounts": [
     {
       "table": "tenants",
-      "sqliteCount": 5,
-      "pgCount": 5,
+      "sqliteCount": 70,
+      "pgCount": 70,
       "match": true
     },
     {
       "table": "users",
-      "sqliteCount": 10,
-      "pgCount": 10,
+      "sqliteCount": 164,
+      "pgCount": 164,
       "match": true
     },
     {
       "table": "categories",
-      "sqliteCount": 25,
-      "pgCount": 25,
+      "sqliteCount": 51,
+      "pgCount": 51,
       "match": true
     },
     {
       "table": "brands",
-      "sqliteCount": 10,
-      "pgCount": 10,
+      "sqliteCount": 8,
+      "pgCount": 8,
       "match": true
     },
     {
       "table": "units",
-      "sqliteCount": 20,
-      "pgCount": 20,
+      "sqliteCount": 27,
+      "pgCount": 27,
       "match": true
     },
     {
       "table": "customers",
-      "sqliteCount": 375,
-      "pgCount": 375,
+      "sqliteCount": 27,
+      "pgCount": 27,
       "match": true
     },
     {
       "table": "suppliers",
-      "sqliteCount": 45,
-      "pgCount": 45,
+      "sqliteCount": 18,
+      "pgCount": 18,
       "match": true
     },
     {
       "table": "products",
-      "sqliteCount": 325,
-      "pgCount": 325,
+      "sqliteCount": 481,
+      "pgCount": 481,
       "match": true
     },
     {
       "table": "supplier_products",
-      "sqliteCount": 0,
-      "pgCount": 0,
+      "sqliteCount": 11,
+      "pgCount": 11,
       "match": true
     },
     {
       "table": "batches",
-      "sqliteCount": 650,
-      "pgCount": 650,
+      "sqliteCount": 15,
+      "pgCount": 15,
       "match": true
     },
     {
       "table": "purchases",
-      "sqliteCount": 500,
-      "pgCount": 500,
+      "sqliteCount": 18,
+      "pgCount": 18,
       "match": true
     },
     {
       "table": "purchase_items",
-      "sqliteCount": 500,
-      "pgCount": 500,
+      "sqliteCount": 11,
+      "pgCount": 11,
       "match": true
     },
     {
       "table": "sales",
-      "sqliteCount": 10500,
-      "pgCount": 10500,
+      "sqliteCount": 933,
+      "pgCount": 933,
       "match": true
     },
     {
       "table": "sale_items",
-      "sqliteCount": 30580,
-      "pgCount": 30580,
+      "sqliteCount": 21,
+      "pgCount": 21,
       "match": true
     },
     {
       "table": "returns",
-      "sqliteCount": 225,
-      "pgCount": 225,
+      "sqliteCount": 11,
+      "pgCount": 11,
       "match": true
     },
     {
       "table": "return_items",
-      "sqliteCount": 225,
-      "pgCount": 225,
+      "sqliteCount": 11,
+      "pgCount": 11,
       "match": true
     },
     {
       "table": "payments",
-      "sqliteCount": 10290,
-      "pgCount": 10290,
+      "sqliteCount": 33,
+      "pgCount": 30,
       "match": true
     },
     {
       "table": "legacy_unlinked_payments",
       "sqliteCount": 0,
-      "pgCount": 0,
+      "pgCount": 3,
       "match": true
     },
     {
       "table": "expense_categories",
-      "sqliteCount": 15,
-      "pgCount": 15,
+      "sqliteCount": 37,
+      "pgCount": 37,
       "match": true
     },
     {
       "table": "expenses",
-      "sqliteCount": 400,
-      "pgCount": 400,
+      "sqliteCount": 18,
+      "pgCount": 18,
       "match": true
     },
     {
       "table": "stock_adjustments",
-      "sqliteCount": 125,
-      "pgCount": 125,
+      "sqliteCount": 6,
+      "pgCount": 6,
       "match": true
     },
     {
       "table": "inventory_movements",
-      "sqliteCount": 31367,
-      "pgCount": 31367,
+      "sqliteCount": 59,
+      "pgCount": 59,
       "match": true
     },
     {
       "table": "tenant_settings",
-      "sqliteCount": 15,
-      "pgCount": 15,
+      "sqliteCount": 134,
+      "pgCount": 134,
       "match": true
     },
     {
       "table": "subscriptions",
-      "sqliteCount": 5,
-      "pgCount": 5,
+      "sqliteCount": 9,
+      "pgCount": 9,
       "match": true
     },
     {
       "table": "audit_logs",
-      "sqliteCount": 10600,
-      "pgCount": 10600,
+      "sqliteCount": 479,
+      "pgCount": 479,
       "match": true
     },
     {
       "table": "password_reset_requests",
-      "sqliteCount": 0,
-      "pgCount": 0,
+      "sqliteCount": 25,
+      "pgCount": 25,
       "match": true
     },
     {
       "table": "counters",
-      "sqliteCount": 0,
-      "pgCount": 10,
+      "sqliteCount": 40,
+      "pgCount": 140,
       "match": true
     },
     {
       "table": "settings",
-      "sqliteCount": 3,
-      "pgCount": 3,
+      "sqliteCount": 19,
+      "pgCount": 19,
       "match": true
     }
   ],
   "financialSums": [
     {
       "metric": "Total Sales Gross",
-      "sqliteSum": 80633952.62,
-      "pgSum": 80633952.62,
+      "sqliteSum": 688879,
+      "pgSum": 688879,
       "match": true
     },
     {
       "metric": "Sales Paid Amount",
-      "sqliteSum": 51536510.49,
-      "pgSum": 51536510.49,
+      "sqliteSum": 611979,
+      "pgSum": 611979,
       "match": true
     },
     {
       "metric": "Sales Balance Due",
-      "sqliteSum": 29097442.13,
-      "pgSum": 29097442.13,
+      "sqliteSum": 76900,
+      "pgSum": 76900,
       "match": true
     },
     {
       "metric": "Total Purchases",
-      "sqliteSum": 12835987,
-      "pgSum": 12835987,
+      "sqliteSum": 488440,
+      "pgSum": 488440,
       "match": true
     },
     {
       "metric": "Total Payment Vouchers",
-      "sqliteSum": 60537183.36,
-      "pgSum": 60537183.36,
+      "sqliteSum": 605079,
+      "pgSum": 605079,
       "match": true
     },
     {
       "metric": "Total Operating Expenses",
-      "sqliteSum": 6050000,
-      "pgSum": 6050000,
+      "sqliteSum": 334850,
+      "pgSum": 334850,
       "match": true
     }
   ],
   "ledgerBalances": [
     {
       "type": "Customer Receivables",
-      "sqlite": 27818692.13,
-      "pg": 27818692.13,
+      "sqlite": 536095,
+      "pg": 536095,
       "match": true
     },
     {
       "type": "Supplier Payables",
-      "sqlite": 3207026.53,
-      "pg": 3207026.53,
+      "sqlite": 393440,
+      "pg": 393440,
       "match": true
     }
   ],
   "canonicalHashes": [
     {
       "table": "tenants",
-      "sqliteHash": "2d8a7cdff3c2e388",
-      "pgHash": "2d8a7cdff3c2e388",
+      "sqliteHash": "b6704e8a178a1977",
+      "pgHash": "b6704e8a178a1977",
       "match": true
     },
     {
       "table": "users",
-      "sqliteHash": "4bcc65759ddfb4b2",
-      "pgHash": "4bcc65759ddfb4b2",
+      "sqliteHash": "2490c2a9a4d67b11",
+      "pgHash": "2490c2a9a4d67b11",
       "match": true
     },
     {
       "table": "categories",
-      "sqliteHash": "ac057c42400ad1f8",
-      "pgHash": "ac057c42400ad1f8",
+      "sqliteHash": "bedc3096f37f2f1c",
+      "pgHash": "bedc3096f37f2f1c",
       "match": true
     },
     {
       "table": "brands",
-      "sqliteHash": "6d57740631b6bf04",
-      "pgHash": "6d57740631b6bf04",
+      "sqliteHash": "335de205797f2876",
+      "pgHash": "335de205797f2876",
       "match": true
     },
     {
       "table": "units",
-      "sqliteHash": "a52357c6bd02b893",
-      "pgHash": "a52357c6bd02b893",
+      "sqliteHash": "f0ee14f3d2651a37",
+      "pgHash": "f0ee14f3d2651a37",
       "match": true
     },
     {
       "table": "customers",
-      "sqliteHash": "8a5fa56d66a54101",
-      "pgHash": "8a5fa56d66a54101",
+      "sqliteHash": "17572d5cf28a5445",
+      "pgHash": "17572d5cf28a5445",
       "match": true
     },
     {
       "table": "suppliers",
-      "sqliteHash": "5d5a406048747fde",
-      "pgHash": "5d5a406048747fde",
+      "sqliteHash": "9b42988b6d14dae5",
+      "pgHash": "9b42988b6d14dae5",
       "match": true
     },
     {
       "table": "products",
-      "sqliteHash": "6614fde7f53dd1ee",
-      "pgHash": "6614fde7f53dd1ee",
+      "sqliteHash": "d3fc6e5d7be8be97",
+      "pgHash": "d3fc6e5d7be8be97",
       "match": true
     },
     {
       "table": "supplier_products",
-      "sqliteHash": "4f53cda18c2baa0c",
-      "pgHash": "4f53cda18c2baa0c",
+      "sqliteHash": "fe03116c27ed275f",
+      "pgHash": "fe03116c27ed275f",
       "match": true
     },
     {
       "table": "batches",
-      "sqliteHash": "146251260ac1da48",
-      "pgHash": "146251260ac1da48",
+      "sqliteHash": "d9469d56cda36cbb",
+      "pgHash": "d9469d56cda36cbb",
       "match": true
     },
     {
       "table": "purchases",
-      "sqliteHash": "934db21c5c8e81d8",
-      "pgHash": "934db21c5c8e81d8",
+      "sqliteHash": "317132418a830ba7",
+      "pgHash": "317132418a830ba7",
       "match": true
     },
     {
       "table": "purchase_items",
-      "sqliteHash": "1ffee288a964ecf6",
-      "pgHash": "1ffee288a964ecf6",
+      "sqliteHash": "54008fd63af5c0c8",
+      "pgHash": "54008fd63af5c0c8",
       "match": true
     },
     {
       "table": "sales",
-      "sqliteHash": "aaebf44fd52b4640",
-      "pgHash": "aaebf44fd52b4640",
+      "sqliteHash": "2b5bfbd8a097c959",
+      "pgHash": "2b5bfbd8a097c959",
       "match": true
     },
     {
       "table": "sale_items",
-      "sqliteHash": "82521824da2d9bfd",
-      "pgHash": "82521824da2d9bfd",
+      "sqliteHash": "c6f6462455b2db98",
+      "pgHash": "c6f6462455b2db98",
       "match": true
     },
     {
       "table": "returns",
-      "sqliteHash": "88c85b6f3dfa5959",
-      "pgHash": "88c85b6f3dfa5959",
+      "sqliteHash": "02194a2f1a5cde5c",
+      "pgHash": "02194a2f1a5cde5c",
       "match": true
     },
     {
       "table": "return_items",
-      "sqliteHash": "02bd8a43a8eafed2",
-      "pgHash": "02bd8a43a8eafed2",
+      "sqliteHash": "cceb584a05e02ed2",
+      "pgHash": "cceb584a05e02ed2",
       "match": true
     },
     {
       "table": "payments",
-      "sqliteHash": "ba6b86fda9887f7e",
-      "pgHash": "ba6b86fda9887f7e",
+      "sqliteHash": "b0bcacd9655f967f",
+      "pgHash": "b0bcacd9655f967f",
       "match": true
     },
     {
       "table": "expense_categories",
-      "sqliteHash": "48653af63a648aa3",
-      "pgHash": "48653af63a648aa3",
+      "sqliteHash": "97b16a82f8517a79",
+      "pgHash": "97b16a82f8517a79",
       "match": true
     },
     {
       "table": "expenses",
-      "sqliteHash": "335e078f7ee43df7",
-      "pgHash": "335e078f7ee43df7",
+      "sqliteHash": "4453d31be82a87c9",
+      "pgHash": "4453d31be82a87c9",
       "match": true
     },
     {
       "table": "stock_adjustments",
-      "sqliteHash": "2c6aad9c2e2b9eda",
-      "pgHash": "2c6aad9c2e2b9eda",
+      "sqliteHash": "69e6276094d81f8c",
+      "pgHash": "69e6276094d81f8c",
       "match": true
     },
     {
       "table": "inventory_movements",
-      "sqliteHash": "4af029786c880a42",
-      "pgHash": "4af029786c880a42",
+      "sqliteHash": "de95075e0968e597",
+      "pgHash": "de95075e0968e597",
       "match": true
     },
     {
       "table": "tenant_settings",
-      "sqliteHash": "31f349ad60d66b60",
-      "pgHash": "31f349ad60d66b60",
+      "sqliteHash": "a7da2a7789ec9194",
+      "pgHash": "a7da2a7789ec9194",
       "match": true
     },
     {
       "table": "subscriptions",
-      "sqliteHash": "07f1c71b7d97b3bc",
-      "pgHash": "07f1c71b7d97b3bc",
+      "sqliteHash": "fc307264458036f9",
+      "pgHash": "fc307264458036f9",
       "match": true
     },
     {
       "table": "audit_logs",
-      "sqliteHash": "b424e8b0db6cf801",
-      "pgHash": "b424e8b0db6cf801",
+      "sqliteHash": "e9b0571ac0d1fa0b",
+      "pgHash": "e9b0571ac0d1fa0b",
       "match": true
     },
     {
       "table": "password_reset_requests",
-      "sqliteHash": "4f53cda18c2baa0c",
-      "pgHash": "4f53cda18c2baa0c",
+      "sqliteHash": "051396991aa62cfe",
+      "pgHash": "051396991aa62cfe",
       "match": true
     },
     {
       "table": "settings",
-      "sqliteHash": "3defa7f17919a5cf",
-      "pgHash": "3defa7f17919a5cf",
+      "sqliteHash": "a8a27dc749f00528",
+      "pgHash": "a8a27dc749f00528",
       "match": true
     }
   ],
@@ -387,34 +387,34 @@
     {
       "range": "Today",
       "sqlite": {
-        "invoices": 15,
-        "revenue": 93274.82,
-        "collected": 61974.11,
-        "expenses": 0,
-        "purchases": 0
+        "invoices": 14,
+        "revenue": 91000,
+        "collected": 14100,
+        "expenses": 78350,
+        "purchases": 24000
       },
       "pg": {
-        "invoices": 15,
-        "revenue": 93274.82,
-        "collected": 61974.11,
-        "expenses": 0,
-        "purchases": 0
+        "invoices": 14,
+        "revenue": 91000,
+        "collected": 14100,
+        "expenses": 78350,
+        "purchases": 24000
       },
       "match": true
     },
     {
       "range": "Yesterday",
       "sqlite": {
-        "invoices": 19,
-        "revenue": 125936.75,
-        "collected": 76265.08,
+        "invoices": 3,
+        "revenue": 84,
+        "collected": 84,
         "expenses": 0,
         "purchases": 0
       },
       "pg": {
-        "invoices": 19,
-        "revenue": 125936.75,
-        "collected": 76265.08,
+        "invoices": 3,
+        "revenue": 84,
+        "collected": 84,
         "expenses": 0,
         "purchases": 0
       },
@@ -423,71 +423,71 @@
     {
       "range": "Last 7 Days",
       "sqlite": {
-        "invoices": 165,
-        "revenue": 1064862.26,
-        "collected": 742611.68,
-        "expenses": 0,
-        "purchases": 0
+        "invoices": 22,
+        "revenue": 91354,
+        "collected": 14454,
+        "expenses": 83350,
+        "purchases": 24000
       },
       "pg": {
-        "invoices": 165,
-        "revenue": 1064862.26,
-        "collected": 742611.68,
-        "expenses": 0,
-        "purchases": 0
+        "invoices": 22,
+        "revenue": 91354,
+        "collected": 14454,
+        "expenses": 83350,
+        "purchases": 24000
       },
       "match": true
     },
     {
       "range": "October 2026 MTD",
       "sqlite": {
-        "invoices": 750,
-        "revenue": 5693230.51,
-        "collected": 3615927,
-        "expenses": 381250,
-        "purchases": 0
+        "invoices": 33,
+        "revenue": 598879,
+        "collected": 521979,
+        "expenses": 334850,
+        "purchases": 478440
       },
       "pg": {
-        "invoices": 750,
-        "revenue": 5693230.51,
-        "collected": 3615927,
-        "expenses": 381250,
-        "purchases": 0
+        "invoices": 33,
+        "revenue": 598879,
+        "collected": 521979,
+        "expenses": 334850,
+        "purchases": 478440
       },
       "match": true
     },
     {
       "range": "September 2026",
       "sqlite": {
-        "invoices": 750,
-        "revenue": 5591057.44,
-        "collected": 3487273.15,
-        "expenses": 375000,
-        "purchases": 0
+        "invoices": 0,
+        "revenue": 0,
+        "collected": 0,
+        "expenses": 0,
+        "purchases": 10000
       },
       "pg": {
-        "invoices": 750,
-        "revenue": 5591057.44,
-        "collected": 3487273.15,
-        "expenses": 375000,
-        "purchases": 0
+        "invoices": 0,
+        "revenue": 0,
+        "collected": 0,
+        "expenses": 0,
+        "purchases": 10000
       },
       "match": true
     },
     {
       "range": "August 2026",
       "sqlite": {
-        "invoices": 750,
-        "revenue": 5769932.91,
-        "collected": 3582229.95,
-        "expenses": 368750,
+        "invoices": 0,
+        "revenue": 0,
+        "collected": 0,
+        "expenses": 0,
         "purchases": 0
       },
       "pg": {
-        "invoices": 750,
-        "revenue": 5769932.91,
-        "collected": 3582229.95,
-        "expenses": 368750,
+        "invoices": 0,
+        "revenue": 0,
+        "collected": 0,
+        "expenses": 0,
         "purchases": 0
       },
       "match": true
@@ -495,72 +495,72 @@
     {
       "range": "Q3 2026",
       "sqlite": {
-        "invoices": 2250,
-        "revenue": 17385062.71,
-        "collected": 10873479.39,
-        "expenses": 1231250,
-        "purchases": 0
+        "invoices": 0,
+        "revenue": 0,
+        "collected": 0,
+        "expenses": 0,
+        "purchases": 10000
       },
       "pg": {
-        "invoices": 2250,
-        "revenue": 17385062.71,
-        "collected": 10873479.39,
-        "expenses": 1231250,
-        "purchases": 0
+        "invoices": 0,
+        "revenue": 0,
+        "collected": 0,
+        "expenses": 0,
+        "purchases": 10000
       },
       "match": true
     },
     {
       "range": "Q4 2026",
       "sqlite": {
-        "invoices": 750,
-        "revenue": 5693230.51,
-        "collected": 3615927,
-        "expenses": 381250,
-        "purchases": 0
+        "invoices": 933,
+        "revenue": 688879,
+        "collected": 611979,
+        "expenses": 334850,
+        "purchases": 478440
       },
       "pg": {
-        "invoices": 750,
-        "revenue": 5693230.51,
-        "collected": 3615927,
-        "expenses": 381250,
-        "purchases": 0
+        "invoices": 933,
+        "revenue": 688879,
+        "collected": 611979,
+        "expenses": 334850,
+        "purchases": 478440
       },
       "match": true
     },
     {
       "range": "YTD 2026",
       "sqlite": {
-        "invoices": 7500,
-        "revenue": 57973408.42,
-        "collected": 37066457.93,
-        "expenses": 4380000,
-        "purchases": 0
+        "invoices": 933,
+        "revenue": 688879,
+        "collected": 611979,
+        "expenses": 334850,
+        "purchases": 488440
       },
       "pg": {
-        "invoices": 7500,
-        "revenue": 57973408.42,
-        "collected": 37066457.93,
-        "expenses": 4380000,
-        "purchases": 0
+        "invoices": 933,
+        "revenue": 688879,
+        "collected": 611979,
+        "expenses": 334850,
+        "purchases": 488440
       },
       "match": true
     },
     {
       "range": "All Time Range",
       "sqlite": {
-        "invoices": 10500,
-        "revenue": 80633952.62,
-        "collected": 51536510.49,
-        "expenses": 6050000,
-        "purchases": 12835987
+        "invoices": 933,
+        "revenue": 688879,
+        "collected": 611979,
+        "expenses": 334850,
+        "purchases": 488440
       },
       "pg": {
-        "invoices": 10500,
-        "revenue": 80633952.62,
-        "collected": 51536510.49,
-        "expenses": 6050000,
-        "purchases": 12835987
+        "invoices": 933,
+        "revenue": 688879,
+        "collected": 611979,
+        "expenses": 334850,
+        "purchases": 488440
       },
       "match": true
     }

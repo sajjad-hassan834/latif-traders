@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'test';
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
@@ -5,7 +6,7 @@ const path = require('path');
 const app = require('../index');
 const { db } = require('../config/database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'latif-traders-secure-jwt-secret-key-2026';
+const { JWT_SECRET } = require('../middleware/auth');
 
 function assert(cond, msg) {
   if (!cond) {
@@ -20,6 +21,7 @@ async function runConcurrencySuite() {
   console.log('STAGE A3: REAL HTTP ENDPOINT CONCURRENCY & ISOLATION SUITE (POSTGRES 16)');
   console.log('========================================================================\n');
 
+  process.env.DATABASE_URL = process.env.DATABASE_URL || process.env.TEST_DATABASE_URL || 'postgresql://postgres:testpassword123@localhost:5434/latif_test';
   db.setDriver('postgres');
 
   // Requirement 2: Print SELECT version() and connection port at the start of every Postgres test
@@ -59,7 +61,7 @@ async function runConcurrencySuite() {
     INSERT INTO users (username, password_hash, full_name, role, status, tenant_id)
     VALUES ('admin_conc', 'hash', 'Admin Conc', 'admin', 'active', ?)
   `, [tenantId]);
-  const token = jwt.sign({ id: uRes.lastInsertRowid || 1, username: 'admin_conc', role: 'admin', tenant_id: tenantId }, JWT_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ id: uRes.lastInsertRowid || 1, username: 'admin_conc', role: 'admin', tenant_id: tenantId, token_version: 1 }, JWT_SECRET, { expiresIn: '1h' });
 
   // 2. Setup Customer & Supplier
   const cRes = await db.run(`

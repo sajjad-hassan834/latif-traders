@@ -373,13 +373,20 @@ async function runStageA4DeepVerificationTest() {
 
     CREATE TABLE password_reset_requests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-      token TEXT NOT NULL,
-      expires_at DATETIME NOT NULL,
-      used INTEGER NOT NULL DEFAULT 0,
+      user_id INTEGER,
+      username TEXT NOT NULL,
+      full_name TEXT,
+      request_note TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      admin_note TEXT,
+      temporary_password TEXT,
+      reset_token_hash TEXT,
+      expires_at DATETIME,
+      is_used INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      tenant_id TEXT NOT NULL,
-      UNIQUE(tenant_id, token)
+      resolved_at DATETIME,
+      resolved_by INTEGER,
+      tenant_id TEXT NOT NULL
     );
   `);
 
@@ -515,7 +522,7 @@ async function runStageA4DeepVerificationTest() {
       db.prepare("INSERT INTO subscriptions (tenant_id, plan, price) VALUES (?, 'enterprise', 5000)").run(tid);
       db.prepare("INSERT INTO audit_logs (tenant_id, user_id, user_name, action, entity_type, details) VALUES (?, ?, 'Admin', 'LOGIN', 'AUTH', 'OK')").run(tid, userId);
       db.prepare("INSERT INTO supplier_products (tenant_id, supplier_id, product_id, supplier_price) VALUES (?, ?, ?, 95)").run(tid, supId, productIds[0]);
-      db.prepare("INSERT INTO password_reset_requests (tenant_id, user_id, token, expires_at) VALUES (?, ?, 'tok-' || ?, '2026-12-31')").run(tid, userId, tid);
+      db.prepare("INSERT INTO password_reset_requests (tenant_id, user_id, username, full_name, reset_token_hash, expires_at) VALUES (?, ?, 'admin_' || ?, 'Admin', 'hash-' || ?, '2026-12-31')").run(tid, userId, tid, tid);
     }
   })();
 

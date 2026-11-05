@@ -209,6 +209,8 @@ async function verifyMigration(overrideSqlitePath) {
   }
 
   // Pre-fetch quarantine IDs and valid tenant:user keys for foreign key normalization
+  const tRes = await pg.query('SELECT id FROM tenants');
+  const validTenants = new Set(tRes.rows.map(r => r.id));
   const lRes = await pg.query('SELECT original_payment_id FROM legacy_unlinked_payments');
   const quarantinedIds = new Set(lRes.rows.map(r => Number(r.original_payment_id)));
   const validTenantUserKeys = new Set(
@@ -242,6 +244,9 @@ async function verifyMigration(overrideSqlitePath) {
         if (tbl === 'audit_logs' && k === 'user_id' && val !== null && !validTenantUserKeys.has(`${r.tenant_id || LEGACY_TENANT_ID}:${val}`)) {
           val = null;
         }
+        if (tbl === 'payments' && k === 'party_type' && val) val = String(val).toUpperCase();
+        if (tbl === 'tenants' && k === 'owner_name' && (!val || !String(val).trim())) val = 'Business Owner';
+        if (tbl === 'audit_logs' && k === 'tenant_id' && !validTenants.has(val)) val = LEGACY_TENANT_ID;
         clean[k] = normalizeCanonicalValue(val);
       }
       return clean;

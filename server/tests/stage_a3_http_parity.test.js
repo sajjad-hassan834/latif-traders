@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'test';
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
@@ -5,7 +6,7 @@ const path = require('path');
 const app = require('../index');
 const { db } = require('../config/database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'latif-traders-secure-jwt-secret-key-2026';
+const { JWT_SECRET } = require('../middleware/auth');
 
 function assert(cond, msg) {
   if (!cond) {
@@ -20,6 +21,9 @@ async function runScenario(driverName) {
   console.log(`RUNNING FULL HTTP ENDPOINT PARITY TEST ON [${driverName.toUpperCase()}]`);
   console.log(`========================================================================\n`);
 
+  if (driverName === 'postgres') {
+    process.env.DATABASE_URL = process.env.DATABASE_URL || process.env.TEST_DATABASE_URL || 'postgresql://postgres:testpassword123@localhost:5434/latif_test';
+  }
   db.setDriver(driverName);
 
   if (driverName === 'postgres') {
@@ -67,7 +71,7 @@ async function runScenario(driverName) {
   `, [`admin_${driverName}`, tenantId]);
 
   const userId = userRes.lastInsertRowid || 1;
-  const token = jwt.sign({ id: userId, username: `admin_${driverName}`, role: 'admin', tenant_id: tenantId }, JWT_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ id: userId, username: `admin_${driverName}`, role: 'admin', tenant_id: tenantId, token_version: 1 }, JWT_SECRET, { expiresIn: '1h' });
 
   // 2. HTTP POST /api/parties (Create Customer)
   const custRes = await request(app)
