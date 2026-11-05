@@ -740,7 +740,7 @@ export default function Purchases() {
               }}
             >
               <option value="all">All Statuses</option>
-              <option value="PAID">Paid / Settled</option>
+              <option value="PAID">Paid</option>
               <option value="PARTIAL">Partial Due</option>
               <option value="UNPAID">Unpaid</option>
             </select>
@@ -863,7 +863,7 @@ export default function Purchases() {
           <table className="table" style={{ minWidth: '720px' }}>
             <thead>
               <tr>
-                <th>Invoice / Bill #</th>
+                <th>Bill #</th>
                 <th>Date</th>
                 <th>Supplier Name</th>
                 <th>Items</th>
@@ -1305,7 +1305,7 @@ export default function Purchases() {
                               {/* BATCH & EXPIRY ROW */}
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', paddingTop: '4px' }}>
                                 <div>
-                                  <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Batch / Lot #</label>
+                                  <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Batch</label>
                                   <input
                                     type="text"
                                     className="form-control mono"
@@ -1523,7 +1523,7 @@ export default function Purchases() {
                       ) : Number(paidAmount || 0) > 0 ? (
                         <span style={{ color: '#d97706', fontWeight: 700 }}>Partial Due: {formatPKR(Math.max(0, grandTotal - Number(paidAmount || 0)))}</span>
                       ) : (
-                        <span style={{ color: '#ef4444', fontWeight: 700 }}>Unpaid / Credit: {formatPKR(grandTotal)}</span>
+                        <span style={{ color: '#ef4444', fontWeight: 700 }}>Unpaid: {formatPKR(grandTotal)}</span>
                       )}
                     </div>
 
@@ -1549,7 +1549,7 @@ export default function Purchases() {
                 className="btn btn-secondary btn-sm"
                 onClick={handleCloseNewModal}
               >
-                Discard / Cancel
+                Cancel
               </button>
 
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -1761,7 +1761,7 @@ export default function Purchases() {
 
                 <div className="form-grid-2" style={{ alignItems: 'center' }}>
                   <div className="form-group">
-                    <label className="form-label">Return Reason / Explanation *</label>
+                    <label className="form-label">Reason *</label>
                     <input
                       type="text"
                       className="form-control"

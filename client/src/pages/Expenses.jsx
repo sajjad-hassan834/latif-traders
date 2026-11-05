@@ -562,7 +562,7 @@ function ExpensesContent() {
                 <th>Expense Title</th>
                 <th style={{ width: '150px' }}>Category</th>
                 <th style={{ width: '110px' }}>Method</th>
-                <th>Notes / Description</th>
+                <th>Description</th>
                 <th style={{ width: '80px', textAlign: 'center' }}>Receipt</th>
                 <th style={{ textAlign: 'right', width: '130px' }}>Amount (PKR)</th>
                 <th style={{ textAlign: 'center', width: '90px' }}>Action</th>
@@ -771,7 +771,7 @@ function ExpensesContent() {
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Description / Reference Note</label>
+                  <label className="form-label">Description</label>
                   <textarea
                     className="form-control"
                     rows="2"
@@ -784,7 +784,7 @@ function ExpensesContent() {
                 <div className="form-group" style={{ margin: 0, background: 'var(--hover-bg, #f8fafc)', border: '1px dashed var(--border, #cbd5e1)', borderRadius: '6px', padding: '0.75rem' }}>
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
                     <Paperclip size={13} color="var(--primary, #0284c7)" />
-                    <span>Receipt / Bill Image (Optional)</span>
+                    <span>Receipt (Optional)</span>
                   </label>
                   <input
                     type="file"
@@ -892,7 +892,7 @@ function ExpensesContent() {
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Description / Reference Note</label>
+                  <label className="form-label">Description</label>
                   <textarea
                     className="form-control"
                     rows="2"
@@ -904,7 +904,7 @@ function ExpensesContent() {
                 <div className="form-group" style={{ margin: 0, background: 'var(--hover-bg, #f8fafc)', border: '1px dashed var(--border, #cbd5e1)', borderRadius: '6px', padding: '0.75rem' }}>
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
                     <Paperclip size={13} color="var(--primary, #0284c7)" />
-                    <span>Receipt / Bill Image (Optional)</span>
+                    <span>Receipt (Optional)</span>
                   </label>
                   {editingExpense.receipt_path && !editingExpense.receipt_name && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', background: 'var(--hover-bg)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
@@ -993,7 +993,7 @@ function ExpensesContent() {
           >
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title, #0f172a)' }}>Expense Receipt / Bill Attachment</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title, #0f172a)' }}>Expense Receipt</h3>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748b)', marginTop: '2px' }}>Attached payment proof document</div>
               </div>
               <button

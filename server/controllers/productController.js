@@ -175,9 +175,11 @@ exports.getProductById = async (req, res) => {
       product: {
         ...product,
         current_stock: totalStock,
-        batches,
-        recent_movements: movements
-      }
+        batches: batches || [],
+        recent_movements: movements || []
+      },
+      batches: batches || [],
+      movements: movements || []
     });
   } catch (err) {
     console.error('Error fetching product details:', err);
@@ -227,7 +229,9 @@ exports.createProduct = async (req, res) => {
       } else {
         const existing = await db.get('SELECT id FROM products WHERE sku = ? AND tenant_id = ?', [finalSku, tenantId]);
         if (existing) {
-          throw new Error(`SKU "${finalSku}" is already assigned to another product in your catalog.`);
+          do {
+            finalSku = `PRD-${Math.floor(100000 + Math.random() * 900000)}`;
+          } while (await db.get('SELECT id FROM products WHERE sku = ? AND tenant_id = ?', [finalSku, tenantId]));
         }
       }
 

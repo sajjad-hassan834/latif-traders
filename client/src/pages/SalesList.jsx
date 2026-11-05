@@ -1460,7 +1460,7 @@ export default function SalesList({ setTab }) {
               <div className="modal-body">
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', fontSize: '0.785rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                    Select New Status
+                    Status
                   </label>
                   <select
                     value={newStatusValue}
@@ -1471,7 +1471,7 @@ export default function SalesList({ setTab }) {
                     <option value="New">New (Awaiting)</option>
                     <option value="Pending">Pending (On Hold)</option>
                     <option value="Confirmed">Confirmed</option>
-                    <option value="Processing">Processing (Packing / Weighing)</option>
+                    <option value="Processing">Processing</option>
                     <option value="Ready for Delivery">Ready for Delivery</option>
                     <option value="Delivered">Delivered</option>
                     <option value="Completed">Completed (Fulfilled)</option>
@@ -1487,7 +1487,7 @@ export default function SalesList({ setTab }) {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.785rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                    Reason / Operational Note (Optional)
+                    Note
                   </label>
                   <input
                     type="text"

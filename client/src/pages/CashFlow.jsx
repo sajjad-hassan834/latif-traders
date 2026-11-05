@@ -824,7 +824,7 @@ export default function CashFlow() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', fontSize: '0.825rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748b' }}>Voucher / Ref #:</span>
+                  <span style={{ color: '#64748b' }}>Voucher #:</span>
                   <span className="mono" style={{ fontWeight: 700 }}>{genericReceipt.ref_no}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -832,7 +832,7 @@ export default function CashFlow() {
                   <span>{formatDate(genericReceipt.date)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: '#64748b' }}>Party / Account:</span>
+                  <span style={{ color: '#64748b' }}>Account:</span>
                   <span style={{ fontWeight: 600 }}>{genericReceipt.party_name || 'N/A'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>

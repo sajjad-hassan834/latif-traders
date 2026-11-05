@@ -806,7 +806,7 @@ export default function PosSales() {
                   type="text"
                   className="form-control"
                   style={{ paddingLeft: '1.85rem', paddingRight: searchQuery ? '1.8rem' : '0.5rem', height: '30px', fontSize: '0.775rem' }}
-                  placeholder="Search name / SKU... [F2]"
+                  placeholder="Search name or code... [F2]"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleBarcodeSubmit}
@@ -1685,7 +1685,7 @@ export default function PosSales() {
           <div className="modal-content" style={{ maxWidth: '520px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-title)' }}>Parked / Held Carts ({heldOrders.length})</h3>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--text-title)' }}>Parked Carts ({heldOrders.length})</h3>
                 <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Resume or discard parked customer transactions</p>
               </div>
               <button
@@ -1965,7 +1965,7 @@ export default function PosSales() {
                   </tr>
                   <tr>
                     <td><kbd style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-title)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>F8</kbd></td>
-                    <td>Open Parked / Held Carts list to resume</td>
+                    <td>Open Parked Carts list to resume</td>
                   </tr>
                   <tr>
                     <td><kbd style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', color: 'var(--text-title)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>?</kbd></td>

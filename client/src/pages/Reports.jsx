@@ -1248,7 +1248,7 @@ function ReportsContent({ initialReport }) {
                   <table className="table" style={{ width: '100%', minWidth: '850px' }}>
                     <thead>
                       <tr>
-                        <th>Supplier / Vendor</th>
+                        <th>Supplier</th>
                         <th>Products Procured</th>
                         <th style={{ textAlign: 'center' }}>Total Qty</th>
                         <th style={{ textAlign: 'right' }}>Avg Rate</th>
@@ -1686,14 +1686,14 @@ function ReportsContent({ initialReport }) {
                     </div>
 
                     <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 14px' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Batch / Lot Number</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Batch Number</div>
                       <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-title)', marginTop: '4px', fontFamily: 'monospace' }}>
                         {selectedMovement.batch_no || 'Standard Stock (No Lot)'}
                       </div>
                     </div>
 
                     <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '12px 14px' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Reference / Reason</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Reason</div>
                       <div style={{ fontSize: '13px', color: 'var(--text-value)', marginTop: '4px', lineHeight: 1.5 }}>
                         {selectedMovement.reason || 'No description provided'}
                       </div>

@@ -661,7 +661,7 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
 
                 <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b' }}>
                   <div>{footerNote}</div>
-                  <div>Authorized Stamp / Signature</div>
+                  <div>Authorized Signature</div>
                 </div>
                 <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.72rem', color: '#94a3b8' }}>
                   Powered by <strong style={{ color: '#0F4D3A' }}>{BRAND_NAME}</strong> — Modern Cloud POS &amp; Inventory Management ({BRAND_DOMAIN})

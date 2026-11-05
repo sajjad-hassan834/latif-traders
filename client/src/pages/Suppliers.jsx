@@ -289,7 +289,7 @@ export default function Suppliers() {
           <table className="table" style={{ width: '100%', minWidth: '700px' }}>
             <thead>
               <tr>
-                <th>Supplier / Company</th>
+                <th>Supplier</th>
                 <th style={{ minWidth: '130px' }}>Contact Person</th>
                 <th style={{ minWidth: '120px' }}>Phone</th>
                 <th style={{ minWidth: '150px' }}>Address</th>
@@ -404,7 +404,7 @@ export default function Suppliers() {
             <form onSubmit={handleAddSupplier}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Supplier / Company Name *</label>
+                  <label className="form-label">Supplier Name *</label>
                   <input
                     type="text"
                     className="form-control"
@@ -496,7 +496,7 @@ export default function Suppliers() {
                     {ledgerData.supplier.name}
                   </div>
                   <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
-                    Supplier / Vendor
+                    Supplier
                     {ledgerData.supplier.phone && ledgerData.supplier.phone !== 'None' && ledgerData.supplier.phone !== '-' && (
                       <span> • 📞 {ledgerData.supplier.phone}</span>
                     )}
@@ -579,7 +579,7 @@ export default function Suppliers() {
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E5E7EB' }}>
                       <th style={{ width: '100px', padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Date</th>
-                      <th style={{ width: '140px', padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Bill / Ref #</th>
+                      <th style={{ width: '140px', padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Bill #</th>
                       <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Description</th>
                       <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Amount</th>
                       <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Paid</th>
@@ -980,7 +980,7 @@ export default function Suppliers() {
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Notes / Cheque #</label>
+                  <label className="form-label">Notes</label>
                   <input
                     type="text"
                     className="form-control"
@@ -1022,7 +1022,7 @@ export default function Suppliers() {
             <form onSubmit={handleUpdateSupplier}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Supplier / Company Name *</label>
+                  <label className="form-label">Supplier Name *</label>
                   <input
                     type="text"
                     className="form-control"

@@ -519,7 +519,7 @@ export default function Customers() {
             <form onSubmit={handleAddCustomer}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Customer / Business Name *</label>
+                  <label className="form-label">Name *</label>
                   <input
                     type="text"
                     className="form-control"
@@ -1312,7 +1312,7 @@ export default function Customers() {
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Notes / Reference</label>
+                  <label className="form-label">Notes</label>
                   <input
                     type="text"
                     className="form-control"
@@ -1354,7 +1354,7 @@ export default function Customers() {
             <form onSubmit={handleUpdateCustomer}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Customer / Business Name *</label>
+                  <label className="form-label">Name *</label>
                   <input
                     type="text"
                     className="form-control"

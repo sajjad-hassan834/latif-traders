@@ -247,7 +247,7 @@ export default function ReceiptVoucherModal({ receipt, party, tenantSettings = {
           {/* Notes & Account Balance */}
           <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '14px', fontSize: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ color: '#6B7280', fontWeight: 600 }}>Description / Notes:</span>
+              <span style={{ color: '#6B7280', fontWeight: 600 }}>Notes:</span>
               <span style={{ color: '#111827', fontWeight: 500, textAlign: 'right', maxWidth: '65%' }}>
                 {notes}
               </span>

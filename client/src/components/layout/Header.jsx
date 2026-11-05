@@ -58,7 +58,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileModalTab, setProfileModalTab] = useState('profile');
   const [supportModal, setSupportModal] = useState(null); // 'help' | 'contact' | 'bug' | null
-  const [bugCategory, setBugCategory] = useState('Interface / Display');
+  const [bugCategory, setBugCategory] = useState('Display');
   const [bugDescription, setBugDescription] = useState('');
   const [bugSubmitted, setBugSubmitted] = useState(false);
   const [contactMessage, setContactMessage] = useState('');
@@ -1652,7 +1652,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
-                  <option>Interface / Display</option>
+                  <option>Display</option>
                   <option>POS Terminal & Invoicing</option>
                   <option>Barcode & Thermal Printing</option>
                   <option>Inventory & Stock Batches</option>

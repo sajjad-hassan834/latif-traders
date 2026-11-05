@@ -579,7 +579,7 @@ function MainApp() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                 <Sparkles size={18} style={{ color: 'var(--primary)' }} />
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-title)' }}>
-                  Welcome to ${BRAND_NAME}, {tenant?.business_name || 'Partner'}! 🎉
+                  Welcome to {BRAND_NAME}, {tenant?.business_name || 'Partner'}! 🎉
                 </h3>
               </div>
               <p style={{ margin: '0 0 12px 0', fontSize: '0.825rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
