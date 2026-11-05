@@ -1,7 +1,8 @@
 import React from 'react';
+import { BRAND_NAME } from '../../config/brand';
 
 export default function ReportPrintFooter({ shopName }) {
-  const resolvedShopName = shopName || localStorage.getItem('lt_shop_name') || 'Latif Traders';
+  const resolvedShopName = shopName || BRAND_NAME;
   return (
     <div className="report-print-footer">
       <div className="report-signatures-grid">

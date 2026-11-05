@@ -801,7 +801,7 @@ export default function Users() {
                       className="form-control"
                       value={selectedUser.email || ''}
                       onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
-                      placeholder="user@latiftraders.com"
+                      placeholder="user@example.com"
                     />
                   </div>
                 </div>

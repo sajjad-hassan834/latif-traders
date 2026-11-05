@@ -218,9 +218,9 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
     }
   };
 
-  const tenantShopName = settings.company_name || settings.shop_name || localStorage.getItem('lt_shop_name');
-  const shopName = tenantShopName || 'LATIF TRADERS';
-  const tagline = settings.tagline || (tenantShopName ? '' : 'Frozen Food Wholesalers & Retailers');
+  const tenantShopName = settings.company_name || settings.shop_name;
+  const shopName = tenantShopName || BRAND_NAME;
+  const tagline = settings.tagline || '';
   const phone = settings.company_phone || settings.phone || '';
   const address = settings.company_address || settings.address || '';
   const footerNote = settings.invoice_footer || `Thank you for shopping at ${shopName}!`;

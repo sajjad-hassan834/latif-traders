@@ -111,6 +111,14 @@ assertTest(
   'TenantLogo rendered in Sidebar.jsx'
 );
 
+// 5b. Non-Latif Print Previews and Hardcoded Brand Elimination
+try {
+  execSync(`"${process.execPath}" "${path.resolve(__dirname, "../server/tests/non_latif_print_previews.test.js")}"`, { stdio: "pipe" });
+  assertTest('Non-Latif Print Previews & Brand Integrity Suite', true, 'Invoice, Statements, Cashbook, Voucher & Reports');
+} catch (err) {
+  assertTest('Non-Latif Print Previews & Brand Integrity Suite', false, err.message);
+}
+
 // Summary
 const allPassed = results.every(r => r.pass);
 console.log('------------------------------------------------------------------------');

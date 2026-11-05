@@ -1372,9 +1372,9 @@ export default function PosSales() {
                           borderRadius: '3px',
                           border: '1px solid #a7f3d0'
                         }}
-                        title={`Company / Brand: ${item.company_name || item.brand || item.supplier_name || localStorage.getItem('lt_shop_name') || 'In-House'}`}
+                        title={`Company / Brand: ${item.company_name || item.brand || item.supplier_name || 'In-House'}`}
                       >
-                        Company: {item.company_name || item.brand || item.supplier_name || localStorage.getItem('lt_shop_name') || 'In-House'}
+                        Company: {item.company_name || item.brand || item.supplier_name || 'In-House'}
                       </span>
 
                       {item.original_price && Number(item.original_price) !== Number(item.unit_price) && (

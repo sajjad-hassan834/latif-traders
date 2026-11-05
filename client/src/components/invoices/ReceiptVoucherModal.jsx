@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Printer, X, Check, DollarSign } from 'lucide-react';
 import { formatPKR, formatDate, formatDateTime } from '../../utils/formatters';
+import { BRAND_NAME } from '../../config/brand';
 
 // Safe PKR formatter
 const safeFormatPKR = (amt) => {
@@ -152,11 +153,13 @@ export default function ReceiptVoucherModal({ receipt, party, tenantSettings = {
           {/* Header */}
           <div style={{ textAlign: 'center', borderBottom: '2px dashed #D1D5DB', paddingBottom: '16px', marginBottom: '20px' }}>
             <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#111827', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-              {tenantSettings.shop_name || 'LATIF TRADERS'}
+              {tenantSettings.shop_name || BRAND_NAME}
             </h2>
-            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
-              {tenantSettings.tagline || 'Frozen Food Wholesalers & Retailers'}
-            </div>
+            {tenantSettings.tagline && (
+              <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
+                {tenantSettings.tagline}
+              </div>
+            )}
             {tenantSettings.address && (
               <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '3px' }}>
                 {tenantSettings.address}

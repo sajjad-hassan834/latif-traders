@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { DollarSign, ArrowUpRight, ArrowDownLeft, Printer, FileText, Eye, CheckCircle, Filter, Trash2, X, Search } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
+import { BRAND_NAME } from '../config/brand';
 import { useAuth } from '../context/AuthContext';
 import ReportPrintHeader from '../components/common/ReportPrintHeader';
 import Pagination from '../components/common/Pagination';
@@ -10,7 +11,7 @@ import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
 import CustomDatePicker from '../components/common/CustomDatePicker';
 
 export default function CashFlow() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, tenant } = useAuth();
   const [cashbook, setCashbook] = useState(null);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
@@ -30,19 +31,18 @@ export default function CashFlow() {
   const [activeDateFilter, setActiveDateFilter] = useState('today');
 
   const [settings, setSettings] = useState(() => ({
-    shop_name: localStorage.getItem('lt_shop_name') || 'Latif Traders',
-    tagline: localStorage.getItem('lt_shop_tagline') || 'CHICKEN SUPPLIER',
-    phone: localStorage.getItem('lt_phone') || '',
-    address: localStorage.getItem('lt_address') || '',
-    email: localStorage.getItem('lt_email') || ''
+    shop_name: tenant?.business_name || BRAND_NAME,
+    tagline: '',
+    phone: '',
+    address: '',
+    email: ''
   }));
 
   useEffect(() => {
     api.get('/settings').then(res => {
       if (res && res.success && res.settings) {
         setSettings(res.settings);
-        if (res.settings.shop_name) localStorage.setItem('lt_shop_name', res.settings.shop_name);
-        if (res.settings.tagline) localStorage.setItem('lt_shop_tagline', res.settings.tagline);
+        // Saved in state only
       }
     }).catch(() => {});
   }, []);

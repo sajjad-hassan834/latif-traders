@@ -1,10 +1,10 @@
 export function isAudioMuted() {
-  return localStorage.getItem('latif_pos_muted') === 'true';
+  return localStorage.getItem('pos_audio_muted') === 'true';
 }
 
 export function toggleAudioMute() {
   const next = !isAudioMuted();
-  localStorage.setItem('latif_pos_muted', String(next));
+  localStorage.setItem('pos_audio_muted', String(next));
   return next;
 }
 

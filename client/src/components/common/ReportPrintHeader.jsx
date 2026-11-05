@@ -1,4 +1,5 @@
 import React from 'react';
+import { BRAND_NAME } from '../../config/brand';
 
 export default function ReportPrintHeader({
   settings = {},
@@ -8,11 +9,11 @@ export default function ReportPrintHeader({
   docRef,
   user
 }) {
-  const shopName = settings.shop_name || localStorage.getItem('lt_shop_name') || 'Latif Traders';
-  const tagline = settings.tagline || localStorage.getItem('lt_shop_tagline') || 'CHICKEN SUPPLIER';
-  const phone = settings.phone || localStorage.getItem('lt_phone') || '';
-  const email = settings.email || localStorage.getItem('lt_email') || '';
-  const address = settings.address || localStorage.getItem('lt_address') || '';
+  const shopName = settings.shop_name || BRAND_NAME;
+  const tagline = settings.tagline || '';
+  const phone = settings.phone || '';
+  const email = settings.email || '';
+  const address = settings.address || '';
   const generatedAt = new Date().toLocaleString('en-GB', {
     day: '2-digit',
     month: 'short',
@@ -21,7 +22,7 @@ export default function ReportPrintHeader({
     minute: '2-digit',
     hour12: true
   });
-  const printedBy = user?.full_name || user?.username || 'Latif Admin (Owner)';
+  const printedBy = user?.full_name || user?.username || 'Authorized User';
 
   return (
     <div className="report-print-header">
@@ -29,7 +30,7 @@ export default function ReportPrintHeader({
       <div className="report-brand-row">
         <div className="report-brand-left">
           <div className="report-logo-badge">
-            <div className="report-logo-icon">❄️</div>
+            <div className="report-logo-icon">🏢</div>
             <div>
               <div className="report-company-name">
                 {shopName} <span className="trademark-symbol">™</span>

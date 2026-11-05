@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate, formatDateTime } from '../utils/formatters';
+import { BRAND_NAME } from '../config/brand';
 import { exportToCSV } from '../utils/exportCsv';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useAuth } from '../context/AuthContext';
@@ -27,7 +28,7 @@ import ReportPrintFooter from '../components/common/ReportPrintFooter';
 import Pagination from '../components/common/Pagination';
 
 function ReportsContent({ initialReport }) {
-  const { user, isAdmin, canSell, canManageInventory, canViewFinances, role } = useAuth();
+  const { user, isAdmin, canSell, canManageInventory, canViewFinances, role, tenant } = useAuth();
 
   const [productSalesPage, setProductSalesPage] = useState(1);
   const [activeReport, setActiveReport] = useState(() => {
@@ -51,19 +52,18 @@ function ReportsContent({ initialReport }) {
 
   // Data states
   const [settings, setSettings] = useState(() => ({
-    shop_name: localStorage.getItem('lt_shop_name') || 'Latif Traders',
-    tagline: localStorage.getItem('lt_shop_tagline') || 'CHICKEN SUPPLIER',
-    phone: localStorage.getItem('lt_phone') || '',
-    address: localStorage.getItem('lt_address') || '',
-    email: localStorage.getItem('lt_email') || ''
+    shop_name: tenant?.business_name || BRAND_NAME,
+    tagline: '',
+    phone: '',
+    address: '',
+    email: ''
   }));
 
   useEffect(() => {
     api.get('/settings').then(res => {
       if (res && res.success && res.settings) {
         setSettings(res.settings);
-        if (res.settings.shop_name) localStorage.setItem('lt_shop_name', res.settings.shop_name);
-        if (res.settings.tagline) localStorage.setItem('lt_shop_tagline', res.settings.tagline);
+        // Saved in state only
       }
     }).catch(() => {});
   }, []);
@@ -637,7 +637,7 @@ function ReportsContent({ initialReport }) {
       <div className="printable-area">
         {/* Subtle diagonal background watermark for authentic business branding */}
         <div className="report-watermark">
-          {settings.shop_name || 'Latif Traders'}™ • OFFICIAL BUSINESS RECORD
+          {settings.shop_name || BRAND_NAME}™ • OFFICIAL BUSINESS RECORD
         </div>
 
         <div className="report-print-container">
@@ -1736,7 +1736,7 @@ function ReportsContent({ initialReport }) {
           </div>
         )}
 
-          <ReportPrintFooter shopName={settings.shop_name || 'Latif Traders'} />
+          <ReportPrintFooter shopName={settings.shop_name || BRAND_NAME} />
         </div>
       </div>
     </div>

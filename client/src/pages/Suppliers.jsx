@@ -9,7 +9,8 @@ import CustomDatePicker from '../components/common/CustomDatePicker';
 import ReceiptVoucherModal from '../components/invoices/ReceiptVoucherModal';
 
 export default function Suppliers() {
-  const { user, isAdmin: authIsAdmin } = useAuth();
+  const { user, isAdmin: authIsAdmin, tenant } = useAuth();
+  const [tenantSettings, setTenantSettings] = useState(null);
   const isAdmin = authIsAdmin || user?.role === 'admin';
   const [suppliers, setSuppliers] = useState([]);
   const [search, setSearch] = useState('');
@@ -108,6 +109,9 @@ export default function Suppliers() {
 
   useEffect(() => {
     loadSuppliers();
+    api.get('/settings').then(res => {
+      if (res && res.success && res.settings) setTenantSettings(res.settings);
+    }).catch(() => {});
   }, []);
 
   const handleAddSupplier = async (e) => {
@@ -1263,11 +1267,11 @@ export default function Suppliers() {
         <ReceiptVoucherModal
           receipt={viewingReceipt}
           party={selectedSup || { name: viewingReceipt.supplier_name || 'Supplier' }}
-          tenantSettings={{
-            shop_name: 'LATIF TRADERS',
-            tagline: 'Frozen Food Wholesalers & Retailers',
-            phone: '+92 300 1234567 / +92 321 7654321',
-            address: 'Shop # 14-16, Commercial Market, Frozen Food Market, Lahore'
+          tenantSettings={tenantSettings || {
+            shop_name: tenant?.business_name || '',
+            tagline: '',
+            phone: '',
+            address: ''
           }}
           onClose={() => setViewingReceipt(null)}
         />

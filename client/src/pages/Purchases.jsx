@@ -39,7 +39,7 @@ const getDateRangeForPreset = (preset) => {
 };
 
 export default function Purchases() {
-  const { canManageInventory } = useAuth();
+  const { canManageInventory, tenant } = useAuth();
   const [purchases, setPurchases] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -558,7 +558,7 @@ export default function Purchases() {
   };
 
   const handleExportPurchases = () => {
-    exportToCSV('Latif_Traders_Purchases', purchases, [
+    exportToCSV('Purchases_Export', purchases, [
       { label: 'Invoice No', key: 'invoice_no' },
       { label: 'Supplier Bill #', key: 'supplier_invoice_no' },
       { label: 'Date', key: 'purchase_date' },
@@ -1617,9 +1617,11 @@ export default function Purchases() {
             </div>
             <div className="modal-body">
               <div className="print-header" style={{ marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>LATIF TRADERS - PURCHASE VOUCHER</h2>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>
+                  {tenant?.business_name ? `${tenant.business_name.toUpperCase()} - PURCHASE VOUCHER` : 'PURCHASE VOUCHER'}
+                </h2>
                 <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                  Commercial Market, Lahore • Cold-chain Supply Delivery Receiving Record
+                  Supply Delivery Receiving Record
                 </div>
               </div>
 

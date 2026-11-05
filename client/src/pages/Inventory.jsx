@@ -185,7 +185,7 @@ export default function Inventory() {
   };
 
   const handleExportStock = () => {
-    exportToCSV('Latif_Traders_Inventory', products, [
+    exportToCSV('Inventory_Export', products, [
       { label: 'Product Name', key: 'name' },
       { label: 'SKU', key: 'sku' },
       { label: 'Barcode', key: 'barcode' },

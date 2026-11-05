@@ -20,7 +20,20 @@ const FORBIDDEN_STRINGS = [
   { pattern: /LtLogo/i, name: 'Old LtLogo component' },
   { pattern: /fonts\.googleapis\.com/i, name: 'External Google Fonts CDN in client' },
   { pattern: /#0266FE/i, name: 'Legacy blue #0266FE color' },
-  { pattern: /cyclingIndex/i, name: 'Legacy rotating pill state' }
+  { pattern: /cyclingIndex/i, name: 'Legacy rotating pill state' },
+  {
+    pattern: /latif/i,
+    name: 'Hardcoded legacy shop name "latif"',
+    customCheck: (content, relPath) => {
+      let codeOnly = content;
+      if (relPath.replace(/\\/g, '/').includes('client/src/utils/api.js')) {
+        codeOnly = codeOnly.replace(/https:\/\/latif-traders-production\.up\.railway\.app/g, '');
+      }
+      // Strip comments: /* ... */ and // ...
+      codeOnly = codeOnly.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '');
+      return /latif/i.test(codeOnly);
+    }
+  }
 ];
 
 let errors = 0;
@@ -52,7 +65,10 @@ function scanDir(dir) {
       const relPath = path.relative(path.resolve(__dirname, '..'), fullPath);
 
       for (const rule of FORBIDDEN_STRINGS) {
-        if (rule.pattern.test(content)) {
+        const hasViolation = rule.customCheck
+          ? rule.customCheck(content, relPath)
+          : rule.pattern.test(content);
+        if (hasViolation) {
           console.error(`❌ FORBIDDEN PATTERN DETECTED in ${relPath}: ${rule.name}`);
           errors++;
         }

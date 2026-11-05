@@ -163,7 +163,7 @@ export default function Settings({ initialTab: propInitialTab }) {
         setSettings(prev => ({ ...prev, ...sRes.settings, theme: themeVal }));
         applyThemeHelper(themeVal);
 
-        if (sRes.settings.shop_name) localStorage.setItem('lt_shop_name', sRes.settings.shop_name);
+        // lt_shop_name removed
         if (sRes.settings.tagline) localStorage.setItem('lt_shop_tagline', sRes.settings.tagline);
         if (sRes.settings.phone) localStorage.setItem('lt_phone', sRes.settings.phone);
         if (sRes.settings.email) localStorage.setItem('lt_email', sRes.settings.email);
@@ -215,7 +215,7 @@ export default function Settings({ initialTab: propInitialTab }) {
           applyThemeHelper(settings.theme);
         }
         if (settings.shop_name) {
-          localStorage.setItem('lt_shop_name', settings.shop_name);
+          // lt_shop_name removed
           document.title = `${settings.shop_name} - ${BRAND_NAME}`;
           updateTenantInfo({ business_name: settings.shop_name, logo_url: settings.logo_url, business_type: settings.business_type });
         } else if (settings.business_type) {

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { Barcode, Printer, X } from 'lucide-react';
 import { formatPKR } from '../../utils/formatters';
+import { useAuth } from '../../context/AuthContext';
 
-export default function BarcodeLabelModal({ product, onClose }) {
+export default function BarcodeLabelModal({ product, onClose, shopName: propShopName }) {
+  const { tenant } = useAuth();
+  const resolvedShopName = (propShopName || tenant?.business_name || '').toUpperCase();
   const [copies, setCopies] = useState(1);
   const [labelSize, setLabelSize] = useState('single'); // 'single' (thermal 50x30mm) or 'sheet' (A4 grid)
 
@@ -160,7 +163,7 @@ export default function BarcodeLabelModal({ product, onClose }) {
                     background: '#fff'
                   }}>
                     <div style={{ fontSize: '10px', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase' }}>
-                      LATIF TRADERS
+                      {resolvedShopName}
                     </div>
                     <div style={{ fontSize: '9px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {product.name}
@@ -216,7 +219,7 @@ export default function BarcodeLabelModal({ product, onClose }) {
                       background: '#fff'
                     }}>
                       <div style={{ fontSize: '10px', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase' }}>
-                        LATIF TRADERS
+                        {resolvedShopName}
                       </div>
                       <div style={{ fontSize: '9px', fontWeight: 600, color: '#334155' }}>
                         {product.name}
@@ -268,7 +271,7 @@ export default function BarcodeLabelModal({ product, onClose }) {
                     background: '#fff'
                   }}>
                     <div style={{ fontSize: '10px', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase' }}>
-                      LATIF TRADERS
+                      {resolvedShopName}
                     </div>
                     <div style={{ fontSize: '9px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {product.name}

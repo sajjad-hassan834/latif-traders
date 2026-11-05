@@ -267,7 +267,7 @@ function MainApp() {
       api.get('/settings').then(res => {
         if (res && res.success && res.settings) {
           const shopName = res.settings.shop_name || res.settings.business_name || tenant?.business_name || 'Shop';
-          localStorage.setItem('lt_shop_name', shopName);
+          // lt_shop_name removed
           document.title = `${shopName} - ${BRAND_NAME}`;
           if (res.settings.tagline) localStorage.setItem('lt_shop_tagline', res.settings.tagline);
           if (res.settings.phone) localStorage.setItem('lt_phone', res.settings.phone);

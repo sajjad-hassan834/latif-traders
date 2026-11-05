@@ -1,4 +1,4 @@
-import { BRAND_NAME } from '../../config/brand';
+import { BRAND_NAME, SUPPORT_EMAIL } from '../../config/brand';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Menu,
@@ -496,7 +496,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               >
                 <span>🔧 SuperOwner Mode</span>
                 <span style={{ color: '#D97706', fontWeight: 400 }}>|</span>
-                <span>Viewing: <strong>{tenant?.business_name || 'Latif Traders'}</strong></span>
+                <span>Viewing: <strong>{tenant?.business_name || BRAND_NAME}</strong></span>
                 <ChevronDown size={13} />
               </button>
               {superOwnerDropdownOpen && (
@@ -1468,7 +1468,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>📧</span>
-                <span><strong>Email:</strong> {import.meta.env.VITE_SUPPORT_EMAIL || 'shopos.help@gmail.com'}</span>
+                <span><strong>Email:</strong> {SUPPORT_EMAIL}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>🕐</span>

@@ -697,7 +697,7 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Latif Traders, Al-Madina Superstore"
+                      placeholder="e.g. Al-Madina Superstore, Metro Mart"
                       value={formData.business_name}
                       onChange={e => handleChange('business_name', e.target.value)}
                       style={{
