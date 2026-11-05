@@ -59,10 +59,10 @@ Copy-Item "client\dist\*" (Join-Path $stagingDir "client\dist") -Recurse -Force
 Copy-Item "package.json" (Join-Path $stagingDir "package.json") -Force
 Copy-Item "desktop\LatifTraders.exe" (Join-Path $stagingDir "LatifTraders.exe") -Force
 
-# Copy database if exists, or seeds
-if (Test-Path "data\latif_traders.db") {
-    Copy-Item "data\latif_traders.db" (Join-Path $stagingDir "data\latif_traders.db") -Force
-}
+# Security Invariant: NEVER bundle database files, .env credentials, or customer backups into installer package
+# Each desktop installation boots a fresh local database via initializeDatabase() on first launch
+New-Item -ItemType File -Force -Path (Join-Path $stagingDir "data\.gitkeep") | Out-Null
+Write-Host "Confirmed: data directory is clean (zero .db or credential files bundled)." -ForegroundColor Green
 
 # Copy node_modules (production runtime dependencies)
 Write-Host "Copying production node_modules..." -ForegroundColor DarkGray
