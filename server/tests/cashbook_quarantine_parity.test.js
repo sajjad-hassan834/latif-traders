@@ -60,6 +60,25 @@ async function runCashbookQuarantineParityTest() {
   process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:testpassword123@localhost:5434/latif_test';
   db.setDriver('postgres');
 
+  // Ensure test fixtures in PG
+  const pgTenant = await db.get("SELECT id FROM tenants WHERE id = ?", [tenantId]);
+  if (!pgTenant) {
+    await db.run("INSERT INTO tenants (id, business_name, owner_name, plan) VALUES (?, 'Shoper', 'Mudassir Arif', 'pro') ON CONFLICT (id) DO NOTHING", [tenantId]);
+  }
+  let pgCustRec = await db.get("SELECT id FROM customers WHERE tenant_id = ?", [tenantId]);
+  if (!pgCustRec) {
+    const cRes = await db.run("INSERT INTO customers (tenant_id, name, customer_type, opening_balance, current_balance) VALUES (?, 'Walk-in Customer', 'Walk-in', 0, 0)", [tenantId]);
+    pgCustRec = await db.get("SELECT id FROM customers WHERE tenant_id = ? LIMIT 1", [tenantId]);
+  }
+  const pgSCount = await db.get("SELECT COUNT(*) as c FROM sales WHERE tenant_id = ?", [tenantId]);
+  if (Number(pgSCount.c) === 0) {
+    await db.run("INSERT INTO sales (tenant_id, invoice_no, sale_date, grand_total, paid_amount, balance_due, payment_method, order_status) VALUES (?, 'INV-20261024-0001', '2026-10-24', 42, 42, 0, 'Cash', 'Completed'), (?, 'INV-20261024-0002', '2026-10-24', 21, 21, 0, 'Cash', 'Completed'), (?, 'INV-20261024-0003', '2026-10-24', 21, 21, 0, 'Cash', 'Completed')", [tenantId, tenantId, tenantId]);
+  }
+  const pgPCount = await db.get("SELECT COUNT(*) as c FROM payments WHERE tenant_id = ?", [tenantId]);
+  if (Number(pgPCount.c) === 0) {
+    await db.run("INSERT INTO payments (tenant_id, type, party_type, party_id, reference_id, reference_no, amount, payment_method, payment_date) VALUES (?, 'CUSTOMER_RECEIPT', 'CUSTOMER', ?, 7, 'INV-20261024-0001', 42, 'Cash', '2026-10-24'), (?, 'CUSTOMER_RECEIPT', 'CUSTOMER', ?, 8, 'INV-20261024-0002', 21, 'Cash', '2026-10-24'), (?, 'CUSTOMER_RECEIPT', 'CUSTOMER', ?, 9, 'INV-20261024-0003', 21, 'Cash', '2026-10-24')", [tenantId, pgCustRec.id, tenantId, pgCustRec.id, tenantId, pgCustRec.id]);
+  }
+
   let pgCashbookRes = null;
   await paymentController.getCashbook(mockReqCashbook, {
     json: (d) => { pgCashbookRes = d; return mockResCashbook; },
