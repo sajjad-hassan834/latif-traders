@@ -1246,7 +1246,7 @@ export default function Purchases() {
 
                                 <div>
                                   <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary)', display: 'block', marginBottom: '2px' }}>
-                                    Purchase Cost (₨) *
+                                    Cost (₨) *
                                   </label>
                                   <input
                                     type="number"
@@ -1261,7 +1261,7 @@ export default function Purchases() {
 
                                 <div>
                                   <label style={{ fontSize: '11px', fontWeight: 600, color: '#16a34a', display: 'block', marginBottom: '2px' }}>
-                                    Retail Price (₨)
+                                    Retail (₨)
                                   </label>
                                   <input
                                     type="number"
@@ -1276,7 +1276,7 @@ export default function Purchases() {
 
                                 <div>
                                   <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>
-                                    Wholesale Price (₨)
+                                    Wholesale (₨)
                                   </label>
                                   <input
                                     type="number"
@@ -1797,8 +1797,8 @@ export default function Purchases() {
             <div className="modal-header">
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Edit Purchase: {editForm.invoice_no}</h3>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                  Update vendor, bill reference, and recorded payments.
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Update supplier, bill reference, and recorded payments.
                 </div>
               </div>
               <button
@@ -1811,7 +1811,7 @@ export default function Purchases() {
               </button>
             </div>
             <form onSubmit={handleUpdatePurchase}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '1.25rem', overflowY: 'auto' }}>
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Supplier *</label>
@@ -1827,10 +1827,10 @@ export default function Purchases() {
                     </select>
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Supplier Bill #</label>
+                    <label className="form-label">Bill #</label>
                     <input
                       type="text"
-                      className="form-control"
+                      className="form-control mono"
                       value={editForm.supplier_invoice_no}
                       onChange={(e) => setEditForm({ ...editForm, supplier_invoice_no: e.target.value })}
                     />
@@ -1839,7 +1839,7 @@ export default function Purchases() {
 
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Purchase Date *</label>
+                    <label className="form-label">Date *</label>
                     <input
                       type="date"
                       className="form-control"
@@ -1849,7 +1849,7 @@ export default function Purchases() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Payment Method</label>
+                    <label className="form-label">Method</label>
                     <select
                       className="form-control"
                       value={editForm.payment_method}
@@ -1862,40 +1862,42 @@ export default function Purchases() {
                   </div>
                 </div>
 
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 600 }}>Grand Total:</span>
-                    <strong style={{ fontSize: '1.1rem', color: '#0284c7' }}>{formatPKR(editForm.grand_total)}</strong>
+                <div style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.85rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-title)' }}>Total:</span>
+                    <strong style={{ fontSize: '1.15rem', color: 'var(--primary)' }}>{formatPKR(editForm.grand_total)}</strong>
                   </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Paid Amount (PKR)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      min="0"
-                      max={editForm.grand_total}
-                      value={editForm.paid_amount}
-                      onChange={(e) => setEditForm({ ...editForm, paid_amount: e.target.value })}
-                    />
-                    <div style={{ fontSize: '0.75rem', marginTop: '4px', fontWeight: 600 }}>
-                      {Number(editForm.paid_amount || 0) < editForm.grand_total ? (
-                        <span style={{ color: '#ef4444' }}>
-                          New Payable Due: {formatPKR(editForm.grand_total - Number(editForm.paid_amount || 0))}
-                        </span>
-                      ) : (
-                        <span style={{ color: '#10b981' }}>Full Payment</span>
-                      )}
+                  <div className="form-grid-2" style={{ gap: '0.75rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Paid (PKR)</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        min="0"
+                        max={editForm.grand_total}
+                        value={editForm.paid_amount}
+                        onChange={(e) => setEditForm({ ...editForm, paid_amount: e.target.value })}
+                      />
+                      <div style={{ fontSize: '0.75rem', marginTop: '4px', fontWeight: 600 }}>
+                        {Number(editForm.paid_amount || 0) < editForm.grand_total ? (
+                          <span style={{ color: '#ef4444' }}>
+                            Due: {formatPKR(editForm.grand_total - Number(editForm.paid_amount || 0))}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#10b981' }}>Full Payment</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Notes</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={editForm.notes}
-                      onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                      placeholder="Optional notes"
-                    />
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Notes</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editForm.notes}
+                        onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                        placeholder="Optional notes"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
