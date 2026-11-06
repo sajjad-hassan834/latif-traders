@@ -113,7 +113,7 @@ export default function ReceiptVoucherModal({ receipt, party, tenantSettings = {
               }}
             >
               <Printer size={13} />
-              <span>Print Receipt</span>
+              <span>Print</span>
             </button>
             <button
               type="button"
@@ -140,7 +140,7 @@ export default function ReceiptVoucherModal({ receipt, party, tenantSettings = {
         {/* Voucher Body (Printable Area) */}
         <div
           ref={printRef}
-          className="receipt-print-area"
+          className="receipt-print-area printable-area"
           style={{
             padding: '28px 32px',
             overflowY: 'auto',
@@ -327,7 +327,7 @@ export default function ReceiptVoucherModal({ receipt, party, tenantSettings = {
             }}
           >
             <Printer size={13} />
-            <span>Print Voucher</span>
+            <span>Print</span>
           </button>
         </div>
       </div>

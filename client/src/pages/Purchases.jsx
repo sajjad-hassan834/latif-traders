@@ -12,6 +12,7 @@ import SearchableSelect from '../components/common/SearchableSelect';
 import Pagination from '../components/common/Pagination';
 import ActionMenu from '../components/common/ActionMenu';
 import CustomDatePicker from '../components/common/CustomDatePicker';
+import useTradeProfile from '../hooks/useTradeProfile';
 
 const getDateRangeForPreset = (preset) => {
   const now = new Date();
@@ -39,7 +40,10 @@ const getDateRangeForPreset = (preset) => {
 };
 
 export default function Purchases() {
+  const voucherPrintRef = useRef(null);
   const { canManageInventory, tenant } = useAuth();
+  const { terminology, isFrozenFood } = useTradeProfile();
+  const lotLabel = terminology?.lotLabel || (isFrozenFood ? 'Batch' : 'Lot');
   const [purchases, setPurchases] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -615,6 +619,80 @@ export default function Purchases() {
     }
   };
 
+    const handlePrintVoucher = () => {
+    try {
+      const printableElement = voucherPrintRef.current;
+      let iframe = document.getElementById('voucher-print-frame');
+      if (iframe) iframe.remove();
+
+      iframe = document.createElement('iframe');
+      iframe.id = 'voucher-print-frame';
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '210mm';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      const tableContent = printableElement ? printableElement.querySelector('table')?.outerHTML || '' : '';
+      const totalsContent = printableElement ? printableElement.querySelector('div[style*="justify-content: flex-end"]')?.outerHTML || '' : '';
+
+      const doc = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Purchase - ${selectedPurchase?.purchase?.invoice_no || ''}</title>
+          <style>
+            @page { size: A4 portrait; margin: 12mm; }
+            * { box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; background: #fff; margin: 0; padding: 0; font-size: 13px; line-height: 1.5; }
+            .print-header { border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-start; }
+            .print-header h2 { margin: 0 0 4px 0; font-size: 18px; font-weight: 800; color: #0f172a; }
+            .print-meta { font-size: 12px; color: #475569; }
+            table { width: 100%; border-collapse: collapse; margin-top: 12px; margin-bottom: 16px; }
+            th { background: #f8fafc; color: #334155; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; padding: 8px 10px; border-bottom: 2px solid #cbd5e1; text-align: left; }
+            td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+            .mono { font-family: monospace; font-size: 12px; }
+            .totals-container { margin-top: 16px; font-size: 13px; }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <div>
+              <h2>${(tenant?.business_name || 'STORE').toUpperCase()}</h2>
+              <div class="print-meta">Purchase Voucher • Supply Delivery Receiving Record</div>
+            </div>
+            <div style="text-align: right;" class="print-meta">
+              <div>Bill #: <strong>${selectedPurchase?.purchase?.invoice_no || '-'}</strong></div>
+              <div>Date: <strong>${formatDate(selectedPurchase?.purchase?.purchase_date)}</strong></div>
+              <div>Supplier: <strong>${selectedPurchase?.purchase?.supplier_name || '-'}</strong></div>
+            </div>
+          </div>
+          ${tableContent}
+          ${totalsContent.replace(/₨\s*/g, 'Rs ')}
+        </body>
+        </html>
+      `;
+
+      iframe.contentWindow.document.open();
+      iframe.contentWindow.document.write(doc);
+      iframe.contentWindow.document.close();
+      iframe.contentWindow.focus();
+
+      setTimeout(() => {
+        try {
+          iframe.contentWindow.print();
+        } catch (e) {
+          window.print();
+        }
+      }, 250);
+    } catch (err) {
+      console.error('Print voucher error:', err);
+      window.print();
+    }
+  };
+
   const handleDeletePurchase = async () => {
     if (!selectedPurchase) return;
     try {
@@ -642,12 +720,12 @@ export default function Purchases() {
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button onClick={handleExportPurchases} className="btn btn-secondary btn-sm" title="Export Purchases to CSV">
             <Download size={14} />
-            <span>Export CSV</span>
+            <span>Export</span>
           </button>
           {canManageInventory && (
             <button onClick={openNewPurchaseModal} className="btn btn-primary btn-sm">
               <Plus size={14} />
-              <span>New Purchase Bill</span>
+              <span>+ Purchase</span>
             </button>
           )}
         </div>
@@ -661,7 +739,7 @@ export default function Purchases() {
             <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               type="text"
-              placeholder="Search bill #, supplier, or product name/SKU..."
+              placeholder="Search purchases..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
@@ -865,12 +943,12 @@ export default function Purchases() {
               <tr>
                 <th>Bill #</th>
                 <th>Date</th>
-                <th>Supplier Name</th>
+                <th>Supplier</th>
                 <th>Items</th>
-                <th style={{ textAlign: 'right' }}>Grand Total</th>
-                <th style={{ textAlign: 'right' }}>Paid Amount</th>
-                <th style={{ textAlign: 'right' }}>Payable Due</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
+                <th style={{ textAlign: 'right' }}>Total</th>
+                <th style={{ textAlign: 'right' }}>Paid</th>
+                <th style={{ textAlign: 'right' }}>Due</th>
+                <th style={{ textAlign: 'center' }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -921,7 +999,7 @@ export default function Purchases() {
                             style={{ marginTop: '6px' }}
                           >
                             <Plus size={14} />
-                            <span>New Purchase Bill</span>
+                            <span>+ Purchase</span>
                           </button>
                         )}
                       </div>
@@ -989,23 +1067,23 @@ export default function Purchases() {
                           title="Purchase Actions"
                           items={[
                             {
-                              label: 'View Bill',
+                              label: 'Details',
                               icon: <Eye size={14} color="#0284c7" />,
                               onClick: () => viewPurchase(p.id)
                             },
                             canManageInventory && !isFullyReturned && {
-                              label: 'Return Goods',
+                              label: 'Return',
                               icon: <RotateCcw size={14} color="#f59e0b" />,
                               onClick: () => openReturnModal(p.id)
                             },
                             canManageInventory && {
-                              label: 'Edit Purchase',
+                              label: 'Edit',
                               icon: <Edit size={14} color="#0284c7" />,
                               onClick: () => openEditModal(p.id)
                             },
                             canManageInventory && { divider: true },
                             canManageInventory && {
-                              label: 'Delete Purchase',
+                              label: 'Delete',
                               icon: <Trash2 size={14} color="#dc2626" />,
                               danger: true,
                               onClick: () => {
@@ -1590,17 +1668,17 @@ export default function Purchases() {
       {showDetailModal && selectedPurchase && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '750px', width: '96%' }}>
-            <div className="modal-header">
+            <div className="modal-header no-print">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Purchase Bill: {selectedPurchase.purchase.invoice_no}</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Purchase: {selectedPurchase.purchase.invoice_no}</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Supplier: {selectedPurchase.purchase.supplier_name} • Date: {formatDate(selectedPurchase.purchase.purchase_date)}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <button type="button" className="btn btn-secondary btn-sm no-print" onClick={handlePrintVoucher} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                   <Printer size={14} />
-                  <span>Print Bill</span>
+                  <span>Print</span>
                 </button>
                 <button
                   type="button"
@@ -1612,7 +1690,7 @@ export default function Purchases() {
                 </button>
               </div>
             </div>
-            <div className="modal-body">
+            <div className="modal-body printable-area" ref={voucherPrintRef}>
               <div className="print-header" style={{ marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>
                   {tenant?.business_name ? `${tenant.business_name.toUpperCase()} - PURCHASE VOUCHER` : 'PURCHASE VOUCHER'}
@@ -1626,10 +1704,10 @@ export default function Purchases() {
                 <thead>
                   <tr>
                     <th>Item</th>
-                    <th>Batch #</th>
-                    <th>Expiry Date</th>
+                    <th>{lotLabel} #</th>
+                    <th>Expiry</th>
                     <th style={{ textAlign: 'center' }}>Qty</th>
-                    <th style={{ textAlign: 'right' }}>Cost Rate</th>
+                    <th style={{ textAlign: 'right' }}>Cost</th>
                     <th style={{ textAlign: 'right' }}>Total</th>
                   </tr>
                 </thead>
@@ -1650,7 +1728,7 @@ export default function Purchases() {
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
                 <div style={{ width: '250px', fontSize: '0.85rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span>Grand Total:</span>
+                    <span>Total:</span>
                     <strong>{formatPKR(selectedPurchase.purchase.grand_total)}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -1658,14 +1736,14 @@ export default function Purchases() {
                     <span>{formatPKR(selectedPurchase.purchase.paid_amount)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444', fontWeight: 700 }}>
-                    <span>Payable Due:</span>
+                    <span>Due:</span>
                     <span>{formatPKR(selectedPurchase.purchase.balance_due)}</span>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary btn-sm" onClick={() => setShowDetailModal(false)}>Close</button>
+            <div className="modal-footer no-print">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowDetailModal(false)}>Close</button>
             </div>
           </div>
         </div>

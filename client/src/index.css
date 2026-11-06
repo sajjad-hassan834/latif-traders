@@ -2837,7 +2837,8 @@ select.form-control option {
     visibility: hidden;
   }
 
-  .printable-area, .printable-area * {
+  .printable-area, .printable-area *,
+  .receipt-print-area, .receipt-print-area * {
     visibility: visible;
   }
 
