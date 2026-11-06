@@ -314,7 +314,8 @@ exports.createProduct = async (req, res) => {
 
     return res.status(201).json({ success: true, message: 'Product created successfully.', id: newId });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
@@ -543,7 +544,8 @@ exports.adjustStock = async (req, res) => {
 
     return res.json({ success: true, message: 'Stock adjustment recorded successfully.', data: result });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
@@ -677,7 +679,8 @@ exports.createCategory = async (req, res) => {
 
     return res.status(201).json({ success: true, id: result.lastInsertRowid, message: 'Category added.' });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
@@ -692,7 +695,8 @@ exports.updateCategory = async (req, res) => {
       [name.trim(), description ? description.trim() : null, String(id), tenantId]);
     return res.json({ success: true, message: 'Category updated successfully.' });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
@@ -705,7 +709,8 @@ exports.deleteCategory = async (req, res) => {
     await db.run('DELETE FROM categories WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
     return res.json({ success: true, message: 'Category deleted successfully.' });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
@@ -732,7 +737,8 @@ exports.createUnit = async (req, res) => {
 
     return res.status(201).json({ success: true, id: result.lastInsertRowid, message: 'Unit added.' });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
@@ -747,7 +753,8 @@ exports.updateUnit = async (req, res) => {
       [name.trim(), short_code.trim().toLowerCase(), String(id), tenantId]);
     return res.json({ success: true, message: 'Unit updated successfully.' });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
@@ -759,7 +766,8 @@ exports.deleteUnit = async (req, res) => {
     await db.run('DELETE FROM units WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
     return res.json({ success: true, message: 'Unit deleted successfully.' });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
@@ -812,7 +820,8 @@ exports.updateBrand = async (req, res) => {
       [name.trim(), description ? description.trim() : null, String(id), tenantId]);
     return res.json({ success: true, message: 'Brand updated successfully.' });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
@@ -828,6 +837,7 @@ exports.deleteBrand = async (req, res) => {
     await db.run('DELETE FROM brands WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
     return res.json({ success: true, message: 'Brand deleted successfully.' });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };

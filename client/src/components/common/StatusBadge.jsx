@@ -16,7 +16,7 @@ export default function StatusBadge({ status = 'Completed', label }) {
   if (['completed', 'published', 'active', 'delivered'].includes(normalized)) {
     pillClass = 'sadax-pill-completed';
     if (!label) {
-      if (normalized === 'published') displayLabel = 'Published';
+      if (normalized === 'published' || normalized === 'active') displayLabel = 'Active';
       else if (normalized === 'delivered') displayLabel = 'Delivered';
       else displayLabel = 'Completed';
     }

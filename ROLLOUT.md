@@ -1,7 +1,7 @@
 # ShoppyOS SQLite Release Candidate & Security Rollout Guide
 
 ## Overview
-This document details the production deployment procedure for the **ShoppyOS SQLite Release Candidate (`rc/sqlite-2026-11-06-3`)** on Railway. This release unites:
+This document details the production deployment procedure for the **ShoppyOS SQLite Release Candidate 4 (`rc/sqlite-2026-11-06-4`)** on Railway. This release unites:
 1. **Multi-Tenant Security Hardening (Batch 1 & 1b)**: Strict tenant isolation, cryptographic session revocation, password reset flow hardening, rate limiting, and production pre-flight checks.
 2. **ShoppyOS Brand System & Public Tokens**: Unified ShoppyOS branding, themes engine (`brand` default), clean non-conflicting tokens.
 3. **Multi-Trade Capabilities**: Backend support for batchless and dated trades, auto-lot generation, and NULL-expiry ordering.
@@ -21,8 +21,8 @@ Before triggering the deployment build, ensure the following variables are confi
 | `DATA_DIR` | Existing | **YES** | `/app/data` (matches your Railway persistent volume mount; do NOT use `/data`). |
 | `DB_PATH` | **NEW to set** | **REQUIRED** | `/app/data/latif_traders.db` (Boot fails if unset in production. Refuses empty DB creation). |
 | `JWT_SECRET` | Existing | **YES (Rotate)** | Fresh 64-character hex string (`crypto.randomBytes(32).toString('hex')`). |
-| `ALLOWED_ORIGINS` | **NEW to set** | **REQUIRED** | `https://shoppyos.com,https://www.shoppyos.com,https://findcalculation.com,https://app.findcalculation.com` |
-| `FRONTEND_URL` | Existing | Optional | `https://www.shoppyos.com,https://shoppyos.com,https://findcalculation.com` |
+| `ALLOWED_ORIGINS` | **NEW to set** | **REQUIRED** | `https://shoppyos.com,https://www.shoppyos.com,https://latiftraders.findcalculation.com,https://shopos.findcalculation.com,https://latif-traders.vercel.app` |
+| `FRONTEND_URL` | Existing | Optional | `https://latiftraders.findcalculation.com` |
 | `SUPEROWNER_USERNAME` | **NEW to set** | **REQUIRED** | Custom username for platform superowner (never use default `superowner`). |
 | `SUPEROWNER_PASSWORD` | **NEW to set** | **REQUIRED** | Strong random password (min 16 chars). |
 | `TRUST_PROXY_HOPS` | **NEW to set** | **REQUIRED** | `1` for Railway direct; `2` if routing through Vercel rewrite to Railway. |
@@ -38,9 +38,9 @@ Before triggering the deployment build, ensure the following variables are confi
 2. **Configure Environment Variables**:
    - In Railway Service Settings -> Variables, set all variables from Table 1 above.
    - Confirm `DB_PATH=/app/data/latif_traders.db` is set and non-empty.
-   - Confirm `ALLOWED_ORIGINS` includes both `shoppyos.com` and `findcalculation.com` origins.
+   - Confirm `ALLOWED_ORIGINS` includes the 5 exact origins: `https://shoppyos.com,https://www.shoppyos.com,https://latiftraders.findcalculation.com,https://shopos.findcalculation.com,https://latif-traders.vercel.app`
 3. **Deploy the Release**:
-   - Deploy from the release tag `rc/sqlite-2026-11-06-3` on trunk branch `integration/local-all`.
+   - Deploy from the release tag `rc/sqlite-2026-11-06-4` on trunk branch `integration/local-all`.
 4. **Monitor Boot Logs**:
    - Look for: `[ShopOS Database] Connected to SQLite database: latif_traders.db` (file basename only).
    - Look for: `[ShopOS Security] Superowner account initialized from environment`.

@@ -66,28 +66,24 @@ app.use(cors({
     // Allow non-browser requests (e.g. mobile apps, curl, server-to-server)
     if (!origin) return callback(null, true);
 
-    // Explicitly allowed origin
+    // Explicitly allowed origin from configured list
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
-    // Automatically allow any Vercel deployment preview or production domain
-    if (origin.endsWith('.vercel.app')) {
+    // In development ONLY, allow arbitrary localhost ports and Vercel preview domains
+    if (process.env.NODE_ENV !== 'production') {
+      if (origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+      if (/^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
+        return callback(null, true);
+      }
       return callback(null, true);
     }
 
-    // Allow development localhost ports
-    if (/^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
-      return callback(null, true);
-    }
-
-    // In production, reject unallowed origins
-    if (process.env.NODE_ENV === 'production') {
-      return callback(new Error('CORS policy: Origin not allowed.'));
-    }
-
-    // In local development, allow and reflect origin
-    return callback(null, true);
+    // In production, strictly reject unallowed origins (no blanket *.vercel.app wildcard)
+    return callback(new Error('CORS policy: Origin not allowed.'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -121,11 +117,17 @@ app.get('/api/plans', (req, res) => {
 app.get('/api/health', async (req, res) => {
   try {
     const latencyMs = db.measureLatency ? await db.measureLatency() : 0;
+    const hasForwarded = Boolean(req.headers['x-forwarded-for']);
+    const clientDiffers = Boolean(hasForwarded && req.ip && req.socket?.remoteAddress && req.ip !== req.socket.remoteAddress);
     res.json({
       status: 'ok',
       app: `${BRAND_NAME} Management System`,
       driver: db.getDriver ? db.getDriver() : 'sqlite',
       latency_ms: latencyMs,
+      proxy: {
+        hops: resolvedHops,
+        clientDiffersFromProxy: clientDiffers
+      },
       timestamp: new Date().toISOString()
     });
   } catch (err) {

@@ -628,11 +628,14 @@ export default function Purchases() {
       iframe = document.createElement('iframe');
       iframe.id = 'voucher-print-frame';
       iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
+      iframe.style.top = '-9999px';
+      iframe.style.left = '-9999px';
       iframe.style.width = '210mm';
-      iframe.style.height = '0';
+      iframe.style.height = '1200px';
       iframe.style.border = '0';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      iframe.style.zIndex = '-9999';
       document.body.appendChild(iframe);
 
       const tableContent = printableElement ? printableElement.querySelector('table')?.outerHTML || '' : '';
@@ -643,9 +646,10 @@ export default function Purchases() {
         <html>
         <head>
           <title>Purchase - ${selectedPurchase?.purchase?.invoice_no || ''}</title>
+          <meta charset="utf-8" />
           <style>
             @page { size: A4 portrait; margin: 12mm; }
-            * { box-sizing: border-box; }
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; background: #fff; margin: 0; padding: 0; font-size: 13px; line-height: 1.5; }
             .print-header { border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-start; }
             .print-header h2 { margin: 0 0 4px 0; font-size: 18px; font-weight: 800; color: #0f172a; }
@@ -675,18 +679,26 @@ export default function Purchases() {
         </html>
       `;
 
-      iframe.contentWindow.document.open();
-      iframe.contentWindow.document.write(doc);
-      iframe.contentWindow.document.close();
-      iframe.contentWindow.focus();
+      const frameDoc = iframe.contentWindow.document;
+      frameDoc.open();
+      frameDoc.write(doc);
+      frameDoc.close();
 
-      setTimeout(() => {
+      const triggerPrint = () => {
         try {
+          iframe.contentWindow.focus();
           iframe.contentWindow.print();
         } catch (e) {
           window.print();
         }
-      }, 250);
+      };
+
+      if (frameDoc.readyState === 'complete') {
+        setTimeout(triggerPrint, 150);
+      } else {
+        iframe.contentWindow.addEventListener('load', triggerPrint);
+        setTimeout(triggerPrint, 350);
+      }
     } catch (err) {
       console.error('Print voucher error:', err);
       window.print();
@@ -1978,7 +1990,7 @@ export default function Purchases() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setShowEditModal(false); setEditForm(null); }}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Changes</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '100px' }}>Save</button>
               </div>
             </form>
           </div>

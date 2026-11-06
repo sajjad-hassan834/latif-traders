@@ -138,3 +138,4 @@ test('Rate Limits - Register counts every request and locks at 10 requests per I
     .send({ email: 'test11@example.com' });
   assert.strictEqual(blockedRes.status, 429, '11th registration attempt should return 429');
 });
+

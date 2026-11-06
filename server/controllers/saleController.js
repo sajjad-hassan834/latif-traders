@@ -480,7 +480,8 @@ exports.createSale = async (req, res) => {
 
     return res.status(201).json({ success: true, message: 'Sale invoice generated successfully.', data: result, ...result });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 

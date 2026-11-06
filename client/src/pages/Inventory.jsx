@@ -1112,7 +1112,7 @@ export default function Inventory() {
 
                       {/* Column 5: Status */}
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
-                        <StatusBadge status={isOut ? 'out-stock' : isLow ? 'low-stock' : 'published'} />
+                        <StatusBadge status={isOut ? 'out-stock' : isLow ? 'low-stock' : 'active'} label={isOut ? 'Out Stock' : isLow ? 'Low Stock' : 'Active'} />
                       </td>
 
                       {/* Column 6: Action */}
