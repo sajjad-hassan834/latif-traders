@@ -331,6 +331,8 @@ exports.serveLogo = (req, res) => {
       return res.status(404).json({ success: false, message: 'Logo not found.' });
     }
 
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     return res.sendFile(path.resolve(filePath));
   } catch (err) {
     console.error('Serve logo error:', err);

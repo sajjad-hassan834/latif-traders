@@ -731,12 +731,12 @@ export default function Customers() {
                   {Number(ledgerData.summary.closing_balance || 0) <= 0 ? (
                     <div style={{ background: '#D1FAE5', color: '#065F46', fontSize: '12px', padding: '4px 12px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #A7F3D0' }}>
                       <CheckCircle2 size={13} />
-                      <span>Fully Settled (No Pending Udhaar)</span>
+                      <span>Settled (Zero Balance)</span>
                     </div>
                   ) : (
                     <div style={{ background: '#FEE2E2', color: '#991B1B', fontSize: '12px', padding: '4px 12px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #FECACA' }}>
                       <AlertCircle size={13} />
-                      <span>Total Pending Udhaar: {formatPKR(ledgerData.summary.closing_balance)}</span>
+                      <span>Total Balance: {formatPKR(ledgerData.summary.closing_balance)}</span>
                     </div>
                   )}
                 </div>
@@ -1269,7 +1269,7 @@ export default function Customers() {
             <form onSubmit={handleRecordPayment}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '0.75rem 1rem', borderRadius: '6px', color: '#991b1b', fontWeight: 600, fontSize: '0.85rem' }}>
-                  Current Outstanding Udhaar: <strong>{formatPKR(selectedCust.current_balance)}</strong>
+                  Balance: <strong>{formatPKR(selectedCust.current_balance)}</strong>
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>

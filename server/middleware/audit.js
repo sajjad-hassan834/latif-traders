@@ -1,6 +1,5 @@
 const { db } = require('../config/database');
 
-
 /**
  * Sanitizes sensitive fields from details before writing to audit logs
  */
@@ -22,13 +21,14 @@ function sanitizeAuditDetails(details) {
   }
   return String(details);
 }
+
 async function logAudit(userId, userName, action, entityType, entityId, details, req) {
   try {
     const isSuperOwner = req?.user?.role === 'superowner' || req?.isSuperOwner;
     const finalUserId = isSuperOwner ? null : (userId || null);
     const finalUserName = isSuperOwner ? 'System' : (userName || 'System');
 
-    const ip = req ? (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1') : '127.0.0.1';
+    const ip = req ? (req.headers?.['x-forwarded-for'] || req.ip || req.socket?.remoteAddress || '127.0.0.1') : '127.0.0.1';
 
     let tenantId = req?.tenantId || req?.tenant_id || req?.user?.tenant_id;
     if (!tenantId && finalUserId) {
@@ -38,7 +38,6 @@ async function logAudit(userId, userName, action, entityType, entityId, details,
       } catch (_) {}
     }
 
-    
     // Never attribute unattributed or superowner logs to any specific tenant
     const finalTenantId = tenantId || null;
 
@@ -47,7 +46,6 @@ async function logAudit(userId, userName, action, entityType, entityId, details,
       INSERT INTO audit_logs (tenant_id, user_id, user_name, action, entity_type, entity_id, details, ip_address)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-
       finalTenantId,
       finalUserId,
       finalUserName,

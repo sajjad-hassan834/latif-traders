@@ -2,13 +2,22 @@
  * In-Memory Rate Limiting Middleware
  * 
  * Rules:
- * - Login: Counts only FAILED attempts (401). Successful login (200) resets counter. Max 5 fails per 15 mins.
- * - Register: Counts EVERY attempt. Max 10 attempts per hour per IP.
+ * - Login: Counts ONLY FAILED attempts (401).
+ *   - Keyed by IP + username (max 5 fails per 15 mins).
+ *   - IP-wide failure cap (max 25 fails per 15 mins across all usernames).
+ *   - Successful login (200) resets the IP+username counter.
+ *   - Valid logins never blocked (ten staff on one IP with valid credentials proceed freely).
+ * - Register: Counts EVERY request (max 10 attempts per hour per IP).
+ * - Forgot Password: Max 5 attempts per 15 mins per IP.
+ * - Change Password: Max 10 attempts per 15 mins per IP.
  * - Supports reverse proxy header inspection via trust proxy (req.ip).
  */
 
 const failedLogins = new Map(); // key: `${ip}:${username}` -> { count, expiresAt }
+const failedLoginsByIp = new Map(); // key: `${ip}` -> { count, expiresAt }
 const registrationAttempts = new Map(); // key: ip -> { count, expiresAt }
+const forgotPasswordAttempts = new Map(); // key: ip -> { count, expiresAt }
+const changePasswordAttempts = new Map(); // key: ip -> { count, expiresAt }
 
 // Cleanup expired buckets periodically (every 5 mins)
 setInterval(() => {
@@ -16,8 +25,17 @@ setInterval(() => {
   for (const [k, v] of failedLogins.entries()) {
     if (v.expiresAt <= now) failedLogins.delete(k);
   }
+  for (const [k, v] of failedLoginsByIp.entries()) {
+    if (v.expiresAt <= now) failedLoginsByIp.delete(k);
+  }
   for (const [k, v] of registrationAttempts.entries()) {
     if (v.expiresAt <= now) registrationAttempts.delete(k);
+  }
+  for (const [k, v] of forgotPasswordAttempts.entries()) {
+    if (v.expiresAt <= now) forgotPasswordAttempts.delete(k);
+  }
+  for (const [k, v] of changePasswordAttempts.entries()) {
+    if (v.expiresAt <= now) changePasswordAttempts.delete(k);
   }
 }, 5 * 60 * 1000).unref();
 
@@ -36,15 +54,26 @@ function loginRateLimiter(req, res, next) {
 
   const ip = getClientIp(req);
   const username = String(req.body?.username || '').toLowerCase().trim();
-  const key = `${ip}:${username}`;
+  const userKey = `${ip}:${username}`;
   const now = Date.now();
 
-  const record = failedLogins.get(key);
-  if (record && record.expiresAt > now && record.count >= 5) {
-    const waitMins = Math.ceil((record.expiresAt - now) / 60000);
+  // Check 1: User-specific failure threshold (5 failures per 15 min)
+  const userRecord = failedLogins.get(userKey);
+  if (userRecord && userRecord.expiresAt > now && userRecord.count >= 5) {
+    const waitMins = Math.ceil((userRecord.expiresAt - now) / 60000);
     return res.status(429).json({
       success: false,
-      message: `Too many failed login attempts. Account temporarily locked for security. Please try again in ${waitMins} minute(s).`
+      message: `Too many failed login attempts for this account. Temporarily locked for security. Please try again in ${waitMins} minute(s).`
+    });
+  }
+
+  // Check 2: IP-wide failure cap (25 failures per 15 min across all accounts)
+  const ipRecord = failedLoginsByIp.get(ip);
+  if (ipRecord && ipRecord.expiresAt > now && ipRecord.count >= 25) {
+    const waitMins = Math.ceil((ipRecord.expiresAt - now) / 60000);
+    return res.status(429).json({
+      success: false,
+      message: `Too many failed login attempts from this network. Temporarily rate-limited. Please try again in ${waitMins} minute(s).`
     });
   }
 
@@ -52,16 +81,24 @@ function loginRateLimiter(req, res, next) {
   const originalEnd = res.end;
   res.end = function (...args) {
     if (res.statusCode === 401) {
-      // Failed login: increment counter
-      const cur = failedLogins.get(key);
-      if (!cur || cur.expiresAt <= now) {
-        failedLogins.set(key, { count: 1, expiresAt: now + 15 * 60 * 1000 });
+      // Failed login: increment user counter
+      const curUser = failedLogins.get(userKey);
+      if (!curUser || curUser.expiresAt <= now) {
+        failedLogins.set(userKey, { count: 1, expiresAt: now + 15 * 60 * 1000 });
       } else {
-        cur.count++;
+        curUser.count++;
+      }
+
+      // Increment IP-wide failure counter
+      const curIp = failedLoginsByIp.get(ip);
+      if (!curIp || curIp.expiresAt <= now) {
+        failedLoginsByIp.set(ip, { count: 1, expiresAt: now + 15 * 60 * 1000 });
+      } else {
+        curIp.count++;
       }
     } else if (res.statusCode === 200) {
-      // Successful login: reset failed attempts
-      failedLogins.delete(key);
+      // Successful login: reset user failed attempts
+      failedLogins.delete(userKey);
     }
     return originalEnd.apply(this, args);
   };
@@ -98,15 +135,6 @@ function registerRateLimiter(req, res, next) {
 
   next();
 }
-
-function resetLimitersForTesting() {
-  failedLogins.clear();
-  registrationAttempts.clear();
-}
-
-
-const forgotPasswordAttempts = new Map(); // key: ip -> { count, expiresAt }
-const changePasswordAttempts = new Map(); // key: ip -> { count, expiresAt }
 
 function forgotPasswordRateLimiter(req, res, next) {
   if (process.env.NODE_ENV === 'test' && !process.env.TEST_RATE_LIMITS) return next();
@@ -148,6 +176,14 @@ function changePasswordRateLimiter(req, res, next) {
     cur.count++;
   }
   next();
+}
+
+function resetLimitersForTesting() {
+  failedLogins.clear();
+  failedLoginsByIp.clear();
+  registrationAttempts.clear();
+  forgotPasswordAttempts.clear();
+  changePasswordAttempts.clear();
 }
 
 module.exports = {

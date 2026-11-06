@@ -1161,7 +1161,7 @@ export default function Suppliers() {
                 <ShieldAlert size={20} style={{ color: auditData?.discrepancies_count > 0 ? '#DC2626' : '#16A34A' }} />
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-title)' }}>
-                    Audit & Sync Supplier Balances
+                    Audit
                   </h3>
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                     Verified double-entry ledger calculation against stored database balances

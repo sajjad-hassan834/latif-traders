@@ -216,50 +216,66 @@ exports.createProduct = async (req, res) => {
         throw new Error('Product name is required.');
       }
 
+      let result;
       let finalSku = sku ? sku.trim().toUpperCase() : '';
-      if (!finalSku) {
-        const brandClean = brand ? brand.replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase() : 'SKU';
-        const maxIdRes = await db.get('SELECT MAX(id) as maxId, COUNT(*) as count FROM products WHERE tenant_id = ?', [tenantId]);
-        let seq = Number(maxIdRes?.maxId || maxIdRes?.count || 0) + 1;
-        finalSku = `${brandClean}-${String(seq).padStart(4, '0')}`;
-        while (await db.get('SELECT id FROM products WHERE sku = ? AND tenant_id = ?', [finalSku, tenantId])) {
-          seq++;
+      let finalBarcode = barcode && barcode.trim() ? barcode.trim() : null;
+
+      for (let attempt = 0; attempt < 10; attempt++) {
+        if (!finalSku || attempt > 0) {
+          const brandClean = brand ? brand.replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase() : 'SKU';
+          const maxIdRes = await db.get('SELECT MAX(id) as maxId, COUNT(*) as count FROM products WHERE tenant_id = ?', [tenantId]);
+          let seq = Number(maxIdRes?.maxId || maxIdRes?.count || 0) + 1 + attempt;
           finalSku = `${brandClean}-${String(seq).padStart(4, '0')}`;
+          while (await db.get('SELECT id FROM products WHERE sku = ? AND tenant_id = ?', [finalSku, tenantId])) {
+            seq++;
+            finalSku = `${brandClean}-${String(seq).padStart(4, '0')}`;
+          }
+        } else {
+          const existing = await db.get('SELECT id FROM products WHERE sku = ? AND tenant_id = ?', [finalSku, tenantId]);
+          if (existing) {
+            do {
+              finalSku = `PRD-${Math.floor(100000 + Math.random() * 900000)}`;
+            } while (await db.get('SELECT id FROM products WHERE sku = ? AND tenant_id = ?', [finalSku, tenantId]));
+          }
         }
-      } else {
-        const existing = await db.get('SELECT id FROM products WHERE sku = ? AND tenant_id = ?', [finalSku, tenantId]);
-        if (existing) {
-          do {
-            finalSku = `PRD-${Math.floor(100000 + Math.random() * 900000)}`;
-          } while (await db.get('SELECT id FROM products WHERE sku = ? AND tenant_id = ?', [finalSku, tenantId]));
+
+        const barcodeToSave = finalBarcode || finalSku.replace(/[^a-zA-Z0-9]/g, '');
+
+        try {
+          result = await db.run(`
+            INSERT INTO products (
+              name, sku, barcode, category_id, brand, unit, supplier_id,
+              purchase_price, sale_price, wholesale_price,
+              min_stock_level, storage_location, status, tenant_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
+          `, [
+            name.trim(),
+            finalSku,
+            barcodeToSave,
+            category_id ? Number(category_id) : null,
+            brand ? brand.trim() : null,
+            unit || 'pcs',
+            supplier_id ? Number(supplier_id) : null,
+            Number(purchase_price) || 0,
+            Number(sale_price) || 0,
+            Number(wholesale_price) || Number(sale_price) || 0,
+            Number(min_stock_level) || 5,
+            storage_location || null,
+            tenantId
+          ]);
+          break;
+        } catch (insertErr) {
+          const isUniqueViolation = 
+            (insertErr.message && insertErr.message.includes('UNIQUE constraint failed')) ||
+            insertErr.code === '23505' ||
+            insertErr.code === 'SQLITE_CONSTRAINT';
+          if (isUniqueViolation && attempt < 9) {
+            finalSku = '';
+            continue;
+          }
+          throw insertErr;
         }
       }
-
-      const finalBarcode = barcode && barcode.trim()
-        ? barcode.trim()
-        : finalSku.replace(/[^a-zA-Z0-9]/g, '');
-
-      const result = await db.run(`
-        INSERT INTO products (
-          name, sku, barcode, category_id, brand, unit, supplier_id,
-          purchase_price, sale_price, wholesale_price,
-          min_stock_level, storage_location, status, tenant_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
-      `, [
-        name.trim(),
-        finalSku,
-        finalBarcode,
-        category_id ? Number(category_id) : null,
-        brand ? brand.trim() : null,
-        unit || 'pcs',
-        supplier_id ? Number(supplier_id) : null,
-        Number(purchase_price) || 0,
-        Number(sale_price) || 0,
-        Number(wholesale_price) || Number(sale_price) || 0,
-        Number(min_stock_level) || 5,
-        storage_location || null,
-        tenantId
-      ]);
 
       const productId = result.lastInsertRowid;
 

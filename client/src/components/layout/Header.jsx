@@ -1292,7 +1292,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '16px' }}>📒</span>
               <span style={{ color: '#7C3AED', fontWeight: 600, fontSize: '15px' }}>
-                3. Customer Ledgers & Udhaar Recovery
+                3. Customer Ledgers
               </span>
             </div>
             <p style={{ margin: '6px 0 0 0', color: '#374151', fontSize: '14px', lineHeight: 1.6 }}>
@@ -1656,7 +1656,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                   <option>POS Terminal & Invoicing</option>
                   <option>Barcode & Thermal Printing</option>
                   <option>Inventory & Stock Batches</option>
-                  <option>Customers & Udhaar Balances</option>
+                  <option>Customers</option>
                   <option>Performance or Slowness</option>
                   <option>Other Feedback</option>
                 </select>

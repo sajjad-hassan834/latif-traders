@@ -23,35 +23,65 @@ function resolveDatabasePath(dataDir, envDbPath, isProduction = process.env.NODE
     fs.mkdirSync(dataDir, { recursive: true });
   }
 
+  // 1. In production, DB_PATH is strictly required
+  if (isProduction && (!envDbPath || !envDbPath.trim())) {
+    const errMsg = 'DB_PATH environment variable is required in production (startup refused to prevent accidental creation of empty database)';
+    console.error(`[FATAL] ${errMsg}`);
+    console.error('[FATAL] Please set DB_PATH to your existing database file (e.g. /app/data/latif_traders.db).');
+    if (process.env.NODE_ENV !== 'test') {
+      process.exit(1);
+    }
+    throw new Error(errMsg);
+  }
+
   let selectedPath;
   if (envDbPath && envDbPath.trim()) {
     selectedPath = path.isAbsolute(envDbPath.trim()) ? envDbPath.trim() : path.resolve(dataDir, envDbPath.trim());
   } else {
     const shoposPath = path.join(dataDir, 'shopos.db');
     const latifPath = path.join(dataDir, 'latif_traders.db');
-    if (fs.existsSync(shoposPath)) {
+    const shoposExists = fs.existsSync(shoposPath);
+    const latifExists = fs.existsSync(latifPath);
+    const shoposSize = shoposExists ? (fs.statSync(shoposPath).size || 0) : 0;
+    const latifSize = latifExists ? (fs.statSync(latifPath).size || 0) : 0;
+
+    // Never use an empty shopos.db when latif_traders.db has data
+    if (shoposExists && shoposSize > 0) {
       selectedPath = shoposPath;
-    } else if (fs.existsSync(latifPath)) {
+    } else if (latifExists && latifSize > 0) {
+      selectedPath = latifPath;
+    } else if (latifExists && !shoposExists) {
       selectedPath = latifPath;
     } else {
       selectedPath = shoposPath;
     }
   }
 
-  // Refuse to start in production if target database does not exist but another .db file exists in DATA_DIR
-  if (isProduction && !fs.existsSync(selectedPath)) {
-    let existingDbFiles = [];
+  // 2. Production safety guard: refuse to start if selected database does not exist or is 0-bytes empty while other databases with data exist
+  if (isProduction) {
+    const selectedExists = fs.existsSync(selectedPath);
+    const selectedSize = selectedExists ? (fs.statSync(selectedPath).size || 0) : 0;
+    const selectedName = path.basename(selectedPath);
+
+    let otherNonEmptyDbs = [];
     try {
-      existingDbFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.db') && !f.includes('-shm') && !f.includes('-wal'));
+      otherNonEmptyDbs = fs.readdirSync(dataDir).filter(f => {
+        if (!f.endsWith('.db') || f.includes('-shm') || f.includes('-wal') || f === selectedName) return false;
+        try {
+          return fs.statSync(path.join(dataDir, f)).size > 0;
+        } catch (_) { return false; }
+      });
     } catch (_) {}
-    if (existingDbFiles.length > 0) {
-      const selectedName = path.basename(selectedPath);
-      console.error(`[FATAL] Configured database file "${selectedName}" does not exist in DATA_DIR, but other database file(s) exist: [${existingDbFiles.join(', ')}].`);
-      console.error('[FATAL] Startup refused in production to prevent accidental empty database creation. Explicitly configure DB_PATH to point to your existing database.');
+
+    if ((!selectedExists || selectedSize === 0) && otherNonEmptyDbs.length > 0) {
+      const reason = !selectedExists ? 'does not exist' : 'is an empty 0-byte file';
+      const errMsg = `Refusing to start with empty/missing database "${selectedName}" (${reason}) when other populated database files exist in production: ${otherNonEmptyDbs.join(', ')}`;
+      console.error(`[FATAL] ${errMsg}`);
+      console.error('[FATAL] Configure DB_PATH to point directly to your populated database file.');
       if (process.env.NODE_ENV !== 'test') {
         process.exit(1);
       }
-      throw new Error(`Refusing to create empty database "${selectedName}" when other database files exist in production: ${existingDbFiles.join(', ')}`);
+      throw new Error(errMsg);
     }
   }
 
