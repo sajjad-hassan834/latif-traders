@@ -834,10 +834,10 @@ export default function Register({ onNavigateLogin, onNavigateLanding }) {
                   {loading ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Setting up Workspace...</span>
+                      <span>Setting up...</span>
                     </>
                   ) : (
-                    <span>Complete Setup</span>
+                    <span>Complete</span>
                   )}
                 </button>
 

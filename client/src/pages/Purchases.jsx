@@ -1055,7 +1055,7 @@ export default function Purchases() {
             {/* MODAL HEADER */}
             <div className="modal-header" style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-title)' }}>Create Purchase Bill</h3>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-title)' }}>New Purchase</h3>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                   Record incoming inventory shipment, configure purchase prices, and track supplier payables.
                 </div>
@@ -1108,7 +1108,7 @@ export default function Purchases() {
             )}
 
             {/* MODAL BODY (SCROLLABLE 2-COLUMN DESKTOP GRID) */}
-            <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px', alignItems: 'start' }}>
 
                 {/* LEFT COLUMN: SUPPLIER, BILL DETAILS & ADD ITEM FORM */}
@@ -1117,7 +1117,7 @@ export default function Purchases() {
                   {/* BOX 1: SUPPLIER & BILL HEADER */}
                   <div style={{ background: 'var(--hover-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      1. Supplier & Bill Details
+                      1. Supplier & Bill
                     </div>
 
                     <div className="form-group" style={{ margin: 0 }}>
@@ -1135,12 +1135,7 @@ export default function Purchases() {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       <div className="form-group" style={{ margin: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                          <label className="form-label" style={{ margin: 0, fontSize: '12px' }}>Supplier Bill #</label>
-                          <span style={{ fontSize: '10px', color: 'var(--primary)', background: 'var(--hover-bg)', padding: '1px 5px', borderRadius: '4px', fontWeight: 600, border: '1px solid var(--border)' }}>
-                            ⚡ Auto
-                          </span>
-                        </div>
+                        <label className="form-label" style={{ margin: 0, fontSize: "12px", display: "block", marginBottom: "4px" }}>Bill #</label>
                         <input
                           type="text"
                           className="form-control mono"
@@ -1151,7 +1146,7 @@ export default function Purchases() {
                       </div>
 
                       <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label" style={{ fontSize: '12px', marginBottom: '4px' }}>Bill Date *</label>
+                        <label className="form-label" style={{ fontSize: '12px', marginBottom: '4px' }}>Date *</label>
                         <CustomDatePicker
                           value={purchaseDate}
                           onChange={setPurchaseDate}
@@ -1165,7 +1160,7 @@ export default function Purchases() {
                   <div style={{ background: 'var(--bg-card)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px', opacity: !supplierId ? 0.7 : 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
                       <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        2. Add Product to Bill
+                        2. Add Product
                       </div>
 
                       {supplierId && (
@@ -1333,7 +1328,7 @@ export default function Purchases() {
                                 style={{ height: '36px', marginTop: '4px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                               >
                                 <Plus size={15} />
-                                <span>Add to Bill</span>
+                                <span>+ Add</span>
                               </button>
                             </div>
                           );
@@ -1358,7 +1353,7 @@ export default function Purchases() {
                   <div style={{ background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '12px 16px', background: 'var(--hover-bg)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>3. Bill Items</span>
+                        <span>3. Items</span>
                         <span style={{ fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-muted)' }}>
                           {items.length} {items.length === 1 ? 'item' : 'items'}
                         </span>
@@ -1368,7 +1363,7 @@ export default function Purchases() {
                       </span>
                     </div>
 
-                    <div className="table-responsive" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                    <div className="table-responsive" style={{ maxHeight: '150px', overflowY: 'auto' }}>
                       <table className="table" style={{ width: '100%', minWidth: '500px', fontSize: '12px' }}>
                         <thead>
                           <tr style={{ background: 'var(--bg-table-head)' }}>
@@ -1398,7 +1393,7 @@ export default function Purchases() {
                                 <td>
                                   <div style={{ fontWeight: 600, color: 'var(--text-title)' }}>{it.name}</div>
                                   <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                                    {it.brand ? `${it.brand} • ` : ''}Lot: {it.batch_no || 'Auto'}
+                                    {it.brand ? `${it.brand} • ` : ''}Lot: {it.batch_no || '-'}
                                   </div>
                                 </td>
                                 <td>
@@ -1445,25 +1440,25 @@ export default function Purchases() {
                   </div>
 
                   {/* BOX 4: TOTALS & SETTLEMENT SUMMARY */}
-                  <div style={{ background: 'var(--hover-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      4. Totals & Settlement
+                  <div style={{ background: 'var(--hover-bg)', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      4. Settlement
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Bill Subtotal</label>
-                        <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-title)' }}>
+                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Subtotal</label>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)' }}>
                           {formatPKR(subtotal)}
                         </div>
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Bill Discount (₨)</label>
+                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Discount (₨)</label>
                         <input
                           type="number"
                           className="form-control"
-                          style={{ height: '34px', fontSize: '13px' }}
+                          style={{ height: '30px', fontSize: '12px' }}
                           min="0"
                           value={discount}
                           onChange={(e) => setDiscount(e.target.value)}
@@ -1471,29 +1466,29 @@ export default function Purchases() {
                       </div>
                     </div>
 
-                    <div style={{ padding: '10px 14px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)' }}>Grand Bill Total:</span>
-                      <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>
+                    <div style={{ padding: '8px 12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-title)' }}>Total:</span>
+                      <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>
                         {formatPKR(grandTotal)}
                       </span>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                          <label style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>Paid Now (₨)</label>
+                          <label style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>Paid (₨)</label>
                           <button
                             type="button"
                             onClick={() => setPaidAmount(String(grandTotal))}
                             style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '11px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
                           >
-                            Pay Full
+                            Full
                           </button>
                         </div>
                         <input
                           type="number"
                           className="form-control"
-                          style={{ height: '34px', fontSize: '13px', fontWeight: 700 }}
+                          style={{ height: '30px', fontSize: '12px', fontWeight: 700 }}
                           placeholder={String(grandTotal)}
                           value={paidAmount}
                           onChange={(e) => setPaidAmount(e.target.value)}
@@ -1501,10 +1496,10 @@ export default function Purchases() {
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Payment Method</label>
+                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Method</label>
                         <select
                           className="form-control"
-                          style={{ height: '34px', fontSize: '13px' }}
+                          style={{ height: '30px', fontSize: '12px' }}
                           value={paymentMethod}
                           onChange={(e) => setPaymentMethod(e.target.value)}
                         >
@@ -1515,27 +1510,29 @@ export default function Purchases() {
                       </div>
                     </div>
 
-                    {/* Payable Status Chip */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', padding: '6px 10px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Payable Due to Supplier:</span>
-                      {Number(paidAmount || 0) >= grandTotal && grandTotal > 0 ? (
-                        <span style={{ color: '#16a34a', fontWeight: 700 }}>Settled (₨ 0)</span>
-                      ) : Number(paidAmount || 0) > 0 ? (
-                        <span style={{ color: '#d97706', fontWeight: 700 }}>Partial Due: {formatPKR(Math.max(0, grandTotal - Number(paidAmount || 0)))}</span>
-                      ) : (
-                        <span style={{ color: '#ef4444', fontWeight: 700 }}>Unpaid: {formatPKR(grandTotal)}</span>
-                      )}
-                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', alignItems: 'center' }}>
+                      {/* Due Status Chip */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '5px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Due:</span>
+                        {Number(paidAmount || 0) >= grandTotal && grandTotal > 0 ? (
+                          <span style={{ color: '#16a34a', fontWeight: 700 }}>Settled (₨ 0)</span>
+                        ) : Number(paidAmount || 0) > 0 ? (
+                          <span style={{ color: '#d97706', fontWeight: 700 }}>{formatPKR(Math.max(0, grandTotal - Number(paidAmount || 0)))}</span>
+                        ) : (
+                          <span style={{ color: '#ef4444', fontWeight: 700 }}>{formatPKR(grandTotal)}</span>
+                        )}
+                      </div>
 
-                    <div>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Optional notes or supplier remarks..."
-                        style={{ height: '32px', fontSize: '12px' }}
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                      />
+                      <div>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Notes / remarks..."
+                          style={{ height: '30px', fontSize: '11px' }}
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1543,7 +1540,7 @@ export default function Purchases() {
             </div>
 
             {/* STICKY MODAL FOOTER */}
-            <div className="modal-footer" style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div className="modal-footer" style={{ padding: '10px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
@@ -1560,8 +1557,8 @@ export default function Purchases() {
                   className="btn btn-secondary btn-sm"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <Sparkles size={14} />
-                  <span>Save & Add Another</span>
+                  <Plus size={14} />
+                  <span>Save & Next</span>
                 </button>
 
                 <button

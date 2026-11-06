@@ -1,4 +1,5 @@
-import { BRAND_NAME } from './config/brand';
+import {
+  BRAND_NAME } from './config/brand';
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/layout/Sidebar';
@@ -22,7 +23,7 @@ import SuperOwnerDashboard from './pages/SuperOwnerDashboard';
 import ForcedPasswordChange from './components/auth/ForcedPasswordChange';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import BrandPreview from './pages/BrandPreview';
-import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Sparkles, CheckCircle2, Circle, X } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Store, CheckCircle2, Circle, X } from 'lucide-react';
 import { api } from './utils/api';
 import { applyAppTheme as applyThemeHelper } from './utils/theme';
 
@@ -577,7 +578,7 @@ function MainApp() {
                 <X size={16} />
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <Sparkles size={18} style={{ color: 'var(--primary)' }} />
+                <Store size={18} style={{ color: 'var(--primary)' }} />
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-title)' }}>
                   Welcome to {BRAND_NAME}, {tenant?.business_name || 'Partner'}! 🎉
                 </h3>

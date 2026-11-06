@@ -131,17 +131,17 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
 
   const tabMetadata = {
     dashboard: { section: 'Overview', title: 'Dashboard' },
-    pos: { section: 'Sales', title: 'New Sale (POS)' },
-    sales: { section: 'Orders', title: 'Orders Management' },
-    inventory: { section: 'Inventory', title: 'Products & Stock' },
-    'stock-adjust': { section: 'Inventory', title: 'Stock Adjustments' },
-    purchases: { section: 'Inventory', title: 'Purchase Invoices' },
-    customers: { section: 'Parties', title: 'Customers & Udhaar' },
-    suppliers: { section: 'Parties', title: 'Suppliers & Dues' },
-    expenses: { section: 'Finance', title: 'Operating Expenses' },
-    cashflow: { section: 'Finance', title: 'Daily Cashbook' },
-    reports: { section: 'Reports', title: 'Analytics & Profit' },
-    settings: { section: 'System', title: 'Shop Settings' }
+    pos: { section: 'Sales', title: 'POS' },
+    sales: { section: 'Orders', title: 'Orders' },
+    inventory: { section: 'Inventory', title: 'Products' },
+    'stock-adjust': { section: 'Inventory', title: 'Adjustments' },
+    purchases: { section: 'Inventory', title: 'Purchases' },
+    customers: { section: 'Parties', title: 'Customers' },
+    suppliers: { section: 'Parties', title: 'Suppliers' },
+    expenses: { section: 'Finance', title: 'Expenses' },
+    cashflow: { section: 'Finance', title: 'Cashbook' },
+    reports: { section: 'Reports', title: 'Analytics' },
+    settings: { section: 'System', title: 'Settings' }
   };
 
   const getSettingsSubTitle = (overrideTab = null) => {
@@ -468,7 +468,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               title="Open POS Terminal"
             >
               <PlusCircle size={14} />
-              <span><span className="hide-mobile">New Sale </span>POS</span>
+              <span>POS</span>
             </button>
           )}
 
@@ -767,7 +767,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                         gap: '3px'
                       }}
                     >
-                      {currentPlan === 'enterprise' && <><span>ENTERPRISE</span> <Sparkles size={9} /></>}
+                      {currentPlan === 'enterprise' && <><span>ENTERPRISE</span> <ShieldCheck size={10} /></>}
                       {currentPlan === 'pro' && <><span>PRO</span> ⭐</>}
                       {currentPlan === 'free' && 'FREE PLAN'}
                     </span>

@@ -1449,7 +1449,7 @@ export default function SalesList({ setTab }) {
             <form onSubmit={handleSubmitStatus}>
               <div className="modal-header">
                 <div>
-                  <h3 style={{ margin: 0 }}>Update Order Status</h3>
+                  <h3 style={{ margin: 0 }}>Status</h3>
                   <p className="modal-subtitle">Order #{statusModalOrder.invoice_no}</p>
                 </div>
                 <button type="button" onClick={() => setStatusModalOrder(null)} className="modal-close-btn">
@@ -1504,7 +1504,7 @@ export default function SalesList({ setTab }) {
                   Cancel
                 </button>
                 <button type="submit" disabled={statusSubmitting} className="btn btn-primary btn-sm">
-                  {statusSubmitting ? 'Updating...' : 'Save Status'}
+                  {statusSubmitting ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </form>
@@ -1619,7 +1619,7 @@ export default function SalesList({ setTab }) {
             <form onSubmit={handleBulkStatusSubmit}>
               <div className="modal-header">
                 <div>
-                  <h3 style={{ margin: 0 }}>Bulk Status Update</h3>
+                  <h3 style={{ margin: 0 }}>Status</h3>
                   <p className="modal-subtitle">Applying to {selectedOrders.length} selected orders</p>
                 </div>
                 <button type="button" onClick={() => setBulkStatusModalOpen(false)} className="modal-close-btn">
@@ -1629,7 +1629,7 @@ export default function SalesList({ setTab }) {
 
               <div className="modal-body">
                 <label style={{ display: 'block', fontSize: '0.785rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                  Update All Selected Orders To:
+                  Status
                 </label>
                 <select
                   value={bulkStatusValue}
@@ -1651,7 +1651,7 @@ export default function SalesList({ setTab }) {
                   Cancel
                 </button>
                 <button type="submit" disabled={bulkStatusSubmitting} className="btn btn-primary btn-sm">
-                  {bulkStatusSubmitting ? 'Updating...' : `Update (${selectedOrders.length})`}
+                  {bulkStatusSubmitting ? 'Updating...' : 'Update'}
                 </button>
               </div>
             </form>

@@ -1044,8 +1044,8 @@ export default function Settings({ initialTab: propInitialTab }) {
                   boxShadow: '0 4px 12px rgba(14, 165, 233, 0.35)'
                 }}
               >
-                <Sparkles size={16} />
-                <span>{plan === 'free' ? 'Upgrade to Pro' : 'Change Plan'}</span>
+                <ArrowUpRight size={16} />
+                <span>{plan === 'free' ? 'Upgrade' : 'Change'}</span>
               </button>
             </div>
 

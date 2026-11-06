@@ -257,7 +257,7 @@ export default function Suppliers() {
             type="text"
             className="form-control"
             style={{ paddingLeft: '2.5rem' }}
-            placeholder="Search suppliers by company or contact person..."
+            placeholder="Search suppliers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && loadSuppliers()}
@@ -273,12 +273,12 @@ export default function Suppliers() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
               <RefreshCw size={14} className={auditing ? 'spin' : ''} />
-              <span>{auditing ? 'Auditing...' : 'Recalculate Balances'}</span>
+              <span>{auditing ? 'Auditing...' : 'Sync'}</span>
             </button>
           )}
           <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
             <Plus size={16} />
-            <span>Add New Supplier</span>
+            <span>+ Supplier</span>
           </button>
         </div>
       </div>
@@ -290,11 +290,11 @@ export default function Suppliers() {
             <thead>
               <tr>
                 <th>Supplier</th>
-                <th style={{ minWidth: '130px' }}>Contact Person</th>
+                <th style={{ minWidth: '130px' }}>Contact</th>
                 <th style={{ minWidth: '120px' }}>Phone</th>
                 <th style={{ minWidth: '150px' }}>Address</th>
-                <th style={{ textAlign: 'right', minWidth: '120px' }}>Outstanding Payable</th>
-                <th style={{ textAlign: 'center', width: '85px' }}>Actions</th>
+                <th style={{ textAlign: 'right', minWidth: '120px' }}>Balance</th>
+                <th style={{ textAlign: 'center', width: '85px' }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -344,7 +344,7 @@ export default function Suppliers() {
                               onClick: () => openEditSupplier(s)
                             },
                             {
-                              label: 'View Statement',
+                              label: 'Statement',
                               icon: <FileText size={14} color="#6366f1" />,
                               onClick: () => openLedger(s)
                             },
@@ -355,7 +355,7 @@ export default function Suppliers() {
                             },
                             isAdmin && { divider: true },
                             isAdmin && {
-                              label: 'Delete Supplier',
+                              label: 'Delete',
                               icon: <Trash2 size={14} color="#dc2626" />,
                               danger: true,
                               onClick: () => {
@@ -417,7 +417,7 @@ export default function Suppliers() {
 
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Contact Person</label>
+                    <label className="form-label">Contact</label>
                     <input
                       type="text"
                       className="form-control"
@@ -462,7 +462,7 @@ export default function Suppliers() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Supplier</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save</button>
               </div>
             </form>
           </div>
@@ -943,7 +943,7 @@ export default function Suppliers() {
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Payment Amount (PKR) *</label>
+                  <label className="form-label">Amount (PKR) *</label>
                   <input
                     type="number"
                     className="form-control"
@@ -958,7 +958,7 @@ export default function Suppliers() {
 
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Payment Date</label>
+                    <label className="form-label">Date</label>
                     <input
                       type="date"
                       className="form-control"
@@ -967,7 +967,7 @@ export default function Suppliers() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Payment Method</label>
+                    <label className="form-label">Method</label>
                     <select
                       className="form-control"
                       value={payMethod}
@@ -1087,13 +1087,13 @@ export default function Suppliers() {
                       }}
                     >
                       <Trash2 size={13} />
-                      <span>Delete Supplier</span>
+                      <span>Delete</span>
                     </button>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.6rem' }}>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Update Supplier</button>
+                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save</button>
                 </div>
               </div>
             </form>
@@ -1108,7 +1108,7 @@ export default function Suppliers() {
             <div className="modal-header" style={{ borderBottom: '1px solid #fee2e2', background: '#fff5f5' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Trash2 size={18} color="#dc2626" />
-                <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1.05rem', fontWeight: 700 }}>Confirm Delete Supplier</h3>
+                <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1.05rem', fontWeight: 700 }}>Delete</h3>
               </div>
               <button
                 type="button"
