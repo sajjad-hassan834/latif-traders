@@ -784,3 +784,141 @@ html[data-app-theme] .modal-footer {
   font-weight: 600;
   color: var(--text-title, #0F172A);
 }
+
+/* Phase 2: Lokboltab Dashboard Arrangement */
+.dashboard-hero-band {
+  background: #0A1128;
+  color: #FFFFFF;
+  border-radius: 16px;
+  padding: 28px 28px 68px 28px;
+  position: relative;
+  box-shadow: 0 4px 20px -2px rgba(10, 17, 40, 0.25);
+}
+.dashboard-hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.dashboard-period-pills {
+  display: flex;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+.dashboard-period-btn {
+  background: transparent;
+  border: none;
+  color: #CBD5E1;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.dashboard-period-btn:hover {
+  color: #FFFFFF;
+}
+.dashboard-period-btn.active {
+  background: #F59E0B;
+  color: #1E1B18;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.35);
+}
+.dashboard-hero-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: -46px;
+  padding: 0 8px;
+  position: relative;
+  z-index: 10;
+}
+.kpi-card-lokboltab {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 140px;
+}
+.kpi-card-lokboltab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08);
+}
+.kpi-round-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.analytics-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.analytics-card-lokboltab {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+}
+.bottom-lists-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.bottom-list-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+}
+.avatar-initial-pill {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+@media (max-width: 1100px) {
+  .dashboard-hero-kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .analytics-grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .bottom-lists-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .dashboard-hero-kpi-row {
+    grid-template-columns: 1fr;
+    margin-top: -24px;
+    padding: 0;
+  }
+  .dashboard-hero-band {
+    padding: 20px 18px 48px 18px;
+  }
+}

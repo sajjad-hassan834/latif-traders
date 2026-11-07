@@ -223,6 +223,309 @@ exports.getDashboardMetrics = async (req, res) => {
   }
 };
 
+// Dashboard Insights (Phase 2 - Read-only analytical KPIs, donuts, and grouped comparisons)
+exports.getDashboardInsights = async (req, res) => {
+  try {
+    const tenantId = req.tenantId || req.tenant_id;
+    const userRole = (req.user && req.user.role) || 'sales';
+    const isRestrictedSales = userRole === 'sales';
+
+    // Parse period: today, 7d, 30d, custom
+    const period = req.query.period || 'today';
+    const today = new Date().toISOString().split('T')[0];
+
+    let startDate = today;
+    let endDate = today;
+    let prevStartDate = today;
+    let prevEndDate = today;
+
+    if (period === 'today') {
+      startDate = today;
+      endDate = today;
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      prevStartDate = yesterday;
+      prevEndDate = yesterday;
+    } else if (period === '7d') {
+      const d = new Date(Date.now() - 6 * 86400000);
+      startDate = d.toISOString().split('T')[0];
+      endDate = today;
+      const prevEnd = new Date(Date.now() - 7 * 86400000);
+      const prevStart = new Date(Date.now() - 13 * 86400000);
+      prevStartDate = prevStart.toISOString().split('T')[0];
+      prevEndDate = prevEnd.toISOString().split('T')[0];
+    } else if (period === '30d') {
+      const d = new Date(Date.now() - 29 * 86400000);
+      startDate = d.toISOString().split('T')[0];
+      endDate = today;
+      const prevEnd = new Date(Date.now() - 30 * 86400000);
+      const prevStart = new Date(Date.now() - 59 * 86400000);
+      prevStartDate = prevStart.toISOString().split('T')[0];
+      prevEndDate = prevEnd.toISOString().split('T')[0];
+    } else if (period === 'custom') {
+      startDate = req.query.start_date || today;
+      endDate = req.query.end_date || today;
+      const s = new Date(startDate).getTime();
+      const e = new Date(endDate).getTime();
+      const spanMs = Math.max(86400000, (e - s) + 86400000);
+      const prevEnd = new Date(s - 86400000);
+      const prevStart = new Date(prevEnd.getTime() - spanMs + 86400000);
+      prevStartDate = prevStart.toISOString().split('T')[0];
+      prevEndDate = prevEnd.toISOString().split('T')[0];
+    }
+
+    // 1. Current Period Sales
+    const currSalesRow = await db.get(`
+      SELECT
+        COUNT(*) as invoice_count,
+        COALESCE(SUM(grand_total), 0) as total_sales,
+        COALESCE(SUM(paid_amount), 0) as cash_received,
+        COALESCE(SUM(balance_due), 0) as credit_sales
+      FROM sales
+      WHERE SUBSTR(sale_date, 1, 10) >= ? AND SUBSTR(sale_date, 1, 10) <= ? AND tenant_id = ?
+    `, [startDate, endDate, tenantId]) || { invoice_count: 0, total_sales: 0, cash_received: 0, credit_sales: 0 };
+
+    // 2. Previous Period Sales for Delta %
+    const prevSalesRow = await db.get(`
+      SELECT
+        COALESCE(SUM(grand_total), 0) as total_sales
+      FROM sales
+      WHERE SUBSTR(sale_date, 1, 10) >= ? AND SUBSTR(sale_date, 1, 10) <= ? AND tenant_id = ?
+    `, [prevStartDate, prevEndDate, tenantId]) || { total_sales: 0 };
+
+    const currSalesTotal = Number(currSalesRow.total_sales || 0);
+    const prevSalesTotal = Number(prevSalesRow.total_sales || 0);
+    let salesDeltaPct = 0;
+    if (prevSalesTotal > 0) {
+      salesDeltaPct = Math.round(((currSalesTotal - prevSalesTotal) / prevSalesTotal) * 100);
+    } else if (currSalesTotal > 0) {
+      salesDeltaPct = 100;
+    }
+
+    // 3. Receivables (Total outstanding customer balance)
+    const recRow = await db.get(`
+      SELECT
+        COALESCE(SUM(current_balance), 0) as balance,
+        COUNT(id) as customer_count
+      FROM customers
+      WHERE tenant_id = ? AND current_balance > 0 AND LOWER(name) NOT LIKE '%walk-in%' AND LOWER(name) NOT LIKE '%counter%'
+    `, [tenantId]);
+    const totalReceivables = Number(recRow?.balance || 0);
+    const receivablesCustomerCount = Number(recRow?.customer_count || 0);
+
+    // 4. Payables (Suppliers balance) - masked for sales role
+    let totalPayables = 0;
+    let payablesSupplierCount = 0;
+    if (!isRestrictedSales) {
+      const payRow = await db.get(`
+        SELECT COALESCE(SUM(current_balance), 0) as balance, COUNT(id) as supplier_count
+        FROM suppliers WHERE tenant_id = ? AND current_balance > 0
+      `, [tenantId]);
+      totalPayables = Number(payRow?.balance || 0);
+      payablesSupplierCount = Number(payRow?.supplier_count || 0);
+    }
+
+    // 5. Stock Valuation & Low Stock
+    const invRow = await db.get(`
+      SELECT
+        COALESCE(SUM(b.quantity * b.purchase_price), 0) as total_cost_value,
+        COALESCE(SUM(b.quantity * p.sale_price), 0) as total_retail_value,
+        COALESCE(SUM(b.quantity), 0) as total_items_stock
+      FROM batches b
+      JOIN products p ON b.product_id = p.id AND p.tenant_id = b.tenant_id
+      WHERE b.status = 'active' AND b.tenant_id = ?
+    `, [tenantId]) || { total_cost_value: 0, total_retail_value: 0, total_items_stock: 0 };
+
+    // Low stock count
+    const lowStockItems = await db.all(`
+      SELECT p.id, p.name, p.sku, p.min_stock_level, p.unit,
+        COALESCE(SUM(b.quantity), 0) as current_stock
+      FROM products p
+      LEFT JOIN batches b ON p.id = b.product_id AND b.status = 'active' AND b.tenant_id = p.tenant_id
+      WHERE p.status = 'active' AND p.tenant_id = ?
+      GROUP BY p.id, p.name, p.sku, p.min_stock_level, p.unit
+      HAVING COALESCE(SUM(b.quantity), 0) <= p.min_stock_level
+      ORDER BY current_stock ASC
+      LIMIT 10
+    `, [tenantId]);
+
+    // 6. Donut 1: Sales by Payment Method for Current Period
+    const paymentMethodsRaw = await db.all(`
+      SELECT
+        COALESCE(payment_method, 'cash') as method,
+        COUNT(*) as count,
+        COALESCE(SUM(grand_total), 0) as total_amount
+      FROM sales
+      WHERE SUBSTR(sale_date, 1, 10) >= ? AND SUBSTR(sale_date, 1, 10) <= ? AND tenant_id = ?
+      GROUP BY payment_method
+      ORDER BY total_amount DESC
+    `, [startDate, endDate, tenantId]);
+
+    const paymentMethodsDonut = paymentMethodsRaw.map(pm => {
+      const amt = Number(pm.total_amount || 0);
+      const pct = currSalesTotal > 0 ? Math.round((amt / currSalesTotal) * 100) : 0;
+      return {
+        method: pm.method,
+        count: Number(pm.count || 0),
+        amount: amt,
+        percentage: pct
+      };
+    });
+
+    // 7. Donut 2: Stock by Category
+    const stockByCategoryRaw = await db.all(`
+      SELECT
+        COALESCE(c.name, 'General') as category,
+        COALESCE(SUM(b.quantity), 0) as total_quantity,
+        COALESCE(SUM(b.quantity * p.sale_price), 0) as retail_valuation,
+        COALESCE(SUM(b.quantity * b.purchase_price), 0) as cost_valuation
+      FROM batches b
+      JOIN products p ON b.product_id = p.id AND p.tenant_id = b.tenant_id
+      LEFT JOIN categories c ON p.category_id = c.id AND c.tenant_id = p.tenant_id
+      WHERE b.status = 'active' AND b.tenant_id = ?
+      GROUP BY COALESCE(c.name, 'General')
+      ORDER BY retail_valuation DESC
+      LIMIT 5
+    `, [tenantId]);
+
+    const totalRetailVal = Number(invRow.total_retail_value || 0);
+    const stockByCategoryDonut = stockByCategoryRaw.map(sc => {
+      const val = Number(sc.retail_valuation || 0);
+      const pct = totalRetailVal > 0 ? Math.round((val / totalRetailVal) * 100) : 0;
+      return {
+        category: sc.category || 'General',
+        quantity: Number(sc.total_quantity || 0),
+        value: val,
+        percentage: pct
+      };
+    });
+
+    // 8. Grouped Bar: Sales vs Purchases by Month (Last 6 months)
+    const monthlyComparison = [];
+    const now = new Date();
+    for (let m = 5; m >= 0; m--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+      const year = d.getFullYear();
+      const monthNum = String(d.getMonth() + 1).padStart(2, '0');
+      const monthPrefix = `${year}-${monthNum}`;
+      const monthLabel = d.toLocaleString('en-US', { month: 'short' });
+
+      const mSales = await db.get(`
+        SELECT COALESCE(SUM(grand_total), 0) as total FROM sales
+        WHERE SUBSTR(sale_date, 1, 7) = ? AND tenant_id = ?
+      `, [monthPrefix, tenantId]);
+
+      let mPurchases = { total: 0 };
+      if (!isRestrictedSales) {
+        mPurchases = await db.get(`
+          SELECT COALESCE(SUM(grand_total), 0) as total FROM purchases
+          WHERE SUBSTR(purchase_date, 1, 7) = ? AND tenant_id = ?
+        `, [monthPrefix, tenantId]) || { total: 0 };
+      }
+
+      monthlyComparison.push({
+        month: monthLabel,
+        yearMonth: monthPrefix,
+        sales: Number(mSales?.total || 0),
+        purchases: Number(mPurchases?.total || 0)
+      });
+    }
+
+    // 9. Recent Invoices (Latest 6)
+    const recentInvoices = await db.all(`
+      SELECT s.id, s.invoice_no, s.sale_date, s.grand_total, s.paid_amount, s.balance_due,
+        s.payment_method, s.sale_type,
+        COALESCE(c.name, 'Counter Walk-in') as customer_name
+      FROM sales s
+      LEFT JOIN customers c ON s.customer_id = c.id AND c.tenant_id = s.tenant_id
+      WHERE s.tenant_id = ?
+      ORDER BY s.id DESC
+      LIMIT 6
+    `, [tenantId]);
+
+    // 10. Top Debtors (Customers with balance)
+    const topDebtors = await db.all(`
+      SELECT id, name, phone, customer_type, current_balance
+      FROM customers
+      WHERE tenant_id = ? AND current_balance > 0 AND LOWER(name) NOT LIKE '%walk-in%' AND LOWER(name) NOT LIKE '%counter%'
+      ORDER BY current_balance DESC, id DESC
+      LIMIT 6
+    `, [tenantId]);
+
+    // 11. Near expiry alerts (JS calculation)
+    const nearExpirySetting = await db.get("SELECT value FROM tenant_settings WHERE tenant_id = ? AND key = 'near_expiry_days'", [tenantId]);
+    const alertDays = nearExpirySetting ? parseInt(nearExpirySetting.value, 10) : 15;
+    const alertThresholdDate = new Date(Date.now() + alertDays * 86400000).toISOString().split('T')[0];
+
+    const nearExpiryBatchesRaw = await db.all(`
+      SELECT b.id, b.batch_no, b.expiry_date, b.quantity, p.name as product_name, p.unit
+      FROM batches b
+      JOIN products p ON b.product_id = p.id AND p.tenant_id = b.tenant_id
+      WHERE b.status = 'active' AND b.quantity > 0 AND b.expiry_date <= ? AND b.tenant_id = ?
+      ORDER BY b.expiry_date ASC
+      LIMIT 6
+    `, [alertThresholdDate, tenantId]);
+
+    const nearExpiryBatches = nearExpiryBatchesRaw.map(b => ({
+      ...b,
+      days_remaining: Math.round((new Date(b.expiry_date).getTime() - new Date(today).getTime()) / 86400000)
+    }));
+
+    return res.json({
+      success: true,
+      data: {
+        period,
+        startDate,
+        endDate,
+        kpi: {
+          sales: {
+            total: currSalesTotal,
+            invoice_count: Number(currSalesRow.invoice_count || 0),
+            delta_pct: salesDeltaPct,
+            delta_direction: salesDeltaPct >= 0 ? 'up' : 'down'
+          },
+          receivables: {
+            total: totalReceivables,
+            customer_count: receivablesCustomerCount
+          },
+          payables: {
+            total: isRestrictedSales ? 0 : totalPayables,
+            supplier_count: isRestrictedSales ? 0 : payablesSupplierCount,
+            is_restricted: isRestrictedSales
+          },
+          stock: {
+            valuation: isRestrictedSales ? Number(invRow.total_retail_value || 0) : Number(invRow.total_cost_value || 0),
+            retail_valuation: Number(invRow.total_retail_value || 0),
+            total_items: Number(invRow.total_items_stock || 0),
+            low_stock_count: lowStockItems.length
+          }
+        },
+        donuts: {
+          sales_by_payment: {
+            total: currSalesTotal,
+            items: paymentMethodsDonut
+          },
+          stock_by_category: {
+            total: totalRetailVal,
+            items: stockByCategoryDonut
+          }
+        },
+        grouped_bar: {
+          months: monthlyComparison
+        },
+        lists: {
+          recent_invoices: recentInvoices,
+          top_debtors: topDebtors,
+          low_stock_alerts: lowStockItems,
+          near_expiry_alerts: nearExpiryBatches
+        }
+      }
+    });
+  } catch (err) {
+    console.error('Dashboard insights error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to fetch dashboard insights.' });
+  }
+};
+
 // Profit & Loss Report
 exports.getProfitAndLoss = async (req, res) => {
   try {

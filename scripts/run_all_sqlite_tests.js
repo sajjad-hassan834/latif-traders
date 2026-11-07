@@ -17,6 +17,7 @@ const suites = [
   { name: 'Security Batch 1b (Credential Rotation)', cmd: 'node server/tests/security_batch1b_rotate.test.js' },
   { name: 'Security Batch 1b (Tenant Isolation)', cmd: 'node server/tests/security_batch1b_tenant_isolation.test.js' },
   { name: 'Security Migrations Idempotency', cmd: 'node server/tests/security_batch1b_migrations_idempotency.test.js' },
+  { name: 'Dashboard Insights Parity & Roles', cmd: 'node server/tests/dashboard_insights.test.js' },
   { name: 'Cashbook Quarantine Parity', cmd: 'node server/tests/cashbook_quarantine_parity.test.js' },
   { name: 'Negative Controls Drill (6/6)', cmd: 'node server/tests/negative_controls.test.js' },
   { name: 'Serve Logo Path Traversal Guard (%2e%2e)', cmd: 'node server/tests/serve_logo_traversal.test.js' }
@@ -57,6 +58,6 @@ if (!allPassed) {
   console.error('❌ One or more test suites failed.');
   process.exit(1);
 } else {
-  console.log('🎉 ALL 13 TEST SUITES PASSED ON SQLITE RELEASE CANDIDATE!');
+  console.log(`🎉 ALL ${suites.length} TEST SUITES PASSED ON SQLITE RELEASE CANDIDATE!`);
   process.exit(0);
 }

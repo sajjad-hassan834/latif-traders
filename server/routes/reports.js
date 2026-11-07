@@ -8,6 +8,7 @@ router.use(authenticate);
 router.use(tenantContext);
 
 router.get('/dashboard', reportController.getDashboardMetrics);
+router.get('/dashboard/insights', reportController.getDashboardInsights);
 router.get('/profit-loss', requireRoles('accountant'), reportController.getProfitAndLoss);
 router.get('/daily-sales', requireRoles('sales', 'accountant'), reportController.getDailySalesReport);
 router.get('/stock', reportController.getStockReport);
