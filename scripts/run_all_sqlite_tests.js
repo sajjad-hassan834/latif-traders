@@ -18,7 +18,8 @@ const suites = [
   { name: 'Security Batch 1b (Tenant Isolation)', cmd: 'node server/tests/security_batch1b_tenant_isolation.test.js' },
   { name: 'Security Migrations Idempotency', cmd: 'node server/tests/security_batch1b_migrations_idempotency.test.js' },
   { name: 'Cashbook Quarantine Parity', cmd: 'node server/tests/cashbook_quarantine_parity.test.js' },
-  { name: 'Negative Controls Drill (6/6)', cmd: 'node server/tests/negative_controls.test.js' }
+  { name: 'Negative Controls Drill (6/6)', cmd: 'node server/tests/negative_controls.test.js' },
+  { name: 'Serve Logo Path Traversal Guard (%2e%2e)', cmd: 'node server/tests/serve_logo_traversal.test.js' }
 ];
 
 const results = [];
