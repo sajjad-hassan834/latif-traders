@@ -418,6 +418,61 @@ export default function Purchases() {
     setUndoItem(null);
   };
 
+  const handleApplyAiBill = (parsedBill) => {
+    if (!parsedBill) return;
+
+    if (parsedBill.invoiceNo) {
+      setSupplierInvoiceNo(parsedBill.invoiceNo);
+    }
+
+    if (parsedBill.supplierId) {
+      setSupplierId(parsedBill.supplierId);
+    } else if (parsedBill.supplierName && (suppliers || []).length > 0) {
+      const sName = parsedBill.supplierName.toLowerCase();
+      const matched = suppliers.find(s =>
+        s.name.toLowerCase().includes(sName) ||
+        sName.includes(s.name.toLowerCase())
+      );
+      if (matched) {
+        setSupplierId(matched.id);
+      }
+    }
+
+    if (parsedBill.items && parsedBill.items.length > 0) {
+      const mapped = parsedBill.items.map(it => {
+        const pName = (it.product_name || '').toLowerCase();
+        const matchedProd = (products || []).find(p =>
+          p.name.toLowerCase().includes(pName) ||
+          pName.includes(p.name.toLowerCase())
+        );
+
+        const qty = Number(it.quantity) || 1;
+        const cost = Number(it.unit_price) || 0;
+        const wPrice = matchedProd ? Number(matchedProd.wholesale_price || cost) : cost;
+        const sPrice = matchedProd ? Number(matchedProd.sale_price || cost * 1.25) : cost * 1.25;
+
+        return {
+          product_id: matchedProd ? matchedProd.id : null,
+          name: matchedProd ? matchedProd.name : it.product_name,
+          brand: matchedProd ? (matchedProd.brand || '') : '',
+          unit: matchedProd ? (matchedProd.unit || 'pkt') : 'pkt',
+          batch_no: it.batch_no || `LOT-${Date.now().toString().slice(-5)}`,
+          expiry_date: it.expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
+          quantity: qty,
+          unit_price: cost,
+          wholesale_price: wPrice,
+          sale_price: sPrice,
+          discount: 0
+        };
+      });
+
+      setItems(mapped);
+    }
+
+    setShowAiScanner(false);
+    setShowNewModal(true);
+  };
+
   const subtotal = items.reduce((sum, it) => sum + (Number(it.quantity) * Number(it.unit_price)) - (Number(it.discount) || 0), 0);
   const grandTotal = Math.max(0, subtotal - (Number(discount) || 0));
 
@@ -735,10 +790,22 @@ export default function Purchases() {
             <span>Export</span>
           </button>
           {canManageInventory && (
-            <button onClick={openNewPurchaseModal} className="btn btn-primary btn-sm">
-              <Plus size={14} />
-              <span>+ Purchase</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setShowAiScanner(true)}
+                className="btn btn-secondary btn-sm"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(2, 132, 199, 0.1)', color: '#0284c7', borderColor: 'rgba(2, 132, 199, 0.25)' }}
+                title="AI Scan & Parse Supplier Paper Delivery Bill"
+              >
+                <Sparkles size={14} />
+                <span>AI Scan Bill</span>
+              </button>
+              <button onClick={openNewPurchaseModal} className="btn btn-primary btn-sm">
+                <Plus size={14} />
+                <span>+ Purchase</span>
+              </button>
+            </>
           )}
         </div>
       </div>
