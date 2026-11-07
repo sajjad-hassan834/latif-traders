@@ -1,168 +1,139 @@
 #!/usr/bin/env node
 /**
  * scripts/baseline_report.js
- *
- * Emits a structured JSON baseline snapshot of key aggregate business metrics from a SQLite database file.
- * Used for strict Before vs After diff verification across releases and database migrations.
- * PRIVACY/SECURITY: Outputs AGGREGATE NUMBERS ONLY. Never exports customer names, phones, or rows.
- *
- * Usage:
- *   node scripts/baseline_report.js <path-to-database.db>
- *   node scripts/baseline_report.js <path-to-database.db> > baseline.json
+ * 
+ * Generates an automated JSON baseline summary of database metrics for pre/post deploy verification.
+ * STRICT PRIVACY REQUIREMENT: Aggregates only. Never outputs names, customer lists, or row data.
+ * 
+ * Usage: node scripts/baseline_report.js <path-to-db-file>
  */
 
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
+const Database = require('better-sqlite3');
 
-const dbArg = process.argv[2];
-if (!dbArg) {
-  console.error(JSON.stringify({ error: 'Missing database path argument. Usage: node scripts/baseline_report.js <file.db>' }, null, 2));
+const dbPath = process.argv[2];
+
+if (!dbPath) {
+  console.error(JSON.stringify({ error: 'Usage: node scripts/baseline_report.js <file.db>' }, null, 2));
   process.exit(1);
 }
 
-const dbPath = path.resolve(process.cwd(), dbArg);
-if (!fs.existsSync(dbPath)) {
-  console.error(JSON.stringify({ error: `File not found: ${dbPath}` }, null, 2));
+const resolvedPath = path.resolve(process.cwd(), dbPath);
+
+if (!fs.existsSync(resolvedPath)) {
+  console.error(JSON.stringify({ error: `File not found at "${resolvedPath}"` }, null, 2));
   process.exit(1);
 }
 
-let Database;
-try {
-  Database = require('better-sqlite3');
-} catch (e) {
-  console.error(JSON.stringify({ error: 'better-sqlite3 not available' }, null, 2));
-  process.exit(1);
-}
+const stats = fs.statSync(resolvedPath);
 
-const fileStat = fs.statSync(dbPath);
 let db;
 try {
-  db = new Database(dbPath, { readonly: true, fileMustExist: true });
+  db = new Database(resolvedPath, { readonly: true, fileMustExist: true });
 } catch (err) {
-  console.error(JSON.stringify({ error: `Cannot open database: ${err.message}` }, null, 2));
+  console.error(JSON.stringify({ error: `Failed to open SQLite database: ${err.message}` }, null, 2));
   process.exit(1);
 }
 
 try {
-  // 1. PRAGMA integrity_check
-  const integrity = db.prepare('PRAGMA integrity_check').all();
-  const integrityStatus = integrity.length === 1 && integrity[0].integrity_check === 'ok' ? 'ok' : 'corrupted';
+  // 1. Integrity
+  const integrityRows = db.prepare('PRAGMA integrity_check').all();
+  const integrityOk = integrityRows.length === 1 && integrityRows[0].integrity_check === 'ok';
 
   // 2. Table row counts
-  const tables = db.prepare(`
-    SELECT name FROM sqlite_master 
-    WHERE type='table' AND name NOT LIKE 'sqlite_%'
-    ORDER BY name
-  `).all();
-
+  const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all();
   const tableCounts = {};
-  for (const t of tables) {
+  let totalRows = 0;
+
+  tables.forEach(t => {
     try {
-      const row = db.prepare(`SELECT COUNT(*) as count FROM "${t.name}"`).get();
-      tableCounts[t.name] = row ? row.count : 0;
+      const count = db.prepare(`SELECT COUNT(*) as count FROM "${t.name}"`).get().count;
+      tableCounts[t.name] = count;
+      totalRows += count;
     } catch (_) {
       tableCounts[t.name] = null;
     }
-  }
+  });
 
-  // 3. Customers
-  let totalCustomers = 0;
-  let customerReceivables = 0;
-  let customerNetBalance = 0;
+  // 3. Aggregates
+  let custReceivables = 0;
   try {
-    const custRes = db.prepare(`
-      SELECT 
-        COUNT(*) as total,
-        COALESCE(SUM(CASE WHEN current_balance > 0 THEN current_balance ELSE 0 END), 0) as receivables,
-        COALESCE(SUM(current_balance), 0) as net
-      FROM customers
-    `).get();
-    totalCustomers = custRes.total;
-    customerReceivables = Number(custRes.receivables);
-    customerNetBalance = Number(custRes.net);
+    custReceivables = db.prepare('SELECT COALESCE(SUM(current_balance), 0) as tot FROM customers WHERE current_balance > 0').get().tot;
   } catch (_) {}
 
-  // 4. Suppliers
-  let totalSuppliers = 0;
-  let supplierPayables = 0;
-  let supplierNetBalance = 0;
+  let suppPayables = 0;
   try {
-    const supRes = db.prepare(`
-      SELECT 
-        COUNT(*) as total,
-        COALESCE(SUM(CASE WHEN current_balance > 0 THEN current_balance ELSE 0 END), 0) as payables,
-        COALESCE(SUM(current_balance), 0) as net
-      FROM suppliers
-    `).get();
-    totalSuppliers = supRes.total;
-    supplierPayables = Number(supRes.payables);
-    supplierNetBalance = Number(supRes.net);
+    suppPayables = db.prepare('SELECT COALESCE(SUM(current_balance), 0) as tot FROM suppliers WHERE current_balance > 0').get().tot;
   } catch (_) {}
 
-  // 5. Stock
-  let totalStockUnits = 0;
-  let stockValuation = 0;
+  let stockCost = 0;
+  let stockRetail = 0;
+  let batchCount = 0;
   try {
-    const stockRes = db.prepare(`
-      SELECT 
-        COALESCE(SUM(quantity), 0) as units,
-        COALESCE(SUM(quantity * purchase_price), 0) as val
-      FROM batches 
-      WHERE status = 'active'
-    `).get();
-    totalStockUnits = Number(stockRes.units);
-    stockValuation = Number(stockRes.val);
+    const bRow = db.prepare('SELECT COUNT(*) as cnt, COALESCE(SUM(quantity * purchase_price), 0) as cost, COALESCE(SUM(quantity * sale_price), 0) as retail FROM batches WHERE quantity > 0').get();
+    batchCount = bRow.cnt || 0;
+    stockCost = bRow.cost || 0;
+    stockRetail = bRow.retail || 0;
   } catch (_) {}
 
-  // 6. Sales
-  let totalOrders = 0;
-  let grossSales = 0;
-  let totalCollected = 0;
-  let oldestInvoiceDate = null;
-  let newestInvoiceDate = null;
+  let ordersCount = 0;
+  let oldestInvoice = null;
+  let newestInvoice = null;
+  let ordersTotal = 0;
   try {
-    const salesRes = db.prepare(`
-      SELECT 
-        COUNT(*) as total,
-        COALESCE(SUM(grand_total), 0) as gross,
-        COALESCE(SUM(paid_amount), 0) as collected,
-        MIN(sale_date) as oldest,
-        MAX(sale_date) as newest
-      FROM sales
-    `).get();
-    totalOrders = salesRes.total;
-    grossSales = Number(salesRes.gross);
-    totalCollected = Number(salesRes.collected);
-    oldestInvoiceDate = salesRes.oldest || null;
-    newestInvoiceDate = salesRes.newest || null;
+    const saleRow = db.prepare('SELECT COUNT(*) as cnt, MIN(sale_date) as oldest, MAX(sale_date) as newest, COALESCE(SUM(grand_total), 0) as tot FROM sales').get();
+    ordersCount = saleRow.cnt || 0;
+    oldestInvoice = saleRow.oldest || null;
+    newestInvoice = saleRow.newest || null;
+    ordersTotal = saleRow.tot || 0;
+  } catch (_) {}
+
+  let paymentsCount = 0;
+  let paymentsTotal = 0;
+  try {
+    const payRow = db.prepare('SELECT COUNT(*) as cnt, COALESCE(SUM(amount), 0) as tot FROM payments').get();
+    paymentsCount = payRow.cnt || 0;
+    paymentsTotal = payRow.tot || 0;
   } catch (_) {}
 
   const report = {
-    database_file: path.basename(dbPath),
-    generated_at: new Date().toISOString(),
-    file_size_bytes: fileStat.size,
-    file_size_kb: Number((fileStat.size / 1024).toFixed(2)),
-    file_size_mb: Number((fileStat.size / (1024 * 1024)).toFixed(2)),
-    integrity_check: integrityStatus,
-    table_counts: tableCounts,
-    business_aggregates: {
-      total_customers: totalCustomers,
-      customer_receivables: customerReceivables,
-      customer_net_balance: customerNetBalance,
-      total_suppliers: totalSuppliers,
-      supplier_payables: supplierPayables,
-      supplier_net_balance: supplierNetBalance,
-      total_stock_units: totalStockUnits,
-      stock_valuation: stockValuation,
-      total_orders: totalOrders,
-      gross_sales: grossSales,
-      total_collected: totalCollected,
-      oldest_invoice_date: oldestInvoiceDate,
-      newest_invoice_date: newestInvoiceDate
+    metadata: {
+      filename: path.basename(resolvedPath),
+      file_size_bytes: stats.size,
+      file_size_kb: Number((stats.size / 1024).toFixed(2)),
+      last_modified: stats.mtime.toISOString(),
+      report_generated_at: new Date().toISOString()
+    },
+    integrity: {
+      check: integrityOk ? 'ok' : 'failed',
+      raw: integrityRows
+    },
+    aggregates: {
+      customer_receivables_total: Number(custReceivables.toFixed(2)),
+      supplier_payables_total: Number(suppPayables.toFixed(2)),
+      inventory_stock_cost_total: Number(stockCost.toFixed(2)),
+      inventory_stock_retail_total: Number(stockRetail.toFixed(2)),
+      active_batches_count: batchCount,
+      total_orders_count: ordersCount,
+      total_orders_amount: Number(ordersTotal.toFixed(2)),
+      oldest_invoice_date: oldestInvoice,
+      newest_invoice_date: newestInvoice,
+      total_payments_count: paymentsCount,
+      total_payments_amount: Number(paymentsTotal.toFixed(2))
+    },
+    database_summary: {
+      total_tables: tables.length,
+      total_rows: totalRows,
+      table_rows: tableCounts
     }
   };
 
   console.log(JSON.stringify(report, null, 2));
+
+} catch (err) {
+  console.error(JSON.stringify({ error: err.message }, null, 2));
+  process.exit(1);
 } finally {
   db.close();
 }
