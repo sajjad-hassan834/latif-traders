@@ -1,10 +1,10 @@
 {
-  "dbPath": "C:\\Users\\ALLAH\\OneDrive\\Documents\\Projects\\LATIF TRADERS\\data\\temp_corrupt_ctrl_8.db",
-  "scannedAt": "2026-11-05T07:51:13.190Z",
+  "dbPath": "C:\\Users\\ALLAH\\OneDrive\\Documents\\Projects\\LATIF TRADERS\\data\\temp_precision_test.db",
+  "scannedAt": "2026-11-07T14:51:50.467Z",
   "issuesFound": 0,
   "details": {
     "numericPrecision": {
-      "totalExceedingPrecision": 0,
+      "totalExceedingPrecision": 1,
       "proposals": [
         {
           "table": "sales",
@@ -45,8 +45,8 @@
         {
           "table": "sale_items",
           "column": "quantity",
-          "excessCount": 0,
-          "proposed": "NUMERIC(14,2)"
+          "excessCount": 1,
+          "proposed": "NUMERIC(14,4)"
         },
         {
           "table": "sale_items",
@@ -200,12 +200,12 @@
         }
       ]
     },
-    "invalidDates": 900,
-    "businessDayMismatches": 920,
+    "invalidDates": 1100,
+    "businessDayMismatches": 1138,
     "orphanForeignKeys": 0,
     "duplicateKeyCount": 0,
     "nullTenantCount": 1,
     "negativeStockBatches": 0,
-    "customerBalanceMismatches": 11
+    "customerBalanceMismatches": 38
   }
 }

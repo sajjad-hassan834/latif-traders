@@ -34,10 +34,22 @@ async function authenticate(req, res, next) {
       SELECT u.id, u.username, u.email, u.full_name, u.role, u.status, u.tenant_id,
              COALESCE(u.token_version, 1) as token_version,
              COALESCE(u.must_change_password, 0) as must_change_password,
-             COALESCE(u.theme, 'classic') as theme
+             COALESCE(u.theme, 'classic') as theme,
+             t.business_name, t.business_type, t.plan, t.logo_url
       FROM users u
+      LEFT JOIN tenants t ON u.tenant_id = t.id
       WHERE u.id = ?
     `, [decoded.id]);
+
+    if (user && user.tenant_id && user.business_name) {
+      user.tenant = {
+        id: user.tenant_id,
+        business_name: user.business_name,
+        business_type: user.business_type || 'retail_general',
+        plan: user.plan || 'free',
+        logo_url: user.logo_url || null
+      };
+    }
 
     if (!user || user.status !== 'active') {
       return res.status(401).json({ success: false, message: 'User account is inactive or invalid.' });

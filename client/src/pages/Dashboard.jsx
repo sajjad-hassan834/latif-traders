@@ -691,7 +691,7 @@ function DashboardContent({ setTab }) {
             }}
           >
             <ShoppingCart size={15} />
-            <span>New Sale (POS)</span>
+            <span>Sale</span>
           </button>
 
           <button
@@ -711,7 +711,7 @@ function DashboardContent({ setTab }) {
             }}
           >
             <ArrowDownToLine size={14} />
-            <span>Add Purchase</span>
+            <span>Purchase</span>
           </button>
 
           <button
@@ -731,7 +731,7 @@ function DashboardContent({ setTab }) {
             }}
           >
             <Users size={14} />
-            <span>New Customer</span>
+            <span>Customer</span>
           </button>
 
           <button
@@ -751,7 +751,7 @@ function DashboardContent({ setTab }) {
             }}
           >
             <Wallet size={14} />
-            <span>New Expense</span>
+            <span>Expense</span>
           </button>
         </div>
       </div>
@@ -763,7 +763,7 @@ function DashboardContent({ setTab }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Sales ({periodLabels[period]})
+                Sales
               </span>
               <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-value)', marginTop: '4px', letterSpacing: '-0.02em' }}>
                 {formatPKR(kpi.sales.total)}
@@ -799,7 +799,7 @@ function DashboardContent({ setTab }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Receivables (Udhaar)
+                Receivables
               </span>
               <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-value)', marginTop: '4px', letterSpacing: '-0.02em' }}>
                 {formatPKR(kpi.receivables.total)}
@@ -831,7 +831,7 @@ function DashboardContent({ setTab }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Payables (Suppliers)
+                Payables
               </span>
               <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-value)', marginTop: '4px', letterSpacing: '-0.02em' }}>
                 {kpi.payables.is_restricted ? 'Restricted' : formatPKR(kpi.payables.total)}
@@ -863,7 +863,7 @@ function DashboardContent({ setTab }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Inventory Valuation
+                Inventory
               </span>
               <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-value)', marginTop: '4px', letterSpacing: '-0.02em' }}>
                 {formatPKR(kpi.stock.retail_valuation)}
@@ -898,7 +898,7 @@ function DashboardContent({ setTab }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-title)', margin: 0 }}>
-                Payment Breakdown
+                Payments
               </h3>
               <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
                 Distribution across cash, bank, & credit
@@ -922,7 +922,7 @@ function DashboardContent({ setTab }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-title)', margin: 0 }}>
-                Stock by Category
+                Categories
               </h3>
               <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
                 Inventory retail valuation share
@@ -946,7 +946,7 @@ function DashboardContent({ setTab }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-title)', margin: 0 }}>
-                Cash Inflow vs Outflow
+                Comparison
               </h3>
               <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
                 Comparative operational flow over time
@@ -971,7 +971,7 @@ function DashboardContent({ setTab }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-title)', margin: 0 }}>
-                Recent Invoices
+                Invoices
               </h3>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Latest customer orders & billing</span>
             </div>
@@ -1108,7 +1108,7 @@ function DashboardContent({ setTab }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-title)', margin: 0 }}>
-                Top Debtors
+                Debtors
               </h3>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Outstanding customer credit balances</span>
             </div>
@@ -1183,7 +1183,7 @@ function DashboardContent({ setTab }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-title)', margin: 0 }}>
-                Inventory Alerts
+                Alerts
               </h3>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Stock replenishment & expiry warnings</span>
             </div>

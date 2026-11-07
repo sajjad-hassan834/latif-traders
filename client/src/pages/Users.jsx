@@ -178,7 +178,7 @@ export default function Users() {
             style={{ position: 'relative' }}
           >
             <KeyRound size={16} />
-            <span>Password Resets</span>
+            <span>Resets</span>
             {pendingCount > 0 && (
               <span style={{
                 background: '#ef4444',
@@ -199,7 +199,7 @@ export default function Users() {
             className={`btn btn-sm ${activeTab === 'logs' ? 'btn-primary' : 'btn-secondary'}`}
           >
             <History size={16} />
-            <span>System Audit Trail</span>
+            <span>Audit</span>
           </button>
         </div>
 
@@ -711,10 +711,10 @@ export default function Users() {
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   >
-                    <option value="sales">Sales Staff / Cashier (POS & Sales)</option>
-                    <option value="inventory">Store / Inventory Staff (Purchases & Stock)</option>
+                    <option value="sales">Cashier</option>
+                    <option value="inventory">Inventory</option>
                     <option value="accountant">Accountant</option>
-                    <option value="admin">Owner / Administrator (Full Access)</option>
+                    <option value="admin">Administrator</option>
                   </select>
                 </div>
 
@@ -815,10 +815,10 @@ export default function Users() {
                       value={selectedUser.role}
                       onChange={(e) => setSelectedUser({ ...selectedUser, role: e.target.value })}
                     >
-                      <option value="sales">Sales Staff / Cashier (POS & Sales)</option>
-                      <option value="inventory">Store / Inventory Staff (Purchases & Stock)</option>
+                      <option value="sales">Cashier</option>
+                      <option value="inventory">Inventory</option>
                       <option value="accountant">Accountant</option>
-                      <option value="admin">Owner / Administrator (Full Access)</option>
+                      <option value="admin">Administrator</option>
                     </select>
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
@@ -829,7 +829,7 @@ export default function Users() {
                       onChange={(e) => setSelectedUser({ ...selectedUser, status: e.target.value })}
                     >
                       <option value="active">Active</option>
-                      <option value="inactive">Inactive / Deactivated</option>
+                      <option value="inactive">Inactive</option>
                     </select>
                   </div>
                 </div>
@@ -1140,7 +1140,7 @@ export default function Users() {
                 onClick={() => setApprovedTempPassword(null)}
                 style={{ minWidth: '120px' }}
               >
-                Done / Dismiss
+                Dismiss
               </button>
             </div>
           </div>

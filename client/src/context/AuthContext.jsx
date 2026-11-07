@@ -70,9 +70,9 @@ const ROLE_DEFAULT_TABS = {
 
 const ROLE_LABELS = {
   admin: 'Administrator',
-  superowner: 'Super Owner',
-  sales: 'Cashier / Sales',
-  inventory: 'Store / Inventory',
+  superowner: 'Superowner',
+  sales: 'Cashier',
+  inventory: 'Inventory',
   accountant: 'Accountant'
 };
 

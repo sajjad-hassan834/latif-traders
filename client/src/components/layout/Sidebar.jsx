@@ -27,7 +27,7 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
 
   const menuSections = [
     {
-      title: 'MAIN NAVIGATION',
+      title: 'NAVIGATION',
       roles: ['admin', 'sales', 'inventory', 'accountant'],
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'inventory', 'accountant', 'sales'] },
@@ -36,7 +36,7 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
       ]
     },
     {
-      title: term.inventorySection.toUpperCase(),
+      title: 'INVENTORY',
       roles: ['admin', 'inventory', 'sales', 'accountant'],
       items: [
         { id: 'inventory', label: term.products, icon: Package, roles: ['admin', 'inventory', 'sales'] },
@@ -45,7 +45,7 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
       ]
     },
     {
-      title: 'PARTIES & LEDGERS',
+      title: 'CONTACTS',
       roles: ['admin', 'sales', 'accountant', 'inventory'],
       items: [
         { id: 'customers', label: 'Customers', icon: Users, roles: ['admin', 'sales', 'accountant'] },
@@ -53,7 +53,7 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
       ]
     },
     {
-      title: 'FINANCE & AUDIT',
+      title: 'FINANCE',
       roles: ['admin', 'accountant', 'sales', 'inventory'],
       items: [
         { id: 'expenses', label: 'Expenses', icon: Wallet, roles: ['admin', 'accountant'] },
@@ -62,7 +62,7 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
       ]
     },
     {
-      title: 'SYSTEM & SETTINGS',
+      title: 'SETTINGS',
       roles: ['admin'],
       items: [
         { id: 'settings', label: 'Settings', icon: Sliders, roles: ['admin'] }
@@ -143,7 +143,11 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
     }
   };
 
-  const shopDisplayName = tenant?.business_name || brandInfo.name || 'My Shop';
+  const shopDisplayName = (brandInfo.name && brandInfo.name !== 'My Shop')
+    ? brandInfo.name
+    : (tenant?.business_name && tenant.business_name !== 'My Shop'
+        ? tenant.business_name
+        : (brandInfo.name || tenant?.business_name || 'medical store'));
 
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>

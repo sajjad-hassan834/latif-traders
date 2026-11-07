@@ -138,25 +138,25 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
     inventory: { section: 'Inventory', title: 'Products' },
     'stock-adjust': { section: 'Inventory', title: 'Adjustments' },
     purchases: { section: 'Inventory', title: 'Purchases' },
-    customers: { section: 'Parties', title: 'Customers' },
-    suppliers: { section: 'Parties', title: 'Suppliers' },
+    customers: { section: 'Contacts', title: 'Customers' },
+    suppliers: { section: 'Contacts', title: 'Suppliers' },
     expenses: { section: 'Finance', title: 'Expenses' },
     cashflow: { section: 'Finance', title: 'Cashbook' },
     reports: { section: 'Reports', title: 'Analytics' },
-    settings: { section: 'System', title: 'Settings' }
+    settings: { section: 'Settings', title: 'Settings' }
   };
 
   const getSettingsSubTitle = (overrideTab = null) => {
     try {
       const tab = overrideTab || new URLSearchParams(window.location.search).get('tab');
-      if (tab === 'staff' || tab === 'users') return 'Staff & Access';
-      if (tab === 'billing' || tab === 'plan') return 'My Plan & Billing';
-      if (tab === 'business-profile' || tab === 'profile') return 'Shop Profile';
-      if (tab === 'invoice' || tab === 'invoices') return 'Invoice & Receipts';
-      if (tab === 'inventory') return 'Inventory Policy';
-      if (tab === 'backup' || tab === 'backups') return 'Backup & Recovery';
+      if (tab === 'staff' || tab === 'users') return 'Team';
+      if (tab === 'billing' || tab === 'plan') return 'Billing';
+      if (tab === 'business-profile' || tab === 'profile') return 'Profile';
+      if (tab === 'invoice' || tab === 'invoices') return 'Invoices';
+      if (tab === 'inventory') return 'Inventory';
+      if (tab === 'backup' || tab === 'backups') return 'Backups';
     } catch (_) {}
-    return 'Shop Settings';
+    return 'Settings';
   };
 
   const [settingsTitle, setSettingsTitle] = useState(getSettingsSubTitle);

@@ -377,12 +377,12 @@ export default function Settings({ initialTab: propInitialTab }) {
 
   // SaaS Tab definitions (REORDERED per user specification)
   const tabList = [
-    { id: 'business-profile', label: 'Shop Profile', icon: '🏪' },
-    { id: 'invoice', label: 'Invoice & Receipts', icon: '🖨️' },
-    { id: 'inventory', label: 'Inventory Policy', icon: '📦' },
-    { id: 'staff', label: 'Team & Roles', icon: '👥' },
-    { id: 'billing', label: 'My Plan & Billing', icon: '💳' },
-    { id: 'backup', label: 'Backup & Recovery', icon: '💾' }
+    { id: 'business-profile', label: 'Profile', icon: '🏪' },
+    { id: 'invoice', label: 'Invoices', icon: '🖨️' },
+    { id: 'inventory', label: 'Inventory', icon: '📦' },
+    { id: 'staff', label: 'Team', icon: '👥' },
+    { id: 'billing', label: 'Billing', icon: '💳' },
+    { id: 'backup', label: 'Backups', icon: '💾' }
   ];
 
   return (
@@ -428,7 +428,7 @@ export default function Settings({ initialTab: propInitialTab }) {
       <div className="page-header-container" style={{ marginBottom: '0.25rem' }}>
         <div>
           <h1 className="page-header-title" style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-title, #111827)', margin: '0 0 4px 0' }}>
-            Shop Settings & Subscription
+            Settings
           </h1>
           <p className="page-header-subtitle" style={{ fontSize: '13px', color: 'var(--text-muted, #6B7280)', margin: 0 }}>
             Manage store profile, subscription tier, receipt layouts, warehouse policies, and data backups
@@ -534,7 +534,7 @@ export default function Settings({ initialTab: propInitialTab }) {
                 <Sliders size={18} color="#059669" />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: 'var(--text-title)' }}>Business Profile & Identity</h3>
+                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: 'var(--text-title)' }}>Profile</h3>
                 <p style={{ fontSize: '0.785rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Public business details printed on receipts, customer invoices, and reports.
                 </p>
@@ -549,7 +549,7 @@ export default function Settings({ initialTab: propInitialTab }) {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', fontSize: '13px', borderRadius: '8px' }}
             >
               <Save size={15} />
-              <span>{saving ? 'Saving...' : 'Save Profile'}</span>
+              <span>{saving ? 'Saving...' : 'Save'}</span>
             </button>
           </div>
 
@@ -569,7 +569,7 @@ export default function Settings({ initialTab: propInitialTab }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{ fontSize: '26px' }}>{currentBusinessType.icon}</span>
                 <div>
-                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted, #64748b)', fontWeight: 700 }}>Registered Industry / Business Type</div>
+                  <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted, #64748b)', fontWeight: 700 }}>Industry</div>
                   <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-title, #0f172a)' }}>{currentBusinessType.name}</div>
                 </div>
               </div>
@@ -598,7 +598,7 @@ export default function Settings({ initialTab: propInitialTab }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
-                  Shop / Business Name *
+                  Name *
                 </label>
                 <input
                   type="text"
@@ -612,7 +612,7 @@ export default function Settings({ initialTab: propInitialTab }) {
 
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
-                  Tagline / Subtitle
+                  Tagline
                 </label>
                 <input
                   type="text"
@@ -625,7 +625,7 @@ export default function Settings({ initialTab: propInitialTab }) {
 
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
-                  Industry / Business Type
+                  Industry
                 </label>
                 <select
                   className="form-control"
@@ -713,7 +713,7 @@ export default function Settings({ initialTab: propInitialTab }) {
 
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
-                  Contact Phone Numbers
+                  Phone
                 </label>
                 <input
                   type="text"
@@ -727,7 +727,7 @@ export default function Settings({ initialTab: propInitialTab }) {
 
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
-                  Official Email Address
+                  Email
                 </label>
                 <input
                   type="email"
@@ -741,7 +741,7 @@ export default function Settings({ initialTab: propInitialTab }) {
 
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-value, #374151)', marginBottom: '4px' }}>
-                  System Appearance Theme
+                  Theme
                 </label>
                 <select
                   className="form-control"
@@ -766,7 +766,7 @@ export default function Settings({ initialTab: propInitialTab }) {
 
               <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
                 <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-title)', marginBottom: '4px' }}>
-                  Physical Shop / Warehouse Address
+                  Address
                 </label>
                 <input
                   type="text"
@@ -836,7 +836,7 @@ export default function Settings({ initialTab: propInitialTab }) {
                 <Printer size={18} color="#16A34A" />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: 'var(--text-title)' }}>Invoice & Thermal Receipts</h3>
+                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: 'var(--text-title)' }}>Invoices</h3>
                 <p style={{ fontSize: '0.785rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Configure print slip templates, default print engines, currency signs, and footer text.
                 </p>
@@ -851,7 +851,7 @@ export default function Settings({ initialTab: propInitialTab }) {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', fontSize: '13px', borderRadius: '8px' }}
             >
               <Save size={15} />
-              <span>{saving ? 'Saving...' : 'Save Invoice Settings'}</span>
+              <span>{saving ? 'Saving...' : 'Save'}</span>
             </button>
           </div>
 
@@ -868,8 +868,8 @@ export default function Settings({ initialTab: propInitialTab }) {
                   onChange={(e) => setSettings({ ...settings, print_default_format: e.target.value })}
                 >
                   <option value="thermal">Thermal POS Receipt (80mm Roll)</option>
-                  <option value="standard">Full Sheet / A4 Invoice</option>
-                  <option value="half">Half Sheet / A5 Receipt</option>
+                  <option value="standard">A4</option>
+                  <option value="half">A5</option>
                 </select>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   Used automatically when printing receipts directly after checkout.
@@ -902,7 +902,7 @@ export default function Settings({ initialTab: propInitialTab }) {
 
               <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
                 <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-title)', marginBottom: '4px' }}>
-                  Receipt / Invoice Footer Disclaimer
+                  Disclaimer
                 </label>
                 <textarea
                   className="form-control"
@@ -927,7 +927,7 @@ export default function Settings({ initialTab: propInitialTab }) {
                 <Package size={18} color="#0284C7" />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: 'var(--text-title)' }}>Warehouse & Inventory Policies</h3>
+                <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: 'var(--text-title)' }}>Inventory</h3>
                 <p style={{ fontSize: '0.785rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Safety thresholds, batch expiry warnings, and negative balance protections.
                 </p>
@@ -942,7 +942,7 @@ export default function Settings({ initialTab: propInitialTab }) {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', fontSize: '13px', borderRadius: '8px' }}
             >
               <Save size={15} />
-              <span>{saving ? 'Saving...' : 'Save Policies'}</span>
+              <span>{saving ? 'Saving...' : 'Save'}</span>
             </button>
           </div>
 
@@ -1052,7 +1052,7 @@ export default function Settings({ initialTab: propInitialTab }) {
 
             {/* Quota Usage Meters */}
             <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-title)' }}>
-              Resource Quota & Usage
+              Quotas
             </h4>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '1.75rem' }}>
@@ -1131,7 +1131,7 @@ export default function Settings({ initialTab: propInitialTab }) {
           {/* Billing History Table */}
           <div className="card" style={{ padding: '1.5rem', background: 'var(--bg-card, #ffffff)', borderRadius: '12px', border: '1px solid var(--border, #E5E7EB)' }}>
             <h3 style={{ fontSize: '1.05rem', margin: '0 0 1rem 0', fontWeight: 700, color: 'var(--text-title, #0F172A)' }}>
-              Subscription & Invoicing History
+              History
             </h3>
             <div className="table-responsive">
               <table className="table" style={{ fontSize: '13px' }}>
@@ -1191,7 +1191,7 @@ export default function Settings({ initialTab: propInitialTab }) {
                 </div>
                 <div>
                   <h3 style={{ fontSize: '1.15rem', margin: 0, fontWeight: 700, color: 'var(--text-title)' }}>
-                    Backup & Recovery
+                    Backups
                   </h3>
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.4 }}>
                     <div>Last backup: <strong style={{ color: 'var(--text-title)' }}>{lastBackup}</strong></div>
