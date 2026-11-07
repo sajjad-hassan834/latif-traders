@@ -69,6 +69,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
   const [theme, setTheme] = useState(() => getSavedAppTheme());
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
 
+
   const superOwnerMenuRef = useRef(null);
   const themeMenuRef = useRef(null);
 
@@ -377,7 +378,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                     color: 'var(--text-muted)',
                     fontWeight: 600
                   }}>
-                    4 Themes
+                    {APP_THEMES.length} Themes
                   </span>
                 </div>
                 {APP_THEMES.map(th => {
@@ -677,6 +678,68 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                   animation: 'dropdownSlideFade 0.16s cubic-bezier(0.16, 1, 0.3, 1)'
                 }}
               >
+                {/* Dismissible Try New Look Prompt */}
+                {theme !== 'midnight-amber' && !tryNewLookDismissed && (
+                  <div
+                    style={{
+                      margin: '4px',
+                      marginBottom: '8px',
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      background: 'linear-gradient(135deg, #0A1128 0%, #1E293B 100%)',
+                      border: '1px solid #F59E0B',
+                      color: '#FFFFFF',
+                      fontSize: '12px',
+                      position: 'relative'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: 700, color: '#F59E0B', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        ✨ Try the new look
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTryNewLookDismissed(true);
+                          try { localStorage.setItem('dismiss_try_midnight_amber', 'true'); } catch {}
+                        }}
+                        style={{ background: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '2px', display: 'flex' }}
+                        title="Dismiss"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                    <div style={{ color: '#CBD5E1', fontSize: '11px', marginBottom: '8px', lineHeight: 1.4 }}>
+                      Switch to Midnight Amber for an upgraded navy sidebar and amber accents.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        applyAppTheme('midnight-amber');
+                        setTheme('midnight-amber');
+                        setTryNewLookDismissed(true);
+                        try { localStorage.setItem('dismiss_try_midnight_amber', 'true'); } catch {}
+                      }}
+                      style={{
+                        background: '#F59E0B',
+                        color: '#1E1B18',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '4px 10px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      Switch to Midnight Amber <ArrowRight size={12} />
+                    </button>
+                  </div>
+                )}
+
                 {/* --- TOP USER CARD --- */}
                 <div
                   style={{

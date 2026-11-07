@@ -245,6 +245,62 @@ html[data-app-theme="brand"],
   --border-subtle: #D3DFD8;
 }
 
+
+
+/* 6. MIDNIGHT AMBER (New Default V2 Theme)
+   Reference: Tiimi candidates / Dark navy sidebar + Amber accent pill
+*/
+html[data-app-theme="midnight-amber"],
+[data-app-theme="midnight-amber"] {
+  color-scheme: light;
+  --bg-page: #F8FAFC;
+  --bg-sidebar: #0A1128;
+  --text-sidebar: #94A3B8;
+  --text-sidebar-section: #64748B;
+  --bg-sidebar-active: #F59E0B;
+  --text-sidebar-active: #1E1B18;
+  --bg-card: #FFFFFF;
+  --border: #E2E8F0;
+  --text-title: #0F172A;
+  --text-value: #0F172A;
+  --text-muted: #64748B;
+  --primary: #F59E0B;
+  --primary-hover: #D97706;
+  --primary-text: #1E1B18;
+  --bg-table: #FFFFFF;
+  --bg-table-head: #F8FAFC;
+  --text-table: #1E293B;
+  --money-green: #10B981;
+  --money-purple: #8B5CF6;
+  --money-red: #EF4444;
+  --pill-green-bg: #DCFCE7;
+  --pill-green-text: #166534;
+  --pill-amber-bg: #FEF3C7;
+  --pill-amber-text: #92400E;
+  --pill-red-bg: #FEE2E2;
+  --pill-red-text: #991B1B;
+  --logo-text: #0F172A;
+  --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+
+  /* Ancillary helper tokens */
+  --input-bg: #FFFFFF;
+  --input-border: #CBD5E1;
+  --input-text: #0F172A;
+  --focus-ring: rgba(245, 158, 11, 0.35);
+  --modal-overlay: rgba(10, 17, 40, 0.55);
+  --header-bg: #FFFFFF;
+  --dropdown-bg: #FFFFFF;
+  --hover-bg: #F1F5F9;
+
+  /* Legacy shop tokens */
+  --bg-surface: #FFFFFF;
+  --bg-app: #F8FAFC;
+  --text-main: #0F172A;
+  --text-light: #64748B;
+  --secondary-light: #F1F5F9;
+  --border-card: #E2E8F0;
+  --border-subtle: #F1F5F9;
+}
 /* Smooth 200ms theme color transition */
 html[data-app-theme] {
   background-color: var(--bg-page);
@@ -635,3 +691,96 @@ html[data-app-theme] .modal-footer {
   border-top: 1px solid var(--border) !important;
 }
 
+
+
+/* ══════════════════════════════════════════════
+   PHASE 1 UI SYSTEM: CHEVRONS, BADGES, DETAIL GRIDS
+   ══════════════════════════════════════════════ */
+
+/* Chevron-style step pipeline */
+.chevron-pipeline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  padding: 4px 0;
+}
+.chevron-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 18px;
+  background: var(--hover-bg, #F1F5F9);
+  color: var(--text-muted, #64748B);
+  font-size: 12px;
+  font-weight: 600;
+  clip-path: polygon(0% 0%, calc(100% - 10px) 0%, 100% 50%, calc(100% - 10px) 100%, 0% 100%, 10px 50%);
+  position: relative;
+  white-space: nowrap;
+}
+.chevron-step:first-child {
+  clip-path: polygon(0% 0%, calc(100% - 10px) 0%, 100% 50%, calc(100% - 10px) 100%, 0% 100%);
+  padding-left: 12px;
+}
+.chevron-step.active {
+  background: var(--bg-sidebar-active, #F59E0B);
+  color: var(--text-sidebar-active, #1E1B18);
+}
+.chevron-step.completed {
+  background: var(--pill-green-bg, #DCFCE7);
+  color: var(--pill-green-text, #166534);
+}
+
+/* Status badges (green/orange/red/amber/blue) */
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.badge-status-green {
+  background: #DCFCE7;
+  color: #166534;
+}
+.badge-status-amber,
+.badge-status-orange {
+  background: #FEF3C7;
+  color: #92400E;
+}
+.badge-status-red {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+.badge-status-blue {
+  background: #E0F2FE;
+  color: #0369A1;
+}
+
+/* Label/value detail grids */
+.label-value-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  padding: 12px 0;
+}
+.detail-grid-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.detail-grid-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #64748B);
+}
+.detail-grid-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-title, #0F172A);
+}

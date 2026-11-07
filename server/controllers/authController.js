@@ -155,7 +155,7 @@ exports.register = async (req, res) => {
         business_name: businessName.trim(),
         business_type: bType,
         plan: chosenPlan,
-        theme: 'brand',
+        theme: 'midnight-amber',
         is_first_login: true,
         must_change_password: false,
         tenant: tenantObj
@@ -288,7 +288,7 @@ exports.login = async (req, res) => {
         business_name: tenantObj.business_name,
         business_type: tenantObj.business_type,
         plan: tenantObj.plan,
-        theme: user.theme || 'brand',
+        theme: user.theme || 'midnight-amber',
         logo_url: user.logo_url,
         must_change_password: Number(user.must_change_password) === 1,
         tenant: tenantObj

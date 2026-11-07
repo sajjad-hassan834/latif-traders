@@ -39,10 +39,10 @@
             document.documentElement.setAttribute('data-public-theme', pubTheme);
             document.documentElement.style.colorScheme = pubTheme;
           } else {
-            var appTheme = localStorage.getItem('shopos-app-theme') || localStorage.getItem('lt_theme') || 'brand';
+            var appTheme = localStorage.getItem('shopos-app-theme') || localStorage.getItem('lt_theme') || 'midnight-amber';
             if (appTheme === 'light') appTheme = 'classic';
             if (appTheme === 'emerald') appTheme = 'green';
-            if (['brand', 'classic', 'dark', 'green', 'indigo'].indexOf(appTheme) === -1) appTheme = 'brand';
+            if (['midnight-amber', 'brand', 'classic', 'dark', 'green', 'indigo'].indexOf(appTheme) === -1) appTheme = 'midnight-amber';
             document.documentElement.removeAttribute('data-public-theme');
             document.documentElement.setAttribute('data-app-theme', appTheme);
             document.documentElement.style.colorScheme = (appTheme === 'dark' ? 'dark' : 'light');
