@@ -13,22 +13,23 @@ Follow every step in sequence. Never skip any step.
    - The new codebase executes non-destructive additive migrations (`CREATE TABLE IF NOT EXISTS` and conditional column additions).
    - All destructive startup migrations (`clean_auto_payments_v2`, `clean_duplicate_receipts_v2`, `fix_customer_ledger_opening_bal_v5`) and hardcoded customer ledger overrides have been **permanently removed** from `release/1.0-sqlite`.
 
-2. **Mandatory Environment Guards**:
+2. **Railway Execution Model (CRITICAL)**:
+   - **`railway run <cmd>` executes LOCALLY**: Running `railway run` on your PC executes the command on your local machine using Railway environment variables. It **cannot** access `/app/data` because the persistent volume is attached to the remote Linux container on Railway.
+   - **Remote Container Commands**: Commands that inspect or modify `/app/data/latif_traders.db` MUST be executed inside the container:
+     - **Primary (Recommended)**: Railway Web Dashboard -> Project -> Service (`latif-traders`) -> **Deployments** -> Click Active Deployment -> Open the **Terminal / Shell** tab (or Service Settings -> **Exec**).
+     - **CLI Alternative**: `railway ssh` (or `railway shell` depending on your installed Railway CLI version).
+
+3. **Mandatory Environment Guards**:
    - **`DB_PATH` is required**: In production (`NODE_ENV=production`), the backend server will **refuse to boot** and exit with code 1 if `DB_PATH` is not explicitly set. This prevents accidental creation of a blank database file.
    - **`SUPEROWNER_USERNAME` requirement**: If `SUPEROWNER_USERNAME` is unset, the superowner bootstrap is safely skipped, and a warning is logged.
 
-3. **Backup & Restore Guardrails**:
+4. **Backup & Restore Guardrails**:
    - **Old UI**: The old live UI created full binary `.db` files (`Settings -> Backup & Recovery`).
    - **New UI Tenant Export**: In the new multi-tenant architecture, `Settings -> Backup & Recovery` exports tenant-isolated JSON containing that specific store's records.
    - **CRITICAL RESTORE RULE: NEVER USE IN-APP RESTORE**:
      - `POST /api/backups/restore` is **permanently blocked server-side** (HTTP 403) to prevent data loss.
      - In-app JSON restore omits required NOT NULL schema columns (`purchases.invoice_no`, `batches.batch_no`, `inventory_movements.type`, `purchase_items.unit`).
      - Full database restorations must **ONLY** be performed via atomic binary `.db` snapshot replacement at the server/volume level.
-
-4. **Superowner Credential Invariant**:
-   - The live database already has an existing superowner account.
-   - **NEVER** disable the existing superowner account before verifying a replacement. If `SUPEROWNER_USERNAME` does not match the existing account, creating a new one may be skipped, and disabling the existing account would lock out all administrative access.
-   - Always **rotate credentials on the existing superowner** rather than attempting to disable it.
 
 ---
 
@@ -53,23 +54,23 @@ Log in to the current live production application as Admin. Record or screenshot
    ```bash
    node scripts/verify_backup.js path/to/latif_traders_backup_live.db
    ```
-7. Generate the baseline JSON report:
+7. Generate the baseline JSON report locally:
    ```bash
    node scripts/baseline_report.js path/to/latif_traders_backup_live.db > baseline_before.json
    ```
 8. Save two copies: one on your local PC and one in private secure offline storage (e.g. encrypted external drive).
 
 ### Step 3: Pre-Boot Check of the Three Settings Flags
-Inspect the real downloaded live backup to verify the presence of legacy migration flags:
+Inspect the downloaded live backup to verify the presence of legacy migration flags:
 ```sql
 SELECT key, value FROM settings
 WHERE key IN ('clean_auto_payments_v2', 'clean_duplicate_receipts_v2', 'fix_customer_ledger_opening_bal_v5');
 ```
-Or run the automated checker:
+Or run the automated checker locally:
 ```bash
 node scripts/check_flags.js path/to/latif_traders_backup_live.db
 ```
-- **Safety Guarantee**: In `release/1.0-sqlite` (RC7), the routines that delete unreferenced payments, duplicate receipts, and hardcoded customer opening balance adjustments have been completely removed from `server/config/database.js` and `server/services/ledgerService.js`. Even if any of these flags are absent in the live database, **the new code will NOT mutate or wipe any transactions or balances on boot**.
+- **Safety Guarantee**: In `release/1.0-sqlite`, the routines that delete unreferenced payments, duplicate receipts, and hardcoded customer opening balance adjustments have been completely removed. Even if any of these flags are absent in the live database, **the new code will NOT mutate or wipe any transactions or balances on boot**.
 
 ---
 
@@ -97,7 +98,7 @@ Set the remaining required variables in Railway:
 | `DB_PATH` | **YES** | `/app/data/latif_traders.db` (**Boot fails if unset**) |
 | `ALLOWED_ORIGINS` | **YES** | `https://shoppyos.com,https://www.shoppyos.com,https://latiftraders.findcalculation.com,https://shopos.findcalculation.com,https://latif-traders.vercel.app` |
 | `FRONTEND_URL` | Optional | `https://latiftraders.findcalculation.com` |
-| `SUPEROWNER_USERNAME` | **YES** | Target superowner username |
+| `SUPEROWNER_USERNAME` | **YES** | Target superowner username (e.g. `superowner_latif`) |
 | `SUPEROWNER_PASSWORD` | **YES** | Strong random password (set in Phase A) |
 | `JWT_SECRET` | **YES** | 64-hex string (set in Phase A) |
 | `TRUST_PROXY_HOPS` | **YES** | `1` (for Railway direct) |
@@ -119,56 +120,131 @@ Set the remaining required variables in Railway:
 
 ## 5. Post-Deployment Verification & Smoke Tests
 
-1. **Health Endpoint**:
+### Step 5.1: Health Endpoint Verification
+```bash
+curl -I https://<your-railway-domain>/api/health
+```
+Must return HTTP 200 with `driver: "sqlite"`.
+
+### Step 5.2: Admin Login & Visual Smoke Test
+- Log in to `https://<your-railway-domain>/login` with Latif's store credentials.
+- Verify that Dashboard numbers match the baseline recorded in Step 1.
+- Open `/pos`, `/products`, and `/purchases` to verify navigation and data load cleanly.
+
+### Step 5.3: Post-Deploy Snapshot & Baseline Diff Audit
+Open Railway Web Dashboard -> **Deployments** -> Active Deployment -> **Terminal / Shell**:
+
+1. Create a fresh post-deploy snapshot:
    ```bash
-   curl -I https://<your-railway-domain>/api/health
+   node -e "const Database = require('better-sqlite3'); const db = new Database('/app/data/latif_traders.db'); db.exec(\"VACUUM INTO '/app/data/snapshot_post_deploy.db'\"); console.log('Post-deploy snapshot created successfully');"
    ```
-   Must return HTTP 200 with `driver: "sqlite"`.
 
-2. **Admin Login**:
-   - Log in with Latif's store credentials.
-   - Verify that Dashboard numbers match the baseline recorded in Step 1.
-
-3. **Audit Against Baseline**:
-   - Verify aggregate counts and business totals match `baseline_before.json`.
-
-4. **Rotate Existing Superowner Credentials**:
-   Do **NOT** disable the existing superowner. Rotate its credentials directly:
+2. Run the baseline report on the new snapshot:
    ```bash
-   railway run "node server/scripts/rotate_credentials.js --superowner"
+   node scripts/baseline_report.js /app/data/snapshot_post_deploy.db > /app/data/baseline_after.json
    ```
 
-5. **VERIFY SUPEROWNER LOGIN BEFORE ANY DISABLE STEP**:
-   - Open a fresh incognito browser window.
-   - Navigate to `/login` (or `/superowner/login`).
-   - Log in using the newly rotated superowner credentials.
-   - **CONFIRM** successful access to `/superowner/dashboard`.
-   - **NEVER** run `--disable` on any legacy account until this login has succeeded.
-
-6. **Rotate Staff Passwords (Optional / Scheduled)**:
+3. Copy or upload `baseline_before.json` (from Step 2) into `/app/data/baseline_before.json`, or copy `baseline_after.json` locally and run:
    ```bash
-   railway run "node server/scripts/rotate_credentials.js --tenant latif_001 --all-staff --yes"
+   node scripts/compare_baseline.js baseline_before.json baseline_after.json
+   ```
+   **Requirement**: Output must say `RESULT: PASS` with 0 discrepancies across all financial metrics, customer receivables, supplier payables, inventory valuation, and orders count.
+
+---
+
+## 6. Superowner & Admin Credential Governance
+
+All commands in this section MUST be run inside the Railway Container Shell (**never** locally with `railway run`):
+
+### Step 6.1: Verify Login with NEW Superowner
+1. Open a fresh private/incognito browser window.
+2. Navigate to `https://<your-railway-domain>/superowner/login` (or `/login`).
+3. Log in with `SUPEROWNER_USERNAME` and `SUPEROWNER_PASSWORD`.
+4. **Confirm access** to `/superowner/dashboard`.
+5. **DO NOT PROCEED to Step 6.2 until this login is 100% verified.**
+
+### Step 6.2: Disable the OLD Default Superowner Account
+Once the new superowner account is verified, disable the legacy default `shopos_superowner`:
+1. Run a dry run to inspect the target account:
+   ```bash
+   node server/scripts/rotate_credentials.js --user shopos_superowner --disable
+   ```
+2. Execute the deactivation:
+   ```bash
+   node server/scripts/rotate_credentials.js --user shopos_superowner --disable --yes
+   ```
+   *(Note: The script refuses to disable the active account configured in `SUPEROWNER_USERNAME`).*
+
+### Step 6.3: Confirm New Superowner Still Works
+1. Return to the incognito window.
+2. Refresh `/superowner/dashboard` and verify ongoing session health.
+3. Test logging out and logging back in with the new superowner credentials.
+
+### Step 6.4: Rotate & Secure Tenant Store Admin
+If the first store tenant has a default `admin` username or outdated password:
+1. Dry-run preview:
+   ```bash
+   node server/scripts/rotate_credentials.js --tenant latif_001 --admin-only
+   ```
+2. Rotate password:
+   ```bash
+   node server/scripts/rotate_credentials.js --tenant latif_001 --admin-only --yes
+   ```
+   *(Save the newly generated random password printed in the terminal immediately).*
+3. If rotating staff:
+   ```bash
+   node server/scripts/rotate_credentials.js --tenant latif_001 --all-staff --exclude-user <tenant_admin_username> --yes
    ```
 
 ---
 
-## 6. Full Database Snapshots (VACUUM INTO) on Live Server
+## 7. Container Database Snapshots & File Transfers
 
-To create an atomic full binary database snapshot on Railway at any time:
+### 7.1 How to Take an Atomic Snapshot Inside Railway
+Inside the Railway container terminal:
 ```bash
-railway run "node -e \"const Database = require('better-sqlite3'); const db = new Database('/app/data/latif_traders.db'); const target = '/app/data/snapshot_' + Date.now() + '.db'; db.exec('VACUUM INTO \\'' + target + '\\''); console.log('Full snapshot created at:', target);\""
+node -e "const Database = require('better-sqlite3'); const db = new Database('/app/data/latif_traders.db'); const target = '/app/data/snapshot_' + Date.now() + '.db'; db.exec('VACUUM INTO \\'' + target + '\\''); console.log('Snapshot created at:', target);"
 ```
 
+### 7.2 Safest Methods to Transfer Snapshots Out of Railway Volume
+Because Railway persistent volumes are not mounted directly to your local PC, use one of these safe methods:
+- **Method 1 (Old UI Download - Recommended for Pre-Deploy)**:
+  Use **Settings** -> **Backup & Recovery** in the old live UI before deploying. It streams the full SQLite file securely over HTTPS.
+- **Method 2 (Base64 Stream via Container Terminal)**:
+  In container shell:
+  ```bash
+  gzip -c /app/data/snapshot_post_deploy.db | base64 > /app/data/snapshot.b64
+  ```
+  Print in terminal or download via standard curl/presigned POST.
+- **Method 3 (Temporary Signed Transfer)**:
+  If an S3/GCS bucket or secure private webhook is available:
+  ```bash
+  curl -T /app/data/snapshot_post_deploy.db "https://your-secure-pre-signed-url"
+  ```
+
+### 7.3 How to Copy an Anonymised File into a Staging Volume
+1. On your local PC or build runner, run:
+   ```bash
+   node server/scripts/anonymise_snapshot.js path/to/real_snapshot.db staging_anonymized.db
+   node server/scripts/leak_check.js staging_anonymized.db
+   ```
+2. In the Staging project on Railway, mount a persistent volume at `/app/staging_data`.
+3. In the Staging container terminal, place the audited database at:
+   `/app/staging_data/latif_traders.db`
+4. Set Staging environment variable: `DB_PATH=/app/staging_data/latif_traders.db`.
+
 ---
 
-## 7. Rollback Procedure (Safety Escape Hatch)
+## 8. Rollback Procedure (Safety Escape Hatch)
 
 If any blocking issue occurs post-deploy:
-1. In Railway Dashboard -> **Deployments**, click on the previous working deployment.
+1. In Railway Dashboard -> **Deployments**, locate the last active working deployment.
 2. Click **Rollback**.
-3. Because the migrations added to SQLite are purely non-destructive and backward-compatible, the previous deployment code will immediately reconnect to `/app/data/latif_traders.db` without data corruption.
-4. If database restoration from backup is ever required:
-   - Remember: In-app Restore is blocked. Use CLI-level file replacement:
+3. Because all migrations in `release/1.0-sqlite` are non-destructive and backward-compatible, the previous deployment code will immediately reconnect to `/app/data/latif_traders.db` without schema corruption.
+4. If a complete database rollback is ever required:
+   In Railway Container Shell:
    ```bash
-   railway run "cp /app/data/latif_traders.db /app/data/corrupted_backup.db && cp /app/data/latif_traders_backup_live.db /app/data/latif_traders.db"
+   cp /app/data/latif_traders.db /app/data/corrupted_backup.db
+   cp /app/data/snapshot_before_deploy.db /app/data/latif_traders.db
    ```
+   Then restart the Railway deployment.

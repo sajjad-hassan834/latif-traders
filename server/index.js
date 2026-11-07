@@ -190,7 +190,7 @@ app.use((err, req, res, next) => {
 });
 
 let server = null;
-if (process.env.NODE_ENV !== 'test' || require.main === module) {
+if (require.main === module && process.env.NODE_ENV !== 'test') {
   server = app.listen(PORT, () => {
     console.log('\n======================================================');
     console.log(`  ${BRAND_NAME} - Multi-Tenant Point of Sale Server`);

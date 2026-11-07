@@ -115,8 +115,9 @@ async function runTests() {
     // --- FLOW 2: Admin Temporary Password Resolution & One-Time Display Contract ---
     console.log('\n--- Flow 2: Admin Reset Resolution & One-Time Display Contract ---');
     // Admin logs in to resolve request
+    const adminRow = await db.get('SELECT token_version FROM users WHERE id = 1');
     const adminToken = jwt.sign(
-      { id: 1, username: 'admin', role: 'admin', tenant_id: LEGACY_TENANT_ID, token_version: 1 },
+      { id: 1, username: 'admin', role: 'admin', tenant_id: LEGACY_TENANT_ID, token_version: adminRow ? adminRow.token_version : 1 },
       process.env.JWT_SECRET,
       { algorithm: 'HS256', expiresIn: '1h' }
     );

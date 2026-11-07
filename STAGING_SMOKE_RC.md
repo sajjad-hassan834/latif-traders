@@ -44,7 +44,7 @@ Negative Checks:
   - Confirm access to `/superowner/dashboard`.
 
 ### 3.2 Credential Rotation Pre-Flight
-- [ ] Run dry-run credential inspection in Railway terminal:
+- [ ] Run dry-run credential inspection inside the Railway container terminal (Railway Dashboard -> Deployments -> Active Deployment -> Terminal, or railway ssh -- never railway run which executes locally):
   ```bash
   node server/scripts/rotate_credentials.js --dry-run
   ```

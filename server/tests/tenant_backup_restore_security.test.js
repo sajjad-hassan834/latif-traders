@@ -87,16 +87,19 @@ async function runBackupSecurityTestsBody(driver = 'sqlite') {
     status: () => mockResRestore
   };
 
+  let restoreStatusCode = 200;
+  mockResRestore.status = (code) => { restoreStatusCode = code; return mockResRestore; };
   await backupController.restoreBackup(mockReqRestore, mockResRestore);
-  assert(restoreResult && restoreResult.success, 'Restore executed within tenant bounds');
+  assert(restoreStatusCode === 403, 'In-app restore is permanently blocked server-side (HTTP 403)');
+  assert(restoreResult && !restoreResult.success, 'Restore result indicates failure');
 
   // Verify victim tenant has ZERO injected products
   const victimProducts = await db.all('SELECT * FROM products WHERE tenant_id = ? AND sku = ?', [victimId, 'INJECT-01']);
   assert(victimProducts.length === 0, 'Target victim tenant has 0 injected rows (cross-tenant injection BLOCKED)');
 
-  // Verify product was forced to attacker tenant_id
+  // Verify attacker tenant has 0 injected rows because restore was completely blocked
   const attackerProducts = await db.all('SELECT * FROM products WHERE tenant_id = ? AND sku = ?', [tenantId, 'INJECT-01']);
-  assert(attackerProducts.length === 1 && attackerProducts[0].tenant_id === tenantId, 'Injected row was forced strictly to caller tenant_id');
+  assert(attackerProducts.length === 0, 'In-app restore permanently blocked - zero rows inserted');
 
   // --- Test 3: Injected Admin User Row is Completely Rejected ---
   console.log('\n--- Test 3: Injected users Table Protection ---');
@@ -114,12 +117,19 @@ async function runBackupSecurityTestsBody(driver = 'sqlite') {
 
   mockReqRestore.body.filename = userInjFilename;
   await backupController.restoreBackup(mockReqRestore, mockResRestore);
+  assert(restoreStatusCode === 403, 'In-app user restore permanently blocked (HTTP 403)');
 
   const backdoorUser = await db.get("SELECT * FROM users WHERE username = 'backdoor_admin'");
   assert(!backdoorUser, 'Injected user row was completely ignored and NOT inserted into users table');
 
-  // --- Test 4: Injected Extra / Unknown Columns are Stripped by Allowed Whitelist ---
-  console.log('\n--- Test 4: Injected Extra Columns Protection ---');
+  // Clean up test files
+  try {
+    fs.unlinkSync(maliciousFilePath);
+    fs.unlinkSync(path.join(backupDir, userInjFilename));
+  } catch (_) {}
+
+  // --- Test 4: In-App Restore Permanently Blocked Server-Side (HTTP 403) ---
+  console.log('\n--- Test 4: In-App Restore Permanently Disabled (HTTP 403 Protection) ---');
   const extraColsPayload = {
     version: '2.0',
     tenant_id: tenantId,
@@ -134,43 +144,15 @@ async function runBackupSecurityTestsBody(driver = 'sqlite') {
 
   mockReqRestore.body.filename = extraColsFilename;
   await backupController.restoreBackup(mockReqRestore, mockResRestore);
+  assert(restoreStatusCode === 403, 'Restore returns HTTP 403 Forbidden');
+  
   const restoredCat = await db.get("SELECT * FROM categories WHERE tenant_id = ? AND name = 'Legit Category'", [tenantId]);
-  assert(restoredCat && restoredCat.name === 'Legit Category', 'Row with extra columns inserted safely with only allowed columns');
+  assert(!restoredCat, 'Categories table remains 100% unmutated');
 
-  // --- Test 5: Oversized File (>25MB) is Strictly Blocked ---
-  console.log('\n--- Test 5: Oversized File Rejection ---');
-  const oversizedFilename = 'oversized_backup_test.json';
-  const oversizedPath = path.join(backupDir, oversizedFilename);
-  // Create a 26MB dummy file
-  const buffer26MB = Buffer.alloc(26 * 1024 * 1024);
-  fs.writeFileSync(oversizedPath, buffer26MB);
-
-  let oversizeErrorStatus = null;
-  let oversizeErrorBody = null;
-  const mockResOversize = {
-    status: (code) => { oversizeErrorStatus = code; return mockResOversize; },
-    json: (body) => { oversizeErrorBody = body; return mockResOversize; }
-  };
-  mockReqRestore.body.filename = oversizedFilename;
-  await backupController.restoreBackup(mockReqRestore, mockResOversize);
-  fs.unlinkSync(oversizedPath);
-
-  assert(oversizeErrorStatus === 400, 'Oversized file rejected with HTTP 400');
-  assert(oversizeErrorBody.message.includes('exceeds maximum allowed size'), 'Oversized rejection message matches policy');
-
-  // --- Test 6: Dry-Run Diff Preview Mode (No DB Mutation) ---
-  console.log('\n--- Test 6: Dry-Run Diff Preview ---');
-  let dryRunRes = null;
-  const mockResDryRun = {
-    json: (body) => { dryRunRes = body; return mockResDryRun; },
-    status: () => mockResDryRun
-  };
-  mockReqRestore.body = { filename: maliciousFilename, dry_run: true };
-  await backupController.restoreBackup(mockReqRestore, mockResDryRun);
-
-  assert(dryRunRes && dryRunRes.dry_run === true, 'Dry-run preview flag returned true');
-  assert(dryRunRes.diff && dryRunRes.diff.products, 'Dry-run diff calculated for products table');
-  assert(dryRunRes.message.includes('No changes written'), 'Dry-run confirmed zero database mutations');
+  // Clean up
+  try {
+    fs.unlinkSync(path.join(backupDir, extraColsFilename));
+  } catch (_) {}
 
   } finally {
     // Clean up

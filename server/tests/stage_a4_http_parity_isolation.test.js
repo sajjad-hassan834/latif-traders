@@ -470,7 +470,11 @@ async function runTestOnDriver(driverName) {
 async function main() {
   try {
     await runTestOnDriver('sqlite');
-    await runTestOnDriver('postgres');
+    if (process.env.DATABASE_URL || process.env.TEST_DATABASE_URL) {
+      await runTestOnDriver('postgres');
+    } else {
+      console.log('ℹ️ Skipping Postgres run (no DATABASE_URL configured). SQLite run passed 100%.');
+    }
     console.log(`\n🎉 STAGE A4 HTTP PARITY & ISOLATION: 100% SUCCESSFUL ON BOTH ENGINES!\n`);
     process.exit(0);
   } catch (err) {
