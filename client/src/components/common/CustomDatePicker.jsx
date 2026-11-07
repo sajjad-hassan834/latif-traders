@@ -20,6 +20,7 @@ export default function CustomDatePicker({
   style = {}
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [alignRight, setAlignRight] = useState(false);
   const containerRef = useRef(null);
 
   // Parse YYYY-MM-DD into Date or default to today
@@ -36,6 +37,19 @@ export default function CustomDatePicker({
       }
     }
   }, [value]);
+
+  // Viewport collision detection: if opening to the right overflows screen, anchor right
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const popoverWidth = 270;
+      if (rect.left + popoverWidth > window.innerWidth || (window.innerWidth - rect.right < 140)) {
+        setAlignRight(true);
+      } else {
+        setAlignRight(false);
+      }
+    }
+  }, [isOpen]);
 
   // Close when clicking outside
   useEffect(() => {
@@ -166,7 +180,8 @@ export default function CustomDatePicker({
           style={{
             position: 'absolute',
             top: 'calc(100% + 4px)',
-            left: 0,
+            left: alignRight ? 'auto' : 0,
+            right: alignRight ? 0 : 'auto',
             zIndex: 1050,
             width: '260px',
             background: 'var(--bg-card, #FFFFFF)',

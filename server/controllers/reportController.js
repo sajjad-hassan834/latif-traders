@@ -430,16 +430,75 @@ exports.getDashboardInsights = async (req, res) => {
       });
     }
 
-    // 9. Recent Invoices (Latest 6)
+    // 8b. Daily comparison (Last 7 Days) for granular graph insights
+    const dailyComparison = [];
+    let peakDayVal = 0;
+    let peakDayLabel = 'N/A';
+    let total7DaySales = 0;
+
+    for (let d = 6; d >= 0; d--) {
+      const dt = new Date(Date.now() - d * 86400000);
+      const dayDate = dt.toISOString().split('T')[0];
+      const dayLabel = d === 0 ? 'Today' : dt.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+
+      const dSales = await db.get(`
+        SELECT COALESCE(SUM(grand_total), 0) as total, COUNT(*) as cnt
+        FROM sales
+        WHERE SUBSTR(sale_date, 1, 10) = ? AND tenant_id = ?
+      `, [dayDate, tenantId]);
+
+      let dPurchases = { total: 0 };
+      if (!isRestrictedSales) {
+        dPurchases = await db.get(`
+          SELECT COALESCE(SUM(grand_total), 0) as total
+          FROM purchases
+          WHERE SUBSTR(purchase_date, 1, 10) = ? AND tenant_id = ?
+        `, [dayDate, tenantId]) || { total: 0 };
+      }
+
+      const sVal = Number(dSales?.total || 0);
+      const pVal = Number(dPurchases?.total || 0);
+      total7DaySales += sVal;
+
+      if (sVal > peakDayVal) {
+        peakDayVal = sVal;
+        peakDayLabel = dayLabel;
+      }
+
+      dailyComparison.push({
+        label: dayLabel,
+        date: dayDate,
+        sales: sVal,
+        purchases: pVal,
+        invoices: Number(dSales?.cnt || 0)
+      });
+    }
+    const avgDailySales = Math.round(total7DaySales / 7);
+
+    // 9. Recent Invoices (Latest 8 with detailed items count and cashier)
     const recentInvoices = await db.all(`
-      SELECT s.id, s.invoice_no, s.sale_date, s.grand_total, s.paid_amount, s.balance_due,
-        s.payment_method, s.sale_type,
-        COALESCE(c.name, 'Counter Walk-in') as customer_name
+      SELECT
+        s.id, s.invoice_no, s.sale_date, s.grand_total, s.paid_amount, s.balance_due,
+        s.payment_method, s.sale_type, s.created_at,
+        COALESCE(c.name, 'Counter Walk-in') as customer_name,
+        COALESCE(c.phone, '') as customer_phone,
+        COALESCE(u.full_name, 'Staff') as cashier_name,
+        COALESCE((
+          SELECT COUNT(*) FROM sale_items si WHERE si.sale_id = s.id AND (si.tenant_id = s.tenant_id OR si.tenant_id IS NULL)
+        ), 0) as items_count,
+        (
+          SELECT p.name
+          FROM sale_items si
+          JOIN products p ON si.product_id = p.id
+          WHERE si.sale_id = s.id
+          LIMIT 1
+        ) as first_item_name
       FROM sales s
       LEFT JOIN customers c ON s.customer_id = c.id AND c.tenant_id = s.tenant_id
+      LEFT JOIN users u ON s.user_id = u.id
       WHERE s.tenant_id = ?
       ORDER BY s.id DESC
-      LIMIT 6
+      LIMIT 8
     `, [tenantId]);
 
     // 10. Top Debtors (Customers with balance)
@@ -510,7 +569,13 @@ exports.getDashboardInsights = async (req, res) => {
           }
         },
         grouped_bar: {
-          months: monthlyComparison
+          months: monthlyComparison,
+          days: dailyComparison,
+          stats: {
+            peak_label: peakDayLabel,
+            peak_val: peakDayVal,
+            daily_avg: avgDailySales
+          }
         },
         lists: {
           recent_invoices: recentInvoices,
