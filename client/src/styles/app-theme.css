@@ -876,6 +876,47 @@ html[data-app-theme] .modal-footer {
   display: flex;
   flex-direction: column;
 }
+
+/* Balanced 65% / 35% Bottom Dashboard Grid */
+.bottom-dashboard-grid-balanced {
+  display: grid;
+  grid-template-columns: 1.85fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+.bottom-invoices-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+}
+.bottom-right-stacked-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.bottom-side-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.invoices-scrollable-container {
+  max-height: 380px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
 .bottom-lists-grid-3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -908,7 +949,7 @@ html[data-app-theme] .modal-footer {
   .analytics-grid-3 {
     grid-template-columns: 1fr;
   }
-  .bottom-lists-grid-3 {
+  .bottom-lists-grid-3, .bottom-dashboard-grid-balanced {
     grid-template-columns: 1fr;
   }
 }

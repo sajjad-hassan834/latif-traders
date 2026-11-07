@@ -964,16 +964,21 @@ function DashboardContent({ setTab }) {
         </div>
       </div>
 
-      {/* 4. BOTTOM ROW OF CARD LISTS (RECENT INVOICES, TOP DEBTORS, ALERTS) */}
-      <div className="bottom-lists-grid-3">
-        {/* CARD 1: RECENT INVOICES (ENHANCED DETAILS UNDER EACH) */}
-        <div className="bottom-list-card">
+      {/* 4. BOTTOM ROW: BALANCED 65% / 35% SPLIT */}
+      <div className="bottom-dashboard-grid-balanced">
+        {/* LEFT 65%: COMPACT RECENT INVOICES LIST */}
+        <div className="bottom-invoices-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div>
-              <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-title)', margin: 0 }}>
-                Invoices
-              </h3>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Latest customer orders & billing</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-title)', margin: 0 }}>
+                  Invoices
+                </h3>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', background: 'var(--hover-bg)', padding: '2px 8px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  {(insights?.lists?.recent_invoices || []).length} Orders
+                </span>
+              </div>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Latest customer sales with quick thermal print</span>
             </div>
             <button
               onClick={() => setTab && setTab('sales')}
@@ -984,9 +989,9 @@ function DashboardContent({ setTab }) {
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="invoices-scrollable-container hide-scrollbar">
             {(insights?.lists?.recent_invoices || []).length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)', fontSize: '13px' }}>
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)', fontSize: '13px' }}>
                 No recent invoices recorded
               </div>
             ) : (
@@ -1007,318 +1012,284 @@ function DashboardContent({ setTab }) {
                     key={inv.id || idx}
                     style={{
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      padding: '12px',
-                      borderRadius: '10px',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      borderRadius: '9px',
                       background: 'var(--hover-bg, #F8FAFC)',
                       border: '1px solid var(--border)',
-                      transition: 'border-color 0.15s ease'
+                      gap: '12px',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    {/* Top Row: Customer Avatar, Name, Invoice Number & Amount */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div className="avatar-initial-pill" style={{ background: av.bg, color: av.text }}>
-                          {initials}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-title)' }}>
-                            {inv.customer_name || 'Counter Walk-in'}
-                          </div>
-                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', gap: '6px' }}>
-                            <span style={{ fontWeight: 700 }}>#{inv.invoice_no}</span>
-                            <span>•</span>
-                            <span>{formatDate(inv.sale_date)}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-value)' }}>
-                            {formatPKR(inv.grand_total)}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handlePrintInvoice(inv.id)}
-                          className="btn btn-secondary btn-sm"
-                          style={{ padding: '6px', height: '30px', width: '30px', borderRadius: '7px' }}
-                          title="Print / View Receipt"
-                        >
-                          <Printer size={14} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Bottom Metadata Strip: Items count, cashier, and payment status */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      paddingTop: '6px',
-                      borderTop: '1px solid var(--border)',
-                      fontSize: '11px',
-                      color: 'var(--text-muted)'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <ShoppingBag size={12} color="var(--text-muted)" />
-                        <span>
-                          {inv.items_count || 1} {Number(inv.items_count) === 1 ? 'item' : 'items'}
-                          {inv.first_item_name ? ` (${inv.first_item_name})` : ''}
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {/* Payment Method Badge */}
-                        <span style={{
-                          fontSize: '10px',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          padding: '1px 6px',
-                          borderRadius: '4px',
-                          background: 'var(--bg-card)',
-                          border: '1px solid var(--border)'
-                        }}>
-                          {inv.payment_method || 'cash'}
-                        </span>
-
-                        {/* Paid vs Due Status Pill */}
-                        <span style={{
-                          fontSize: '10px',
-                          fontWeight: 700,
-                          padding: '1px 6px',
-                          borderRadius: '4px',
-                          background: isPaid ? '#DCFCE7' : (isPartial ? '#FEF3C7' : '#FEE2E2'),
-                          color: isPaid ? '#166534' : (isPartial ? '#92400E' : '#991B1B')
-                        }}>
-                          {isPaid ? '✓ Paid' : (isPartial ? `Partial (Due ${formatPKR(inv.balance_due)})` : `Due ${formatPKR(inv.balance_due)}`)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* CARD 2: TOP DEBTORS (UDHAAR) */}
-        <div className="bottom-list-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <div>
-              <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-title)', margin: 0 }}>
-                Debtors
-              </h3>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Outstanding customer credit balances</span>
-            </div>
-            <button
-              onClick={() => setTab && setTab('customers')}
-              style={{ background: 'transparent', border: 'none', color: '#F59E0B', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
-            >
-              <span>See all</span>
-              <ChevronRight size={14} />
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {(insights?.lists?.top_debtors || []).length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)', fontSize: '13px' }}>
-                ✓ Zero outstanding customer balances
-              </div>
-            ) : (
-              (insights?.lists?.top_debtors || []).map((debtor, idx) => {
-                const av = avatarColors[(idx + 2) % avatarColors.length];
-                const initials = (debtor.name || 'Customer')
-                  .split(' ')
-                  .map(w => w[0])
-                  .slice(0, 2)
-                  .join('')
-                  .toUpperCase();
-
-                return (
-                  <div
-                    key={debtor.id || idx}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '10px 12px',
-                      borderRadius: '10px',
-                      background: 'var(--hover-bg, #F8FAFC)',
-                      border: '1px solid var(--border)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div className="avatar-initial-pill" style={{ background: av.bg, color: av.text }}>
+                    {/* Left: Avatar + Customer Name + Invoice Number & Date + Item count */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                      <div className="avatar-initial-pill" style={{ background: av.bg, color: av.text, width: '32px', height: '32px', fontSize: '11px' }}>
                         {initials}
                       </div>
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-title)' }}>
-                          {debtor.name}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-title)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {inv.customer_name || 'Counter Walk-in'}
+                          </span>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                            #{inv.invoice_no}
+                          </span>
                         </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                          {debtor.phone || 'No phone recorded'}
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                          <span>{formatDate(inv.sale_date)}</span>
+                          <span>•</span>
+                          <span>{inv.items_count || 1} {Number(inv.items_count) === 1 ? 'item' : 'items'}{inv.first_item_name ? ` (${inv.first_item_name})` : ''}</span>
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '14px', fontWeight: 800, color: '#991B1B' }}>
-                        {formatPKR(debtor.current_balance)}
-                      </div>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#991B1B', background: '#FEE2E2', padding: '1px 6px', borderRadius: '4px' }}>
-                        Due
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* CARD 3: OPERATIONAL ALERTS (LOW STOCK / EXPIRY) */}
-        <div className="bottom-list-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <div>
-              <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-title)', margin: 0 }}>
-                Alerts
-              </h3>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Stock replenishment & expiry warnings</span>
-            </div>
-            <button
-              onClick={() => setTab && setTab('inventory')}
-              style={{ background: 'transparent', border: 'none', color: '#F59E0B', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
-            >
-              <span>See all</span>
-              <ChevronRight size={14} />
-            </button>
-          </div>
-
-          {/* Subtabs: Low Stock vs Near Expiry */}
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-            <button
-              onClick={() => setAlertTab('low_stock')}
-              style={{
-                flex: 1,
-                padding: '6px 8px',
-                fontSize: '11px',
-                fontWeight: 700,
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                background: alertTab === 'low_stock' ? '#FEE2E2' : 'var(--hover-bg)',
-                color: alertTab === 'low_stock' ? '#991B1B' : 'var(--text-muted)'
-              }}
-            >
-              Low Stock ({(insights?.lists?.low_stock_alerts || []).length})
-            </button>
-            <button
-              onClick={() => setAlertTab('near_expiry')}
-              style={{
-                flex: 1,
-                padding: '6px 8px',
-                fontSize: '11px',
-                fontWeight: 700,
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                background: alertTab === 'near_expiry' ? '#FEF3C7' : 'var(--hover-bg)',
-                color: alertTab === 'near_expiry' ? '#92400E' : 'var(--text-muted)'
-              }}
-            >
-              Near Expiry ({(insights?.lists?.near_expiry_alerts || []).length})
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {alertTab === 'low_stock' && (
-              (insights?.lists?.low_stock_alerts || []).length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)', fontSize: '13px' }}>
-                  ✓ All products above minimum stock levels
-                </div>
-              ) : (
-                (insights?.lists?.low_stock_alerts || []).slice(0, 5).map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      background: 'var(--hover-bg, #F8FAFC)',
-                      border: '1px solid var(--border)'
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-title)' }}>
-                        {item.name}
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        SKU: {item.sku || 'N/A'} • Min threshold: {item.min_stock_level} {item.unit}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 800, color: '#991B1B' }}>
-                        {item.current_stock} {item.unit}
-                      </div>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#991B1B', background: '#FEE2E2', padding: '1px 6px', borderRadius: '4px' }}>
-                        Low Stock
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )
-            )}
-
-            {alertTab === 'near_expiry' && (
-              (insights?.lists?.near_expiry_alerts || []).length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)', fontSize: '13px' }}>
-                  ✓ No batches near expiry threshold
-                </div>
-              ) : (
-                (insights?.lists?.near_expiry_alerts || []).slice(0, 5).map((batch) => (
-                  <div
-                    key={batch.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      background: 'var(--hover-bg, #F8FAFC)',
-                      border: '1px solid var(--border)'
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-title)' }}>
-                        {batch.product_name}
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        Lot: {batch.batch_no} • {batch.quantity} {batch.unit}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#B45309' }}>
-                        {formatDate(batch.expiry_date)}
-                      </div>
+                    {/* Right: Payment badge + Status pill + Amount + Print button */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                       <span style={{
                         fontSize: '10px',
                         fontWeight: 700,
-                        color: batch.days_remaining <= 0 ? '#991B1B' : '#B45309',
-                        background: batch.days_remaining <= 0 ? '#FEE2E2' : '#FEF3C7',
-                        padding: '1px 6px',
-                        borderRadius: '4px'
+                        textTransform: 'uppercase',
+                        padding: '2px 7px',
+                        borderRadius: '4px',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border)',
+                        color: 'var(--text-muted)'
                       }}>
-                        {batch.days_remaining <= 0 ? 'EXPIRED' : `${batch.days_remaining}d left`}
+                        {inv.payment_method || 'cash'}
                       </span>
+
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        padding: '2px 7px',
+                        borderRadius: '4px',
+                        background: isPaid ? '#DCFCE7' : (isPartial ? '#FEF3C7' : '#FEE2E2'),
+                        color: isPaid ? '#166534' : (isPartial ? '#92400E' : '#991B1B')
+                      }}>
+                        {isPaid ? 'Paid' : (isPartial ? 'Partial' : 'Due')}
+                      </span>
+
+                      <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-value)', minWidth: '70px', textAlign: 'right' }}>
+                        {formatPKR(inv.grand_total)}
+                      </div>
+
+                      <button
+                        onClick={() => handlePrintInvoice(inv.id)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ padding: '5px', height: '28px', width: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Print Receipt"
+                      >
+                        <Printer size={13} />
+                      </button>
                     </div>
                   </div>
-                ))
-              )
+                );
+              })
             )}
+          </div>
+        </div>
+
+        {/* RIGHT 35%: STACKED CARDS (DEBTORS ON TOP, ALERTS ON BOTTOM) */}
+        <div className="bottom-right-stacked-cards">
+          {/* STACKED CARD 1: DEBTORS */}
+          <div className="bottom-side-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div>
+                <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-title)', margin: 0 }}>
+                  Debtors
+                </h3>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Customer balances</span>
+              </div>
+              <button
+                onClick={() => setTab && setTab('customers')}
+                style={{ background: 'transparent', border: 'none', color: '#F59E0B', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+              >
+                <span>See all</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {(insights?.lists?.top_debtors || []).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '1.25rem 0.5rem', color: '#166534', background: '#DCFCE7', borderRadius: '8px', fontSize: '12px', fontWeight: 700, border: '1px solid #BBF7D0' }}>
+                  ✓ Zero outstanding customer balances
+                </div>
+              ) : (
+                (insights?.lists?.top_debtors || []).slice(0, 3).map((debtor, idx) => {
+                  const av = avatarColors[(idx + 2) % avatarColors.length];
+                  const initials = (debtor.name || 'Customer')
+                    .split(' ')
+                    .map(w => w[0])
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase();
+
+                  return (
+                    <div
+                      key={debtor.id || idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background: 'var(--hover-bg, #F8FAFC)',
+                        border: '1px solid var(--border)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div className="avatar-initial-pill" style={{ background: av.bg, color: av.text, width: '28px', height: '28px', fontSize: '10px' }}>
+                          {initials}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-title)' }}>
+                            {debtor.name}
+                          </div>
+                          <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                            {debtor.phone || 'No phone'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '12px', fontWeight: 800, color: '#991B1B' }}>
+                          {formatPKR(debtor.current_balance)}
+                        </div>
+                        <span style={{ fontSize: '9px', fontWeight: 700, color: '#991B1B', background: '#FEE2E2', padding: '1px 5px', borderRadius: '4px' }}>
+                          Due
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* STACKED CARD 2: ALERTS */}
+          <div className="bottom-side-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div>
+                <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-title)', margin: 0 }}>
+                  Alerts
+                </h3>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Inventory warnings</span>
+              </div>
+              <button
+                onClick={() => setTab && setTab('inventory')}
+                style={{ background: 'transparent', border: 'none', color: '#F59E0B', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+              >
+                <span>See all</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+
+            {/* Subtabs: Low Stock vs Near Expiry */}
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
+              <button
+                onClick={() => setAlertTab('low_stock')}
+                style={{
+                  flex: 1,
+                  padding: '5px 8px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  background: alertTab === 'low_stock' ? '#FEE2E2' : 'var(--hover-bg)',
+                  color: alertTab === 'low_stock' ? '#991B1B' : 'var(--text-muted)'
+                }}
+              >
+                Low Stock ({(insights?.lists?.low_stock_alerts || []).length})
+              </button>
+              <button
+                onClick={() => setAlertTab('near_expiry')}
+                style={{
+                  flex: 1,
+                  padding: '5px 8px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  background: alertTab === 'near_expiry' ? '#FEF3C7' : 'var(--hover-bg)',
+                  color: alertTab === 'near_expiry' ? '#92400E' : 'var(--text-muted)'
+                }}
+              >
+                Near Expiry ({(insights?.lists?.near_expiry_alerts || []).length})
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {alertTab === 'low_stock' ? (
+                (insights?.lists?.low_stock_alerts || []).length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '1rem 0.5rem', color: '#166534', background: '#DCFCE7', borderRadius: '8px', fontSize: '12px', fontWeight: 700, border: '1px solid #BBF7D0' }}>
+                    ✓ All inventory above threshold
+                  </div>
+                ) : (
+                  (insights?.lists?.low_stock_alerts || []).slice(0, 3).map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background: 'var(--hover-bg)',
+                        border: '1px solid var(--border)'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-title)' }}>
+                          {item.name}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                          Min: {item.min_stock_level} {item.unit}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#991B1B', background: '#FEE2E2', padding: '2px 7px', borderRadius: '4px' }}>
+                        {item.stock_qty} left
+                      </span>
+                    </div>
+                  ))
+                )
+              ) : (
+                (insights?.lists?.near_expiry_alerts || []).length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '1rem 0.5rem', color: '#166534', background: '#DCFCE7', borderRadius: '8px', fontSize: '12px', fontWeight: 700, border: '1px solid #BBF7D0' }}>
+                    ✓ Zero batches near expiration
+                  </div>
+                ) : (
+                  (insights?.lists?.near_expiry_alerts || []).slice(0, 3).map((batch, idx) => (
+                    <div
+                      key={batch.id || idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background: 'var(--hover-bg)',
+                        border: '1px solid var(--border)'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-title)' }}>
+                          {batch.product_name}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                          Lot: {batch.batch_no || 'N/A'}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#92400E', background: '#FEF3C7', padding: '2px 7px', borderRadius: '4px' }}>
+                        Exp: {formatDate(batch.expiry_date)}
+                      </span>
+                    </div>
+                  ))
+                )
+              )}
+            </div>
           </div>
         </div>
       </div>
