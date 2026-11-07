@@ -20,12 +20,6 @@ async function calculateCustomerLedger(customerId, tenantId, options = {}) {
   }
 
 
-  const isFasialLatif = tenantId === LEGACY_TENANT_ID && customer.name && (customer.name.toLowerCase().includes('fasial') || customer.name.toLowerCase().includes('faisal'));
-
-  // Sanitize duplicate / corrupted opening balance of 21,940 for Fasial Walton
-  if (isFasialLatif || Number(customer.opening_balance) === 21940) {
-    customer.opening_balance = 0;
-  }
   // 1. Fetch sales invoices
   const rawSales = await db.all(`
     SELECT id, invoice_no as ref_no, sale_date as date, 'SALE' as type,

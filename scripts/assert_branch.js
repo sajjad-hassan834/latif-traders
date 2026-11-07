@@ -31,7 +31,7 @@ if (hasAncestor === null) {
 }
 
 // Check 2: Branch must be integration/local-all or a descendant
-if (currentBranch === 'integration/local-all') {
+if (currentBranch === 'integration/local-all' || currentBranch.startsWith('release/')) {
   console.log(`[assert_branch] OK: Running on trunk '${currentBranch}'.`);
   process.exit(0);
 }
