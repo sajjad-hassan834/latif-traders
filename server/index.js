@@ -21,7 +21,8 @@ const app = express();
 
 // Trust reverse proxy hops (e.g. Railway, Cloudflare)
 const trustProxyHops = parseInt(process.env.TRUST_PROXY_HOPS, 10);
-app.set('trust proxy', isNaN(trustProxyHops) ? 1 : trustProxyHops);
+const resolvedHops = isNaN(trustProxyHops) ? 1 : trustProxyHops;
+app.set('trust proxy', resolvedHops);
 
 // HTTP Security Headers
 app.use(helmet({

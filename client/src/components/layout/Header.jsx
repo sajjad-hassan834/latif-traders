@@ -34,6 +34,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../utils/api';
 import { formatDate } from '../../utils/formatters';
+import { resolveTradeId } from '../../utils/tradeCapabilities';
 import { applyAppTheme, getSavedAppTheme, APP_THEMES } from '../../utils/theme';
 import UserProfileModal from '../common/UserProfileModal';
 import NotificationCenter from '../common/NotificationCenter';
@@ -196,7 +197,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
 
   const userInitial = user?.full_name?.charAt(0) || user?.username?.charAt(0) || 'U';
   const userEmail = user?.email || (user?.username ? `${user.username}@shop.local` : '');
-  const businessType = tenant?.business_type || 'retail_general';
+  const businessType = resolveTradeId(tenant?.business_type, tenant?.id);
   const businessTypeLabel = BUSINESS_TYPE_NAMES[businessType] || 'Retail & Trade';
   const currentPlan = plan || 'free';
 

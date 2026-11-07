@@ -42,7 +42,7 @@ const getDateRangeForPreset = (preset) => {
 export default function Purchases() {
   const voucherPrintRef = useRef(null);
   const { canManageInventory, tenant } = useAuth();
-  const { terminology, isFrozenFood } = useTradeProfile();
+  const { terminology, isFrozenFood, hasBatches, hasExpiry } = useTradeProfile();
   const lotLabel = terminology?.lotLabel || (isFrozenFood ? 'Batch' : 'Lot');
   const [purchases, setPurchases] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -1716,8 +1716,8 @@ export default function Purchases() {
                 <thead>
                   <tr>
                     <th>Item</th>
-                    <th>{lotLabel} #</th>
-                    <th>Expiry</th>
+                    {hasBatches && <th>{lotLabel} #</th>}
+                    {hasExpiry && <th>Expiry</th>}
                     <th style={{ textAlign: 'center' }}>Qty</th>
                     <th style={{ textAlign: 'right' }}>Cost</th>
                     <th style={{ textAlign: 'right' }}>Total</th>
@@ -1727,8 +1727,8 @@ export default function Purchases() {
                   {selectedPurchase.items.map((it, idx) => (
                     <tr key={idx}>
                       <td style={{ fontWeight: 600 }}>{it.product_name}</td>
-                      <td className="mono">{it.batch_no || '-'}</td>
-                      <td>{formatDate(it.expiry_date)}</td>
+                      {hasBatches && <td className="mono">{it.batch_no || '-'}</td>}
+                      {hasExpiry && <td>{formatDate(it.expiry_date)}</td>}
                       <td style={{ textAlign: 'center', fontWeight: 700 }}>{it.quantity} {it.unit}</td>
                       <td style={{ textAlign: 'right' }}>{formatPKR(it.unit_price)}</td>
                       <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatPKR(it.total_price)}</td>

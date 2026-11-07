@@ -140,3 +140,67 @@ test('Uploads & Logo serving - Cross-Origin-Resource-Policy and X-Content-Type-O
 
   try { fs.unlinkSync(testFile); } catch (_) {}
 });
+
+test('CORS - Latif and ShopOS production origins can access /api endpoints with credentials header', async () => {
+  const prodOrigins = [
+    'https://latiftraders.findcalculation.com',
+    'https://shopos.findcalculation.com',
+    'https://latif-traders.vercel.app'
+  ];
+
+  for (const origin of prodOrigins) {
+    const res = await request(app)
+      .get('/api/health')
+      .set('Origin', origin);
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(
+      res.headers['access-control-allow-origin'],
+      origin,
+      `Expected ${origin} to receive matching access-control-allow-origin`
+    );
+    assert.strictEqual(res.headers['access-control-allow-credentials'], 'true');
+  }
+});
+
+test('Uploads - Multi-tenant logo isolation and legacy root fallback verification', async () => {
+  const uploadsDir = path.join(DATA_DIR, 'uploads');
+  const tenantAlphaDir = path.join(uploadsDir, 't_alpha');
+  const tenantBetaDir = path.join(uploadsDir, 't_beta');
+
+  if (!fs.existsSync(tenantAlphaDir)) fs.mkdirSync(tenantAlphaDir, { recursive: true });
+  if (!fs.existsSync(tenantBetaDir)) fs.mkdirSync(tenantBetaDir, { recursive: true });
+
+  const alphaLogoPath = path.join(tenantAlphaDir, 'alpha_logo.png');
+  const legacyLogoPath = path.join(uploadsDir, 'legacy_root_logo.png');
+
+  fs.writeFileSync(alphaLogoPath, 'alpha logo byte stream');
+  fs.writeFileSync(legacyLogoPath, 'legacy logo byte stream');
+
+  try {
+    // 1. Scoped logo served for t_alpha
+    const res1 = await request(app).get('/api/settings/logo/t_alpha/alpha_logo.png');
+    assert.strictEqual(res1.status, 200);
+    assert.strictEqual(res1.headers['cross-origin-resource-policy'], 'cross-origin');
+    assert.strictEqual(res1.body.toString('utf8'), 'alpha logo byte stream');
+
+    // 2. Tenant isolation: t_beta requesting t_alpha's logo gets 404
+    const res2 = await request(app).get('/api/settings/logo/t_beta/alpha_logo.png');
+    assert.strictEqual(res2.status, 404);
+    assert.strictEqual(res2.body.success, false);
+
+    // 3. Legacy root fallback: latif_001 requesting legacy logo gets 200
+    const res3 = await request(app).get('/api/settings/logo/latif_001/legacy_root_logo.png');
+    assert.strictEqual(res3.status, 200);
+    assert.strictEqual(res3.headers['cross-origin-resource-policy'], 'cross-origin');
+    assert.strictEqual(res3.body.toString('utf8'), 'legacy logo byte stream');
+
+    // 4. Path traversal attempt is blocked with 400
+    const res4 = await request(app).get('/api/settings/logo/latif_001/..%2F..%2Fetc%2Fpasswd');
+    assert.strictEqual(res4.status, 400);
+    assert.strictEqual(res4.body.success, false);
+  } finally {
+    try { fs.unlinkSync(alphaLogoPath); } catch (_) {}
+    try { fs.unlinkSync(legacyLogoPath); } catch (_) {}
+  }
+});

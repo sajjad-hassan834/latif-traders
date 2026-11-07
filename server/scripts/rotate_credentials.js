@@ -18,14 +18,14 @@
  * Usage Examples:
  *   # Dry-run previews (no changes made):
  *   node server/scripts/rotate_credentials.js --user cashier_01
- *   node server/scripts/rotate_credentials.js --tenant latif_001 --admin-only
- *   node server/scripts/rotate_credentials.js --tenant latif_001 --all-staff
+ *   node server/scripts/rotate_credentials.js --tenant <tenant_id> --admin-only
+ *   node server/scripts/rotate_credentials.js --tenant <tenant_id> --all-staff
  *   node server/scripts/rotate_credentials.js --disable --user old_superowner
  *
  *   # Execute rotation with confirmation:
  *   node server/scripts/rotate_credentials.js --user cashier_01 --yes
- *   node server/scripts/rotate_credentials.js --tenant latif_001 --admin-only --yes
- *   node server/scripts/rotate_credentials.js --tenant latif_001 --all-staff --exclude-user latif_admin --yes
+ *   node server/scripts/rotate_credentials.js --tenant <tenant_id> --admin-only --yes
+ *   node server/scripts/rotate_credentials.js --tenant <tenant_id> --all-staff --exclude-user my_admin --yes
  *   node server/scripts/rotate_credentials.js --disable --user old_superowner --yes
  */
 

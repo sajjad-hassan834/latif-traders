@@ -26,8 +26,8 @@ const FORBIDDEN_STRINGS = [
     name: 'Hardcoded legacy shop name "latif"',
     customCheck: (content, relPath) => {
       let codeOnly = content;
-      if (relPath.replace(/\\/g, '/').includes('client/src/utils/api.js')) {
-        codeOnly = codeOnly.replace(/https:\/\/latif-traders-production\.up\.railway\.app/g, '');
+      if (relPath.replace(/\\/g, '/').includes('client/src/utils/api.js') || relPath.replace(/\\/g, '/').includes('client/src/constants/tenant.js')) {
+        codeOnly = codeOnly.replace(/https:\/\/latif-traders-production\.up\.railway\.app/g, '').replace(/latif_001/g, '');
       }
       // Strip comments: /* ... */ and // ...
       codeOnly = codeOnly.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '');

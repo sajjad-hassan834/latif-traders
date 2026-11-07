@@ -18,11 +18,12 @@ import TenantLogo from '../common/TenantLogo';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../utils/api';
 import { getTerminology } from '../../utils/terminology';
+import { resolveTradeId } from '../../utils/tradeCapabilities';
 
 export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isCollapsed, toggleCollapse }) {
   const { role, roleLabel, isAdmin, tenant, plan } = useAuth();
   const userRole = role || 'sales';
-  const term = getTerminology(tenant?.business_type);
+  const term = getTerminology(resolveTradeId(tenant?.business_type, tenant?.id));
 
   const menuSections = [
     {

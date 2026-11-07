@@ -4,22 +4,35 @@
  */
 
 const sharedData = require('../../shared/tradeCapabilities.json');
+const { LEGACY_TENANT_ID } = require('../constants/tenant');
 
 const TRADES = sharedData.trades;
 const ALIASES = sharedData.aliases;
 
 /**
  * Normalises business_type applying aliases ('retail' -> 'retail_general').
- * Single source of normalization.
+ * If businessType is falsy:
+ *  - For tenantId === LEGACY_TENANT_ID or 'default', resolves to 'frozen_food'
+ *  - For all other tenants, safely resolves to 'retail_general'
  */
-function resolveTradeId(businessType) {
-  if (!businessType) return 'frozen_food';
+function resolveTradeId(businessType, tenantId = null) {
+  if (!businessType) {
+    if (tenantId === LEGACY_TENANT_ID || tenantId === 'default') {
+      return 'frozen_food';
+    }
+    return 'retail_general';
+  }
+
+  const clean = String(businessType).toLowerCase().trim().replace(/[\s-]+/g, '_');
+  if (TRADES[clean]) return clean;
+  if (ALIASES[clean]) return ALIASES[clean];
+
   const raw = String(businessType).toLowerCase().trim();
   if (TRADES[raw]) return raw;
   if (ALIASES[raw]) return ALIASES[raw];
 
   for (const [alias, target] of Object.entries(ALIASES)) {
-    if (raw.includes(alias)) return target;
+    if (clean.includes(alias) || raw.includes(alias)) return target;
   }
   return 'retail_general';
 }
@@ -34,7 +47,7 @@ async function isBatchlessActive(db, tenantId) {
   try {
     // 1. Get tenant business_type
     const tenantRow = await db.get('SELECT business_type FROM tenants WHERE id = ?', [tenantId]);
-    const tradeId = resolveTradeId(tenantRow?.business_type);
+    const tradeId = resolveTradeId(tenantRow?.business_type, tenantId);
     const tradeConfig = TRADES[tradeId] || TRADES.frozen_food;
 
     if (tradeConfig.enableBatches !== false) {

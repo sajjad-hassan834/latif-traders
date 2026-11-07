@@ -325,10 +325,16 @@ exports.serveLogo = (req, res) => {
     }
 
     const tenantUploadDir = path.join(UPLOAD_DIR, path.basename(tenantId));
-    const filePath = path.join(tenantUploadDir, filename);
+    let filePath = path.join(tenantUploadDir, filename);
 
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, message: 'Logo not found.' });
+      // Legacy root uploads directory fallback
+      const legacyPath = path.join(UPLOAD_DIR, filename);
+      if (fs.existsSync(legacyPath)) {
+        filePath = legacyPath;
+      } else {
+        return res.status(404).json({ success: false, message: 'Logo not found.' });
+      }
     }
 
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');

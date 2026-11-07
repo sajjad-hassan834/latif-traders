@@ -549,6 +549,16 @@ function initializeDatabase() {
     if (!soUsername || !soPassword) {
       console.warn('[SECURITY WARNING] SUPEROWNER_USERNAME or SUPEROWNER_PASSWORD environment variable is not set. Superowner account initialization skipped.');
     } else {
+      const disallowedDefaults = ['superowner', 'shopos_superowner'];
+      const normSO = soUsername.trim().toLowerCase();
+      if (disallowedDefaults.includes(normSO)) {
+        const errMsg = `[FATAL SECURITY ERROR] SUPEROWNER_USERNAME cannot be set to legacy default username "${soUsername}". You must configure a unique, secure custom username in production.`;
+        console.error(errMsg);
+        if (process.env.NODE_ENV === 'production') {
+          process.exit(1);
+        }
+        throw new Error(errMsg);
+      }
       const existingSO = db.prepare('SELECT id FROM users WHERE role = ? OR username = ?').get('superowner', soUsername);
       if (!existingSO) {
         const salt = bcrypt.genSaltSync(12);
