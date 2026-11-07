@@ -4,71 +4,88 @@ const { resolveTradeId, isBatchlessActive } = require('../utils/tradeBatch');
 const { LEGACY_TENANT_ID } = require('../constants/tenant');
 const { db } = require('../config/database');
 
-test('TRADE BUSINESS TYPE NORMALISATION & PARITY TEST SUITE', async (t) => {
-  await t.test('1. Normalisation Decision Table - Server resolveTradeId', () => {
-    // Missing / NULL / empty cases
-    assert.equal(resolveTradeId(null, LEGACY_TENANT_ID), 'frozen_food', 'NULL for latif_001 must resolve to frozen_food');
-    assert.equal(resolveTradeId('', LEGACY_TENANT_ID), 'frozen_food', 'Empty string for latif_001 must resolve to frozen_food');
-    assert.equal(resolveTradeId(undefined, LEGACY_TENANT_ID), 'frozen_food', 'Undefined for latif_001 must resolve to frozen_food');
-    assert.equal(resolveTradeId(null, 'default'), 'frozen_food', 'default tenant must resolve to frozen_food');
+test('TRADE BUSINESS TYPE NORMALISATION & MIGRATION TEST SUITE', async (t) => {
+  await t.test('1. Normalisation Decision Table - Pure resolveTradeId (zero tenant hardcoding)', () => {
+    // Missing / NULL / empty cases strictly return retail_general without tenant checking
+    assert.equal(resolveTradeId(null), 'retail_general', 'NULL must safely default to retail_general');
+    assert.equal(resolveTradeId(''), 'retail_general', 'Empty string must safely default to retail_general');
+    assert.equal(resolveTradeId(undefined), 'retail_general', 'Undefined must safely default to retail_general');
+    assert.equal(resolveTradeId('   '), 'retail_general', 'Whitespace must safely default to retail_general');
 
-    // Missing for any other tenant -> retail_general
-    assert.equal(resolveTradeId(null, 't_other_store'), 'retail_general', 'NULL for non-Latif tenant must safely resolve to retail_general');
-    assert.equal(resolveTradeId('', 't_other_store'), 'retail_general', 'Empty string for non-Latif tenant must safely resolve to retail_general');
-    assert.equal(resolveTradeId(undefined, 't_other_store'), 'retail_general', 'Undefined for non-Latif tenant must safely resolve to retail_general');
+    // Frozen Food variations & aliases
+    assert.equal(resolveTradeId('Frozen Food'), 'frozen_food', 'Title case "Frozen Food" must resolve to frozen_food');
+    assert.equal(resolveTradeId('frozen food'), 'frozen_food', 'Space separated "frozen food" must resolve to frozen_food');
+    assert.equal(resolveTradeId('FROZEN_FOOD'), 'frozen_food', 'Uppercase "FROZEN_FOOD" must resolve to frozen_food');
+    assert.equal(resolveTradeId('frozen_food'), 'frozen_food', 'Exact "frozen_food" must resolve to frozen_food');
+    assert.equal(resolveTradeId('meat'), 'frozen_food', 'Alias "meat" must resolve to frozen_food');
+    assert.equal(resolveTradeId('poultry'), 'frozen_food', 'Alias "poultry" must resolve to frozen_food');
+    assert.equal(resolveTradeId('frozen'), 'frozen_food', 'Alias "frozen" must resolve to frozen_food');
 
-    // Legacy and compound casing
-    assert.equal(resolveTradeId('Frozen Food', 't_any'), 'frozen_food', 'Title case "Frozen Food" must resolve to frozen_food');
-    assert.equal(resolveTradeId('frozen food', 't_any'), 'frozen_food', 'Space separated "frozen food" must resolve to frozen_food');
-    assert.equal(resolveTradeId('FROZEN_FOOD', 't_any'), 'frozen_food', 'Uppercase "FROZEN_FOOD" must resolve to frozen_food');
-    assert.equal(resolveTradeId('frozen_food', 't_any'), 'frozen_food', 'Exact "frozen_food" must resolve to frozen_food');
-    assert.equal(resolveTradeId('meat', 't_any'), 'frozen_food', 'Alias "meat" must resolve to frozen_food');
-    assert.equal(resolveTradeId('poultry', 't_any'), 'frozen_food', 'Alias "poultry" must resolve to frozen_food');
-    assert.equal(resolveTradeId('frozen', 't_any'), 'frozen_food', 'Alias "frozen" must resolve to frozen_food');
-
-    // Retail variations
-    assert.equal(resolveTradeId('retail', 't_any'), 'retail_general', 'Alias "retail" must resolve to retail_general');
-    assert.equal(resolveTradeId('general', 't_any'), 'retail_general', 'Alias "general" must resolve to retail_general');
-    assert.equal(resolveTradeId('retail_general', 't_any'), 'retail_general', 'Exact "retail_general" must resolve to retail_general');
-    assert.equal(resolveTradeId('Retail Store', 't_any'), 'retail_general', 'Fuzzy "Retail Store" must resolve to retail_general');
+    // Retail variations & aliases
+    assert.equal(resolveTradeId('retail'), 'retail_general', 'Alias "retail" must resolve to retail_general');
+    assert.equal(resolveTradeId('general'), 'retail_general', 'Alias "general" must resolve to retail_general');
+    assert.equal(resolveTradeId('retail_general'), 'retail_general', 'Exact "retail_general" must resolve to retail_general');
+    assert.equal(resolveTradeId('Retail Store'), 'retail_general', 'Fuzzy "Retail Store" must resolve to retail_general');
 
     // Other supported trades
-    assert.equal(resolveTradeId('pharmacy', 't_any'), 'pharmacy', 'pharmacy trade resolves correctly');
-    assert.equal(resolveTradeId('medical', 't_any'), 'pharmacy', 'Alias "medical" resolves to pharmacy');
-    assert.equal(resolveTradeId('clothing', 't_any'), 'clothing', 'clothing trade resolves correctly');
-    assert.equal(resolveTradeId('apparel', 't_any'), 'clothing', 'Alias "apparel" resolves to clothing');
+    assert.equal(resolveTradeId('pharmacy'), 'pharmacy', 'pharmacy trade resolves correctly');
+    assert.equal(resolveTradeId('medical'), 'pharmacy', 'Alias "medical" resolves to pharmacy');
+    assert.equal(resolveTradeId('clothing'), 'clothing', 'clothing trade resolves correctly');
+    assert.equal(resolveTradeId('apparel'), 'clothing', 'Alias "apparel" resolves to clothing');
   });
 
-  await t.test('2. Database Integration & isBatchlessActive Behavior', async () => {
-    const retailTenant = `t_norm_retail_${Date.now()}`;
-
-    // Tenant latif_001 simulation with empty string business_type
+  await t.test('2. Additive, Idempotent Migration: Backfill LEGACY_TENANT_ID business_type', async () => {
+    // 1. Reset LEGACY_TENANT_ID business_type to empty string to simulate legacy unmigrated record
     try {
       await db.run(
-        "INSERT INTO tenants (id, business_name, owner_name, plan, business_type, is_active) VALUES (?, 'Latif Stand-in', 'Latif Owner', 'pro', '', 1)",
+        "INSERT INTO tenants (id, business_name, owner_name, plan, business_type, is_active) VALUES (?, 'Latif Traders', 'Mudassir Arif', 'pro', '', 1)",
         [LEGACY_TENANT_ID]
       );
     } catch (_) {
-      // If latif_001 already exists in db, update it
       await db.run("UPDATE tenants SET business_type = '' WHERE id = ?", [LEGACY_TENANT_ID]);
     }
 
-    // latif_001 with empty business_type must NEVER be batchless (frozen_food preserved)
+    // Verify row was set to empty
+    let tenantRow = await db.get("SELECT business_type FROM tenants WHERE id = ?", [LEGACY_TENANT_ID]);
+    assert.equal(tenantRow.business_type, '', 'Pre-condition: legacy tenant has empty business_type');
+
+    // 2. Define the exact migration statement from database.js
+    const runMigration = async () => {
+      await db.run(`
+        UPDATE tenants
+        SET business_type = 'frozen_food'
+        WHERE id = ?
+          AND (business_type IS NULL OR TRIM(business_type) = '')
+      `, [LEGACY_TENANT_ID]);
+    };
+
+    // Run 1: First execution
+    await runMigration();
+    tenantRow = await db.get("SELECT business_type FROM tenants WHERE id = ?", [LEGACY_TENANT_ID]);
+    assert.equal(tenantRow.business_type, 'frozen_food', 'Run 1: legacy tenant business_type backfilled to frozen_food');
+
+    // Run 2: Second execution (Idempotency assertion)
+    await runMigration();
+    tenantRow = await db.get("SELECT business_type FROM tenants WHERE id = ?", [LEGACY_TENANT_ID]);
+    assert.equal(tenantRow.business_type, 'frozen_food', 'Run 2: Idempotent execution preserves frozen_food without side-effects');
+
+    // Verify isBatchlessActive remains false (cold room / batches strictly preserved for legacy tenant)
     const latifBatchless = await isBatchlessActive(db, LEGACY_TENANT_ID);
-    assert.equal(latifBatchless, false, 'latif_001 with empty business_type must strictly keep batch/cold room mode (not batchless)');
+    assert.equal(latifBatchless, false, 'Legacy tenant with frozen_food keeps batch and cold room features active');
 
-    // Other tenant with empty business_type resolves to retail_general
+    // 3. Non-legacy tenant with empty business_type is untouched by migration
+    const nonLegacyTenant = `t_unmigrated_retail_${Date.now()}`;
     await db.run(
-      "INSERT INTO tenants (id, business_name, owner_name, plan, business_type, is_active) VALUES (?, 'New Generic Shop', 'New Owner', 'free', '', 1)",
-      [retailTenant]
+      "INSERT INTO tenants (id, business_name, owner_name, plan, business_type, is_active) VALUES (?, 'New Generic Shop', 'Owner', 'free', '', 1)",
+      [nonLegacyTenant]
     );
 
-    // If retail tenant enables trade_ui_v2, it activates batchless
-    await db.run(
-      "INSERT INTO tenant_settings (tenant_id, key, value) VALUES (?, 'trade_ui_v2', 'true') ON CONFLICT(tenant_id, key) DO UPDATE SET value = 'true'",
-      [retailTenant]
-    );
-    const retailBatchless = await isBatchlessActive(db, retailTenant);
-    assert.equal(retailBatchless, true, 'retail tenant with empty business_type resolving to retail_general activates batchless mode when flag is ON');
+    // Run migration again: must not touch nonLegacyTenant
+    await runMigration();
+    const otherRow = await db.get("SELECT business_type FROM tenants WHERE id = ?", [nonLegacyTenant]);
+    assert.equal(otherRow.business_type, '', 'Migration only targets LEGACY_TENANT_ID; other tenants untouched');
+
+    // For other tenant, resolveTradeId cleanly returns retail_general
+    assert.equal(resolveTradeId(otherRow.business_type), 'retail_general');
   });
 });

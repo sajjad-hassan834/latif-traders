@@ -15,7 +15,7 @@ const ROOT_DIR = path.resolve(__dirname, '..', '..');
 
 const ALLOWED_EXACT_FILES = new Set([
   'server/constants/tenant.js',
-  'client/src/constants/tenant.js',
+
   'scripts/check_no_old_ui.js',
   'server/scripts/ci_grep_legacy_tenant.js'
 ]);

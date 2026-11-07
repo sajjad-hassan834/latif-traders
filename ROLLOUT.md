@@ -1,7 +1,7 @@
 # ShoppyOS SQLite Release Candidate & Security Rollout Guide
 
 ## Overview
-This document details the production deployment procedure for the **ShoppyOS SQLite Release Candidate 4 (`rc/sqlite-2026-11-06-4`)** on Railway. This release unites:
+This document details the production deployment procedure for the **ShoppyOS SQLite Release Candidate 6 (`rc/sqlite-2026-11-07-6`)** on Railway. This release unites:
 1. **Multi-Tenant Security Hardening (Batch 1 & 1b)**: Strict tenant isolation, cryptographic session revocation, password reset flow hardening, rate limiting, and production pre-flight checks.
 2. **ShoppyOS Brand System & Public Tokens**: Unified ShoppyOS branding, themes engine (`brand` default), clean non-conflicting tokens.
 3. **Multi-Trade Capabilities**: Backend support for batchless and dated trades, auto-lot generation, and NULL-expiry ordering.
@@ -40,7 +40,7 @@ Before triggering the deployment build, ensure the following variables are confi
    - Confirm `DB_PATH=/app/data/latif_traders.db` is set and non-empty.
    - Confirm `ALLOWED_ORIGINS` includes the 5 exact origins: `https://shoppyos.com,https://www.shoppyos.com,https://latiftraders.findcalculation.com,https://shopos.findcalculation.com,https://latif-traders.vercel.app`
 3. **Deploy the Release**:
-   - Deploy from the release tag `rc/sqlite-2026-11-06-4` on trunk branch `integration/local-all`.
+   - Deploy from the release tag `rc/sqlite-2026-11-07-6` on trunk branch `integration/local-all`.
 4. **Monitor Boot Logs**:
    - Look for: `[ShopOS Database] Connected to SQLite database: latif_traders.db` (file basename only).
    - Look for: `[ShopOS Security] Superowner account initialized from environment`.

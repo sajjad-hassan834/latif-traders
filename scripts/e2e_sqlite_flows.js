@@ -80,8 +80,8 @@ async function runTenantFlow(browser, tenantMeta) {
   console.log(`  ✅ Navigated to Products page`);
 
   // 1. ADD PRODUCT
-  // Click "+ Add" button
-  const addBtn = page.locator('button:has-text("+ Add")').first();
+  // Click "+ Add" or "+ Add Product" button
+  const addBtn = page.locator('button:has-text("+ Add Product"), button:has-text("+ Add"), button:has-text("Add Product")').first();
   await addBtn.click();
   await page.waitForTimeout(600);
 
@@ -173,6 +173,69 @@ async function runTenantFlow(browser, tenantMeta) {
   console.log(`  🎉 Finished full flow for ${tenantMeta.business_name}`);
 }
 
+async function runAssetVerificationFlow(browser) {
+  console.log(`\n======================================================`);
+  console.log(`RUNNING FLOW: Legacy Receipt Image & Tenant Logo Asset Drill`);
+  console.log(`======================================================`);
+
+  const uploadsDir = path.resolve(__dirname, '../data/uploads');
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+  const testLogoPath = path.join(uploadsDir, 'legacy_e2e_logo.png');
+  const dummyPng = Buffer.from('89504E470D0A1A0A0000000D49484452000000010000000108060000001F15C4890000000A49444154789C63000100000500010D0A2D0000000049454E44AE426082', 'hex');
+  fs.writeFileSync(testLogoPath, dummyPng);
+
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  // 1. Verify Legacy Logo fallback via /api/settings/logo/:tenantId/:filename
+  const logoRes = await page.goto(`http://localhost:5000/api/settings/logo/latif_001/legacy_e2e_logo.png`);
+  console.log(`  ✅ Legacy Logo fetched via API route: HTTP ${logoRes.status()}`);
+  if (logoRes.status() !== 200) throw new Error(`Legacy logo returned HTTP ${logoRes.status()}`);
+
+  // 2. Verify Legacy Receipt image in data/uploads
+  const receiptRes = await page.goto(`http://localhost:5000/uploads/receipt_1792322508163_682.png`);
+  console.log(`  ✅ Legacy Receipt Image fetched: HTTP ${receiptRes.status()}`);
+  if (receiptRes.status() !== 200) throw new Error(`Legacy receipt image returned HTTP ${receiptRes.status()}`);
+
+  // 3. Render HTML page displaying both logo and receipt image with Cross-Origin headers
+  const drillHtmlPath = path.join(THEME_REPORT_DIR, 'asset-drill.html');
+  fs.writeFileSync(drillHtmlPath, `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Asset Verification Drill</title>
+        <style>
+          body { font-family: sans-serif; background: #0f172a; color: #fff; padding: 24px; text-align: center; }
+          .card { background: #1e293b; border-radius: 12px; padding: 16px; margin: 16px auto; max-width: 600px; }
+          img { border-radius: 8px; border: 1px solid #334155; }
+        </style>
+      </head>
+      <body>
+        <h2>ShoppyOS Staging Asset Verification</h2>
+        <div class="card">
+          <h3>Tenant Monogram / Logo</h3>
+          <img src="http://localhost:5000/api/settings/logo/latif_001/legacy_e2e_logo.png" width="80" height="80" />
+        </div>
+        <div class="card">
+          <h3>Legacy Receipt Image</h3>
+          <img src="http://localhost:5000/uploads/receipt_1792322508163_682.png" width="300" />
+        </div>
+      </body>
+    </html>
+  `);
+
+  await page.goto(`file://${drillHtmlPath}`);
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: path.join(THEME_REPORT_DIR, 'e2e-legacy-logo-and-receipt.png') });
+  console.log(`  📸 Saved screenshot: theme-report/e2e-legacy-logo-and-receipt.png`);
+
+  await context.close();
+  try { fs.unlinkSync(testLogoPath); } catch (_) {}
+  try { fs.unlinkSync(drillHtmlPath); } catch (_) {}
+  console.log(`  🎉 Verified legacy logo fallback and receipt image loading cleanly.`);
+}
+
 async function main() {
   const browser = await chromium.launch({
     headless: true,
@@ -208,6 +271,9 @@ async function main() {
       location: 'Karachi Central',
       productPrefix: 'Ballpoint Pen Pack'
     });
+
+    // Flow 3: Legacy Receipt & Tenant Logo Verification Flow
+    await runAssetVerificationFlow(browser);
 
     console.log('\n======================================================');
     console.log('✅ ALL E2E PLAYWRIGHT FLOWS COMPLETED SUCCESSFULLY!');

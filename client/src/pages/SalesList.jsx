@@ -1449,7 +1449,7 @@ export default function SalesList({ setTab }) {
             <form onSubmit={handleSubmitStatus}>
               <div className="modal-header">
                 <div>
-                  <h3 style={{ margin: 0 }}>Status</h3>
+                  <h3 style={{ margin: 0 }}>Update Status</h3>
                   <p className="modal-subtitle">Order #{statusModalOrder.invoice_no}</p>
                 </div>
                 <button type="button" onClick={() => setStatusModalOrder(null)} className="modal-close-btn">
@@ -1504,7 +1504,7 @@ export default function SalesList({ setTab }) {
                   Cancel
                 </button>
                 <button type="submit" disabled={statusSubmitting} className="btn btn-primary btn-sm">
-                  {statusSubmitting ? 'Saving...' : 'Save'}
+                  {statusSubmitting ? 'Updating...' : 'Update Status'}
                 </button>
               </div>
             </form>
@@ -1619,7 +1619,7 @@ export default function SalesList({ setTab }) {
             <form onSubmit={handleBulkStatusSubmit}>
               <div className="modal-header">
                 <div>
-                  <h3 style={{ margin: 0 }}>Status</h3>
+                  <h3 style={{ margin: 0 }}>Update Status</h3>
                   <p className="modal-subtitle">Applying to {selectedOrders.length} selected orders</p>
                 </div>
                 <button type="button" onClick={() => setBulkStatusModalOpen(false)} className="modal-close-btn">

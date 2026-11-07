@@ -6,14 +6,13 @@ import { getTradeCapabilities } from '../utils/tradeCapabilities';
  * useTradeProfile hook
  *
  * Exposes current tenant trade capabilities, UI feature flags, and localized terminology.
- * Resolves business_type with legacy tenant safety (LEGACY_TENANT_ID -> frozen_food; other -> retail_general).
  */
 export function useTradeProfile() {
   const { tenant } = useAuth();
 
   const tradeProfile = useMemo(() => {
-    return getTradeCapabilities(tenant?.business_type, tenant?.id);
-  }, [tenant?.business_type, tenant?.id]);
+    return getTradeCapabilities(tenant?.business_type);
+  }, [tenant?.business_type]);
 
   return {
     ...tradeProfile,

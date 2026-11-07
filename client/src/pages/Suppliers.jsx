@@ -1093,7 +1093,7 @@ export default function Suppliers() {
                 </div>
                 <div style={{ display: 'flex', gap: '0.6rem' }}>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save</button>
+                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Changes</button>
                 </div>
               </div>
             </form>

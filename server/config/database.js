@@ -911,6 +911,18 @@ function initializeDatabase() {
     `).run();
   } catch (_) {}
 
+  // Idempotent migration: Ensure legacy tenant has frozen_food business_type if NULL or empty
+  try {
+    db.prepare(`
+      UPDATE tenants
+      SET business_type = 'frozen_food'
+      WHERE id = '${LEGACY_TENANT_ID}'
+        AND (business_type IS NULL OR TRIM(business_type) = '')
+    `).run();
+  } catch (err) {
+    console.error('Migration error backfilling legacy tenant business_type:', err.message);
+  }
+
   // Safe schema migrations for existing databases
   try {
     db.prepare("ALTER TABLE batches ADD COLUMN supplier_id INTEGER REFERENCES suppliers(id)").run();

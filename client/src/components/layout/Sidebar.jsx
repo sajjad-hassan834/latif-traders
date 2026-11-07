@@ -23,7 +23,7 @@ import { resolveTradeId } from '../../utils/tradeCapabilities';
 export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isCollapsed, toggleCollapse }) {
   const { role, roleLabel, isAdmin, tenant, plan } = useAuth();
   const userRole = role || 'sales';
-  const term = getTerminology(resolveTradeId(tenant?.business_type, tenant?.id));
+  const term = getTerminology(resolveTradeId(tenant?.business_type));
 
   const menuSections = [
     {

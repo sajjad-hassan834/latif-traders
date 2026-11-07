@@ -1990,7 +1990,7 @@ export default function Purchases() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setShowEditModal(false); setEditForm(null); }}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '100px' }}>Save</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '100px' }}>Save Changes</button>
               </div>
             </form>
           </div>

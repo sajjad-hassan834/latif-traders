@@ -331,12 +331,12 @@ export default function Customers() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '36px' }}
             >
               <RefreshCw size={14} className={auditing ? 'spin' : ''} />
-              <span>{auditing ? 'Auditing...' : 'Sync'}</span>
+              <span>{auditing ? 'Auditing...' : 'Audit Balances'}</span>
             </button>
           )}
           <button onClick={() => setShowAddModal(true)} className="btn btn-primary" style={{ height: '36px' }}>
             <Plus size={16} />
-            <span>+ Customer</span>
+            <span>+ Add Customer</span>
           </button>
         </div>
       </div>
@@ -460,7 +460,7 @@ export default function Customers() {
                               onClick: () => openLedger(c)
                             },
                             c.current_balance > 0 && {
-                              label: 'Payment',
+                              label: 'Receive Payment',
                               icon: <DollarSign size={14} color="#15803d" />,
                               onClick: () => openPaymentModal(c)
                             },
@@ -1335,7 +1335,7 @@ export default function Customers() {
           <div className="modal-content" style={{ maxWidth: '580px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Edit</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Edit Customer</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Update contact information, account type, and credit limits.
                 </div>
@@ -1451,7 +1451,7 @@ export default function Customers() {
                 </div>
                 <div style={{ display: 'flex', gap: '0.6rem' }}>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save</button>
+                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Changes</button>
                 </div>
               </div>
             </form>

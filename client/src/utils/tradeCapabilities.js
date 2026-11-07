@@ -7,22 +7,16 @@
 
 import sharedData from '../../../shared/tradeCapabilities.json';
 import { getTerminology, BUSINESS_TYPE_LABELS } from './terminology';
-import { LEGACY_TENANT_ID } from '../constants/tenant';
 
 export const TRADE_CAPABILITIES = sharedData.trades;
 export const TRADE_ALIASES = sharedData.aliases;
 
 /**
  * Resolves a trade identifier applying aliases ('retail' -> 'retail_general').
- * If tradeInput is missing/null/empty:
- * - For tenantId === LEGACY_TENANT_ID or 'default', resolves to 'frozen_food'
- * - For all other tenants, safely resolves to 'retail_general'
+ * If tradeInput is missing/null/empty, safely defaults to 'retail_general'.
  */
-export function resolveTradeId(tradeInput, tenantId = null) {
+export function resolveTradeId(tradeInput) {
   if (!tradeInput) {
-    if (tenantId === LEGACY_TENANT_ID || tenantId === 'default') {
-      return 'frozen_food';
-    }
     return 'retail_general';
   }
 
@@ -42,10 +36,10 @@ export function resolveTradeId(tradeInput, tenantId = null) {
 }
 
 /**
- * Returns capability flags and terminology for a given business type and tenant.
+ * Returns capability flags and terminology for a given business type.
  */
-export function getTradeCapabilities(businessType, tenantId = null) {
-  const tradeId = resolveTradeId(businessType, tenantId);
+export function getTradeCapabilities(businessType) {
+  const tradeId = resolveTradeId(businessType);
   const resolvedTrade = TRADE_CAPABILITIES[tradeId] || TRADE_CAPABILITIES.retail_general;
   const terminology = getTerminology(resolvedTrade.id);
 

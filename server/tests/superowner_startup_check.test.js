@@ -39,3 +39,4 @@ test('SUPEROWNER STARTUP SAFETY: Disallow legacy default usernames', async (t) =
     assert.ok(child.stdout.includes('CUSTOM_SO_OK'), 'Script must finish initialization');
   });
 });
+

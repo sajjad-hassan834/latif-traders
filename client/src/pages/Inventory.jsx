@@ -1658,7 +1658,7 @@ export default function Inventory() {
           <div className="modal-content" style={{ maxWidth: '760px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Edit</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Edit Product</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Update product details, pricing tiers, and inventory alert levels.
                 </div>
@@ -1865,7 +1865,7 @@ export default function Inventory() {
                 </div>
                 <div style={{ display: 'flex', gap: '0.6rem' }}>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save</button>
+                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Changes</button>
                 </div>
               </div>
             </form>

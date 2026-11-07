@@ -197,7 +197,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
 
   const userInitial = user?.full_name?.charAt(0) || user?.username?.charAt(0) || 'U';
   const userEmail = user?.email || (user?.username ? `${user.username}@shop.local` : '');
-  const businessType = resolveTradeId(tenant?.business_type, tenant?.id);
+  const businessType = resolveTradeId(tenant?.business_type);
   const businessTypeLabel = BUSINESS_TYPE_NAMES[businessType] || 'Retail & Trade';
   const currentPlan = plan || 'free';
 
@@ -466,10 +466,10 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               onClick={() => setTab('pos')}
               className="btn btn-primary btn-sm"
               style={{ padding: '0 0.65rem', height: '30px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-              title="Open POS Terminal"
+              title="Open New Sale (POS)"
             >
               <PlusCircle size={14} />
-              <span>POS</span>
+              <span>New Sale</span>
             </button>
           )}
 
