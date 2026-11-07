@@ -25,7 +25,8 @@ import {
   Sparkles,
   Users as UsersIcon,
   Receipt,
-  Upload
+  Upload,
+  ArrowUpRight
 } from 'lucide-react';
 import { api, API_ORIGIN } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
