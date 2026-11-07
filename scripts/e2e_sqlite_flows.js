@@ -21,6 +21,7 @@
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
+const { LEGACY_TENANT_ID } = require('../server/constants/tenant');
 
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const BASE_URL = 'http://localhost:5173';
@@ -189,7 +190,7 @@ async function runAssetVerificationFlow(browser) {
   const page = await context.newPage();
 
   // 1. Verify Legacy Logo fallback via /api/settings/logo/:tenantId/:filename
-  const logoRes = await page.goto(`http://localhost:5000/api/settings/logo/latif_001/legacy_e2e_logo.png`);
+  const logoRes = await page.goto(`http://localhost:5000/api/settings/logo/${LEGACY_TENANT_ID}/legacy_e2e_logo.png`);
   console.log(`  ✅ Legacy Logo fetched via API route: HTTP ${logoRes.status()}`);
   if (logoRes.status() !== 200) throw new Error(`Legacy logo returned HTTP ${logoRes.status()}`);
 
@@ -215,7 +216,7 @@ async function runAssetVerificationFlow(browser) {
         <h2>ShoppyOS Staging Asset Verification</h2>
         <div class="card">
           <h3>Tenant Monogram / Logo</h3>
-          <img src="http://localhost:5000/api/settings/logo/latif_001/legacy_e2e_logo.png" width="80" height="80" />
+          <img src="http://localhost:5000/api/settings/logo/${LEGACY_TENANT_ID}/legacy_e2e_logo.png" width="80" height="80" />
         </div>
         <div class="card">
           <h3>Legacy Receipt Image</h3>
