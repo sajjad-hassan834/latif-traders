@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, tenantContext } = require('../middleware/auth');
 const { loginRateLimiter, registerRateLimiter, forgotPasswordRateLimiter, changePasswordRateLimiter } = require('../middleware/rateLimiter');
 
 router.post('/register', registerRateLimiter, authController.register);
@@ -10,6 +10,7 @@ router.post('/logout', authenticate, authController.logout);
 router.get('/me', authenticate, authController.getCurrentUser);
 router.post('/change-password', authenticate, changePasswordRateLimiter, authController.changePassword);
 router.put('/profile', authenticate, authController.updateProfile);
+
 
 // Public password reset request & token status check
 router.post('/forgot-password', forgotPasswordRateLimiter, authController.requestPasswordReset);

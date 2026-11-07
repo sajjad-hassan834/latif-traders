@@ -255,8 +255,8 @@ html[data-app-theme="midnight-amber"],
   color-scheme: light;
   --bg-page: #F8FAFC;
   --bg-sidebar: #0A1128;
-  --text-sidebar: #94A3B8;
-  --text-sidebar-section: #64748B;
+  --text-sidebar: #CBD5E1;
+  --text-sidebar-section: #94A3B8;
   --bg-sidebar-active: #F59E0B;
   --text-sidebar-active: #1E1B18;
   --bg-card: #FFFFFF;
@@ -279,7 +279,7 @@ html[data-app-theme="midnight-amber"],
   --pill-amber-text: #92400E;
   --pill-red-bg: #FEE2E2;
   --pill-red-text: #991B1B;
-  --logo-text: #0F172A;
+  --logo-text: #FFFFFF;
   --shadow-card: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
 
   /* Ancillary helper tokens */
