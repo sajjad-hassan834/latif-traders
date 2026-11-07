@@ -352,6 +352,10 @@ exports.downloadBackup = async (req, res) => {
 
 // Restore tenant data from tenant backup file
 exports.restoreBackup = async (req, res) => {
+  return res.status(403).json({
+    success: false,
+    message: 'In-app tenant restore is disabled for data safety. Full database restorations must be performed via server CLI snapshot.'
+  });
   try {
     const tenantId = req.tenant_id || req.user?.tenant_id;
     if (!tenantId) {
