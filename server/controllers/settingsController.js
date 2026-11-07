@@ -320,11 +320,17 @@ exports.uploadLogo = async (req, res) => {
 exports.serveLogo = (req, res) => {
   try {
     const { tenantId, filename } = req.params;
-    if (!tenantId || !filename || filename.includes('..') || path.isAbsolute(filename) || path.basename(filename) !== filename) {
+    // Strict alphanumeric/dash/underscore enforcement for tenantId
+    if (!tenantId || !/^[A-Za-z0-9_-]+$/.test(tenantId)) {
+      return res.status(400).json({ success: false, message: 'Invalid tenant identifier.' });
+    }
+
+    // Strict filename check
+    if (!filename || filename.includes('..') || path.isAbsolute(filename) || path.basename(filename) !== filename) {
       return res.status(400).json({ success: false, message: 'Invalid file parameter.' });
     }
 
-    const tenantUploadDir = path.join(UPLOAD_DIR, path.basename(tenantId));
+    const tenantUploadDir = path.join(UPLOAD_DIR, tenantId);
     let filePath = path.join(tenantUploadDir, filename);
 
     if (!fs.existsSync(filePath)) {
@@ -337,9 +343,16 @@ exports.serveLogo = (req, res) => {
       }
     }
 
+    // Strict boundary enforcement: resolved path must strictly stay within UPLOAD_DIR
+    const resolvedUploadDir = path.resolve(UPLOAD_DIR);
+    const resolvedPath = path.resolve(filePath);
+    if (!resolvedPath.startsWith(resolvedUploadDir + path.sep)) {
+      return res.status(403).json({ success: false, message: 'Access denied.' });
+    }
+
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    return res.sendFile(path.resolve(filePath));
+    return res.sendFile(resolvedPath);
   } catch (err) {
     console.error('Serve logo error:', err);
     return res.status(500).json({ success: false, message: 'Failed to retrieve logo.' });
