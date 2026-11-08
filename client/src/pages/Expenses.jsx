@@ -23,7 +23,7 @@ import {
   ExternalLink,
   ChevronDown
 } from 'lucide-react';
-import { api } from '../utils/api';
+import { api, API_ORIGIN } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
 import { useAuth } from '../context/AuthContext';
@@ -68,7 +68,7 @@ function ExpensesContent() {
   const getFileUrl = (path) => {
     if (!path) return '';
     if (path.startsWith('http') || path.startsWith('data:')) return path;
-    const rawBase = import.meta.env.VITE_API_URL || '';
+    const rawBase = API_ORIGIN;
     return rawBase ? `${rawBase.replace(/\/$/, '')}${path}` : path;
   };
 

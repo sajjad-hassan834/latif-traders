@@ -26,7 +26,7 @@ import {
   Receipt,
   Upload
 } from 'lucide-react';
-import { api } from '../utils/api';
+import { api, API_ORIGIN } from '../utils/api';
 import { formatDate, formatDateTime } from '../utils/formatters';
 import { applyAppTheme as applyThemeHelper } from '../utils/theme';
 import { useAuth } from '../context/AuthContext';
@@ -307,7 +307,7 @@ export default function Settings({ initialTab: propInitialTab }) {
     try {
       setDownloadingBackup(filename);
       const token = localStorage.getItem('lt_token');
-      const rawBase = import.meta.env.VITE_API_URL || '';
+      const rawBase = API_ORIGIN;
       const apiBase = rawBase ? `${rawBase.replace(/\/$/, '')}/api` : '/api';
 
       const res = await fetch(`${apiBase}/backups/download/${encodeURIComponent(filename)}`, {

@@ -1,7 +1,10 @@
 // Dynamic API URL: points to Railway backend in production or uses Vite local proxy in dev
 const DEFAULT_PROD_API = 'https://latif-traders-production.up.railway.app';
 // In production on Vercel, requests use relative '/api' so Vercel forwards them seamlessly (same-origin, 0 CORS issues)
-const rawBase = import.meta.env.VITE_API_URL || '';
+// Normalize: accept values without protocol (e.g. 'host.up.railway.app') by prepending https://
+const envApi = (import.meta.env.VITE_API_URL || '').trim();
+export const API_ORIGIN = envApi ? (/^https?:\/\//i.test(envApi) ? envApi : `https://${envApi}`).replace(/\/+$/, '') : '';
+const rawBase = API_ORIGIN;
 const API_BASE = rawBase ? `${rawBase.replace(/\/$/, '')}/api` : '/api';
 
 // High-performance in-memory cache for instant tab navigation (0ms load)
