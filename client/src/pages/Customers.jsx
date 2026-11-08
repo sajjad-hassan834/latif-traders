@@ -39,6 +39,7 @@ export default function Customers() {
   const [viewingSale, setViewingSale] = useState(null);
   const [viewingReceipt, setViewingReceipt] = useState(null);
   const [actionMenuId, setActionMenuId] = useState(null);
+  const [whatsAppModalCustomer, setWhatsAppModalCustomer] = useState(null);
 
   // In-modal ledger filters
   const [ledgerSearch, setLedgerSearch] = useState('');
@@ -1531,6 +1532,14 @@ export default function Customers() {
           onClose={() => setViewingReceipt(null)}
         />
       )}
+
+      {/* SMART WHATSAPP KHATA / REMINDER MODAL */}
+      <WhatsAppKhataModal
+        isOpen={Boolean(whatsAppModalCustomer)}
+        customer={whatsAppModalCustomer}
+        tenantName={tenantSettings?.shop_name || tenant?.business_name || 'Our Store'}
+        onClose={() => setWhatsAppModalCustomer(null)}
+      />
     </div>
   );
 }

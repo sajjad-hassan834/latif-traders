@@ -29,7 +29,8 @@ import {
   Sun,
   Moon,
   Sliders,
-  Check
+  Check,
+  Search
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../utils/api';
