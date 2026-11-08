@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Branch Assertion Guard
- * Ensures work happens strictly on main, integration/local-all or its children,
+ * Ensures work happens strictly on main or its direct children,
  * and verifies that commit 6f72dc8 (production base) is in the commit ancestry.
  */
 
@@ -37,19 +37,19 @@ if (hasAncestor === null) {
   process.exit(1);
 }
 
-// Check 2: Branch must be main, integration/local-all or a descendant
-if (currentBranch === 'main' || currentBranch === 'integration/local-all' || currentBranch.startsWith('release/')) {
-  console.log(`[assert_branch] OK: Running on trunk '${currentBranch}'.`);
+// Check 2: Branch must be main or a descendant
+if (currentBranch === 'main') {
+  console.log(`[assert_branch] OK: Running on trunk 'main'.`);
   process.exit(0);
 }
 
-// If on a different branch, ensure integration/local-all is an ancestor
-const isChildOfTrunk = run('git merge-base --is-ancestor integration/local-all HEAD');
+// If on a different branch, ensure main is an ancestor
+const isChildOfTrunk = run('git merge-base --is-ancestor main HEAD');
 if (isChildOfTrunk === null) {
-  console.error(`[assert_branch] ERROR: Branch '${currentBranch}' is NOT 'integration/local-all' nor a child of it.`);
-  console.error('Trunk is integration/local-all. All branches must be created from integration/local-all.');
+  console.error(`[assert_branch] ERROR: Branch '${currentBranch}' is NOT 'main' nor a child of it.`);
+  console.error('Trunk is main. All branches must be created from main.');
   process.exit(1);
 }
 
-console.log(`[assert_branch] OK: Running on '${currentBranch}' (child of trunk).`);
+console.log(`[assert_branch] OK: Branch '${currentBranch}' is a valid child of 'main'.`);
 process.exit(0);
