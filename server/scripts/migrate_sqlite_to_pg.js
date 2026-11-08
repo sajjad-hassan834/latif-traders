@@ -110,7 +110,12 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
 
     // 2. Migrate Tables in Dependency Order
     console.log('--- Migrating Tables in Dependency Order ---');
+    let validTenantUserKeys = new Set();
     for (const table of MIGRATION_TABLES) {
+      if (['sales', 'purchases', 'payments', 'expenses', 'returns', 'stock_adjustments', 'inventory_movements', 'audit_logs', 'password_reset_requests'].includes(table)) {
+        const uRes = await pg.query('SELECT tenant_id, id FROM users');
+        validTenantUserKeys = new Set(uRes.rows.map(r => r.tenant_id + ':' + r.id));
+      }
       // Check if table exists in SQLite
       const tblCheck = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(table);
       if (!tblCheck) {
@@ -147,12 +152,15 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
       const insertSql = `INSERT INTO "${table}" (${colList}) VALUES (${valPlaceholders})`;
 
       let validTenants = new Set();
-      let validTenantUserKeys = new Set();
       let validTenantCustomerKeys = new Set();
       let validTenantSupplierKeys = new Set();
       let tenantFirstCustomer = new Map();
       let tenantFirstSupplier = new Map();
 
+      if (table === 'sales') {
+        const uRes = await pg.query('SELECT tenant_id, id FROM users');
+        validTenantUserKeys = new Set(uRes.rows.map(r => r.tenant_id + ':' + r.id));
+      }
       if (table === 'audit_logs') {
         const tRes = await pg.query('SELECT id FROM tenants');
         validTenants = new Set(tRes.rows.map(r => r.id));
@@ -172,6 +180,14 @@ async function migrate(overrideSqlitePath, overrideDryRun) {
       }
       for (const row of rows) {
         let rowTenantId = row.tenant_id || LEGACY_TENANT_ID;
+        if (row.user_id && validTenantUserKeys && !validTenantUserKeys.has(rowTenantId + ':' + row.user_id)) {
+          row.user_id = null;
+        }
+        if (table === 'sales' && row.user_id) {
+          if (!validTenantUserKeys.has(rowTenantId + ':' + row.user_id)) {
+            row.user_id = null;
+          }
+        }
         if (table === 'audit_logs' && !validTenants.has(rowTenantId)) rowTenantId = LEGACY_TENANT_ID;
 
         let rowPartyId = row.party_id;
