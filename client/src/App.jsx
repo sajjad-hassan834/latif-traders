@@ -23,6 +23,7 @@ import SuperOwnerDashboard from './pages/SuperOwnerDashboard';
 import ForcedPasswordChange from './components/auth/ForcedPasswordChange';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import WorkspaceLoadingScreen from './components/common/WorkspaceLoadingScreen';
+import CommandPalette from './components/common/CommandPalette';
 import BrandPreview from './pages/BrandPreview';
 import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Store, CheckCircle2, Circle, X } from 'lucide-react';
 import { api } from './utils/api';
@@ -89,6 +90,23 @@ function MainApp() {
     return window.location.pathname === '/superowner/dashboard';
   });
   const [currentTab, setTabState] = useState(resolveInitialTab);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpen = () => setPaletteOpen(true);
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('lt-open-command-palette', handleOpen);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('lt-open-command-palette', handleOpen);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   // Centralized tab navigator that automatically resolves sub-tabs and synchronizes browser URL
   const setTab = (target, replace = false) => {
@@ -733,6 +751,7 @@ function MainApp() {
               </>
             )}
           </ErrorBoundary>
+        <CommandPalette isOpen={paletteOpen} onClose={() => setPaletteOpen(false)} setTab={setTab} />
         </main>
       </div>
     </div>

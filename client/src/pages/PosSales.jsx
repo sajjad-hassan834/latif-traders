@@ -27,11 +27,15 @@ import {
   PackageOpen,
   Package,
   List,
-  LayoutGrid
+  LayoutGrid,
+  Mic,
+  MicOff,
+  Sparkles
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
 import { playBeep, isAudioMuted, toggleAudioMute } from '../utils/audio';
+import { createSpeechRecognizer, parseVoiceOrder, isSpeechRecognitionSupported } from '../utils/voiceBilling';
 import { useAuth } from '../context/AuthContext';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
 import SearchableSelect from '../components/common/SearchableSelect';
@@ -63,6 +67,59 @@ export default function PosSales() {
   const [paidAmount, setPaidAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [notes, setNotes] = useState('');
+
+    const [isListening, setIsListening] = useState(false);
+  const [voiceNotice, setVoiceNotice] = useState('');
+
+  const handleToggleVoice = () => {
+    if (!isSpeechRecognitionSupported()) {
+      alert('Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.');
+      return;
+    }
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+    setIsListening(true);
+    setVoiceNotice('Listening... Speak in Urdu or English (e.g. "Do dabba Panadol aur teen Dawn bread")');
+    playBeep('scan');
+
+    const recognizer = createSpeechRecognizer({
+      onResult: (transcript) => {
+        setIsListening(false);
+        setVoiceNotice(`Heard: "${transcript}"`);
+        const matches = parseVoiceOrder(transcript, products);
+        if (matches && matches.length > 0) {
+          matches.forEach((m) => {
+            addToCart(m.product, m.quantity);
+            playBeep('scan');
+          });
+          setVoiceNotice(`Added ${matches.length} item(s) from voice!`);
+          setTimeout(() => setVoiceNotice(''), 3500);
+        } else {
+          playBeep('error');
+          setVoiceNotice(`Could not match products for: "${transcript}"`);
+          setTimeout(() => setVoiceNotice(''), 4000);
+        }
+      },
+      onError: (err) => {
+        setIsListening(false);
+        setVoiceNotice('Voice recognition error or permission denied.');
+        setTimeout(() => setVoiceNotice(''), 3000);
+      },
+      onEnd: () => {
+        setIsListening(false);
+      }
+    });
+
+    if (recognizer) {
+      try {
+        recognizer.start();
+      } catch (e) {
+        setIsListening(false);
+      }
+    }
+  };
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -797,6 +854,23 @@ export default function PosSales() {
         <div className={`pos-catalog ${mobileTab !== 'catalog' ? 'pos-mobile-hidden' : ''}`}>
           {/* SEARCH & ACTIONS BAR */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.45rem' }}>
+            {voiceNotice && (
+              <div style={{
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: isListening ? '#fffbeb' : '#f0f9ff',
+                border: isListening ? '1px solid #fde68a' : '1px solid #bae6fd',
+                color: isListening ? '#b45309' : '#0369a1',
+                fontSize: '11.5px',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <Sparkles size={13} />
+                <span>{voiceNotice}</span>
+              </div>
+            )}
             {/* Top Row: Search Input + Refresh + View Toggle */}
             <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
               <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>

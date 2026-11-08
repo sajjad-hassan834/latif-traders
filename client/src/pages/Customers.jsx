@@ -7,6 +7,7 @@ import Pagination from '../components/common/Pagination';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
 import ReceiptVoucherModal from '../components/invoices/ReceiptVoucherModal';
 import ActionMenu from '../components/common/ActionMenu';
+import WhatsAppKhataModal from '../components/common/WhatsAppKhataModal';
 import CustomDatePicker from '../components/common/CustomDatePicker';
 
 export default function Customers() {
@@ -1093,7 +1094,7 @@ export default function Customers() {
                   {hasValidPhone && (
                     <button
                       type="button"
-                      onClick={() => sendWhatsAppReminder(ledgerData.customer, ledgerData.summary.closing_balance)}
+                      onClick={() => setWhatsAppModalCustomer(ledgerData.customer)}
                       className="btn btn-secondary btn-sm"
                       style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px', color: '#16A34A', borderColor: '#86EFAC' }}
                       title="Send WhatsApp payment reminder with balance"

@@ -465,6 +465,42 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
             )}
           </div>
 
+                    {/* Command Palette Trigger */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('lt-open-command-palette'))}
+            className="hide-mobile"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '0 10px',
+              height: '30px',
+              borderRadius: '8px',
+              background: 'var(--hover-bg, #f1f5f9)',
+              border: '1px solid var(--border, #e2e8f0)',
+              color: 'var(--text-muted, #64748b)',
+              fontSize: '12px',
+              cursor: 'pointer',
+              marginRight: '6px'
+            }}
+            title="Search & AI Actions (Ctrl+K)"
+          >
+            <Search size={13} />
+            <span>Search or jump...</span>
+            <kbd style={{
+              fontSize: '10px',
+              background: 'var(--bg-card, #fff)',
+              border: '1px solid var(--border, #cbd5e1)',
+              borderRadius: '4px',
+              padding: '1px 5px',
+              fontWeight: 600,
+              color: 'var(--text-title, #0f172a)'
+            }}>
+              Ctrl K
+            </kbd>
+          </button>
+
           {/* Notification Center */}
           <NotificationCenter alerts={alerts} setTab={setTab} />
 

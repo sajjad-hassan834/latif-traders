@@ -412,7 +412,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .sidebar-section-header-btn:hover {
-  background: var(--bg-sidebar-active);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .sidebar-collapsed .sidebar .sidebar-section-header-btn,
@@ -693,7 +693,7 @@ body:not(.sidebar-collapsed) .sidebar:not(.collapsed) .nav-item::before {
 }
 
 .sidebar-section-header-btn:hover {
-  background: var(--bg-sidebar-active);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .sidebar-section-title-wrap {

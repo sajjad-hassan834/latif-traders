@@ -9,6 +9,7 @@ import { formatPKR, formatDate } from '../utils/formatters';
 import { exportToCSV } from '../utils/exportCsv';
 import { useAuth } from '../context/AuthContext';
 import SearchableSelect from '../components/common/SearchableSelect';
+import AiBillScannerModal from '../components/common/AiBillScannerModal';
 import Pagination from '../components/common/Pagination';
 import ActionMenu from '../components/common/ActionMenu';
 import CustomDatePicker from '../components/common/CustomDatePicker';
@@ -77,6 +78,7 @@ export default function Purchases() {
 
   // Modals
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showAiScanner, setShowAiScanner] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -1188,6 +1190,14 @@ export default function Purchases() {
           onPageChange={setCurrentPage}
         />
       </div>
+
+      {/* AI BILL SCANNER MODAL */}
+      <AiBillScannerModal
+        isOpen={showAiScanner}
+        onClose={() => setShowAiScanner(false)}
+        onApplyItems={handleApplyAiBill}
+        suppliers={suppliers}
+      />
 
       {/* NEW PURCHASE BILL MODAL (REBUILT PRIORITY 4) */}
       {showNewModal && (

@@ -186,8 +186,8 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
       {/* NAVIGATION ITEMS */}
       <nav className="sidebar-nav" style={{ paddingBottom: '0.5rem', flex: 1 }}>
         {visibleSections.map((section, idx) => {
-          const isSectionCollapsed = isCollapsed ? false : Boolean(collapsedSections[section.title]);
           const hasActiveItem = section.visibleItems.some(item => item.id === currentTab);
+          const isSectionCollapsed = isCollapsed ? false : (Boolean(collapsedSections[section.title]) && !hasActiveItem);
 
           return (
             <div key={idx} className="sidebar-section">
@@ -201,9 +201,7 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
               >
                 <div className="sidebar-section-title-wrap">
                   <span className="sidebar-section-title">{section.title}</span>
-                  {hasActiveItem && isSectionCollapsed && (
-                    <span className="sidebar-active-dot" title="Active item inside" />
-                  )}
+                  
                 </div>
                 <ChevronDown
                   size={12}
