@@ -1221,17 +1221,38 @@ const { tokenizeSqlForDriver } = require('./sqlTokenizer');
 
 let currentDriver = process.env.DB_DRIVER || 'sqlite';
 let pgAdapter = null;
+let pgInitAttempted = false;
 
 async function getPgAdapter() {
-  if (!pgAdapter) {
-    const connStr = process.env.DATABASE_URL || process.env.TEST_DATABASE_URL;
-    if (!connStr) {
-      throw new Error('DATABASE_URL is required when DB_DRIVER=postgres');
-    }
-    pgAdapter = new PostgresAdapter({ connectionString: connStr, max: parseInt(process.env.DATABASE_POOL_SIZE, 10) || 10 });
-    await pgAdapter.init();
+  if (pgAdapter) return pgAdapter;
+  if (pgInitAttempted && currentDriver === 'sqlite') {
+    return null;
   }
-  return pgAdapter;
+  const connStr = process.env.DATABASE_URL || process.env.TEST_DATABASE_URL;
+  if (!connStr) {
+    if (process.env.NODE_ENV === 'production' || process.env.ALLOW_SQLITE_FALLBACK !== 'false') {
+      console.warn('[DATABASE] No DATABASE_URL provided. Falling back safely to SQLite.');
+      currentDriver = 'sqlite';
+      pgInitAttempted = true;
+      return null;
+    }
+    throw new Error('DATABASE_URL is required when DB_DRIVER=postgres');
+  }
+  try {
+    const adapter = new PostgresAdapter({ connectionString: connStr, max: parseInt(process.env.DATABASE_POOL_SIZE, 10) || 10 });
+    await adapter.init();
+    pgAdapter = adapter;
+    return pgAdapter;
+  } catch (err) {
+    console.error(`[DATABASE CRITICAL] Postgres connection failed (${err.message}).`);
+    if (process.env.NODE_ENV === 'production' || process.env.ALLOW_SQLITE_FALLBACK !== 'false') {
+      console.warn('[DATABASE FAILSAFE] Automatically falling back to SQLite (latif_traders.db) to keep shop 100% online.');
+      currentDriver = 'sqlite';
+      pgInitAttempted = true;
+      return null;
+    }
+    throw err;
+  }
 }
 
 const dualDb = {
@@ -1245,7 +1266,7 @@ const dualDb = {
   async query(sql, params = []) {
     if (currentDriver === 'postgres') {
       const pg = await getPgAdapter();
-      return pg.query(sql, params);
+      if (pg) return pg.query(sql, params);
     }
     const tokenizedSql = tokenizeSqlForDriver(sql, 'sqlite');
     const isSelect = /^\s*(SELECT|PRAGMA|WITH)/i.test(tokenizedSql);
@@ -1261,7 +1282,7 @@ const dualDb = {
   async all(sql, params = []) {
     if (currentDriver === 'postgres') {
       const pg = await getPgAdapter();
-      return pg.all(sql, params);
+      if (pg) return pg.all(sql, params);
     }
     const tokenizedSql = tokenizeSqlForDriver(sql, 'sqlite');
     return db.prepare(tokenizedSql).all(...params);
@@ -1270,7 +1291,7 @@ const dualDb = {
   async get(sql, params = []) {
     if (currentDriver === 'postgres') {
       const pg = await getPgAdapter();
-      return pg.get(sql, params);
+      if (pg) return pg.get(sql, params);
     }
     const tokenizedSql = tokenizeSqlForDriver(sql, 'sqlite');
     return db.prepare(tokenizedSql).get(...params);
@@ -1279,7 +1300,7 @@ const dualDb = {
   async run(sql, params = []) {
     if (currentDriver === 'postgres') {
       const pg = await getPgAdapter();
-      return pg.run(sql, params);
+      if (pg) return pg.run(sql, params);
     }
     const tokenizedSql = tokenizeSqlForDriver(sql, 'sqlite');
     const res = db.prepare(tokenizedSql).run(...params);
@@ -1292,7 +1313,7 @@ const dualDb = {
   async exec(sql) {
     if (currentDriver === 'postgres') {
       const pg = await getPgAdapter();
-      return pg.exec(sql);
+      if (pg) return pg.exec(sql);
     }
     return db.exec(sql);
   },
@@ -1300,7 +1321,7 @@ const dualDb = {
   async transaction(callback) {
     if (currentDriver === 'postgres') {
       const pg = await getPgAdapter();
-      return pg.transaction(callback);
+      if (pg) return pg.transaction(callback);
     }
     db.prepare('BEGIN IMMEDIATE').run();
     try {
@@ -1316,7 +1337,7 @@ const dualDb = {
   async getNextNumber(tenantId, counterType, prefix, padLength = 4, forDate = new Date()) {
     if (currentDriver === 'postgres') {
       const pg = await getPgAdapter();
-      return pg.getNextNumber(tenantId, counterType, prefix, padLength, forDate);
+      if (pg) return pg.getNextNumber(tenantId, counterType, prefix, padLength, forDate);
     }
     const today = getPKTDate(forDate).replace(/-/g, '');
     const fullType = `${counterType}_${today}`;
@@ -1336,7 +1357,7 @@ const dualDb = {
   async measureLatency() {
     if (currentDriver === 'postgres') {
       const pg = await getPgAdapter();
-      return pg.measureLatency();
+      if (pg) return pg.measureLatency();
     }
     const start = Date.now();
     db.prepare('SELECT 1').get();
