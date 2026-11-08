@@ -22,6 +22,7 @@ import Settings from './pages/Settings';
 import SuperOwnerDashboard from './pages/SuperOwnerDashboard';
 import ForcedPasswordChange from './components/auth/ForcedPasswordChange';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import WorkspaceLoadingScreen from './components/common/WorkspaceLoadingScreen';
 import BrandPreview from './pages/BrandPreview';
 import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Store, CheckCircle2, Circle, X } from 'lucide-react';
 import { api } from './utils/api';
@@ -355,21 +356,7 @@ function MainApp() {
   }, [hasTabAccess]);
 
   if (loading) {
-    const isDark = (localStorage.getItem('lt_theme') || 'light') === 'dark';
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: isDark ? '#090d16' : '#f8fafc',
-        color: isDark ? '#38bdf8' : '#0284c7',
-        fontWeight: 600,
-        fontSize: '15px'
-      }}>
-        Loading ${BRAND_NAME} Workspace...
-      </div>
-    );
+    return <WorkspaceLoadingScreen />;
   }
 
   // ── Brand Preview Route (Dev Only) ──

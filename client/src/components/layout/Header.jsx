@@ -68,6 +68,13 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
   const [planExpiresAt, setPlanExpiresAt] = useState(null);
   const [theme, setTheme] = useState(() => getSavedAppTheme());
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const [tryNewLookDismissed, setTryNewLookDismissed] = useState(() => {
+    try {
+      return localStorage.getItem('dismiss_try_midnight_amber') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
 
   const superOwnerMenuRef = useRef(null);
@@ -1340,7 +1347,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               </span>
             </div>
             <p style={{ margin: '6px 0 0 0', color: '#374151', fontSize: '14px', lineHeight: 1.6 }}>
-              Manage multiple expiry dates and batch lots per item. ${BRAND_NAME} enforces FIFO (First In, First Out) deduction and displays alert badges for items near expiry in the top notification tray.
+              Manage multiple expiry dates and batch lots per item. {BRAND_NAME} enforces FIFO (First In, First Out) deduction and displays alert badges for items near expiry in the top notification tray.
             </p>
           </div>
 
@@ -1652,7 +1659,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               Issue Report Logged!
             </h4>
             <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-              Thank you for helping us improve ${BRAND_NAME}. Our engineering team has received your report with diagnostic details.
+              Thank you for helping us improve {BRAND_NAME}. Our engineering team has received your report with diagnostic details.
             </p>
             <button
               type="button"
