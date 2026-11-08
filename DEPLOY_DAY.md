@@ -1,6 +1,6 @@
 # ShoppyOS SQLite 1.0 Production Deployment Guide (`release/1.0-sqlite`)
 
-This runbook defines the exact, non-destructive deployment procedure for **`release/1.0-sqlite`** (pinned strictly to tag `rc/sqlite-2026-11-07-7`).
+This runbook defines the exact, non-destructive deployment procedure for **`release/1.0-sqlite`** (pinned strictly to tag **`rc/sqlite-2026-11-07-8`** or newer verified RC tag).
 Follow every step in sequence. Never skip any step.
 
 ---
@@ -60,17 +60,26 @@ Log in to the current live production application as Admin. Record or screenshot
    ```
 8. Save two copies: one on your local PC and one in private secure offline storage (e.g. encrypted external drive).
 
-### Step 3: Pre-Boot Check of the Three Settings Flags
-Inspect the downloaded live backup to verify the presence of legacy migration flags:
-```sql
-SELECT key, value FROM settings
-WHERE key IN ('clean_auto_payments_v2', 'clean_duplicate_receipts_v2', 'fix_customer_ledger_opening_bal_v5');
-```
-Or run the automated checker locally:
+### Step 3: Inspect Removed Migration Settings Keys & Ledger Discrepancies
+Run the read-only audit tool on your real downloaded backup:
 ```bash
-node scripts/check_flags.js path/to/latif_traders_backup_live.db
+node scripts/audit_removed_migrations.js path/to/latif_traders_backup_live.db
 ```
-- **Safety Guarantee**: In `release/1.0-sqlite`, the routines that delete unreferenced payments, duplicate receipts, and hardcoded customer opening balance adjustments have been completely removed. Even if any of these flags are absent in the live database, **the new code will NOT mutate or wipe any transactions or balances on boot**.
+*(Outputs aggregates only — never prints customer names, phones, or invoice numbers).*
+
+#### What Each Result Means:
+1. **`clean_auto_payments_v2`**:
+   - **EXISTS (value: 'true')**: The old code already executed this migration on your database in the past. Removing the code from the new release ensures it will **never run again** or wipe new invoice settlement records.
+   - **NOT FOUND**: The migration never ran on your database. Removing it ensures that existing invoice settlement payments are 100% preserved and will **never be wiped**.
+2. **`clean_duplicate_receipts_v2`**:
+   - **EXISTS (value: 'true')**: The old code previously merged same-day identical transactions.
+   - **NOT FOUND**: Legitimate same-day installments (e.g. morning/evening customer payments) remain intact.
+3. **`fix_customer_ledger_opening_bal_v5`**:
+   - **EXISTS (value: 'true')**: An early hardcoded customer adjustment was recorded.
+   - **NOT FOUND**: Customer opening balances were never hardcoded.
+4. **Customer Stored vs Ledger Discrepancies**:
+   - If discrepancies are reported, it indicates the difference between stored `current_balance` and raw transaction sum `(opening_balance + sales - payments - returns)`.
+   - In `release/1.0-sqlite`, the release code **NEVER** mutates or recalculates stored balances on startup. The data remains exactly as stored in your backup with **zero calculation drift**.
 
 ---
 
@@ -109,7 +118,7 @@ Set the remaining required variables in Railway:
 
 ## 4. Deployment Execution
 
-1. In Railway service settings, ensure the deployment branch or source is set to **`release/1.0-sqlite`** (pinned to tag `rc/sqlite-2026-11-07-7`).
+1. In Railway service settings, ensure the deployment branch or source is set to **`release/1.0-sqlite`** (pinned strictly to tag **`rc/sqlite-2026-11-07-8`** or a newer verified RC tag after a full matrix pass).
 2. Trigger the deployment build.
 3. **Inspect Boot Logs**:
    - Confirm: `[ShopOS Database] Connected to SQLite database: latif_traders.db`
@@ -144,7 +153,7 @@ Open Railway Web Dashboard -> **Deployments** -> Active Deployment -> **Terminal
    node scripts/baseline_report.js /app/data/snapshot_post_deploy.db > /app/data/baseline_after.json
    ```
 
-3. Copy or upload `baseline_before.json` (from Step 2) into `/app/data/baseline_before.json`, or copy `baseline_after.json` locally and run:
+3. Copy or compare against `baseline_before.json` (from Step 2) locally:
    ```bash
    node scripts/compare_baseline.js baseline_before.json baseline_after.json
    ```
@@ -182,56 +191,88 @@ Once the new superowner account is verified, disable the legacy default `shopos_
 
 ### Step 6.4: Rotate & Secure Tenant Store Admin
 If the first store tenant has a default `admin` username or outdated password:
-1. Dry-run preview:
+1. **Always dry-run first**:
    ```bash
    node server/scripts/rotate_credentials.js --tenant latif_001 --admin-only
    ```
-2. Rotate password:
+   Verify the target account username displayed in the preview.
+2. **Execute rotation**:
    ```bash
    node server/scripts/rotate_credentials.js --tenant latif_001 --admin-only --yes
    ```
-   *(Save the newly generated random password printed in the terminal immediately).*
-3. If rotating staff:
+   **CRITICAL**: Immediately copy and store the randomly generated 18-character password printed in the terminal output before closing the shell.
+3. Staff rotation (optional/as needed):
    ```bash
    node server/scripts/rotate_credentials.js --tenant latif_001 --all-staff --exclude-user <tenant_admin_username> --yes
    ```
 
 ---
 
-## 7. Container Database Snapshots & File Transfers
+## 7. Staging Environment Runbook (Anonymised Copy)
 
-### 7.1 How to Take an Atomic Snapshot Inside Railway
-Inside the Railway container terminal:
-```bash
-node -e "const Database = require('better-sqlite3'); const db = new Database('/app/data/latif_traders.db'); const target = '/app/data/snapshot_' + Date.now() + '.db'; db.exec('VACUUM INTO \\'' + target + '\\''); console.log('Snapshot created at:', target);"
-```
+Follow this procedure to create an isolated staging verification environment before production cutover:
 
-### 7.2 Safest Methods to Transfer Snapshots Out of Railway Volume
-Because Railway persistent volumes are not mounted directly to your local PC, use one of these safe methods:
-- **Method 1 (Old UI Download - Recommended for Pre-Deploy)**:
-  Use **Settings** -> **Backup & Recovery** in the old live UI before deploying. It streams the full SQLite file securely over HTTPS.
-- **Method 2 (Base64 Stream via Container Terminal)**:
-  In container shell:
-  ```bash
-  gzip -c /app/data/snapshot_post_deploy.db | base64 > /app/data/snapshot.b64
-  ```
-  Print in terminal or download via standard curl/presigned POST.
-- **Method 3 (Temporary Signed Transfer)**:
-  If an S3/GCS bucket or secure private webhook is available:
-  ```bash
-  curl -T /app/data/snapshot_post_deploy.db "https://your-secure-pre-signed-url"
-  ```
-
-### 7.3 How to Copy an Anonymised File into a Staging Volume
-1. On your local PC or build runner, run:
+### 7.1 Generate and Audit Anonymised Snapshot Locally
+On your local machine (where your real backup is saved):
+1. Anonymise customer and supplier personal data while preserving exact balances and transaction math:
    ```bash
-   node server/scripts/anonymise_snapshot.js path/to/real_snapshot.db staging_anonymized.db
+   node server/scripts/anonymise_snapshot.js path/to/real_backup.db staging_anonymized.db
+   ```
+2. Run the PII leak scanner:
+   ```bash
    node server/scripts/leak_check.js staging_anonymized.db
    ```
-2. In the Staging project on Railway, mount a persistent volume at `/app/staging_data`.
-3. In the Staging container terminal, place the audited database at:
-   `/app/staging_data/latif_traders.db`
-4. Set Staging environment variable: `DB_PATH=/app/staging_data/latif_traders.db`.
+   Must output `LEAK CHECK PASSED: Zero unmasked PII found`.
+3. Capture staging baseline:
+   ```bash
+   node scripts/baseline_report.js staging_anonymized.db > baseline_staging_expected.json
+   ```
+
+### 7.2 Load Anonymised Database into Railway Staging Volume
+Inside your Railway Staging project:
+1. In the Staging service, add a persistent volume mounted at `/app/staging_data`.
+2. To copy the local `staging_anonymized.db` into the container volume:
+   - **Method A (Railway Web Dashboard Shell - Most Reliable)**:
+     - Open Staging service -> **Deployments** -> Active Deployment -> **Terminal / Shell**.
+     - On local machine, compress and base64-encode:
+       ```bash
+       node -e "const fs = require('fs'); const zlib = require('zlib'); const data = fs.readFileSync('staging_anonymized.db'); console.log(zlib.gzipSync(data).toString('base64'));" > staging.b64
+       ```
+     - In container shell, receive and unpack:
+       ```bash
+       mkdir -p /app/staging_data
+       cat << 'EOF' > /tmp/staging.b64
+       <paste-base64-string>
+       EOF
+       node -e "const fs = require('fs'); const zlib = require('zlib'); const b64 = fs.readFileSync('/tmp/staging.b64', 'utf8').trim(); fs.writeFileSync('/app/staging_data/latif_traders.db', zlib.gunzipSync(Buffer.from(b64, 'base64'))); console.log('Restored staging db');"
+       rm /tmp/staging.b64
+       ```
+   - **Method B (Railway CLI `railway ssh`)**:
+     If `railway ssh` is supported by your CLI version, connect and stream:
+     ```bash
+     railway ssh
+     # inside container: curl from private webhook or stream
+     ```
+
+### 7.3 Configure Staging Environment Variables
+Set the following variables in Railway Staging:
+- `NODE_ENV=production`
+- `DATA_DIR=/app/staging_data`
+- `DB_PATH=/app/staging_data/latif_traders.db`
+- `JWT_SECRET=<new-random-hex-string>`
+- `SUPEROWNER_USERNAME=superowner_staging`
+- `SUPEROWNER_PASSWORD=<strong-random-password>`
+- `ALLOWED_ORIGINS=https://staging.<your-staging-domain>`
+- `TRUST_PROXY_HOPS=1`
+
+### 7.4 Staging Smoke Verification
+1. Verify health endpoint:
+   ```bash
+   curl -I https://staging.<your-staging-domain>/api/health
+   ```
+   Must return HTTP 200 with `driver: "sqlite"`.
+2. Log in with staging admin credentials (`admin` / `StagingTest@123` or your designated account).
+3. Confirm that Dashboard financial totals (Receivables, Payables, Stock Valuation, Orders Count) match `baseline_staging_expected.json`.
 
 ---
 
