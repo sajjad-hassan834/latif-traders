@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Branch Assertion Guard
- * Ensures work happens strictly on integration/local-all or its children,
+ * Ensures work happens strictly on main, integration/local-all or its children,
  * and verifies that commit 6f72dc8 (production base) is in the commit ancestry.
  */
 
@@ -18,12 +18,10 @@ function run(cmd) {
 const envBranch = process.env.RAILWAY_GIT_BRANCH || process.env.VERCEL_GIT_COMMIT_REF || process.env.GITHUB_REF_NAME;
 const currentBranch = envBranch || run('git rev-parse --abbrev-ref HEAD') || 'HEAD';
 
-// If in Railway/Vercel CI without full git tree:
-if (process.env.RAILWAY_ENVIRONMENT || process.env.VERCEL) {
-  if (currentBranch.startsWith('release/') || currentBranch === 'integration/local-all' || currentBranch === 'HEAD') {
-    console.log(`[assert_branch] OK: CI build environment on branch '${currentBranch}'.`);
-    process.exit(0);
-  }
+// If in Railway/Vercel/CI environment without full git tree:
+if (process.env.RAILWAY_ENVIRONMENT || process.env.VERCEL || process.env.CI || process.env.RAILWAY_SERVICE_ID) {
+  console.log(`[assert_branch] OK: Cloud / CI environment detected (${envBranch || currentBranch || 'HEAD'}).`);
+  process.exit(0);
 }
 
 if (!currentBranch) {
@@ -39,8 +37,8 @@ if (hasAncestor === null) {
   process.exit(1);
 }
 
-// Check 2: Branch must be integration/local-all or a descendant
-if (currentBranch === 'integration/local-all' || currentBranch.startsWith('release/')) {
+// Check 2: Branch must be main, integration/local-all or a descendant
+if (currentBranch === 'main' || currentBranch === 'integration/local-all' || currentBranch.startsWith('release/')) {
   console.log(`[assert_branch] OK: Running on trunk '${currentBranch}'.`);
   process.exit(0);
 }

@@ -23,8 +23,9 @@ function resolveDatabasePath(dataDir, envDbPath, isProduction = process.env.NODE
     fs.mkdirSync(dataDir, { recursive: true });
   }
 
-  // 1. In production, DB_PATH is strictly required
-  if (isProduction && (!envDbPath || !envDbPath.trim())) {
+  const isPostgres = (process.env.DB_DRIVER || '').toLowerCase() === 'postgres';
+  // 1. In production, DB_PATH is strictly required (when using SQLite driver)
+  if (!isPostgres && isProduction && (!envDbPath || !envDbPath.trim())) {
     const errMsg = 'DB_PATH environment variable is required in production (startup refused to prevent accidental creation of empty database)';
     console.error(`[FATAL] ${errMsg}`);
     console.error('[FATAL] Please set DB_PATH to your existing database file (e.g. /app/data/latif_traders.db).');
@@ -58,7 +59,7 @@ function resolveDatabasePath(dataDir, envDbPath, isProduction = process.env.NODE
   }
 
   // 2. Production safety guard: refuse to start if selected database does not exist or is 0-bytes empty while other databases with data exist
-  if (isProduction) {
+  if (!isPostgres && isProduction) {
     const selectedExists = fs.existsSync(selectedPath);
     const selectedSize = selectedExists ? (fs.statSync(selectedPath).size || 0) : 0;
     const selectedName = path.basename(selectedPath);
