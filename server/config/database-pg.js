@@ -81,6 +81,35 @@ class PostgresAdapter {
       if (verNum < 160000) {
         throw new Error(`FATAL: PostgreSQL version ${verStr} is lower than required major version 16.0!`);
       }
+      // Auto-bootstrap schema if connected to an empty PostgreSQL database
+      const checkTables = await client.query("SELECT COUNT(*)::int as cnt FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users'");
+      if (checkTables.rows[0].cnt === 0) {
+        console.log('[POSTGRES BOOTSTRAP] Empty PostgreSQL database detected. Applying pg_schema.sql...');
+        const fsMod = require('fs');
+        const pathMod = require('path');
+        const schemaPath = pathMod.join(__dirname, '..', 'migrations', 'pg_schema.sql');
+        if (fsMod.existsSync(schemaPath)) {
+          const schemaSql = fsMod.readFileSync(schemaPath, 'utf8');
+          await client.query(schemaSql);
+          console.log('[POSTGRES BOOTSTRAP] Schema applied successfully.');
+
+          // Seed superowner if configured
+          const soUsername = (process.env.SUPEROWNER_USERNAME || '').trim().toLowerCase();
+          const soPassword = process.env.SUPEROWNER_PASSWORD;
+          if (soUsername && soPassword) {
+            const bcrypt = require('bcryptjs');
+            const salt = bcrypt.genSaltSync(10);
+            const hash = bcrypt.hashSync(soPassword, salt);
+            await client.query(
+              `INSERT INTO users (username, password_hash, full_name, role, status, is_system_account, tenant_id)
+               VALUES ($1, $2, 'Platform Super Owner', 'superowner', 'active', 1, NULL)
+               ON CONFLICT (username) WHERE role = 'superowner' DO NOTHING`,
+              [soUsername, hash]
+            );
+            console.log(`[POSTGRES BOOTSTRAP] Superowner account "${soUsername}" initialized.`);
+          }
+        }
+      }
     } finally {
       if (client) client.release();
     }
