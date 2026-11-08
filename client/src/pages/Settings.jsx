@@ -21,6 +21,7 @@ import {
   Building,
   Image as ImageIcon,
   ArrowRight,
+  ArrowUpRight,
   Sparkles,
   Users as UsersIcon,
   Receipt,
