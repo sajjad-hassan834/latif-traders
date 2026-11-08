@@ -27,7 +27,9 @@ app.set('trust proxy', resolvedHops);
 // HTTP Security Headers
 app.use(helmet({
   contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: false
 }));
 const PORT = process.env.PORT || 5000;
 
