@@ -1,3 +1,4 @@
+const ledgerService = require('../services/ledgerService');
 const { getPlanLimits } = require('../config/plans');
 const { db } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
@@ -128,6 +129,7 @@ exports.getSaleById = async (req, res) => {
     const sale = await db.get(`
       SELECT s.*, 
         c.name as customer_name, c.phone as customer_phone, c.address as customer_address,
+        c.current_balance as customer_current_balance,
         u.full_name as cashier_name
       FROM sales s
 
@@ -266,38 +268,50 @@ exports.createSale = async (req, res) => {
         }
       }
 
-      // LATE NUMBERING: Acquire counter number as late as possible right before insert
-      const invoice_no = await db.getNextNumber(tenantId, 'sale_invoice', 'INV');
-
-      const sRes = await db.run(`
-        INSERT INTO sales (
-          tenant_id, invoice_no, customer_id, sale_type, sale_date,
-          subtotal, discount, tax, grand_total, paid_amount, balance_due,
-          payment_method, notes, user_id,
-          table_no, dining_mode, kot_number, dispense_unit, doctor_name, patient_cnic
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        tenantId,
-        invoice_no,
-        customer_id || null,
-        sale_type || 'Retail',
-        sale_date || new Date().toISOString().split('T')[0],
-        subtotal,
-        disc,
-        tx,
-        grand_total,
-        paid,
-        balance_due,
-        payment_method || 'Cash',
-        notes ? notes.trim() : null,
-        req.user?.id || 1,
-        table_no ? table_no.trim() : null,
-        dining_mode || 'counter',
-        kot_number ? kot_number.trim() : null,
-        dispense_unit || 'unit',
-        doctor_name ? doctor_name.trim() : null,
-        patient_cnic ? patient_cnic.trim() : null
-      ]);
+            // LATE NUMBERING: Acquire counter number with retry loop for collision protection
+      let sRes;
+      let invoice_no;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        invoice_no = await db.getNextNumber(tenantId, 'sale_invoice', 'INV');
+        try {
+          sRes = await db.run(`
+            INSERT INTO sales (
+              tenant_id, invoice_no, customer_id, sale_type, sale_date,
+              subtotal, discount, tax, grand_total, paid_amount, balance_due,
+              payment_method, notes, user_id,
+              table_no, dining_mode, kot_number, dispense_unit, doctor_name, patient_cnic
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            tenantId,
+            invoice_no,
+            customer_id || null,
+            sale_type || 'Retail',
+            sale_date || new Date().toISOString().split('T')[0],
+            subtotal,
+            disc,
+            tx,
+            grand_total,
+            paid,
+            balance_due,
+            payment_method || 'Cash',
+            notes ? notes.trim() : null,
+            req.user?.id || 1,
+            table_no ? table_no.trim() : null,
+            dining_mode || 'counter',
+            kot_number ? kot_number.trim() : null,
+            dispense_unit || 'unit',
+            doctor_name ? doctor_name.trim() : null,
+            patient_cnic ? patient_cnic.trim() : null
+          ]);
+          break;
+        } catch (insertErr) {
+          if (insertErr.message && (insertErr.message.includes('sales.tenant_id, sales.invoice_no') || insertErr.message.includes('UNIQUE constraint'))) {
+            console.warn(`[SALE RETRY] Duplicate invoice_no ${invoice_no} collision detected, retrying (attempt ${attempt + 1})...`);
+            continue;
+          }
+          throw insertErr;
+        }
+      }
 
       const saleId = sRes.lastInsertRowid;
 

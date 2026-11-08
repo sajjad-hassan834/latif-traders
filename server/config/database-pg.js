@@ -286,21 +286,47 @@ class PostgresAdapter {
    * Uses locked counters table with INSERT ... ON CONFLICT DO UPDATE ... RETURNING
    * Guarantees zero duplicate invoice/receipt numbers even under high concurrency.
    */
-  async getNextNumber(tenantId, counterType, prefix, padLength = 4, forDate = new Date()) {
+    async getNextNumber(tenantId, counterType, prefix, padLength = 4, forDate = new Date()) {
     const today = getPKTDate(forDate).replace(/-/g, '');
     const fullType = `${counterType}_${today}`;
 
+    let maxExistingSeq = 0;
+    try {
+      if (counterType === 'sale_invoice') {
+        const rows = await this.all("SELECT invoice_no FROM sales WHERE tenant_id = $1 AND invoice_no LIKE $2", [tenantId, `${prefix}-${today}-%`]);
+        for (const r of rows) {
+          if (r.invoice_no) {
+            const parts = r.invoice_no.split('-');
+            const seq = parseInt(parts[parts.length - 1], 10);
+            if (!isNaN(seq) && seq > maxExistingSeq) maxExistingSeq = seq;
+          }
+        }
+      }
+    } catch (_) {}
+
+    const counterRow = await this.get('SELECT last_number FROM counters WHERE tenant_id = $1 AND counter_type = $2', [tenantId, fullType]);
+    const currentCounterVal = counterRow ? Number(counterRow.last_number) || 0 : 0;
+    let nextNum = Math.max(currentCounterVal, maxExistingSeq) + 1;
+
+    if (counterType === 'sale_invoice') {
+      while (true) {
+        const candidate = `${prefix}-${today}-${String(nextNum).padStart(padLength, '0')}`;
+        const exists = await this.get('SELECT id FROM sales WHERE tenant_id = $1 AND invoice_no = $2', [tenantId, candidate]);
+        if (!exists) break;
+        nextNum++;
+      }
+    }
+
     const sql = `
       INSERT INTO counters (tenant_id, counter_type, last_number, updated_at)
-      VALUES ($1, $2, 1, CURRENT_TIMESTAMP)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
       ON CONFLICT (tenant_id, counter_type)
-      DO UPDATE SET last_number = counters.last_number + 1, updated_at = CURRENT_TIMESTAMP
+      DO UPDATE SET last_number = $3, updated_at = CURRENT_TIMESTAMP
       RETURNING last_number;
     `;
 
-    const res = await this.query(sql, [tenantId, fullType]);
-    const num = res.rows[0].last_number;
-    const formattedNum = String(num).padStart(padLength, '0');
+    await this.query(sql, [tenantId, fullType, nextNum]);
+    const formattedNum = String(nextNum).padStart(padLength, '0');
     return `${prefix}-${today}-${formattedNum}`;
   }
 

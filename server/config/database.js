@@ -1387,23 +1387,60 @@ const dualDb = {
     }
   },
 
-  async getNextNumber(tenantId, counterType, prefix, padLength = 4, forDate = new Date()) {
+    async getNextNumber(tenantId, counterType, prefix, padLength = 4, forDate = new Date()) {
     if (currentDriver === 'postgres') {
       const pg = await getPgAdapter();
       if (pg) return pg.getNextNumber(tenantId, counterType, prefix, padLength, forDate);
     }
     const today = getPKTDate(forDate).replace(/-/g, '');
     const fullType = `${counterType}_${today}`;
-    db.prepare(`
-      INSERT INTO counters (tenant_id, counter_type, last_number, updated_at)
-      VALUES (?, ?, 1, CURRENT_TIMESTAMP)
-      ON CONFLICT (tenant_id, counter_type)
-      DO UPDATE SET last_number = counters.last_number + 1, updated_at = CURRENT_TIMESTAMP
-    `).run(tenantId, fullType);
+
+    // 1. Dynamically scan max sequence in target tables to avoid duplicate key collisions
+    let maxExistingSeq = 0;
+    try {
+      if (counterType === 'sale_invoice') {
+        const rows = db.prepare("SELECT invoice_no FROM sales WHERE tenant_id = ? AND invoice_no LIKE ?").all(tenantId, `${prefix}-${today}-%`);
+        for (const r of rows) {
+          if (r.invoice_no) {
+            const parts = r.invoice_no.split('-');
+            const seq = parseInt(parts[parts.length - 1], 10);
+            if (!isNaN(seq) && seq > maxExistingSeq) maxExistingSeq = seq;
+          }
+        }
+      } else if (counterType === 'purchase_invoice') {
+        const rows = db.prepare("SELECT invoice_no FROM purchases WHERE tenant_id = ? AND invoice_no LIKE ?").all(tenantId, `${prefix}-${today}-%`);
+        for (const r of rows) {
+          if (r.invoice_no) {
+            const parts = r.invoice_no.split('-');
+            const seq = parseInt(parts[parts.length - 1], 10);
+            if (!isNaN(seq) && seq > maxExistingSeq) maxExistingSeq = seq;
+          }
+        }
+      }
+    } catch (_) {}
 
     const row = db.prepare('SELECT last_number FROM counters WHERE tenant_id = ? AND counter_type = ?').get(tenantId, fullType);
-    const num = row ? row.last_number : 1;
-    const formattedNum = String(num).padStart(padLength, '0');
+    const currentCounterVal = row ? Number(row.last_number) || 0 : 0;
+    let nextNum = Math.max(currentCounterVal, maxExistingSeq) + 1;
+
+    // 2. Ironclad safety check: loop until we find a guaranteed unused sequence
+    if (counterType === 'sale_invoice') {
+      while (true) {
+        const candidate = `${prefix}-${today}-${String(nextNum).padStart(padLength, '0')}`;
+        const exists = db.prepare('SELECT id FROM sales WHERE tenant_id = ? AND invoice_no = ?').get(tenantId, candidate);
+        if (!exists) break;
+        nextNum++;
+      }
+    }
+
+    db.prepare(`
+      INSERT INTO counters (tenant_id, counter_type, last_number, updated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT (tenant_id, counter_type)
+      DO UPDATE SET last_number = ?, updated_at = CURRENT_TIMESTAMP
+    `).run(tenantId, fullType, nextNum, nextNum);
+
+    const formattedNum = String(nextNum).padStart(padLength, '0');
     return `${prefix}-${today}-${formattedNum}`;
   },
 

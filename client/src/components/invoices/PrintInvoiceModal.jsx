@@ -225,14 +225,22 @@ export default function PrintInvoiceModal({ sale: rawSale, items: propItems = []
   const address = settings.company_address || settings.address || '';
   const footerNote = settings.invoice_footer || `Thank you for shopping at ${shopName}!`;
 
-  const hasCustomerBalance = Boolean(sale.customer_id && sale.customer_id > 1);
-  const currentCustomerBalance = Number(sale.customer_current_balance) || 0;
+    const hasCustomerBalance = Boolean(sale.customer_id && Number(sale.customer_id) > 1);
+  const currentCustomerBalance = Number(
+    sale.customer_current_balance !== undefined ? sale.customer_current_balance :
+    (sale.customer && sale.customer.current_balance !== undefined ? sale.customer.current_balance : 0)
+  );
   const paid = Number(sale.paid_amount || 0);
   const grandTotal = Number(sale.grand_total || 0);
+  const balanceDue = Number(sale.balance_due || 0);
   const excessPaid = Math.max(0, paid - grandTotal);
-  const previousBalance = Math.max(0, currentCustomerBalance - Number(sale.balance_due || 0) + excessPaid);
+
+  // Previous balance BEFORE this bill was settled:
+  // If customer had balance due on this bill, currentCustomerBalance already includes balanceDue.
+  // If customer paid excess, currentCustomerBalance was already reduced by excessPaid.
+  const previousBalance = Math.max(0, currentCustomerBalance - balanceDue + excessPaid);
   const netRemainingBalance = currentCustomerBalance;
-  const changeReturn = (!hasCustomerBalance || previousBalance <= 0) ? excessPaid : 0;
+  const changeReturn = (!hasCustomerBalance || previousBalance <= 0) ? excessPaid : Math.max(0, excessPaid - previousBalance);
   const udhaarDeduction = (hasCustomerBalance && excessPaid > 0) ? Math.min(excessPaid, previousBalance) : 0;
 
   // WhatsApp Message Generator

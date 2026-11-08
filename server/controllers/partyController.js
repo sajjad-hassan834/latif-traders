@@ -7,6 +7,13 @@ exports.getCustomers = async (req, res) => {
   try {
     const tenantId = req.tenantId || req.tenant_id;
     const { search, customer_type } = req.query;
+
+    // Auto-reconcile customer balances with verified double-entry ledger closing balances
+    try {
+      await ledgerService.syncCustomerBalances(tenantId);
+    } catch (syncErr) {
+      console.warn('Customer balance background sync notice:', syncErr.message);
+    }
     let query = 'SELECT * FROM customers WHERE tenant_id = ?';
     const params = [tenantId];
 
@@ -142,6 +149,15 @@ exports.getCustomerLedger = async (req, res) => {
       endDate: end_date,
       reverse: true
     });
+
+    // Auto-heal any balance drift immediately in database
+    if (Math.abs(result.summary.closing_balance - result.summary.stored_balance) > 0.01) {
+      await db.run('UPDATE customers SET current_balance = ? WHERE id = ? AND tenant_id = ?',
+        [result.summary.closing_balance, id, tenantId]);
+      result.customer.current_balance = result.summary.closing_balance;
+      result.summary.stored_balance = result.summary.closing_balance;
+      result.summary.is_balanced = true;
+    }
 
     return res.json({
       success: true,

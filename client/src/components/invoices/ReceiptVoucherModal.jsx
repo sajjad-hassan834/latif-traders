@@ -27,7 +27,7 @@ export default function ReceiptVoucherModal({ receipt, party, tenantSettings = {
   const notes = receipt.notes || (isCustomer ? 'Received with thanks on account.' : 'Paid towards supplier account.');
   const partyName = party?.name || receipt.customer_name || receipt.supplier_name || 'Valued Account';
   const partyPhone = party?.phone || receipt.customer_phone || receipt.supplier_phone || '';
-  const remainingBalance = receipt.running_balance !== undefined ? receipt.running_balance : (receipt.balance !== undefined ? receipt.balance : null);
+  const remainingBalance = receipt.running_balance !== undefined ? receipt.running_balance : (receipt.balance !== undefined ? receipt.balance : (receipt.new_balance !== undefined ? receipt.new_balance : (party?.current_balance !== undefined ? party.current_balance : null)));
 
   const handlePrint = () => {
     window.print();
