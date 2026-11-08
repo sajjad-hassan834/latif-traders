@@ -97,3 +97,4 @@ Verify the output matches your verified metrics:
 | **Variable switch to SQLite** | App reports missing DB | Re-set `DB_DRIVER="postgres"` and redeploy |
 | **Variable switch to Postgres** | Connection timeout/502 | Re-set `DB_DRIVER="sqlite"`, `DB_PATH="/app/data/latif_traders.db"` |
 | **New Release Deployment** | UI white-screen or 500 error | Click **Instant Rollback** in Vercel / Redeploy previous commit in Railway |
+
