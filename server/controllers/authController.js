@@ -97,7 +97,7 @@ exports.register = async (req, res) => {
 
     // 4. Pre-seed default categories, units, expense categories, settings and walk-in customer
     try {
-      seedNewTenant(
+      await seedNewTenant(
         tenantId,
         bType,
         businessName.trim(),
