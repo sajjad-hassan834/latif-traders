@@ -191,6 +191,7 @@ exports.login = async (req, res) => {
     `, [normalizedInput, normalizedInput]);
 
     if (!user) {
+      console.warn(`[AUTH LOGIN] User not found for identifier: "${normalizedInput}"`);
       return res.status(401).json({ success: false, message: 'Invalid credentials. Please check your username/email and password.' });
     }
 
@@ -209,6 +210,7 @@ exports.login = async (req, res) => {
 
     const isMatch = bcrypt.compareSync(password, user.password_hash);
     if (!isMatch) {
+      console.warn(`[AUTH LOGIN] Password mismatch for user: "${user.username}" (id: ${user.id})`);
       return res.status(401).json({ success: false, message: 'Invalid credentials. Please check your username/email and password.' });
     }
 

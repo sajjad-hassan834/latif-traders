@@ -604,12 +604,27 @@ function initializeDatabase() {
         AND username = 'admin'
     `).get(LEGACY_TENANT_ID);
 
-    if (seededAdmin) {
+    const envAdminPassword = (process.env.ADMIN_PASSWORD || process.env.INITIAL_ADMIN_PASSWORD || '').trim();
+    if (envAdminPassword) {
+      const salt = bcrypt.genSaltSync(10);
+      const hash = bcrypt.hashSync(envAdminPassword, salt);
+      db.prepare(`
+        UPDATE users 
+        SET password_hash = ?, 
+            status = 'active', 
+            token_version = COALESCE(token_version, 1) + 1
+        WHERE username = 'admin' OR email = 'admin@latiftraders.com'
+      `).run(hash);
+      console.log('[ShopOS Security] Admin password successfully updated from environment variable.');
+    } else if (seededAdmin) {
       const neverRotated = (seededAdmin.token_version === null || seededAdmin.token_version <= 1)
         && !seededAdmin.password_changed_at
         && Number(seededAdmin.must_change_password || 0) === 0;
       if (neverRotated) {
-        console.warn('[SECURITY WARNING] Legacy default admin account has never rotated initial credentials. Enforce credential rotation or disable using rotate_credentials.js.');
+        const salt = bcrypt.genSaltSync(10);
+        const hash = bcrypt.hashSync('admin123', salt);
+        db.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`).run(hash, seededAdmin.id);
+        console.warn('[SECURITY WARNING] Legacy default admin account has never rotated initial credentials. Password restored to default "admin123".');
       }
     }
   } catch (err) {
