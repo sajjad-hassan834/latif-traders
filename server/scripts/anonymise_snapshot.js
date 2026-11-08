@@ -141,7 +141,9 @@ async function anonymiseSnapshot(sourceDbPath, targetDbPath) {
 }
 
 if (require.main === module) {
-  anonymiseSnapshot().catch(err => {
+  const srcArg = process.argv[2] ? path.resolve(process.cwd(), process.argv[2]) : null;
+  const dstArg = process.argv[3] ? path.resolve(process.cwd(), process.argv[3]) : null;
+  anonymiseSnapshot(srcArg, dstArg).catch(err => {
     console.error('Anonymisation failed:', err);
     process.exit(1);
   });
