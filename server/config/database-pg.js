@@ -65,8 +65,8 @@ class PostgresAdapter {
 
     // Connection verification with retry loop
     let client = null;
-    let retries = 3;
-    let delay = 1000;
+    let retries = 2;
+    let delay = 500;
 
     while (retries > 0) {
       try {

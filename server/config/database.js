@@ -928,10 +928,10 @@ function initializeDatabase() {
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
           tenant_id TEXT DEFAULT '${LEGACY_TENANT_ID}',
-          UNIQUE(tenant_id, adjustment_no)
+          UNIQUE(tenant_id, return_no)
         );
-        INSERT INTO stock_adjustments_new (id, adjustment_no, product_id, batch_id, type, quantity, unit_cost, reason, user_id, created_at, tenant_id)
-        SELECT id, adjustment_no, product_id, batch_id, type, quantity, unit_cost, reason, user_id, created_at, tenant_id FROM stock_adjustments;
+        INSERT INTO returns_new (id, return_no, type, original_invoice_id, original_invoice_no, party_id, total_amount, reason, user_id, created_at, tenant_id)
+        SELECT id, return_no, type, original_invoice_id, original_invoice_no, party_id, total_amount, reason, user_id, created_at, tenant_id FROM returns;
         DROP TABLE returns;
         ALTER TABLE returns_new RENAME TO returns;
       `);
@@ -1275,37 +1275,46 @@ const { tokenizeSqlForDriver } = require('./sqlTokenizer');
 let currentDriver = process.env.DB_DRIVER || 'sqlite';
 let pgAdapter = null;
 let pgInitAttempted = false;
+let pgInitPromise = null;
 
 async function getPgAdapter() {
   if (pgAdapter) return pgAdapter;
   if (pgInitAttempted && currentDriver === 'sqlite') {
     return null;
   }
-  const connStr = process.env.DATABASE_URL || process.env.TEST_DATABASE_URL;
-  if (!connStr) {
-    if (process.env.NODE_ENV === 'production' || process.env.ALLOW_SQLITE_FALLBACK !== 'false') {
-      console.warn('[DATABASE] No DATABASE_URL provided. Falling back safely to SQLite.');
-      currentDriver = 'sqlite';
-      pgInitAttempted = true;
-      return null;
+  if (pgInitPromise) return pgInitPromise;
+
+  pgInitPromise = (async () => {
+    const connStr = process.env.DATABASE_URL || process.env.TEST_DATABASE_URL;
+    if (!connStr) {
+      if (process.env.NODE_ENV === 'production' || process.env.ALLOW_SQLITE_FALLBACK !== 'false') {
+        console.warn('[DATABASE] No DATABASE_URL provided. Falling back safely to SQLite.');
+        currentDriver = 'sqlite';
+        pgInitAttempted = true;
+        return null;
+      }
+      throw new Error('DATABASE_URL is required when DB_DRIVER=postgres');
     }
-    throw new Error('DATABASE_URL is required when DB_DRIVER=postgres');
-  }
-  try {
-    const adapter = new PostgresAdapter({ connectionString: connStr, max: parseInt(process.env.DATABASE_POOL_SIZE, 10) || 10 });
-    await adapter.init();
-    pgAdapter = adapter;
-    return pgAdapter;
-  } catch (err) {
-    console.error(`[DATABASE CRITICAL] Postgres connection failed (${err.message}).`);
-    if (process.env.NODE_ENV === 'production' || process.env.ALLOW_SQLITE_FALLBACK !== 'false') {
-      console.warn('[DATABASE FAILSAFE] Automatically falling back to SQLite (latif_traders.db) to keep shop 100% online.');
-      currentDriver = 'sqlite';
-      pgInitAttempted = true;
-      return null;
+    try {
+      const adapter = new PostgresAdapter({ connectionString: connStr, max: parseInt(process.env.DATABASE_POOL_SIZE, 10) || 10 });
+      await adapter.init();
+      pgAdapter = adapter;
+      return pgAdapter;
+    } catch (err) {
+      console.error(`[DATABASE CRITICAL] Postgres connection failed (${err.message}).`);
+      if (process.env.NODE_ENV === 'production' || process.env.ALLOW_SQLITE_FALLBACK !== 'false') {
+        console.warn('[DATABASE FAILSAFE] Automatically falling back to SQLite (latif_traders.db) to keep shop 100% online.');
+        currentDriver = 'sqlite';
+        pgInitAttempted = true;
+        return null;
+      }
+      throw err;
+    } finally {
+      pgInitPromise = null;
     }
-    throw err;
-  }
+  })();
+
+  return pgInitPromise;
 }
 
 const dualDb = {
