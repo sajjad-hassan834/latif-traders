@@ -7,6 +7,15 @@ const { tenantContext } = require('../middleware/tenantContext');
 router.use(authenticate);
 router.use(tenantContext);
 
+// Shift / Cash Drawer Management
+router.get('/shifts/current', paymentController.getCurrentShift);
+router.get('/shift/current', paymentController.getCurrentShift);
+router.post('/shifts/open', paymentController.openShift);
+router.post('/shift/open', paymentController.openShift);
+router.post('/shifts/close', paymentController.closeShiftBlind);
+router.post('/shift/close', paymentController.closeShiftBlind);
+router.get('/shifts', paymentController.getShifts);
+
 router.get('/', requireRoles('accountant'), paymentController.getPayments);
 router.post('/customer-receipt', requireRoles('sales', 'accountant'), paymentController.recordCustomerReceipt);
 router.post('/supplier-payment', requireRoles('accountant'), paymentController.recordSupplierPayment);

@@ -696,19 +696,7 @@ function DashboardContent({ setTab }) {
 
           <button
             onClick={() => setTab && setTab('purchases')}
-            style={{
-              padding: '8px 14px',
-              borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.12)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: '#FFFFFF',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
+            className="dashboard-hero-action-btn"
           >
             <ArrowDownToLine size={14} />
             <span>Purchase</span>
@@ -716,19 +704,7 @@ function DashboardContent({ setTab }) {
 
           <button
             onClick={() => setTab && setTab('customers')}
-            style={{
-              padding: '8px 14px',
-              borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.12)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: '#FFFFFF',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
+            className="dashboard-hero-action-btn"
           >
             <Users size={14} />
             <span>Customer</span>
@@ -736,19 +712,7 @@ function DashboardContent({ setTab }) {
 
           <button
             onClick={() => setTab && setTab('expenses')}
-            style={{
-              padding: '8px 14px',
-              borderRadius: '8px',
-              background: 'rgba(255, 255, 255, 0.12)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: '#FFFFFF',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
+            className="dashboard-hero-action-btn"
           >
             <Wallet size={14} />
             <span>Expense</span>

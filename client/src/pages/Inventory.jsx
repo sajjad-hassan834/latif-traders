@@ -54,7 +54,7 @@ function generateProductCode(existingProducts = []) {
 
 export default function Inventory() {
   const { isAdmin, canManageInventory } = useAuth();
-  const { terminology, isFrozenFood } = useTradeProfile();
+  const { terminology, isFrozenFood, isPharmacy, isClothing } = useTradeProfile();
   const defaultStorageLocation = terminology?.defaultStorageLocation || (isFrozenFood ? 'Freezer #1' : 'Shelf #1');
   const lotLabel = terminology?.lotLabel || (isFrozenFood ? 'Batch' : 'Lot');
   const [products, setProducts] = useState([]);
@@ -1204,6 +1204,31 @@ export default function Inventory() {
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   {restockProduct.name} • Current Stock: <strong>{restockProduct.current_stock} {restockProduct.unit}</strong> • Standard Sale: <strong>{formatPKR(restockProduct.sale_price)}</strong>
                 </div>
+                {(selectedProduct.salt_formula || selectedProduct.drap_reg_no || selectedProduct.rack_shelf || selectedProduct.article_code) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                    {selectedProduct.salt_formula && (
+                      <span className="badge badge-info" style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>
+                        💊 {selectedProduct.salt_formula}
+                      </span>
+                    )}
+                    {selectedProduct.drap_reg_no && (
+                      <span className="badge badge-info" style={{ background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.2)' }}>
+                        DRAP #{selectedProduct.drap_reg_no}
+                      </span>
+                    )}
+                    {selectedProduct.rack_shelf && (
+                      <span className="badge badge-info" style={{ background: 'rgba(234,179,8,0.1)', color: '#ca8a04', border: '1px solid rgba(234,179,8,0.2)' }}>
+                        📍 {selectedProduct.rack_shelf}
+                      </span>
+                    )}
+                    {selectedProduct.article_code && (
+                      <span className="badge badge-info" style={{ background: 'rgba(168,85,247,0.1)', color: '#9333ea', border: '1px solid rgba(168,85,247,0.2)' }}>
+                        👕 Article: {selectedProduct.article_code}
+                      </span>
+                    )}
+                  </div>
+                )}
+
               </div>
               <button
                 type="button"
@@ -1513,6 +1538,69 @@ export default function Inventory() {
                   </div>
                 </div>
 
+
+                {/* PHARMACY & CLINICAL INFO */}
+                {isPharmacy && (
+                  <div style={{ background: 'var(--hover-bg)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.825rem', color: 'var(--text-title)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>💊</span>
+                      <span>Pharmacy & Clinical Specification</span>
+                    </div>
+                    <div className="form-grid-3">
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Salt / Active Formula</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="e.g. Paracetamol 500mg"
+                          value={formData.salt_formula || ''}
+                          onChange={(e) => setFormData({ ...formData, salt_formula: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">DRAP Reg #</label>
+                        <input
+                          type="text"
+                          className="form-control mono"
+                          placeholder="e.g. 012345"
+                          value={formData.drap_reg_no || ''}
+                          onChange={(e) => setFormData({ ...formData, drap_reg_no: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Rack / Shelf Location</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="e.g. Rack A-3"
+                          value={formData.rack_shelf || ''}
+                          onChange={(e) => setFormData({ ...formData, rack_shelf: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* CLOTHING & APPAREL INFO */}
+                {isClothing && (
+                  <div style={{ background: 'var(--hover-bg)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.825rem', color: 'var(--text-title)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>👕</span>
+                      <span>Apparel & Garment Spec</span>
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Article / Style Code</label>
+                      <input
+                        type="text"
+                        className="form-control mono"
+                        placeholder="e.g. ART-KURTA-09"
+                        value={formData.article_code || ''}
+                        onChange={(e) => setFormData({ ...formData, article_code: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* OPENING STOCK (OPTIONAL) */}
                 <div style={{ background: 'var(--hover-bg)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', marginTop: '0.2rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
@@ -1819,6 +1907,69 @@ export default function Inventory() {
                     />
                   </div>
                 </div>
+
+
+                {/* PHARMACY & CLINICAL INFO */}
+                {isPharmacy && (
+                  <div style={{ background: 'var(--hover-bg)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.825rem', color: 'var(--text-title)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>💊</span>
+                      <span>Pharmacy & Clinical Specification</span>
+                    </div>
+                    <div className="form-grid-3">
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Salt / Active Formula</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="e.g. Paracetamol 500mg"
+                          value={editFormData.salt_formula || ''}
+                          onChange={(e) => setEditFormData({ ...editFormData, salt_formula: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">DRAP Reg #</label>
+                        <input
+                          type="text"
+                          className="form-control mono"
+                          placeholder="e.g. 012345"
+                          value={editFormData.drap_reg_no || ''}
+                          onChange={(e) => setEditFormData({ ...editFormData, drap_reg_no: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label">Rack / Shelf Location</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="e.g. Rack A-3"
+                          value={editFormData.rack_shelf || ''}
+                          onChange={(e) => setEditFormData({ ...editFormData, rack_shelf: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* CLOTHING & APPAREL INFO */}
+                {isClothing && (
+                  <div style={{ background: 'var(--hover-bg)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <div style={{ fontWeight: 600, fontSize: '0.825rem', color: 'var(--text-title)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>👕</span>
+                      <span>Apparel & Garment Spec</span>
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Article / Style Code</label>
+                      <input
+                        type="text"
+                        className="form-control mono"
+                        placeholder="e.g. ART-KURTA-09"
+                        value={editFormData.article_code || ''}
+                        onChange={(e) => setEditFormData({ ...editFormData, article_code: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Row 5: Min Stock Alert & Status */}
                 <div className="form-grid-2">

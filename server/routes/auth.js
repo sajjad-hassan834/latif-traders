@@ -10,7 +10,7 @@ router.post('/logout', authenticate, authController.logout);
 router.get('/me', authenticate, authController.getCurrentUser);
 router.post('/change-password', authenticate, changePasswordRateLimiter, authController.changePassword);
 router.put('/profile', authenticate, authController.updateProfile);
-
+router.post('/manager-override', authenticate, tenantContext, authController.managerOverride);
 
 // Public password reset request & token status check
 router.post('/forgot-password', forgotPasswordRateLimiter, authController.requestPasswordReset);

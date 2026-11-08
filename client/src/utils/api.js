@@ -125,3 +125,5 @@ export const api = {
   delete: (endpoint, body, options) => request(endpoint, { ...options, method: 'DELETE', body: body ? JSON.stringify(body) : undefined }),
   clearCache: clearApiCache
 };
+
+export default api;

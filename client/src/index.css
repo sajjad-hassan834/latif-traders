@@ -703,31 +703,79 @@ body:not(.sidebar-collapsed) .sidebar:not(.collapsed) .nav-item::before {
 }
 
 .sidebar-section-title {
-  font-size: 0.65rem;
+  font-size: 0.675rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--text-sidebar-section);
+  color: var(--text-sidebar-section, #94a3b8) !important;
   padding: 0;
   user-select: none;
   transition: color 0.14s ease;
 }
 
 .sidebar-section-header-btn:hover .sidebar-section-title {
-  color: var(--text-sidebar-active);
+  color: #ffffff !important;
 }
 
 .sidebar-section-header-btn.has-active .sidebar-section-title {
-  color: var(--text-sidebar-active);
+  color: #fbbf24 !important; /* High contrast amber indicator */
 }
 
 .sidebar-section-chevron {
-  color: var(--text-sidebar-section);
+  color: var(--text-sidebar-section, #94a3b8) !important;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.14s ease;
 }
 
 .sidebar-section-header-btn:hover .sidebar-section-chevron {
-  color: #475569;
+  color: #ffffff !important;
+}
+
+.sidebar-section-header-btn.has-active .sidebar-section-chevron {
+  color: #fbbf24 !important;
+}
+
+/* Classic Light theme overrides for section headers */
+[data-theme="classic-light"] .sidebar-section-title {
+  color: #64748b !important;
+}
+[data-theme="classic-light"] .sidebar-section-header-btn:hover .sidebar-section-title {
+  color: #0f172a !important;
+}
+[data-theme="classic-light"] .sidebar-section-header-btn.has-active .sidebar-section-title {
+  color: #0284c7 !important;
+}
+[data-theme="classic-light"] .sidebar-section-chevron {
+  color: #64748b !important;
+}
+[data-theme="classic-light"] .sidebar-section-header-btn:hover .sidebar-section-chevron {
+  color: #0f172a !important;
+}
+[data-theme="classic-light"] .sidebar-section-header-btn.has-active .sidebar-section-chevron {
+  color: #0284c7 !important;
+}
+
+/* Dashboard Hero Action Buttons with High Visibility */
+.dashboard-hero-action-btn {
+  padding: 8px 15px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.16) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  color: #ffffff !important;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: all 0.15s ease;
+}
+
+.dashboard-hero-action-btn:hover {
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  transform: translateY(-1px);
+  color: #ffffff !important;
 }
 
 .sidebar-section-chevron.collapsed {

@@ -37,7 +37,11 @@ import { formatPKR, formatDate } from '../utils/formatters';
 import { playBeep, isAudioMuted, toggleAudioMute } from '../utils/audio';
 import { createSpeechRecognizer, parseVoiceOrder, isSpeechRecognitionSupported } from '../utils/voiceBilling';
 import { useAuth } from '../context/AuthContext';
+import { useTradeProfile } from '../hooks/useTradeProfile';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
+import ManagerPinModal from '../components/common/ManagerPinModal';
+import PrintKotModal from '../components/invoices/PrintKotModal';
+import ShiftCloseModal from '../components/common/ShiftCloseModal';
 import SearchableSelect from '../components/common/SearchableSelect';
 
 function getCategoryIcon(catName = '') {
@@ -54,6 +58,15 @@ function getCategoryIcon(catName = '') {
 
 export default function PosSales() {
   const { isAdmin, canViewFinances } = useAuth();
+  const { isPharmacy, isRestaurant, isGrocery, enableTablesKOT, enableStripTabletUnits, enableDrugFormula } = useTradeProfile();
+
+  const [diningMode, setDiningMode] = useState('dine_in');
+  const [selectedTable, setSelectedTable] = useState('Table 1');
+  const [selectedUnitType, setSelectedUnitType] = useState('box'); // 'box' | 'strip' | 'tablet'
+
+  const [showManagerPinModal, setShowManagerPinModal] = useState(false);
+  const [showKotModal, setShowKotModal] = useState(false);
+  const [showShiftCloseModal, setShowShiftCloseModal] = useState(false);
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -2060,6 +2073,40 @@ export default function PosSales() {
           </div>
         </div>
       )}
+
+      {/* MANAGER PIN OVERRIDE MODAL */}
+      <ManagerPinModal
+        isOpen={showManagerPinModal}
+        onClose={() => setShowManagerPinModal(false)}
+        actionTitle="Manager PIN Override"
+        actionDescription="Enter manager/admin PIN to authorize sensitive operation."
+        requiredAction="POS_MANAGER_OVERRIDE"
+        onSuccess={(data) => {
+          setSuccessMsg(`Manager override approved by ${data.authorizedBy}`);
+          setTimeout(() => setSuccessMsg(''), 4000);
+        }}
+      />
+
+      {/* PRINT KOT MODAL */}
+      <PrintKotModal
+        isOpen={showKotModal}
+        onClose={() => setShowKotModal(false)}
+        kotNumber={`KOT-${Date.now().toString().slice(-4)}`}
+        tableNo={selectedTable}
+        diningMode={diningMode}
+        items={cart}
+        notes={notes}
+      />
+
+      {/* BLIND SHIFT CLOSE MODAL */}
+      <ShiftCloseModal
+        isOpen={showShiftCloseModal}
+        onClose={() => setShowShiftCloseModal(false)}
+        onShiftClosed={(res) => {
+          setSuccessMsg(`Shift closed successfully. Counted: ₨ ${res.countedCash}, Variance: ₨ ${res.variance}`);
+          setTimeout(() => setSuccessMsg(''), 5000);
+        }}
+      />
 
       {/* RECENT RECEIPTS MODAL */}
       {showRecentInvoicesModal && (

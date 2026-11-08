@@ -803,6 +803,16 @@ export default function Purchases() {
                 <Sparkles size={14} />
                 <span>AI Scan Bill</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setShowAiScanner(true)}
+                className="btn btn-secondary btn-sm"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(2, 132, 199, 0.1)', color: '#0284c7', borderColor: 'rgba(2, 132, 199, 0.25)' }}
+                title="AI Scan & Parse Supplier Paper Delivery Bill"
+              >
+                <Sparkles size={14} />
+                <span>AI Scan Bill</span>
+              </button>
               <button onClick={openNewPurchaseModal} className="btn btn-primary btn-sm">
                 <Plus size={14} />
                 <span>+ Purchase</span>

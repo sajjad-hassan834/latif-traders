@@ -197,7 +197,8 @@ exports.createSale = async (req, res) => {
 
       const {
         customer_id, sale_type, sale_date,
-        items, discount, tax, paid_amount, payment_method, notes
+        items, discount, tax, paid_amount, payment_method, notes,
+        table_no, dining_mode, kot_number, dispense_unit, doctor_name, patient_cnic
       } = req.body;
 
       if (!items || !Array.isArray(items) || items.length === 0) {
@@ -272,8 +273,9 @@ exports.createSale = async (req, res) => {
         INSERT INTO sales (
           tenant_id, invoice_no, customer_id, sale_type, sale_date,
           subtotal, discount, tax, grand_total, paid_amount, balance_due,
-          payment_method, notes, user_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          payment_method, notes, user_id,
+          table_no, dining_mode, kot_number, dispense_unit, doctor_name, patient_cnic
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         tenantId,
         invoice_no,
@@ -288,7 +290,13 @@ exports.createSale = async (req, res) => {
         balance_due,
         payment_method || 'Cash',
         notes ? notes.trim() : null,
-        req.user?.id || 1
+        req.user?.id || 1,
+        table_no ? table_no.trim() : null,
+        dining_mode || 'counter',
+        kot_number ? kot_number.trim() : null,
+        dispense_unit || 'unit',
+        doctor_name ? doctor_name.trim() : null,
+        patient_cnic ? patient_cnic.trim() : null
       ]);
 
       const saleId = sRes.lastInsertRowid;

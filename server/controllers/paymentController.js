@@ -291,3 +291,139 @@ exports.deletePayment = async (req, res) => {
     return res.status(400).json({ success: false, message: err.message });
   }
 };
+
+
+exports.getCurrentShift = async (req, res) => {
+  try {
+    const tenantId = req.tenantId || req.tenant_id || (req.user && req.user.tenant_id);
+    const cashierId = req.user.id;
+    const session = await db.get(
+      `SELECT * FROM cash_drawer_sessions WHERE tenant_id = ? AND cashier_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1`,
+      [tenantId, cashierId]
+    );
+    return res.json({ success: true, session: session || null });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.openShift = async (req, res) => {
+  try {
+    const tenantId = req.tenantId || req.tenant_id || (req.user && req.user.tenant_id);
+    const cashierId = req.user.id;
+    const cashierName = req.user.full_name || req.user.username;
+    const openingCash = Number(req.body.opening_cash) || 0;
+    const notes = req.body.notes ? req.body.notes.trim() : null;
+
+    const existing = await db.get(
+      `SELECT id FROM cash_drawer_sessions WHERE tenant_id = ? AND cashier_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1`,
+      [tenantId, cashierId]
+    );
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'You already have an open cash drawer session.' });
+    }
+
+    const result = await db.run(
+      `INSERT INTO cash_drawer_sessions (
+        tenant_id, cashier_id, cashier_name, opening_cash, status, notes
+      ) VALUES (?, ?, ?, ?, 'open', ?)`,
+      [tenantId, cashierId, cashierName, openingCash, notes]
+    );
+
+    const session = await db.get('SELECT * FROM cash_drawer_sessions WHERE id = ?', [result.lastInsertRowid]);
+    return res.json({ success: true, session });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.closeShiftBlind = async (req, res) => {
+  try {
+    const tenantId = req.tenantId || req.tenant_id || (req.user && req.user.tenant_id);
+    const cashierId = req.user.id;
+    const { counted_cash, denominations, notes } = req.body;
+    const countedTotal = Number(counted_cash) || 0;
+
+    const openSession = await db.get(
+      `SELECT * FROM cash_drawer_sessions WHERE tenant_id = ? AND cashier_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1`,
+      [tenantId, cashierId]
+    );
+
+    const openedAt = openSession ? openSession.opened_at : new Date(Date.now() - 86400000).toISOString();
+    const openingCash = openSession ? Number(openSession.opening_cash || 0) : 0;
+
+    const salesCash = await db.get(
+      `SELECT COALESCE(SUM(paid_amount), 0) as total 
+       FROM sales 
+       WHERE tenant_id = ? AND user_id = ? AND payment_method = 'Cash' AND sale_date >= ?`,
+      [tenantId, cashierId, openedAt]
+    );
+
+    const expectedCash = openingCash + Number(salesCash?.total || 0);
+    const variance = countedTotal - expectedCash;
+
+    let sessionId = openSession ? openSession.id : null;
+    if (sessionId) {
+      await db.run(
+        `UPDATE cash_drawer_sessions SET
+           closed_at = CURRENT_TIMESTAMP,
+           closing_counted_cash = ?,
+           expected_cash = ?,
+           variance = ?,
+           denominations_json = ?,
+           status = 'closed',
+           notes = ?
+         WHERE id = ?`,
+        [
+          countedTotal,
+          expectedCash,
+          variance,
+          denominations ? JSON.stringify(denominations) : null,
+          notes || (openSession.notes || null),
+          sessionId
+        ]
+      );
+    } else {
+      const result = await db.run(
+        `INSERT INTO cash_drawer_sessions (
+          tenant_id, cashier_id, cashier_name, opened_at, closed_at,
+          opening_cash, closing_counted_cash, expected_cash, variance,
+          denominations_json, status, notes
+        ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, 0, ?, ?, ?, ?, 'closed', ?)`,
+        [
+          tenantId, cashierId, req.user.full_name || req.user.username,
+          openedAt, countedTotal, expectedCash, variance,
+          denominations ? JSON.stringify(denominations) : null,
+          notes || null
+        ]
+      );
+      sessionId = result.lastInsertRowid;
+    }
+
+    const closedSession = await db.get('SELECT * FROM cash_drawer_sessions WHERE id = ?', [sessionId]);
+
+    return res.json({
+      success: true,
+      message: 'Cash drawer shift closed and reconciled.',
+      session: closedSession,
+      variance,
+      expectedCash,
+      countedCash: countedTotal
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.getShifts = async (req, res) => {
+  try {
+    const tenantId = req.tenantId || req.tenant_id || (req.user && req.user.tenant_id);
+    const sessions = await db.all(
+      'SELECT * FROM cash_drawer_sessions WHERE tenant_id = ? ORDER BY id DESC LIMIT 50',
+      [tenantId]
+    );
+    return res.json({ success: true, sessions });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};

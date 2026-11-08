@@ -455,6 +455,23 @@ function initializeDatabase() {
       payment_status TEXT NOT NULL DEFAULT 'active'
     );
 
+    CREATE TABLE IF NOT EXISTS cash_drawer_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id TEXT NOT NULL,
+      cashier_id INTEGER NOT NULL,
+      cashier_name TEXT,
+      opened_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      closed_at DATETIME,
+      opening_cash REAL DEFAULT 0,
+      closing_counted_cash REAL,
+      expected_cash REAL,
+      variance REAL,
+      denominations_json TEXT,
+      status TEXT DEFAULT 'open',
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS tenant_settings (
       tenant_id TEXT NOT NULL,
       key TEXT NOT NULL,
@@ -467,7 +484,7 @@ function initializeDatabase() {
 
   // Multi-tenancy migration: add tenant_id to all tables if not present
   const multiTenantTables = [
-    'users', 'categories', 'units', 'products', 'batches',
+    'users', 'categories', 'units', 'products', 'batches', 'cash_drawer_sessions',
     'inventory_movements', 'suppliers', 'customers', 'purchases',
     'purchase_items', 'sales', 'sale_items', 'payments',
     'expense_categories', 'expenses', 'stock_adjustments',
@@ -531,6 +548,27 @@ function initializeDatabase() {
     }
     // Security cleanup: eliminate historical plaintext temporary passwords
     db.prepare('UPDATE password_reset_requests SET temporary_password = NULL WHERE temporary_password IS NOT NULL').run();
+  } catch (_) {}
+
+  // Industry-Specific Columns Migration (Pharmacy, Restaurant, Clothing, Grocery)
+  try {
+    const prodCols = db.prepare('PRAGMA table_info(products)').all().map(c => c.name);
+    if (!prodCols.includes('salt_formula')) db.prepare('ALTER TABLE products ADD COLUMN salt_formula TEXT').run();
+    if (!prodCols.includes('drap_reg_no')) db.prepare('ALTER TABLE products ADD COLUMN drap_reg_no TEXT').run();
+    if (!prodCols.includes('rack_shelf')) db.prepare('ALTER TABLE products ADD COLUMN rack_shelf TEXT').run();
+    if (!prodCols.includes('article_code')) db.prepare('ALTER TABLE products ADD COLUMN article_code TEXT').run();
+    if (!prodCols.includes('recipe_bom')) db.prepare('ALTER TABLE products ADD COLUMN recipe_bom TEXT').run();
+    if (!prodCols.includes('modifiers')) db.prepare('ALTER TABLE products ADD COLUMN modifiers TEXT').run();
+  } catch (_) {}
+
+  try {
+    const saleCols = db.prepare('PRAGMA table_info(sales)').all().map(c => c.name);
+    if (!saleCols.includes('table_no')) db.prepare('ALTER TABLE sales ADD COLUMN table_no TEXT').run();
+    if (!saleCols.includes('dining_mode')) db.prepare("ALTER TABLE sales ADD COLUMN dining_mode TEXT DEFAULT 'counter'").run();
+    if (!saleCols.includes('kot_number')) db.prepare('ALTER TABLE sales ADD COLUMN kot_number TEXT').run();
+    if (!saleCols.includes('dispense_unit')) db.prepare("ALTER TABLE sales ADD COLUMN dispense_unit TEXT DEFAULT 'unit'").run();
+    if (!saleCols.includes('doctor_name')) db.prepare('ALTER TABLE sales ADD COLUMN doctor_name TEXT').run();
+    if (!saleCols.includes('patient_cnic')) db.prepare('ALTER TABLE sales ADD COLUMN patient_cnic TEXT').run();
   } catch (_) {}
 
   // Add is_default column to tenants table

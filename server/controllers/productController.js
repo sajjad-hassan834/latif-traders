@@ -34,9 +34,9 @@ exports.getProducts = async (req, res) => {
     const params = [tenantId];
 
     if (search) {
-      query += ` AND (p.name ILIKE ? OR p.sku ILIKE ? OR p.barcode ILIKE ? OR p.brand ILIKE ?)`;
+      query += ` AND (p.name ILIKE ? OR p.sku ILIKE ? OR p.barcode ILIKE ? OR p.brand ILIKE ? OR p.salt_formula ILIKE ? OR p.article_code ILIKE ?)`;
       const s = `%${search}%`;
-      params.push(s, s, s, s);
+      params.push(s, s, s, s, s, s);
     }
 
     if (category_id) {
@@ -85,6 +85,7 @@ exports.getProducts = async (req, res) => {
     }
 
     const rawProducts = await db.all(query, params);
+    const isSalesOnly = req.user && req.user.role === 'sales';
     const products = rawProducts.map(p => {
       const prodBatches = batchesByProduct[p.id] || [];
       const firstBatch = prodBatches.length > 0 ? prodBatches[0] : null;
@@ -111,11 +112,13 @@ exports.getProducts = async (req, res) => {
 
       return {
         ...p,
+        purchase_price: isSalesOnly ? null : p.purchase_price,
+        fifo_purchase_price: isSalesOnly ? null : p.fifo_purchase_price,
+        active_cost_price: isSalesOnly ? null : activeCost,
         current_stock: totalStock,
         active_sale_price: activeSale,
-        active_cost_price: activeCost,
         active_wholesale_price: activeWholesale,
-        active_batches: prodBatches
+        active_batches: isSalesOnly ? prodBatches.map(b => ({ ...b, purchase_price: null })) : prodBatches
       };
     });
 
@@ -209,7 +212,8 @@ exports.createProduct = async (req, res) => {
         name, sku, barcode, category_id, brand, unit, supplier_id,
         purchase_price, sale_price, wholesale_price,
         min_stock_level, storage_location,
-        opening_stock, batch_no, expiry_date
+        opening_stock, batch_no, expiry_date,
+        salt_formula, drap_reg_no, rack_shelf, article_code, recipe_bom, modifiers
       } = req.body;
 
       if (!name || !name.trim()) {
@@ -246,8 +250,9 @@ exports.createProduct = async (req, res) => {
             INSERT INTO products (
               name, sku, barcode, category_id, brand, unit, supplier_id,
               purchase_price, sale_price, wholesale_price,
-              min_stock_level, storage_location, status, tenant_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
+              min_stock_level, storage_location, status, tenant_id,
+              salt_formula, drap_reg_no, rack_shelf, article_code, recipe_bom, modifiers
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?)
           `, [
             name.trim(),
             finalSku,
@@ -261,7 +266,13 @@ exports.createProduct = async (req, res) => {
             Number(wholesale_price) || Number(sale_price) || 0,
             Number(min_stock_level) || 5,
             storage_location || null,
-            tenantId
+            tenantId,
+            salt_formula ? salt_formula.trim() : null,
+            drap_reg_no ? drap_reg_no.trim() : null,
+            rack_shelf ? rack_shelf.trim() : null,
+            article_code ? article_code.trim() : null,
+            recipe_bom ? (typeof recipe_bom === 'string' ? recipe_bom : JSON.stringify(recipe_bom)) : null,
+            modifiers ? (typeof modifiers === 'string' ? modifiers : JSON.stringify(modifiers)) : null
           ]);
           break;
         } catch (insertErr) {
@@ -326,7 +337,8 @@ exports.updateProduct = async (req, res) => {
     const {
       name, sku, barcode, category_id, brand, unit, supplier_id,
       purchase_price, sale_price, wholesale_price,
-      min_stock_level, storage_location, status
+      min_stock_level, storage_location, status,
+      salt_formula, drap_reg_no, rack_shelf, article_code, recipe_bom, modifiers
     } = req.body;
 
 
@@ -367,6 +379,7 @@ exports.updateProduct = async (req, res) => {
         name = ?, sku = ?, barcode = ?, category_id = ?, brand = ?, unit = ?, supplier_id = ?,
         purchase_price = ?, sale_price = ?, wholesale_price = ?,
         min_stock_level = ?, storage_location = ?, status = ?,
+        salt_formula = ?, drap_reg_no = ?, rack_shelf = ?, article_code = ?, recipe_bom = ?, modifiers = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND tenant_id = ?
     `, [
@@ -383,6 +396,12 @@ exports.updateProduct = async (req, res) => {
       finalMinStock,
       storage_location !== undefined ? storage_location : existing.storage_location,
       status || existing.status,
+      salt_formula !== undefined ? (salt_formula ? salt_formula.trim() : null) : (existing.salt_formula || null),
+      drap_reg_no !== undefined ? (drap_reg_no ? drap_reg_no.trim() : null) : (existing.drap_reg_no || null),
+      rack_shelf !== undefined ? (rack_shelf ? rack_shelf.trim() : null) : (existing.rack_shelf || null),
+      article_code !== undefined ? (article_code ? article_code.trim() : null) : (existing.article_code || null),
+      recipe_bom !== undefined ? (typeof recipe_bom === 'object' ? JSON.stringify(recipe_bom) : recipe_bom) : (existing.recipe_bom || null),
+      modifiers !== undefined ? (typeof modifiers === 'object' ? JSON.stringify(modifiers) : modifiers) : (existing.modifiers || null),
       existing.id,
       tenantId
     ]);

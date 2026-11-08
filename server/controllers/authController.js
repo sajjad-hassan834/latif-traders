@@ -505,3 +505,66 @@ exports.getResetRequestStatus = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to check reset status.' });
   }
 };
+
+
+exports.managerOverride = async (req, res) => {
+  try {
+    const { managerUsername, managerPassword, reason, action } = req.body;
+    if (!managerUsername || !managerPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Manager username and password/PIN are required for authorization.'
+      });
+    }
+
+    const tenantId = req.tenantId || req.tenant_id || (req.user && req.user.tenant_id);
+    // Allow either tenant admin or superowner
+    const manager = await db.get(
+      `SELECT * FROM users 
+       WHERE (LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)) 
+         AND (tenant_id = ? OR role = 'superowner')
+         AND role IN ('admin', 'superowner')
+         AND status = 'active'`,
+      [managerUsername.trim(), managerUsername.trim(), tenantId]
+    );
+
+    if (!manager) {
+      return res.status(401).json({
+        success: false,
+        message: 'Manager not found or has insufficient clearance.'
+      });
+    }
+
+    const isMatch = await bcrypt.compare(managerPassword, manager.password_hash);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid manager password / PIN.'
+      });
+    }
+
+    const overrideToken = crypto.randomBytes(16).toString('hex');
+
+    // Audit the managerial override
+    await logAudit(
+      req.user ? req.user.id : null,
+      req.user ? (req.user.full_name || req.user.username) : 'System',
+      'OVERRIDE',
+      'MANAGER_OVERRIDE',
+      manager.id,
+      `Action: ${action || 'GENERAL_OVERRIDE'}, Reason: ${reason || 'Not specified'}, ApprovedBy: ${manager.username}`,
+      req
+    );
+
+    return res.json({
+      success: true,
+      message: 'Manager override approved successfully.',
+      authorizedBy: manager.full_name || manager.username,
+      managerRole: manager.role,
+      overrideToken
+    });
+  } catch (err) {
+    console.error('Manager override error:', err);
+    return res.status(500).json({ success: false, message: 'Server error during manager verification.' });
+  }
+};
