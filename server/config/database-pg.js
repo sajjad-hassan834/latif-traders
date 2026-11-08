@@ -38,7 +38,12 @@ class PostgresAdapter {
     }
     const poolSize = this.config.max || parseInt(process.env.DATABASE_POOL_SIZE, 10) || 10;
     const isLocal = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
-    const sslConfig = this.config.ssl !== undefined ? this.config.ssl : (process.env.DATABASE_SSL === 'true' || (process.env.NODE_ENV === 'production' && !isLocal) ? { rejectUnauthorized: false } : false);
+    const isRailwayInternal = connectionString.includes('.railway.internal');
+    const sslConfig = this.config.ssl !== undefined
+      ? this.config.ssl
+      : (process.env.DATABASE_SSL === 'false' || isLocal || isRailwayInternal)
+        ? false
+        : (process.env.DATABASE_SSL === 'true' || process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false);
     const stmtTimeout = parseInt(process.env.PG_STATEMENT_TIMEOUT, 10) || 15000;
     const idleTxTimeout = parseInt(process.env.PG_IDLE_TX_TIMEOUT, 10) || 10000;
 
@@ -49,7 +54,13 @@ class PostgresAdapter {
       connectionTimeoutMillis: this.config.connectionTimeoutMillis || 5000,
       statement_timeout: stmtTimeout,
       idle_in_transaction_session_timeout: idleTxTimeout,
-      ssl: sslConfig
+      ssl: sslConfig,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000
+    });
+
+    this.pool.on('error', (err) => {
+      console.warn('[POSTGRES POOL CLIENT ERROR]', err.message);
     });
 
     // Connection verification with retry loop
@@ -172,8 +183,16 @@ class PostgresAdapter {
       };
     }
 
-    const res = await this.pool.query(tokenizedSql, params);
-    return res;
+    try {
+      const res = await this.pool.query(tokenizedSql, params);
+      return res;
+    } catch (queryErr) {
+      if (!activeTx && (queryErr.code === 'ECONNRESET' || (queryErr.message && (queryErr.message.includes('ECONNRESET') || queryErr.message.includes('Connection terminated unexpectedly'))))) {
+        console.warn('[POSTGRES RETRY] Idle connection reset detected, retrying query once...');
+        return await this.pool.query(tokenizedSql, params);
+      }
+      throw queryErr;
+    }
   }
 
   async all(sql, params = []) {
