@@ -9,7 +9,8 @@ import CustomDatePicker from '../components/common/CustomDatePicker';
 import ReceiptVoucherModal from '../components/invoices/ReceiptVoucherModal';
 
 export default function Suppliers() {
-  const { user, isAdmin: authIsAdmin } = useAuth();
+  const { user, isAdmin: authIsAdmin, tenant } = useAuth();
+  const [tenantSettings, setTenantSettings] = useState(null);
   const isAdmin = authIsAdmin || user?.role === 'admin';
   const [suppliers, setSuppliers] = useState([]);
   const [search, setSearch] = useState('');
@@ -108,6 +109,9 @@ export default function Suppliers() {
 
   useEffect(() => {
     loadSuppliers();
+    api.get('/settings').then(res => {
+      if (res && res.success && res.settings) setTenantSettings(res.settings);
+    }).catch(() => {});
   }, []);
 
   const handleAddSupplier = async (e) => {
@@ -253,7 +257,7 @@ export default function Suppliers() {
             type="text"
             className="form-control"
             style={{ paddingLeft: '2.5rem' }}
-            placeholder="Search suppliers by company or contact person..."
+            placeholder="Search suppliers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && loadSuppliers()}
@@ -269,12 +273,12 @@ export default function Suppliers() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
               <RefreshCw size={14} className={auditing ? 'spin' : ''} />
-              <span>{auditing ? 'Auditing...' : 'Recalculate Balances'}</span>
+              <span>{auditing ? 'Auditing...' : 'Sync'}</span>
             </button>
           )}
           <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
             <Plus size={16} />
-            <span>Add New Supplier</span>
+            <span>+ Supplier</span>
           </button>
         </div>
       </div>
@@ -285,12 +289,12 @@ export default function Suppliers() {
           <table className="table" style={{ width: '100%', minWidth: '700px' }}>
             <thead>
               <tr>
-                <th>Supplier / Company</th>
-                <th style={{ minWidth: '130px' }}>Contact Person</th>
+                <th>Supplier</th>
+                <th style={{ minWidth: '130px' }}>Contact</th>
                 <th style={{ minWidth: '120px' }}>Phone</th>
                 <th style={{ minWidth: '150px' }}>Address</th>
-                <th style={{ textAlign: 'right', minWidth: '120px' }}>Outstanding Payable</th>
-                <th style={{ textAlign: 'center', width: '85px' }}>Actions</th>
+                <th style={{ textAlign: 'right', minWidth: '120px' }}>Balance</th>
+                <th style={{ textAlign: 'center', width: '85px' }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -340,7 +344,7 @@ export default function Suppliers() {
                               onClick: () => openEditSupplier(s)
                             },
                             {
-                              label: 'View Statement',
+                              label: 'Statement',
                               icon: <FileText size={14} color="#6366f1" />,
                               onClick: () => openLedger(s)
                             },
@@ -351,7 +355,7 @@ export default function Suppliers() {
                             },
                             isAdmin && { divider: true },
                             isAdmin && {
-                              label: 'Delete Supplier',
+                              label: 'Delete',
                               icon: <Trash2 size={14} color="#dc2626" />,
                               danger: true,
                               onClick: () => {
@@ -400,7 +404,7 @@ export default function Suppliers() {
             <form onSubmit={handleAddSupplier}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Supplier / Company Name *</label>
+                  <label className="form-label">Supplier Name *</label>
                   <input
                     type="text"
                     className="form-control"
@@ -413,7 +417,7 @@ export default function Suppliers() {
 
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Contact Person</label>
+                    <label className="form-label">Contact</label>
                     <input
                       type="text"
                       className="form-control"
@@ -458,7 +462,7 @@ export default function Suppliers() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Supplier</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save</button>
               </div>
             </form>
           </div>
@@ -492,7 +496,7 @@ export default function Suppliers() {
                     {ledgerData.supplier.name}
                   </div>
                   <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
-                    Supplier / Vendor
+                    Supplier
                     {ledgerData.supplier.phone && ledgerData.supplier.phone !== 'None' && ledgerData.supplier.phone !== '-' && (
                       <span> • 📞 {ledgerData.supplier.phone}</span>
                     )}
@@ -575,7 +579,7 @@ export default function Suppliers() {
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E5E7EB' }}>
                       <th style={{ width: '100px', padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Date</th>
-                      <th style={{ width: '140px', padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Bill / Ref #</th>
+                      <th style={{ width: '140px', padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Bill #</th>
                       <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Description</th>
                       <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Amount</th>
                       <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Paid</th>
@@ -939,7 +943,7 @@ export default function Suppliers() {
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Payment Amount (PKR) *</label>
+                  <label className="form-label">Amount (PKR) *</label>
                   <input
                     type="number"
                     className="form-control"
@@ -954,7 +958,7 @@ export default function Suppliers() {
 
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Payment Date</label>
+                    <label className="form-label">Date</label>
                     <input
                       type="date"
                       className="form-control"
@@ -963,7 +967,7 @@ export default function Suppliers() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Payment Method</label>
+                    <label className="form-label">Method</label>
                     <select
                       className="form-control"
                       value={payMethod}
@@ -976,7 +980,7 @@ export default function Suppliers() {
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Notes / Cheque #</label>
+                  <label className="form-label">Notes</label>
                   <input
                     type="text"
                     className="form-control"
@@ -1018,7 +1022,7 @@ export default function Suppliers() {
             <form onSubmit={handleUpdateSupplier}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Supplier / Company Name *</label>
+                  <label className="form-label">Supplier Name *</label>
                   <input
                     type="text"
                     className="form-control"
@@ -1083,13 +1087,13 @@ export default function Suppliers() {
                       }}
                     >
                       <Trash2 size={13} />
-                      <span>Delete Supplier</span>
+                      <span>Delete</span>
                     </button>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.6rem' }}>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Update Supplier</button>
+                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Changes</button>
                 </div>
               </div>
             </form>
@@ -1104,7 +1108,7 @@ export default function Suppliers() {
             <div className="modal-header" style={{ borderBottom: '1px solid #fee2e2', background: '#fff5f5' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Trash2 size={18} color="#dc2626" />
-                <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1.05rem', fontWeight: 700 }}>Confirm Delete Supplier</h3>
+                <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1.05rem', fontWeight: 700 }}>Delete</h3>
               </div>
               <button
                 type="button"
@@ -1157,7 +1161,7 @@ export default function Suppliers() {
                 <ShieldAlert size={20} style={{ color: auditData?.discrepancies_count > 0 ? '#DC2626' : '#16A34A' }} />
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-title)' }}>
-                    Audit & Sync Supplier Balances
+                    Audit
                   </h3>
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                     Verified double-entry ledger calculation against stored database balances
@@ -1263,11 +1267,11 @@ export default function Suppliers() {
         <ReceiptVoucherModal
           receipt={viewingReceipt}
           party={selectedSup || { name: viewingReceipt.supplier_name || 'Supplier' }}
-          tenantSettings={{
-            shop_name: 'LATIF TRADERS',
-            tagline: 'Frozen Food Wholesalers & Retailers',
-            phone: '+92 300 1234567 / +92 321 7654321',
-            address: 'Shop # 14-16, Commercial Market, Frozen Food Market, Lahore'
+          tenantSettings={tenantSettings || {
+            shop_name: tenant?.business_name || '',
+            tagline: '',
+            phone: '',
+            address: ''
           }}
           onClose={() => setViewingReceipt(null)}
         />

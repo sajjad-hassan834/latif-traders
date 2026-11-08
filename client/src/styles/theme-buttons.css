@@ -40,6 +40,16 @@ html[data-app-theme="indigo"] {
   --btn-ghost-border: #c7d2fe;
 }
 
+html[data-app-theme="brand"] {
+  --btn-bg: linear-gradient(135deg, #f59e0b 0%, #f4a62a 100%);
+  --btn-bg-hover: linear-gradient(135deg, #d97706 0%, #e59920 100%);
+  --btn-text: #241800;
+  --btn-shadow: 0 4px 12px rgba(244, 166, 42, 0.32);
+  --btn-ghost-bg: #e4ede7;
+  --btn-ghost-text: #0f4d3a;
+  --btn-ghost-border: #d3dfd8;
+}
+
 /* Primary / success / teal action buttons */
 html[data-app-theme] .btn-primary,
 html[data-app-theme] .btn-success,

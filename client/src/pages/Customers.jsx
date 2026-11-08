@@ -10,7 +10,8 @@ import ActionMenu from '../components/common/ActionMenu';
 import CustomDatePicker from '../components/common/CustomDatePicker';
 
 export default function Customers() {
-  const { user, isAdmin: authIsAdmin } = useAuth();
+  const { user, isAdmin: authIsAdmin, tenant } = useAuth();
+  const [tenantSettings, setTenantSettings] = useState(null);
   const isAdmin = authIsAdmin || user?.role === 'admin';
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
@@ -114,6 +115,9 @@ export default function Customers() {
 
   useEffect(() => {
     loadCustomers();
+    api.get('/settings').then(res => {
+      if (res && res.success && res.settings) setTenantSettings(res.settings);
+    }).catch(() => {});
   }, []);
 
   const handleAddCustomer = async (e) => {
@@ -263,7 +267,7 @@ export default function Customers() {
     if (clean.startsWith('03')) clean = '92' + clean.slice(1);
     else if (!clean.startsWith('92')) clean = '92' + clean;
 
-    const msg = `Assalam-o-Alaikum ${customer.name},\nThis is a friendly reminder that your outstanding udhaar balance with Latif Traders is ${formatPKR(balance)}.\nKindly settle your pending dues at your earliest convenience.\nThank you!`;
+    const msg = `Assalam-o-Alaikum ${customer.name},\nThis is a friendly reminder that your outstanding udhaar balance with ${tenant?.business_name || 'our shop'} is ${formatPKR(balance)}.\nKindly settle your pending dues at your earliest convenience.\nThank you!`;
     window.open(`https://wa.me/${clean}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -327,12 +331,12 @@ export default function Customers() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '36px' }}
             >
               <RefreshCw size={14} className={auditing ? 'spin' : ''} />
-              <span>{auditing ? 'Auditing...' : 'Audit & Sync Balances'}</span>
+              <span>{auditing ? 'Auditing...' : 'Audit Balances'}</span>
             </button>
           )}
           <button onClick={() => setShowAddModal(true)} className="btn btn-primary" style={{ height: '36px' }}>
             <Plus size={16} />
-            <span>Add New Customer</span>
+            <span>+ Add Customer</span>
           </button>
         </div>
       </div>
@@ -376,7 +380,7 @@ export default function Customers() {
             type="text"
             className="form-control"
             style={{ paddingLeft: '2.2rem', height: '36px' }}
-            placeholder="Search saved customers..."
+            placeholder="Search customers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && loadCustomers()}
@@ -390,13 +394,13 @@ export default function Customers() {
           <table className="table" style={{ width: '100%', minWidth: '720px' }}>
             <thead>
               <tr>
-                <th style={{ minWidth: '160px', textAlign: 'left' }}>Customer Name</th>
+                <th style={{ minWidth: '160px', textAlign: 'left' }}>Name</th>
                 <th style={{ width: '110px', minWidth: '110px', textAlign: 'center' }}>Type</th>
                 <th style={{ width: '130px', minWidth: '130px', textAlign: 'left' }}>Phone</th>
                 <th style={{ minWidth: '150px', textAlign: 'left' }}>Address</th>
-                <th style={{ textAlign: 'right', width: '110px', minWidth: '110px' }}>Credit Limit</th>
-                <th style={{ textAlign: 'right', width: '125px', minWidth: '125px' }}>Current Balance</th>
-                <th style={{ textAlign: 'center', width: '100px', minWidth: '100px' }}>Actions</th>
+                <th style={{ textAlign: 'right', width: '110px', minWidth: '110px' }}>Limit</th>
+                <th style={{ textAlign: 'right', width: '125px', minWidth: '125px' }}>Balance</th>
+                <th style={{ textAlign: 'center', width: '100px', minWidth: '100px' }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -446,12 +450,12 @@ export default function Customers() {
                           title="Customer Actions"
                           items={[
                             {
-                              label: 'Edit Customer',
+                              label: 'Edit',
                               icon: <Edit size={14} color="#0284c7" />,
                               onClick: () => openEditCustomer(c)
                             },
                             {
-                              label: 'View Statement',
+                              label: 'Statement',
                               icon: <FileText size={14} color="#6366f1" />,
                               onClick: () => openLedger(c)
                             },
@@ -462,11 +466,11 @@ export default function Customers() {
                             },
                             isAdmin && { divider: true },
                             isAdmin && (c.id === 1 ? {
-                              label: 'Walk-in (Protected)',
+                              label: 'Protected',
                               icon: <Trash2 size={14} color="#cbd5e1" />,
                               disabled: true
                             } : {
-                              label: 'Delete Customer',
+                              label: 'Delete',
                               icon: <Trash2 size={14} color="#dc2626" />,
                               danger: true,
                               onClick: () => {
@@ -498,7 +502,7 @@ export default function Customers() {
           <div className="modal-content" style={{ maxWidth: '580px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Add New Customer</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>New Customer</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Create a new retail or wholesale customer account.
                 </div>
@@ -515,7 +519,7 @@ export default function Customers() {
             <form onSubmit={handleAddCustomer}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Customer / Business Name *</label>
+                  <label className="form-label">Name *</label>
                   <input
                     type="text"
                     className="form-control"
@@ -528,7 +532,7 @@ export default function Customers() {
 
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Customer Type</label>
+                    <label className="form-label">Type</label>
                     <select
                       className="form-control"
                       value={formData.customer_type}
@@ -539,7 +543,7 @@ export default function Customers() {
                     </select>
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Phone Number</label>
+                    <label className="form-label">Phone</label>
                     <input
                       type="text"
                       className="form-control"
@@ -563,7 +567,7 @@ export default function Customers() {
 
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Opening Balance (PKR)</label>
+                    <label className="form-label">Opening (PKR)</label>
                     <input
                       type="number"
                       className="form-control"
@@ -573,7 +577,7 @@ export default function Customers() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Credit Limit (PKR)</label>
+                    <label className="form-label">Limit (PKR)</label>
                     <input
                       type="number"
                       className="form-control"
@@ -586,7 +590,7 @@ export default function Customers() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Customer</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save</button>
               </div>
             </form>
           </div>
@@ -727,12 +731,12 @@ export default function Customers() {
                   {Number(ledgerData.summary.closing_balance || 0) <= 0 ? (
                     <div style={{ background: '#D1FAE5', color: '#065F46', fontSize: '12px', padding: '4px 12px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #A7F3D0' }}>
                       <CheckCircle2 size={13} />
-                      <span>Fully Settled (No Pending Udhaar)</span>
+                      <span>Settled (Zero Balance)</span>
                     </div>
                   ) : (
                     <div style={{ background: '#FEE2E2', color: '#991B1B', fontSize: '12px', padding: '4px 12px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #FECACA' }}>
                       <AlertCircle size={13} />
-                      <span>Total Pending Udhaar: {formatPKR(ledgerData.summary.closing_balance)}</span>
+                      <span>Total Balance: {formatPKR(ledgerData.summary.closing_balance)}</span>
                     </div>
                   )}
                 </div>
@@ -1139,7 +1143,7 @@ export default function Customers() {
                 <ShieldAlert size={20} style={{ color: auditData?.discrepancies_count > 0 ? '#DC2626' : '#16A34A' }} />
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-title)' }}>
-                    Audit & Sync Customer Balances
+                    Audit
                   </h3>
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                     Verified double-entry ledger calculation against stored database balances
@@ -1248,9 +1252,7 @@ export default function Customers() {
           <div className="modal-content" style={{ maxWidth: '480px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>
-                  Receive Payment
-                </h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Payment</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Customer: <strong>{selectedCust.name}</strong>
                 </div>
@@ -1267,11 +1269,11 @@ export default function Customers() {
             <form onSubmit={handleRecordPayment}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '0.75rem 1rem', borderRadius: '6px', color: '#991b1b', fontWeight: 600, fontSize: '0.85rem' }}>
-                  Current Outstanding Udhaar: <strong>{formatPKR(selectedCust.current_balance)}</strong>
+                  Balance: <strong>{formatPKR(selectedCust.current_balance)}</strong>
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Payment Amount (PKR) *</label>
+                  <label className="form-label">Amount (PKR) *</label>
                   <input
                     type="number"
                     className="form-control"
@@ -1286,7 +1288,7 @@ export default function Customers() {
 
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Payment Date</label>
+                    <label className="form-label">Date</label>
                     <input
                       type="date"
                       className="form-control"
@@ -1295,7 +1297,7 @@ export default function Customers() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Payment Method</label>
+                    <label className="form-label">Method</label>
                     <select
                       className="form-control"
                       value={payMethod}
@@ -1308,7 +1310,7 @@ export default function Customers() {
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Notes / Reference</label>
+                  <label className="form-label">Notes</label>
                   <input
                     type="text"
                     className="form-control"
@@ -1320,7 +1322,7 @@ export default function Customers() {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowPayModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '120px' }}>Record Receipt</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '120px' }}>Save</button>
               </div>
             </form>
           </div>
@@ -1333,7 +1335,7 @@ export default function Customers() {
           <div className="modal-content" style={{ maxWidth: '580px', width: '96%' }}>
             <div className="modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Edit Customer Account</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Edit Customer</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Update contact information, account type, and credit limits.
                 </div>
@@ -1350,7 +1352,7 @@ export default function Customers() {
             <form onSubmit={handleUpdateCustomer}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Customer / Business Name *</label>
+                  <label className="form-label">Name *</label>
                   <input
                     type="text"
                     className="form-control"
@@ -1371,7 +1373,7 @@ export default function Customers() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Account Type</label>
+                    <label className="form-label">Type</label>
                     <select
                       className="form-control"
                       value={editFormData.customer_type}
@@ -1385,7 +1387,7 @@ export default function Customers() {
 
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Address / Shop Location</label>
+                    <label className="form-label">Location</label>
                     <input
                       type="text"
                       className="form-control"
@@ -1406,7 +1408,7 @@ export default function Customers() {
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Account Opening Starting Balance (PKR)</label>
+                  <label className="form-label">Opening (PKR)</label>
                   <input
                     type="number"
                     className="form-control"
@@ -1443,13 +1445,13 @@ export default function Customers() {
                       }}
                     >
                       <Trash2 size={13} />
-                      <span>Delete Customer</span>
+                      <span>Delete</span>
                     </button>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.6rem' }}>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Update Customer</button>
+                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Changes</button>
                 </div>
               </div>
             </form>
@@ -1464,7 +1466,7 @@ export default function Customers() {
             <div className="modal-header" style={{ borderBottom: '1px solid #fee2e2', background: '#fff5f5' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Trash2 size={18} color="#dc2626" />
-                <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1.05rem', fontWeight: 700 }}>Confirm Delete Customer</h3>
+                <h3 style={{ margin: 0, color: '#991b1b', fontSize: '1.05rem', fontWeight: 700 }}>Delete</h3>
               </div>
               <button
                 type="button"
@@ -1519,11 +1521,11 @@ export default function Customers() {
         <ReceiptVoucherModal
           receipt={viewingReceipt}
           party={selectedCust || { name: viewingReceipt.customer_name || 'Customer' }}
-          tenantSettings={{
-            shop_name: 'LATIF TRADERS',
-            tagline: 'Frozen Food Wholesalers & Retailers',
-            phone: '+92 300 1234567 / +92 321 7654321',
-            address: 'Shop # 14-16, Commercial Market, Frozen Food Market, Lahore'
+          tenantSettings={tenantSettings || {
+            shop_name: tenant?.business_name || '',
+            tagline: '',
+            phone: '',
+            address: ''
           }}
           onClose={() => setViewingReceipt(null)}
         />

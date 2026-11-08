@@ -1449,7 +1449,7 @@ export default function SalesList({ setTab }) {
             <form onSubmit={handleSubmitStatus}>
               <div className="modal-header">
                 <div>
-                  <h3 style={{ margin: 0 }}>Update Order Status</h3>
+                  <h3 style={{ margin: 0 }}>Update Status</h3>
                   <p className="modal-subtitle">Order #{statusModalOrder.invoice_no}</p>
                 </div>
                 <button type="button" onClick={() => setStatusModalOrder(null)} className="modal-close-btn">
@@ -1460,7 +1460,7 @@ export default function SalesList({ setTab }) {
               <div className="modal-body">
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', fontSize: '0.785rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                    Select New Status
+                    Status
                   </label>
                   <select
                     value={newStatusValue}
@@ -1471,7 +1471,7 @@ export default function SalesList({ setTab }) {
                     <option value="New">New (Awaiting)</option>
                     <option value="Pending">Pending (On Hold)</option>
                     <option value="Confirmed">Confirmed</option>
-                    <option value="Processing">Processing (Packing / Weighing)</option>
+                    <option value="Processing">Processing</option>
                     <option value="Ready for Delivery">Ready for Delivery</option>
                     <option value="Delivered">Delivered</option>
                     <option value="Completed">Completed (Fulfilled)</option>
@@ -1487,7 +1487,7 @@ export default function SalesList({ setTab }) {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.785rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                    Reason / Operational Note (Optional)
+                    Note
                   </label>
                   <input
                     type="text"
@@ -1504,7 +1504,7 @@ export default function SalesList({ setTab }) {
                   Cancel
                 </button>
                 <button type="submit" disabled={statusSubmitting} className="btn btn-primary btn-sm">
-                  {statusSubmitting ? 'Updating...' : 'Save Status'}
+                  {statusSubmitting ? 'Updating...' : 'Update Status'}
                 </button>
               </div>
             </form>
@@ -1619,7 +1619,7 @@ export default function SalesList({ setTab }) {
             <form onSubmit={handleBulkStatusSubmit}>
               <div className="modal-header">
                 <div>
-                  <h3 style={{ margin: 0 }}>Bulk Status Update</h3>
+                  <h3 style={{ margin: 0 }}>Update Status</h3>
                   <p className="modal-subtitle">Applying to {selectedOrders.length} selected orders</p>
                 </div>
                 <button type="button" onClick={() => setBulkStatusModalOpen(false)} className="modal-close-btn">
@@ -1629,7 +1629,7 @@ export default function SalesList({ setTab }) {
 
               <div className="modal-body">
                 <label style={{ display: 'block', fontSize: '0.785rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                  Update All Selected Orders To:
+                  Status
                 </label>
                 <select
                   value={bulkStatusValue}
@@ -1651,7 +1651,7 @@ export default function SalesList({ setTab }) {
                   Cancel
                 </button>
                 <button type="submit" disabled={bulkStatusSubmitting} className="btn btn-primary btn-sm">
-                  {bulkStatusSubmitting ? 'Updating...' : `Update (${selectedOrders.length})`}
+                  {bulkStatusSubmitting ? 'Updating...' : 'Update'}
                 </button>
               </div>
             </form>

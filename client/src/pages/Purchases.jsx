@@ -12,6 +12,7 @@ import SearchableSelect from '../components/common/SearchableSelect';
 import Pagination from '../components/common/Pagination';
 import ActionMenu from '../components/common/ActionMenu';
 import CustomDatePicker from '../components/common/CustomDatePicker';
+import useTradeProfile from '../hooks/useTradeProfile';
 
 const getDateRangeForPreset = (preset) => {
   const now = new Date();
@@ -39,7 +40,10 @@ const getDateRangeForPreset = (preset) => {
 };
 
 export default function Purchases() {
-  const { canManageInventory } = useAuth();
+  const voucherPrintRef = useRef(null);
+  const { canManageInventory, tenant } = useAuth();
+  const { terminology, isFrozenFood, hasBatches, hasExpiry } = useTradeProfile();
+  const lotLabel = terminology?.lotLabel || (isFrozenFood ? 'Batch' : 'Lot');
   const [purchases, setPurchases] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -558,7 +562,7 @@ export default function Purchases() {
   };
 
   const handleExportPurchases = () => {
-    exportToCSV('Latif_Traders_Purchases', purchases, [
+    exportToCSV('Purchases_Export', purchases, [
       { label: 'Invoice No', key: 'invoice_no' },
       { label: 'Supplier Bill #', key: 'supplier_invoice_no' },
       { label: 'Date', key: 'purchase_date' },
@@ -615,6 +619,92 @@ export default function Purchases() {
     }
   };
 
+    const handlePrintVoucher = () => {
+    try {
+      const printableElement = voucherPrintRef.current;
+      let iframe = document.getElementById('voucher-print-frame');
+      if (iframe) iframe.remove();
+
+      iframe = document.createElement('iframe');
+      iframe.id = 'voucher-print-frame';
+      iframe.style.position = 'fixed';
+      iframe.style.top = '-9999px';
+      iframe.style.left = '-9999px';
+      iframe.style.width = '210mm';
+      iframe.style.height = '1200px';
+      iframe.style.border = '0';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      iframe.style.zIndex = '-9999';
+      document.body.appendChild(iframe);
+
+      const tableContent = printableElement ? printableElement.querySelector('table')?.outerHTML || '' : '';
+      const totalsContent = printableElement ? printableElement.querySelector('div[style*="justify-content: flex-end"]')?.outerHTML || '' : '';
+
+      const doc = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Purchase - ${selectedPurchase?.purchase?.invoice_no || ''}</title>
+          <meta charset="utf-8" />
+          <style>
+            @page { size: A4 portrait; margin: 12mm; }
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; background: #fff; margin: 0; padding: 0; font-size: 13px; line-height: 1.5; }
+            .print-header { border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-start; }
+            .print-header h2 { margin: 0 0 4px 0; font-size: 18px; font-weight: 800; color: #0f172a; }
+            .print-meta { font-size: 12px; color: #475569; }
+            table { width: 100%; border-collapse: collapse; margin-top: 12px; margin-bottom: 16px; }
+            th { background: #f8fafc; color: #334155; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; padding: 8px 10px; border-bottom: 2px solid #cbd5e1; text-align: left; }
+            td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+            .mono { font-family: monospace; font-size: 12px; }
+            .totals-container { margin-top: 16px; font-size: 13px; }
+          </style>
+        </head>
+        <body>
+          <div class="print-header">
+            <div>
+              <h2>${(tenant?.business_name || 'STORE').toUpperCase()}</h2>
+              <div class="print-meta">Purchase Voucher • Supply Delivery Receiving Record</div>
+            </div>
+            <div style="text-align: right;" class="print-meta">
+              <div>Bill #: <strong>${selectedPurchase?.purchase?.invoice_no || '-'}</strong></div>
+              <div>Date: <strong>${formatDate(selectedPurchase?.purchase?.purchase_date)}</strong></div>
+              <div>Supplier: <strong>${selectedPurchase?.purchase?.supplier_name || '-'}</strong></div>
+            </div>
+          </div>
+          ${tableContent}
+          ${totalsContent.replace(/₨\s*/g, 'Rs ')}
+        </body>
+        </html>
+      `;
+
+      const frameDoc = iframe.contentWindow.document;
+      frameDoc.open();
+      frameDoc.write(doc);
+      frameDoc.close();
+
+      const triggerPrint = () => {
+        try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } catch (e) {
+          window.print();
+        }
+      };
+
+      if (frameDoc.readyState === 'complete') {
+        setTimeout(triggerPrint, 150);
+      } else {
+        iframe.contentWindow.addEventListener('load', triggerPrint);
+        setTimeout(triggerPrint, 350);
+      }
+    } catch (err) {
+      console.error('Print voucher error:', err);
+      window.print();
+    }
+  };
+
   const handleDeletePurchase = async () => {
     if (!selectedPurchase) return;
     try {
@@ -642,12 +732,12 @@ export default function Purchases() {
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button onClick={handleExportPurchases} className="btn btn-secondary btn-sm" title="Export Purchases to CSV">
             <Download size={14} />
-            <span>Export CSV</span>
+            <span>Export</span>
           </button>
           {canManageInventory && (
             <button onClick={openNewPurchaseModal} className="btn btn-primary btn-sm">
               <Plus size={14} />
-              <span>New Purchase Bill</span>
+              <span>+ Purchase</span>
             </button>
           )}
         </div>
@@ -661,7 +751,7 @@ export default function Purchases() {
             <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               type="text"
-              placeholder="Search bill #, supplier, or product name/SKU..."
+              placeholder="Search purchases..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
@@ -740,7 +830,7 @@ export default function Purchases() {
               }}
             >
               <option value="all">All Statuses</option>
-              <option value="PAID">Paid / Settled</option>
+              <option value="PAID">Paid</option>
               <option value="PARTIAL">Partial Due</option>
               <option value="UNPAID">Unpaid</option>
             </select>
@@ -863,14 +953,14 @@ export default function Purchases() {
           <table className="table" style={{ minWidth: '720px' }}>
             <thead>
               <tr>
-                <th>Invoice / Bill #</th>
+                <th>Bill #</th>
                 <th>Date</th>
-                <th>Supplier Name</th>
+                <th>Supplier</th>
                 <th>Items</th>
-                <th style={{ textAlign: 'right' }}>Grand Total</th>
-                <th style={{ textAlign: 'right' }}>Paid Amount</th>
-                <th style={{ textAlign: 'right' }}>Payable Due</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
+                <th style={{ textAlign: 'right' }}>Total</th>
+                <th style={{ textAlign: 'right' }}>Paid</th>
+                <th style={{ textAlign: 'right' }}>Due</th>
+                <th style={{ textAlign: 'center' }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -921,7 +1011,7 @@ export default function Purchases() {
                             style={{ marginTop: '6px' }}
                           >
                             <Plus size={14} />
-                            <span>New Purchase Bill</span>
+                            <span>+ Purchase</span>
                           </button>
                         )}
                       </div>
@@ -989,23 +1079,23 @@ export default function Purchases() {
                           title="Purchase Actions"
                           items={[
                             {
-                              label: 'View Bill',
+                              label: 'Details',
                               icon: <Eye size={14} color="#0284c7" />,
                               onClick: () => viewPurchase(p.id)
                             },
                             canManageInventory && !isFullyReturned && {
-                              label: 'Return Goods',
+                              label: 'Return',
                               icon: <RotateCcw size={14} color="#f59e0b" />,
                               onClick: () => openReturnModal(p.id)
                             },
                             canManageInventory && {
-                              label: 'Edit Purchase',
+                              label: 'Edit',
                               icon: <Edit size={14} color="#0284c7" />,
                               onClick: () => openEditModal(p.id)
                             },
                             canManageInventory && { divider: true },
                             canManageInventory && {
-                              label: 'Delete Purchase',
+                              label: 'Delete',
                               icon: <Trash2 size={14} color="#dc2626" />,
                               danger: true,
                               onClick: () => {
@@ -1055,7 +1145,7 @@ export default function Purchases() {
             {/* MODAL HEADER */}
             <div className="modal-header" style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-title)' }}>Create Purchase Bill</h3>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-title)' }}>New Purchase</h3>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                   Record incoming inventory shipment, configure purchase prices, and track supplier payables.
                 </div>
@@ -1108,7 +1198,7 @@ export default function Purchases() {
             )}
 
             {/* MODAL BODY (SCROLLABLE 2-COLUMN DESKTOP GRID) */}
-            <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px', alignItems: 'start' }}>
 
                 {/* LEFT COLUMN: SUPPLIER, BILL DETAILS & ADD ITEM FORM */}
@@ -1117,7 +1207,7 @@ export default function Purchases() {
                   {/* BOX 1: SUPPLIER & BILL HEADER */}
                   <div style={{ background: 'var(--hover-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      1. Supplier & Bill Details
+                      1. Supplier & Bill
                     </div>
 
                     <div className="form-group" style={{ margin: 0 }}>
@@ -1135,12 +1225,7 @@ export default function Purchases() {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       <div className="form-group" style={{ margin: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                          <label className="form-label" style={{ margin: 0, fontSize: '12px' }}>Supplier Bill #</label>
-                          <span style={{ fontSize: '10px', color: 'var(--primary)', background: 'var(--hover-bg)', padding: '1px 5px', borderRadius: '4px', fontWeight: 600, border: '1px solid var(--border)' }}>
-                            ⚡ Auto
-                          </span>
-                        </div>
+                        <label className="form-label" style={{ margin: 0, fontSize: "12px", display: "block", marginBottom: "4px" }}>Bill #</label>
                         <input
                           type="text"
                           className="form-control mono"
@@ -1151,7 +1236,7 @@ export default function Purchases() {
                       </div>
 
                       <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label" style={{ fontSize: '12px', marginBottom: '4px' }}>Bill Date *</label>
+                        <label className="form-label" style={{ fontSize: '12px', marginBottom: '4px' }}>Date *</label>
                         <CustomDatePicker
                           value={purchaseDate}
                           onChange={setPurchaseDate}
@@ -1165,7 +1250,7 @@ export default function Purchases() {
                   <div style={{ background: 'var(--bg-card)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px', opacity: !supplierId ? 0.7 : 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
                       <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        2. Add Product to Bill
+                        2. Add Product
                       </div>
 
                       {supplierId && (
@@ -1246,7 +1331,7 @@ export default function Purchases() {
 
                                 <div>
                                   <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary)', display: 'block', marginBottom: '2px' }}>
-                                    Purchase Cost (₨) *
+                                    Cost (₨) *
                                   </label>
                                   <input
                                     type="number"
@@ -1261,7 +1346,7 @@ export default function Purchases() {
 
                                 <div>
                                   <label style={{ fontSize: '11px', fontWeight: 600, color: '#16a34a', display: 'block', marginBottom: '2px' }}>
-                                    Retail Price (₨)
+                                    Retail (₨)
                                   </label>
                                   <input
                                     type="number"
@@ -1276,7 +1361,7 @@ export default function Purchases() {
 
                                 <div>
                                   <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>
-                                    Wholesale Price (₨)
+                                    Wholesale (₨)
                                   </label>
                                   <input
                                     type="number"
@@ -1305,7 +1390,7 @@ export default function Purchases() {
                               {/* BATCH & EXPIRY ROW */}
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', paddingTop: '4px' }}>
                                 <div>
-                                  <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Batch / Lot #</label>
+                                  <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Batch</label>
                                   <input
                                     type="text"
                                     className="form-control mono"
@@ -1333,7 +1418,7 @@ export default function Purchases() {
                                 style={{ height: '36px', marginTop: '4px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                               >
                                 <Plus size={15} />
-                                <span>Add to Bill</span>
+                                <span>+ Add</span>
                               </button>
                             </div>
                           );
@@ -1358,7 +1443,7 @@ export default function Purchases() {
                   <div style={{ background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '12px 16px', background: 'var(--hover-bg)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>3. Bill Items</span>
+                        <span>3. Items</span>
                         <span style={{ fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-muted)' }}>
                           {items.length} {items.length === 1 ? 'item' : 'items'}
                         </span>
@@ -1368,7 +1453,7 @@ export default function Purchases() {
                       </span>
                     </div>
 
-                    <div className="table-responsive" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                    <div className="table-responsive" style={{ maxHeight: '150px', overflowY: 'auto' }}>
                       <table className="table" style={{ width: '100%', minWidth: '500px', fontSize: '12px' }}>
                         <thead>
                           <tr style={{ background: 'var(--bg-table-head)' }}>
@@ -1398,7 +1483,7 @@ export default function Purchases() {
                                 <td>
                                   <div style={{ fontWeight: 600, color: 'var(--text-title)' }}>{it.name}</div>
                                   <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                                    {it.brand ? `${it.brand} • ` : ''}Lot: {it.batch_no || 'Auto'}
+                                    {it.brand ? `${it.brand} • ` : ''}Lot: {it.batch_no || '-'}
                                   </div>
                                 </td>
                                 <td>
@@ -1445,25 +1530,25 @@ export default function Purchases() {
                   </div>
 
                   {/* BOX 4: TOTALS & SETTLEMENT SUMMARY */}
-                  <div style={{ background: 'var(--hover-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      4. Totals & Settlement
+                  <div style={{ background: 'var(--hover-bg)', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-title)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      4. Settlement
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Bill Subtotal</label>
-                        <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-title)' }}>
+                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Subtotal</label>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)' }}>
                           {formatPKR(subtotal)}
                         </div>
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Bill Discount (₨)</label>
+                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Discount (₨)</label>
                         <input
                           type="number"
                           className="form-control"
-                          style={{ height: '34px', fontSize: '13px' }}
+                          style={{ height: '30px', fontSize: '12px' }}
                           min="0"
                           value={discount}
                           onChange={(e) => setDiscount(e.target.value)}
@@ -1471,29 +1556,29 @@ export default function Purchases() {
                       </div>
                     </div>
 
-                    <div style={{ padding: '10px 14px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-title)' }}>Grand Bill Total:</span>
-                      <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>
+                    <div style={{ padding: '8px 12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-title)' }}>Total:</span>
+                      <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary)' }}>
                         {formatPKR(grandTotal)}
                       </span>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                          <label style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>Paid Now (₨)</label>
+                          <label style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0 }}>Paid (₨)</label>
                           <button
                             type="button"
                             onClick={() => setPaidAmount(String(grandTotal))}
                             style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '11px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
                           >
-                            Pay Full
+                            Full
                           </button>
                         </div>
                         <input
                           type="number"
                           className="form-control"
-                          style={{ height: '34px', fontSize: '13px', fontWeight: 700 }}
+                          style={{ height: '30px', fontSize: '12px', fontWeight: 700 }}
                           placeholder={String(grandTotal)}
                           value={paidAmount}
                           onChange={(e) => setPaidAmount(e.target.value)}
@@ -1501,10 +1586,10 @@ export default function Purchases() {
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Payment Method</label>
+                        <label style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Method</label>
                         <select
                           className="form-control"
-                          style={{ height: '34px', fontSize: '13px' }}
+                          style={{ height: '30px', fontSize: '12px' }}
                           value={paymentMethod}
                           onChange={(e) => setPaymentMethod(e.target.value)}
                         >
@@ -1515,27 +1600,29 @@ export default function Purchases() {
                       </div>
                     </div>
 
-                    {/* Payable Status Chip */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', padding: '6px 10px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Payable Due to Supplier:</span>
-                      {Number(paidAmount || 0) >= grandTotal && grandTotal > 0 ? (
-                        <span style={{ color: '#16a34a', fontWeight: 700 }}>Settled (₨ 0)</span>
-                      ) : Number(paidAmount || 0) > 0 ? (
-                        <span style={{ color: '#d97706', fontWeight: 700 }}>Partial Due: {formatPKR(Math.max(0, grandTotal - Number(paidAmount || 0)))}</span>
-                      ) : (
-                        <span style={{ color: '#ef4444', fontWeight: 700 }}>Unpaid / Credit: {formatPKR(grandTotal)}</span>
-                      )}
-                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', alignItems: 'center' }}>
+                      {/* Due Status Chip */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '5px 8px', borderRadius: '6px', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Due:</span>
+                        {Number(paidAmount || 0) >= grandTotal && grandTotal > 0 ? (
+                          <span style={{ color: '#16a34a', fontWeight: 700 }}>Settled (₨ 0)</span>
+                        ) : Number(paidAmount || 0) > 0 ? (
+                          <span style={{ color: '#d97706', fontWeight: 700 }}>{formatPKR(Math.max(0, grandTotal - Number(paidAmount || 0)))}</span>
+                        ) : (
+                          <span style={{ color: '#ef4444', fontWeight: 700 }}>{formatPKR(grandTotal)}</span>
+                        )}
+                      </div>
 
-                    <div>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Optional notes or supplier remarks..."
-                        style={{ height: '32px', fontSize: '12px' }}
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                      />
+                      <div>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Notes / remarks..."
+                          style={{ height: '30px', fontSize: '11px' }}
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1543,13 +1630,13 @@ export default function Purchases() {
             </div>
 
             {/* STICKY MODAL FOOTER */}
-            <div className="modal-footer" style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div className="modal-footer" style={{ padding: '10px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
                 onClick={handleCloseNewModal}
               >
-                Discard / Cancel
+                Cancel
               </button>
 
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -1560,8 +1647,8 @@ export default function Purchases() {
                   className="btn btn-secondary btn-sm"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <Sparkles size={14} />
-                  <span>Save & Add Another</span>
+                  <Plus size={14} />
+                  <span>Save & Next</span>
                 </button>
 
                 <button
@@ -1593,17 +1680,17 @@ export default function Purchases() {
       {showDetailModal && selectedPurchase && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '750px', width: '96%' }}>
-            <div className="modal-header">
+            <div className="modal-header no-print">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Purchase Bill: {selectedPurchase.purchase.invoice_no}</h3>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Purchase: {selectedPurchase.purchase.invoice_no}</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   Supplier: {selectedPurchase.purchase.supplier_name} • Date: {formatDate(selectedPurchase.purchase.purchase_date)}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <button type="button" className="btn btn-secondary btn-sm no-print" onClick={handlePrintVoucher} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                   <Printer size={14} />
-                  <span>Print Bill</span>
+                  <span>Print</span>
                 </button>
                 <button
                   type="button"
@@ -1615,11 +1702,13 @@ export default function Purchases() {
                 </button>
               </div>
             </div>
-            <div className="modal-body">
+            <div className="modal-body printable-area" ref={voucherPrintRef}>
               <div className="print-header" style={{ marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>LATIF TRADERS - PURCHASE VOUCHER</h2>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>
+                  {tenant?.business_name ? `${tenant.business_name.toUpperCase()} - PURCHASE VOUCHER` : 'PURCHASE VOUCHER'}
+                </h2>
                 <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                  Commercial Market, Lahore • Cold-chain Supply Delivery Receiving Record
+                  Supply Delivery Receiving Record
                 </div>
               </div>
 
@@ -1627,10 +1716,10 @@ export default function Purchases() {
                 <thead>
                   <tr>
                     <th>Item</th>
-                    <th>Batch #</th>
-                    <th>Expiry Date</th>
+                    {hasBatches && <th>{lotLabel} #</th>}
+                    {hasExpiry && <th>Expiry</th>}
                     <th style={{ textAlign: 'center' }}>Qty</th>
-                    <th style={{ textAlign: 'right' }}>Cost Rate</th>
+                    <th style={{ textAlign: 'right' }}>Cost</th>
                     <th style={{ textAlign: 'right' }}>Total</th>
                   </tr>
                 </thead>
@@ -1638,8 +1727,8 @@ export default function Purchases() {
                   {selectedPurchase.items.map((it, idx) => (
                     <tr key={idx}>
                       <td style={{ fontWeight: 600 }}>{it.product_name}</td>
-                      <td className="mono">{it.batch_no || '-'}</td>
-                      <td>{formatDate(it.expiry_date)}</td>
+                      {hasBatches && <td className="mono">{it.batch_no || '-'}</td>}
+                      {hasExpiry && <td>{formatDate(it.expiry_date)}</td>}
                       <td style={{ textAlign: 'center', fontWeight: 700 }}>{it.quantity} {it.unit}</td>
                       <td style={{ textAlign: 'right' }}>{formatPKR(it.unit_price)}</td>
                       <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatPKR(it.total_price)}</td>
@@ -1651,7 +1740,7 @@ export default function Purchases() {
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
                 <div style={{ width: '250px', fontSize: '0.85rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span>Grand Total:</span>
+                    <span>Total:</span>
                     <strong>{formatPKR(selectedPurchase.purchase.grand_total)}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -1659,14 +1748,14 @@ export default function Purchases() {
                     <span>{formatPKR(selectedPurchase.purchase.paid_amount)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444', fontWeight: 700 }}>
-                    <span>Payable Due:</span>
+                    <span>Due:</span>
                     <span>{formatPKR(selectedPurchase.purchase.balance_due)}</span>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary btn-sm" onClick={() => setShowDetailModal(false)}>Close</button>
+            <div className="modal-footer no-print">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowDetailModal(false)}>Close</button>
             </div>
           </div>
         </div>
@@ -1759,7 +1848,7 @@ export default function Purchases() {
 
                 <div className="form-grid-2" style={{ alignItems: 'center' }}>
                   <div className="form-group">
-                    <label className="form-label">Return Reason / Explanation *</label>
+                    <label className="form-label">Reason *</label>
                     <input
                       type="text"
                       className="form-control"
@@ -1795,8 +1884,8 @@ export default function Purchases() {
             <div className="modal-header">
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>Edit Purchase: {editForm.invoice_no}</h3>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                  Update vendor, bill reference, and recorded payments.
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Update supplier, bill reference, and recorded payments.
                 </div>
               </div>
               <button
@@ -1809,7 +1898,7 @@ export default function Purchases() {
               </button>
             </div>
             <form onSubmit={handleUpdatePurchase}>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '1.25rem', overflowY: 'auto' }}>
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label">Supplier *</label>
@@ -1825,10 +1914,10 @@ export default function Purchases() {
                     </select>
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Supplier Bill #</label>
+                    <label className="form-label">Bill #</label>
                     <input
                       type="text"
-                      className="form-control"
+                      className="form-control mono"
                       value={editForm.supplier_invoice_no}
                       onChange={(e) => setEditForm({ ...editForm, supplier_invoice_no: e.target.value })}
                     />
@@ -1837,7 +1926,7 @@ export default function Purchases() {
 
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Purchase Date *</label>
+                    <label className="form-label">Date *</label>
                     <input
                       type="date"
                       className="form-control"
@@ -1847,7 +1936,7 @@ export default function Purchases() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Payment Method</label>
+                    <label className="form-label">Method</label>
                     <select
                       className="form-control"
                       value={editForm.payment_method}
@@ -1860,46 +1949,48 @@ export default function Purchases() {
                   </div>
                 </div>
 
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 600 }}>Grand Total:</span>
-                    <strong style={{ fontSize: '1.1rem', color: '#0284c7' }}>{formatPKR(editForm.grand_total)}</strong>
+                <div style={{ background: 'var(--hover-bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.85rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-title)' }}>Total:</span>
+                    <strong style={{ fontSize: '1.15rem', color: 'var(--primary)' }}>{formatPKR(editForm.grand_total)}</strong>
                   </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Paid Amount (PKR)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      min="0"
-                      max={editForm.grand_total}
-                      value={editForm.paid_amount}
-                      onChange={(e) => setEditForm({ ...editForm, paid_amount: e.target.value })}
-                    />
-                    <div style={{ fontSize: '0.75rem', marginTop: '4px', fontWeight: 600 }}>
-                      {Number(editForm.paid_amount || 0) < editForm.grand_total ? (
-                        <span style={{ color: '#ef4444' }}>
-                          New Payable Due: {formatPKR(editForm.grand_total - Number(editForm.paid_amount || 0))}
-                        </span>
-                      ) : (
-                        <span style={{ color: '#10b981' }}>Full Payment</span>
-                      )}
+                  <div className="form-grid-2" style={{ gap: '0.75rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Paid (PKR)</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        min="0"
+                        max={editForm.grand_total}
+                        value={editForm.paid_amount}
+                        onChange={(e) => setEditForm({ ...editForm, paid_amount: e.target.value })}
+                      />
+                      <div style={{ fontSize: '0.75rem', marginTop: '4px', fontWeight: 600 }}>
+                        {Number(editForm.paid_amount || 0) < editForm.grand_total ? (
+                          <span style={{ color: '#ef4444' }}>
+                            Due: {formatPKR(editForm.grand_total - Number(editForm.paid_amount || 0))}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#10b981' }}>Full Payment</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Notes</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={editForm.notes}
-                      onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                      placeholder="Optional notes"
-                    />
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Notes</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={editForm.notes}
+                        onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                        placeholder="Optional notes"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setShowEditModal(false); setEditForm(null); }}>Cancel</button>
-                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Changes</button>
+                <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '100px' }}>Save Changes</button>
               </div>
             </form>
           </div>

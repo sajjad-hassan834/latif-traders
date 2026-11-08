@@ -1,10 +1,11 @@
 import React from 'react';
+import BrandLogo from './BrandLogo';
 
 /**
  * TenantLogo renders the active tenant's brand logo.
  * If a custom logo_url is provided, it renders that image.
- * If the tenant is 'latif_001' and no custom logo is uploaded, it renders the legacy Latif logo.
- * For all other tenants without a logo, it renders a clean, professional monogram with the
+ * If the tenant is the default tenant and no custom logo is uploaded, it renders the ShoppyOS symbol.
+ * For all other tenants without a custom logo, it renders a clean, professional monogram with the
  * first letter of the shop's name, guaranteeing zero logo leakage across tenants.
  */
 export default function TenantLogo({ tenant, size = 32, style = {}, className = '' }) {
@@ -39,23 +40,15 @@ export default function TenantLogo({ tenant, size = 32, style = {}, className = 
     );
   }
 
-  // Base demo tenant Latif Traders
-  if (tenant?.id === 'latif_001') {
+  // Base default store - platform brand logo
+  if (tenant?.is_default) {
     return (
-      <img
-        src="/logo.png"
-        alt="Latif Traders"
-        width={size}
-        height={size}
+      <BrandLogo
+        variant="symbol"
+        size={size}
+        title={shopName}
         className={className}
-        style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          borderRadius: '8px',
-          objectFit: 'contain',
-          display: 'block',
-          ...style
-        }}
+        style={style}
       />
     );
   }
@@ -68,7 +61,7 @@ export default function TenantLogo({ tenant, size = 32, style = {}, className = 
         width: `${size}px`,
         height: `${size}px`,
         borderRadius: '8px',
-        background: 'linear-gradient(135deg, var(--primary) 0%, #0284c7 100%)',
+        background: 'linear-gradient(135deg, var(--primary) 0%, #0F4D3A 100%)',
         color: '#FFFFFF',
         display: 'flex',
         alignItems: 'center',

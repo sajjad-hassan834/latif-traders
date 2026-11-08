@@ -81,6 +81,7 @@ export function AuthProvider({ children }) {
     const saved = localStorage.getItem('lt_user');
     return saved ? JSON.parse(saved) : null;
   });
+  const [mustChangePassword, setMustChangePassword] = useState(() => !!(user?.must_change_password));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -88,6 +89,7 @@ export function AuthProvider({ children }) {
       const token = localStorage.getItem('lt_token');
       if (!token) {
         setUser(null);
+        setMustChangePassword(false);
         applyPublicTheme(getSavedPublicTheme());
         setLoading(false);
         return;
@@ -97,14 +99,17 @@ export function AuthProvider({ children }) {
         const res = await api.get('/auth/me');
         if (res && res.success && res.user) {
           setUser(res.user);
+          setMustChangePassword(!!res.user.must_change_password);
           localStorage.setItem('lt_user', JSON.stringify(res.user));
           applyAppTheme(res.user.theme || getSavedAppTheme());
         } else {
           setUser(null);
+          setMustChangePassword(false);
           applyPublicTheme(getSavedPublicTheme());
         }
       } catch (err) {
         setUser(null);
+        setMustChangePassword(false);
         localStorage.removeItem('lt_token');
         localStorage.removeItem('lt_user');
         applyPublicTheme(getSavedPublicTheme());
@@ -117,10 +122,19 @@ export function AuthProvider({ children }) {
 
     const handleExpired = () => {
       setUser(null);
+      setMustChangePassword(false);
       applyPublicTheme(getSavedPublicTheme());
     };
+    const handlePwChangeRequired = () => {
+      setMustChangePassword(true);
+    };
+
     window.addEventListener('auth_expired', handleExpired);
-    return () => window.removeEventListener('auth_expired', handleExpired);
+    window.addEventListener('password_change_required', handlePwChangeRequired);
+    return () => {
+      window.removeEventListener('auth_expired', handleExpired);
+      window.removeEventListener('password_change_required', handlePwChangeRequired);
+    };
   }, []);
 
   const login = async (username, password) => {
@@ -129,6 +143,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem('lt_token', res.token);
       localStorage.setItem('lt_user', JSON.stringify(res.user));
       setUser(res.user);
+      setMustChangePassword(!!res.user?.must_change_password);
       applyAppTheme(res.user?.theme || getSavedAppTheme());
       return res.user;
     }
@@ -233,6 +248,19 @@ export function AuthProvider({ children }) {
   const plan = tenant.plan || user?.plan || 'free';
   const businessType = tenant.business_type || 'retail_general';
 
+  const completeForcedPasswordChange = (freshToken) => {
+    if (freshToken) {
+      localStorage.setItem('lt_token', freshToken);
+    }
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, must_change_password: false };
+      localStorage.setItem('lt_user', JSON.stringify(updated));
+      return updated;
+    });
+    setMustChangePassword(false);
+  };
+
   const hasTabAccess = (tabId) => {
     if (isAdmin || isSuperOwner) return true;
     const canonical = (tabId === 'users' || tabId === 'staff' || tabId === 'billing' || tabId === 'plan')
@@ -244,6 +272,8 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user,
+      mustChangePassword,
+      completeForcedPasswordChange,
       tenant,
       plan,
       businessType,

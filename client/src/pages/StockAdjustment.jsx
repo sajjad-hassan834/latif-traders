@@ -281,7 +281,7 @@ export default function StockAdjustment({ setTab }) {
             whiteSpace: 'nowrap'
           }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#DC2626' }} />
-            <span>{type === 'DAMAGE' ? 'Damaged / Defective' : type === 'MELTED' ? 'Melted / Thawed' : 'Lost / Missing'}</span>
+            <span>{type === 'DAMAGE' ? 'Damaged' : type === 'MELTED' ? 'Melted' : 'Lost'}</span>
           </span>
         );
       case 'EXPIRED':
@@ -317,7 +317,7 @@ export default function StockAdjustment({ setTab }) {
             whiteSpace: 'nowrap'
           }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }} />
-            <span>Found / Returned</span>
+            <span>Found</span>
           </span>
         );
       case 'COUNT_DIFF':
@@ -573,12 +573,12 @@ export default function StockAdjustment({ setTab }) {
                 title="Filter by adjustment type"
               >
                 <option value="">All Types</option>
-                <option value="DAMAGE">Damaged / Defective</option>
+                <option value="DAMAGE">Damaged</option>
                 <option value="EXPIRED">Expired Shelf-Life</option>
-                <option value="LOST">Lost / Missing</option>
-                <option value="MELTED">Melted / Thawed</option>
+                <option value="LOST">Lost</option>
+                <option value="MELTED">Melted</option>
                 <option value="SAMPLE">Free Sample</option>
-                <option value="FOUND">Found / Returned</option>
+                <option value="FOUND">Found</option>
                 <option value="COUNT_DIFF">Manual Correction</option>
                 <option value="RESTOCK">Restock Added</option>
               </select>
@@ -1054,7 +1054,7 @@ export default function StockAdjustment({ setTab }) {
                 {/* Field 1 — Select Product */}
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '6px' }}>
-                    Frozen Product *
+                    Product *
                   </label>
                   <select
                     className="form-control"
@@ -1063,7 +1063,7 @@ export default function StockAdjustment({ setTab }) {
                     required
                     style={{ height: '40px', borderRadius: '8px', fontSize: '13px', border: '1px solid #D1D5DB' }}
                   >
-                    <option value="">-- Choose Frozen Product --</option>
+                    <option value="">-- Choose Product --</option>
                     {products.map(p => (
                       <option key={p.id} value={p.id}>
                         {p.name} — Current Stock: {p.current_stock} {p.unit || 'pkt'}
@@ -1076,7 +1076,7 @@ export default function StockAdjustment({ setTab }) {
                 {batches.length > 0 && (
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', marginBottom: '6px' }}>
-                      Target Batch / Lot Lot
+                      Batch
                     </label>
                     <select
                       className="form-control"
@@ -1104,12 +1104,12 @@ export default function StockAdjustment({ setTab }) {
                     onChange={(e) => setAdjustmentType(e.target.value)}
                     style={{ height: '40px', borderRadius: '8px', fontSize: '13px', border: '1px solid #D1D5DB' }}
                   >
-                    <option value="DAMAGE">🔴 Damaged / Defective (Reduce)</option>
-                    <option value="EXPIRED">🟠 Expired / Near Expiry (Reduce)</option>
-                    <option value="LOST">🔴 Lost / Missing (Reduce)</option>
-                    <option value="MELTED">🔴 Melted / Thawed (Reduce)</option>
-                    <option value="SAMPLE">🟣 Free Sample / Tasting (Reduce)</option>
-                    <option value="FOUND">🟢 Found / Returned (Add)</option>
+                    <option value="DAMAGE">🔴 Damaged (Reduce)</option>
+                    <option value="EXPIRED">🟠 Expired (Reduce)</option>
+                    <option value="LOST">🔴 Lost (Reduce)</option>
+                    <option value="MELTED">🔴 Melted (Reduce)</option>
+                    <option value="SAMPLE">🟣 Sample (Reduce)</option>
+                    <option value="FOUND">🟢 Found (Add)</option>
                     <option value="COUNT_DIFF">🔵 Manual Correction (Add)</option>
                     <option value="RESTOCK">🟢 Restock Added (Add)</option>
                   </select>
@@ -1140,7 +1140,7 @@ export default function StockAdjustment({ setTab }) {
                 <div className="form-group" style={{ margin: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <label className="form-label" style={{ fontWeight: 600, fontSize: '13px', color: '#374151', margin: 0 }}>
-                      Mandatory Reason *
+                      Reason *
                     </label>
                     <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
                       {reason.length} / 500
@@ -1305,7 +1305,7 @@ export default function StockAdjustment({ setTab }) {
               {/* Reason / Justification */}
               <div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '6px' }}>
-                  Audit Justification / Mandatory Reason:
+                  Reason:
                 </div>
                 <div style={{
                   padding: '12px 14px',

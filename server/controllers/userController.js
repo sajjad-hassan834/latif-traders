@@ -1,16 +1,18 @@
+const { getPlanLimits } = require('../config/plans');
 const bcrypt = require('bcryptjs');
 const { db } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
 
-exports.getUsers = (req, res) => {
+exports.getUsers = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
-    const users = db.prepare(`
+
+    const tenantId = req.tenantId || req.tenant_id;
+    const users = await db.all(`
       SELECT id, username, email, full_name, role, status, created_at, updated_at 
       FROM users 
       WHERE tenant_id = ? AND (is_hidden IS NULL OR is_hidden = 0) AND role != 'superowner'
       ORDER BY id ASC
-    `).all(tenantId);
+    `, [tenantId]);
     return res.json({ success: true, users });
   } catch (err) {
     console.error('Fetch users error:', err);
@@ -18,9 +20,9 @@ exports.getUsers = (req, res) => {
   }
 };
 
-exports.createUser = (req, res) => {
+exports.createUser = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const plan = req.user?.plan || 'free';
 
     // Disallow creating superowner via UI
@@ -29,22 +31,16 @@ exports.createUser = (req, res) => {
     }
 
     // Plan limits on staff users
-    if (plan === 'free') {
-      const userCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE tenant_id = ? AND (is_hidden IS NULL OR is_hidden = 0) AND role != 'superowner'").get(tenantId)?.count || 0;
-      if (userCount >= 1) {
+    const userPlan = (req.user?.plan || plan || 'free').toLowerCase();
+    const planLimits = getPlanLimits(userPlan);
+    if (planLimits.users !== null) {
+      const uRow = await db.get("SELECT COUNT(*) as count FROM users WHERE tenant_id = ? AND (is_hidden IS NULL OR is_hidden = 0) AND role != 'superowner'", [tenantId]);
+      const userCount = Number(uRow?.count || 0);
+      if (userCount >= planLimits.users) {
         return res.status(403).json({
           success: false,
           limitReached: 'users',
-          message: 'The Free plan is limited to 1 user account (owner only). Upgrade to Pro to add staff members.'
-        });
-      }
-    } else if (plan === 'pro') {
-      const userCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE tenant_id = ? AND (is_hidden IS NULL OR is_hidden = 0) AND role != 'superowner'").get(tenantId)?.count || 0;
-      if (userCount >= 5) {
-        return res.status(403).json({
-          success: false,
-          limitReached: 'users',
-          message: 'The Pro plan is limited to 5 staff accounts. Upgrade to Enterprise for unlimited users.'
+          message: `The ${userPlan.toUpperCase()} plan is limited to ${planLimits.users} user account(s). Upgrade your plan to add more staff members.`
         });
       }
     }
@@ -55,29 +51,27 @@ exports.createUser = (req, res) => {
     }
 
     const cleanUsername = username.trim().toLowerCase();
-    const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(cleanUsername);
+    const existing = await db.get('SELECT id FROM users WHERE username = ?', [cleanUsername]);
     if (existing) {
       return res.status(400).json({ success: false, message: 'Username is already taken by another account.' });
     }
 
-    const salt = bcrypt.genSaltSync(10);
+    const salt = bcrypt.genSaltSync(12);
     const hash = bcrypt.hashSync(password, salt);
 
-    const stmt = db.prepare(`
+    const result = await db.run(`
       INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id)
       VALUES (?, ?, ?, ?, ?, 'active', ?)
-    `);
-
-    const result = stmt.run(
+    `, [
       cleanUsername,
       email ? email.trim() : null,
       hash,
       full_name.trim(),
       role || 'sales',
       tenantId
-    );
+    ]);
 
-    logAudit(req.user.id, req.user.full_name, 'CREATE', 'USER', result.lastInsertRowid, `Created staff user ${cleanUsername} (${role})`, req);
+    await logAudit(req.user?.id, req.user?.full_name, 'CREATE', 'USER', result.lastInsertRowid, `Created staff user ${cleanUsername} (${role})`, req);
 
     return res.status(201).json({ success: true, message: 'Staff user created successfully.', id: result.lastInsertRowid });
   } catch (err) {
@@ -85,9 +79,9 @@ exports.createUser = (req, res) => {
   }
 };
 
-exports.updateUser = (req, res) => {
+exports.updateUser = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
     const { full_name, email, role, status, password } = req.body;
 
@@ -95,7 +89,7 @@ exports.updateUser = (req, res) => {
       return res.status(403).json({ success: false, message: 'Cannot assign this role.' });
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ? AND tenant_id = ?').get(id, tenantId);
+    const user = await db.get('SELECT * FROM users WHERE id = ? AND tenant_id = ?', [id, tenantId]);
     if (!user || user.is_hidden === 1 || user.role === 'superowner') {
       return res.status(404).json({ success: false, message: 'User not found in your business.' });
     }
@@ -105,17 +99,17 @@ exports.updateUser = (req, res) => {
     }
 
     // Protect master admin of tenant from being deactivated
-    if (user.role === 'admin' && status === 'inactive' && Number(id) === req.user.id) {
+    if (user.role === 'admin' && status === 'inactive' && Number(id) === req.user?.id) {
       return res.status(400).json({ success: false, message: 'You cannot deactivate your own owner account.' });
     }
 
     let passwordHash = user.password_hash;
     if (password && password.trim().length >= 6) {
-      const salt = bcrypt.genSaltSync(10);
+      const salt = bcrypt.genSaltSync(12);
       passwordHash = bcrypt.hashSync(password.trim(), salt);
     }
 
-    db.prepare(`
+    await db.run(`
       UPDATE users SET
         full_name = ?,
         email = ?,
@@ -124,7 +118,7 @@ exports.updateUser = (req, res) => {
         password_hash = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND tenant_id = ?
-    `).run(
+    `, [
       full_name ? full_name.trim() : user.full_name,
       email !== undefined ? (email ? email.trim() : null) : user.email,
       role || user.role,
@@ -132,9 +126,9 @@ exports.updateUser = (req, res) => {
       passwordHash,
       id,
       tenantId
-    );
+    ]);
 
-    logAudit(req.user.id, req.user.full_name, 'UPDATE', 'USER', id, `Updated staff user #${id}`, req);
+    await logAudit(req.user?.id, req.user?.full_name, 'UPDATE', 'USER', id, `Updated staff user #${id}`, req);
 
     return res.json({ success: true, message: 'User updated successfully.' });
   } catch (err) {
@@ -142,16 +136,16 @@ exports.updateUser = (req, res) => {
   }
 };
 
-exports.deleteUser = (req, res) => {
+exports.deleteUser = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
 
-    if (Number(id) === req.user.id) {
+    if (Number(id) === req.user?.id) {
       return res.status(400).json({ success: false, message: 'You cannot delete your own active account.' });
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ? AND tenant_id = ?').get(id, tenantId);
+    const user = await db.get('SELECT * FROM users WHERE id = ? AND tenant_id = ?', [id, tenantId]);
     if (!user || user.is_hidden === 1 || user.role === 'superowner') {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
@@ -160,8 +154,8 @@ exports.deleteUser = (req, res) => {
       return res.status(403).json({ success: false, message: 'System account cannot be deleted.' });
     }
 
-    db.prepare('DELETE FROM users WHERE id = ? AND tenant_id = ?').run(id, tenantId);
-    logAudit(req.user.id, req.user.full_name, 'DELETE', 'USER', id, `Deleted staff user #${id} (${user.username})`, req);
+    await db.run('DELETE FROM users WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+    await logAudit(req.user?.id, req.user?.full_name, 'DELETE', 'USER', id, `Deleted staff user #${id} (${user.username})`, req);
 
     return res.json({ success: true, message: `User "${user.full_name}" deleted.` });
   } catch (err) {
@@ -169,16 +163,16 @@ exports.deleteUser = (req, res) => {
   }
 };
 
-exports.getAuditLogs = (req, res) => {
+exports.getAuditLogs = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { limit = 100 } = req.query;
-    const logs = db.prepare(`
+    const logs = await db.all(`
       SELECT * FROM audit_logs
       WHERE tenant_id = ?
       ORDER BY id DESC
       LIMIT ?
-    `).all(tenantId, Number(limit));
+    `, [tenantId, Number(limit)]);
 
     return res.json({ success: true, logs });
   } catch (err) {
@@ -187,10 +181,11 @@ exports.getAuditLogs = (req, res) => {
 };
 
 // Admin: Get all staff password reset requests
-exports.getPasswordResetRequests = (req, res) => {
+exports.getPasswordResetRequests = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
-    const requests = db.prepare(`
+
+    const tenantId = req.tenantId || req.tenant_id;
+    const requests = await db.all(`
       SELECT 
         r.*,
         u.role as user_role,
@@ -203,9 +198,10 @@ exports.getPasswordResetRequests = (req, res) => {
       ORDER BY 
         CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END,
         r.id DESC
-    `).all(tenantId);
+    `, [tenantId]);
 
-    const pendingCount = db.prepare("SELECT COUNT(*) as count FROM password_reset_requests WHERE status = 'pending' AND tenant_id = ?").get(tenantId)?.count || 0;
+    const pRow = await db.get("SELECT COUNT(*) as count FROM password_reset_requests WHERE status = 'pending' AND tenant_id = ?", [tenantId]);
+    const pendingCount = pRow?.count || 0;
 
     return res.json({ success: true, requests, pending_count: pendingCount });
   } catch (err) {
@@ -215,89 +211,102 @@ exports.getPasswordResetRequests = (req, res) => {
 };
 
 // Admin: Approve and set new password or Reject request
-exports.resolvePasswordResetRequest = (req, res) => {
-  const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
-  const transaction = db.transaction(() => {
-    const { id } = req.params;
-    const { action, new_password, admin_note } = req.body;
+exports.resolvePasswordResetRequest = async (req, res) => {
 
-    const request = db.prepare('SELECT * FROM password_reset_requests WHERE id = ? AND tenant_id = ?').get(id, tenantId);
-    if (!request) {
-      throw new Error('Reset request not found.');
-    }
+  const tenantId = req.tenantId || req.tenant_id;
+  try {
+    const result = await db.transaction(async (tx) => {
+      const runner = tx.get ? tx : db;
+      const { id } = req.params;
+      const { action, new_password, admin_note } = req.body;
 
-    if (request.status !== 'pending') {
-      throw new Error(`This request has already been ${request.status}.`);
-    }
-
-    const user = db.prepare('SELECT * FROM users WHERE id = ? AND tenant_id = ?').get(request.user_id, tenantId);
-    if (!user) {
-      throw new Error('Target user account no longer exists.');
-    }
-
-    if (action === 'approve') {
-      if (!new_password || new_password.trim().length < 6) {
-        throw new Error('New password must be at least 6 characters long.');
+      const request = await runner.get('SELECT * FROM password_reset_requests WHERE id = ? AND tenant_id = ?', [id, tenantId]);
+      if (!request) {
+        throw new Error('Reset request not found.');
       }
 
-      const salt = bcrypt.genSaltSync(10);
-      const hash = bcrypt.hashSync(new_password.trim(), salt);
+      if (request.status !== 'pending') {
+        throw new Error(`This request has already been ${request.status}.`);
+      }
 
-      // Update user password
-      db.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?')
-        .run(hash, user.id, tenantId);
+      const user = await runner.get('SELECT * FROM users WHERE id = ? AND tenant_id = ?', [request.user_id, tenantId]);
+      if (!user) {
+        throw new Error('Target user account no longer exists.');
+      }
 
-      // Update request record with admin approval
-      db.prepare(`
-        UPDATE password_reset_requests SET
-          status = 'approved',
-          admin_note = ?,
-          temporary_password = ?,
-          resolved_at = CURRENT_TIMESTAMP,
-          resolved_by = ?
-        WHERE id = ? AND tenant_id = ?
-      `).run(
-        admin_note ? admin_note.trim() : 'Password has been successfully reset by Administrator.',
-        new_password.trim(),
-        req.user.id,
-        id,
-        tenantId
-      );
+      if (action === 'approve') {
+        if (!new_password || new_password.trim().length < 6) {
+          throw new Error('New password must be at least 6 characters long.');
+        }
 
-      logAudit(req.user.id, req.user.full_name, 'RESET_PASSWORD_APPROVED', 'USER', user.id, `Admin approved password reset for user ${user.username}`, req);
 
-      return {
-        message: `Password for ${user.username} has been successfully reset!`,
-        username: user.username,
-        new_password: new_password.trim()
-      };
-    } else if (action === 'reject') {
-      db.prepare(`
-        UPDATE password_reset_requests SET
-          status = 'rejected',
-          admin_note = ?,
-          resolved_at = CURRENT_TIMESTAMP,
-          resolved_by = ?
-        WHERE id = ? AND tenant_id = ?
-      `).run(
-        admin_note ? admin_note.trim() : 'Password reset request rejected by Administrator.',
-        req.user.id,
-        id,
-        tenantId
-      );
+        const salt = bcrypt.genSaltSync(12);
+        const hash = bcrypt.hashSync(new_password.trim(), salt);
+        const tempExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-      logAudit(req.user.id, req.user.full_name, 'RESET_PASSWORD_REJECTED', 'USER', user.id, `Admin rejected password reset for user ${user.username}`, req);
+        // Update user password, set 24h temp_password_expires_at, temp_password_used=0, enforce password change on next login, and revoke prior sessions
+        await runner.run(`
+          UPDATE users 
+          SET password_hash = ?, 
+              must_change_password = 1, 
+              temp_password_expires_at = ?,
+              temp_password_used = 0,
+              token_version = COALESCE(token_version, 1) + 1, 
+              updated_at = CURRENT_TIMESTAMP 
+          WHERE id = ? AND tenant_id = ?
+        `, [hash, tempExpiresAt, user.id, tenantId]);
 
-      return {
-        message: `Password reset request for ${user.username} has been rejected.`
-      };
-    } else {
-      throw new Error('Invalid action. Must be approve or reject.');
-    }
-  });
+        // Update request record with admin approval, NULL temporary_password, and mark used
+        await runner.run(`
+          UPDATE password_reset_requests SET
+            status = 'approved',
+            admin_note = ?,
 
-  try {
-    const result = transaction();
+            temporary_password = NULL,
+            is_used = 1,
+            resolved_at = CURRENT_TIMESTAMP,
+            resolved_by = ?
+          WHERE id = ? AND tenant_id = ?
+        `, [
+          admin_note ? admin_note.trim() : 'Password has been successfully reset by Administrator.',
+          req.user?.id,
+          id,
+          tenantId
+        ]);
+
+
+        await logAudit(req.user?.id, req.user?.full_name, 'RESET_PASSWORD_APPROVED', 'USER', user.id, 'Admin approved password reset for staff user', req);
+
+        return {
+          message: `Temporary password for ${user.username} has been successfully generated!`,
+          username: user.username,
+          temporary_password: new_password.trim()
+        };
+      } else if (action === 'reject') {
+        await runner.run(`
+          UPDATE password_reset_requests SET
+            status = 'rejected',
+            admin_note = ?,
+            resolved_at = CURRENT_TIMESTAMP,
+            resolved_by = ?
+          WHERE id = ? AND tenant_id = ?
+        `, [
+          admin_note ? admin_note.trim() : 'Password reset request rejected by Administrator.',
+          req.user?.id,
+          id,
+          tenantId
+        ]);
+
+        await logAudit(req.user?.id, req.user?.full_name, 'RESET_PASSWORD_REJECTED', 'USER', user.id, `Admin rejected password reset for user ${user.username}`, req);
+
+        return {
+          message: `Password reset request for ${user.username} has been rejected.`
+        };
+      } else {
+        throw new Error('Invalid action. Must be approve or reject.');
+      }
+    });
+
     return res.json({ success: true, ...result });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });

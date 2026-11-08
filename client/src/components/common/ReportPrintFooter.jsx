@@ -1,20 +1,21 @@
 import React from 'react';
+import { BRAND_NAME } from '../../config/brand';
 
 export default function ReportPrintFooter({ shopName }) {
-  const resolvedShopName = shopName || localStorage.getItem('lt_shop_name') || 'Latif Traders';
+  const resolvedShopName = shopName || BRAND_NAME;
   return (
     <div className="report-print-footer">
       <div className="report-signatures-grid">
         <div className="signature-box">
           <div className="signature-line"></div>
-          <div className="signature-title">Prepared By / Cashier</div>
+          <div className="signature-title">Prepared By</div>
           <div className="signature-sub">Signature & Timestamp</div>
         </div>
 
         <div className="signature-box">
           <div className="signature-line"></div>
           <div className="signature-title">Audited & Verified By</div>
-          <div className="signature-sub">Branch Manager / Accountant</div>
+          <div className="signature-sub">Manager</div>
         </div>
 
         <div className="signature-stamp-box">

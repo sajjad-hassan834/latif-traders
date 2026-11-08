@@ -25,7 +25,7 @@ function assertEqual(actual, expected, message) {
   console.log(`✅ PASSED: ${message} (${actual})`);
 }
 
-function runTests() {
+async function runTests() {
   console.log('\n======================================================');
   console.log('RUNNING PRIORITY 1: LEDGER RECONCILIATION TEST SUITE');
   console.log('======================================================\n');
@@ -37,7 +37,7 @@ function runTests() {
   console.log('--- Scenario 1: Opening Balance + Partial Payment Sale ---');
   const custRes = db.prepare(`
     INSERT INTO customers (tenant_id, name, phone, opening_balance, current_balance)
-    VALUES (?, 'Fasial Walton', '03001234567', 1000, 1000)
+    VALUES (?, 'Synthetic Customer Beta', '03001234567', 1000, 1000)
   `).run(tenantA);
   const custId = custRes.lastInsertRowid;
 
@@ -57,7 +57,7 @@ function runTests() {
   // Update cached balance inside the transaction
   db.prepare('UPDATE customers SET current_balance = current_balance + 6000 WHERE id = ?').run(custId);
 
-  let ledger = ledgerService.calculateCustomerLedger(custId, tenantA);
+  let ledger = await ledgerService.calculateCustomerLedger(custId, tenantA);
   assertEqual(ledger.summary.total_billed, 10000, 'Total Billed (pure sales, excludes opening balance)');
   assertEqual(ledger.summary.total_paid, 4000, 'Total Received');
   assertEqual(ledger.summary.closing_balance, 7000, 'Ledger Closing Balance (1,000 opening + 6,000 unpaid sale)');
@@ -82,7 +82,7 @@ function runTests() {
   // Overpayment of 2,000 reduces balance: 7,000 - 2,000 = 5,000
   db.prepare('UPDATE customers SET current_balance = current_balance + (5000 - 7000) WHERE id = ?').run(custId);
 
-  ledger = ledgerService.calculateCustomerLedger(custId, tenantA);
+  ledger = await ledgerService.calculateCustomerLedger(custId, tenantA);
   assertEqual(ledger.summary.closing_balance, 5000, 'Ledger balance after overpayment');
   const custRow2 = db.prepare('SELECT current_balance FROM customers WHERE id = ?').get(custId);
   assertEqual(custRow2.current_balance, ledger.summary.closing_balance, 'List balance matches ledger after overpayment');
@@ -104,7 +104,7 @@ function runTests() {
   `).run(tenantA, custId);
   db.prepare('UPDATE customers SET current_balance = current_balance - 2000 WHERE id = ?').run(custId);
 
-  ledger = ledgerService.calculateCustomerLedger(custId, tenantA);
+  ledger = await ledgerService.calculateCustomerLedger(custId, tenantA);
   assertEqual(ledger.summary.closing_balance, 3000, 'Ledger balance after standalone receipt (5000 - 2000)');
   const custRow3 = db.prepare('SELECT current_balance FROM customers WHERE id = ?').get(custId);
   assertEqual(custRow3.current_balance, ledger.summary.closing_balance, 'List balance matches ledger after standalone receipt');
@@ -117,7 +117,7 @@ function runTests() {
   `).run(tenantA, saleId, custId);
   db.prepare('UPDATE customers SET current_balance = current_balance - 500 WHERE id = ?').run(custId);
 
-  ledger = ledgerService.calculateCustomerLedger(custId, tenantA);
+  ledger = await ledgerService.calculateCustomerLedger(custId, tenantA);
   assertEqual(ledger.summary.total_returns, 500, 'Total Returns');
   assertEqual(ledger.summary.closing_balance, 2500, 'Ledger balance after return (3000 - 500)');
   const custRow4 = db.prepare('SELECT current_balance FROM customers WHERE id = ?').get(custId);
@@ -128,13 +128,13 @@ function runTests() {
   // Intentionally desynchronize stored balance to test audit detection
   db.prepare('UPDATE customers SET current_balance = 99999 WHERE id = ?').run(custId);
 
-  const auditResult = ledgerService.auditCustomerBalances(tenantA);
+  const auditResult = await ledgerService.auditCustomerBalances(tenantA);
   assertEqual(auditResult.discrepancies_count, 1, 'Audit correctly detected discrepancy');
   assertEqual(auditResult.discrepancies[0].stored_balance, 99999, 'Audit detected old balance');
   assertEqual(auditResult.discrepancies[0].calculated_balance, 2500, 'Audit calculated true balance');
 
   // Run sync
-  const syncResult = ledgerService.syncCustomerBalances(tenantA, [custId]);
+  const syncResult = await ledgerService.syncCustomerBalances(tenantA, [custId]);
   assertEqual(syncResult.updated_count, 1, 'Sync updated 1 customer');
   const custRowSync = db.prepare('SELECT current_balance FROM customers WHERE id = ?').get(custId);
   assertEqual(custRowSync.current_balance, 2500, 'Stored balance successfully restored to true ledger balance');
@@ -148,10 +148,10 @@ function runTests() {
   `).run(tenantB);
   const custBId = custBRes.lastInsertRowid;
 
-  const ledgerTenantB = ledgerService.calculateCustomerLedger(custBId, tenantB);
+  const ledgerTenantB = await ledgerService.calculateCustomerLedger(custBId, tenantB);
   assertEqual(ledgerTenantB.summary.closing_balance, 0, 'Tenant B customer balance is isolated and 0');
 
-  const auditTenantB = ledgerService.auditCustomerBalances(tenantB);
+  const auditTenantB = await ledgerService.auditCustomerBalances(tenantB);
   assertEqual(auditTenantB.discrepancies_count, 0, 'Tenant B has zero discrepancies');
 
   console.log('\n======================================================');
@@ -159,12 +159,9 @@ function runTests() {
   console.log('======================================================\n');
 }
 
-try {
-  runTests();
-} finally {
-  // Clean up test DB
-  db.close();
-  if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH);
-  if (fs.existsSync(TEST_DB_PATH + '-wal')) fs.unlinkSync(TEST_DB_PATH + '-wal');
-  if (fs.existsSync(TEST_DB_PATH + '-shm')) fs.unlinkSync(TEST_DB_PATH + '-shm');
-}
+runTests().catch(err => { console.error(err); process.exit(1); }).finally(() => {
+  try { if (db.sqliteDb) db.sqliteDb.close(); } catch(e){}
+  try { if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH); } catch(e){}
+  try { if (fs.existsSync(TEST_DB_PATH + '-wal')) fs.unlinkSync(TEST_DB_PATH + '-wal'); } catch(e){}
+  try { if (fs.existsSync(TEST_DB_PATH + '-shm')) fs.unlinkSync(TEST_DB_PATH + '-shm'); } catch(e){}
+});

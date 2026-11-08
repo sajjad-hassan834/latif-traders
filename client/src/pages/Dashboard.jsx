@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
+import useTradeProfile from '../hooks/useTradeProfile';
 import { useAuth } from '../context/AuthContext';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import PrintInvoiceModal from '../components/invoices/PrintInvoiceModal';
@@ -356,6 +357,7 @@ function SalesPipelineCurveChart({ trendData = [], period = 'weekly', todaySales
 
 function DashboardContent({ setTab }) {
   const { user, tenant, plan, businessType, roleLabel, canManageInventory } = useAuth();
+  const { terminology, isFrozenFood } = useTradeProfile();
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -579,7 +581,7 @@ function DashboardContent({ setTab }) {
             }}>
               ↑ {metrics?.inventory_valuation?.total_items_stock || 0} Units
             </span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>in cold room</span>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{terminology?.stockUnitContext || (isFrozenFood ? 'in cold room' : 'in stock')}</span>
           </div>
           <MiniBarSparkline color="#06b6d4" heights={stockMiniBars} />
         </div>

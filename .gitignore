@@ -23,6 +23,10 @@ data/backups/*
 !data/backups/.gitkeep
 data/uploads/*
 !data/uploads/.gitkeep
+*snapshot*
+!server/scripts/anonymise_snapshot.js
+*.dump
+data/
 
 # Environment variables & secrets
 .env

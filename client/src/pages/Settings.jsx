@@ -1,3 +1,4 @@
+import { BRAND_NAME } from '../config/brand';
 import React, { useState, useEffect } from 'react';
 import {
   Sliders,
@@ -162,7 +163,7 @@ export default function Settings({ initialTab: propInitialTab }) {
         setSettings(prev => ({ ...prev, ...sRes.settings, theme: themeVal }));
         applyThemeHelper(themeVal);
 
-        if (sRes.settings.shop_name) localStorage.setItem('lt_shop_name', sRes.settings.shop_name);
+        // lt_shop_name removed
         if (sRes.settings.tagline) localStorage.setItem('lt_shop_tagline', sRes.settings.tagline);
         if (sRes.settings.phone) localStorage.setItem('lt_phone', sRes.settings.phone);
         if (sRes.settings.email) localStorage.setItem('lt_email', sRes.settings.email);
@@ -214,8 +215,8 @@ export default function Settings({ initialTab: propInitialTab }) {
           applyThemeHelper(settings.theme);
         }
         if (settings.shop_name) {
-          localStorage.setItem('lt_shop_name', settings.shop_name);
-          document.title = `${settings.shop_name} - ShopOS`;
+          // lt_shop_name removed
+          document.title = `${settings.shop_name} - ${BRAND_NAME}`;
           updateTenantInfo({ business_name: settings.shop_name, logo_url: settings.logo_url, business_type: settings.business_type });
         } else if (settings.business_type) {
           updateTenantInfo({ business_type: settings.business_type });
@@ -1043,8 +1044,8 @@ export default function Settings({ initialTab: propInitialTab }) {
                   boxShadow: '0 4px 12px rgba(14, 165, 233, 0.35)'
                 }}
               >
-                <Sparkles size={16} />
-                <span>{plan === 'free' ? 'Upgrade to Pro' : 'Change Plan'}</span>
+                <ArrowUpRight size={16} />
+                <span>{plan === 'free' ? 'Upgrade' : 'Change'}</span>
               </button>
             </div>
 
@@ -1254,6 +1255,14 @@ export default function Settings({ initialTab: propInitialTab }) {
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Tenant isolation & storage notice */}
+            <div style={{ marginTop: '1.25rem', padding: '12px 16px', background: 'var(--hover-bg, #f8fafc)', borderRadius: '8px', border: '1px solid var(--border, #e2e8f0)', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+              <div style={{ color: '#10B981', marginTop: '2px' }}>🔒</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted, #64748b)', lineHeight: 1.5 }}>
+                <strong style={{ color: 'var(--text-title, #1e293b)' }}>Tenant Data Isolation Guaranteed:</strong> Backups created here export strictly your shop's proprietary data (products, sales, customers, suppliers, inventory, ledgers, and settings). Full platform snapshots and database-level disaster recovery are managed continuously at the superowner infrastructure level.
+              </div>
             </div>
           </div>
         </div>

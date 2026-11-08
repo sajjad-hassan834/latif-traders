@@ -18,11 +18,12 @@ import TenantLogo from '../common/TenantLogo';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../utils/api';
 import { getTerminology } from '../../utils/terminology';
+import { resolveTradeId } from '../../utils/tradeCapabilities';
 
 export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isCollapsed, toggleCollapse }) {
   const { role, roleLabel, isAdmin, tenant, plan } = useAuth();
   const userRole = role || 'sales';
-  const term = getTerminology(tenant?.business_type);
+  const term = getTerminology(resolveTradeId(tenant?.business_type));
 
   const menuSections = [
     {
@@ -162,7 +163,7 @@ export default function Sidebar({ currentTab, setTab, isOpen, setIsOpen, isColla
                 color: plan === 'pro' ? '#38bdf8' : (plan === 'enterprise' ? '#c084fc' : '#94a3b8'),
                 border: `1px solid ${plan === 'pro' ? 'rgba(56, 189, 248, 0.4)' : (plan === 'enterprise' ? 'rgba(168, 85, 247, 0.4)' : 'rgba(148, 163, 184, 0.3)')}`
               }}>
-                ShopOS {plan === 'enterprise' ? 'Enterprise' : (plan === 'pro' ? 'Pro' : 'Free')}
+                ShoppyOS {plan === 'enterprise' ? 'Enterprise' : (plan === 'pro' ? 'Pro' : 'Free')}
               </span>
             </div>
           </div>

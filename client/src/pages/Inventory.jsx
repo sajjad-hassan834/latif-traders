@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
+import useTradeProfile from '../hooks/useTradeProfile';
 import { exportToCSV } from '../utils/exportCsv';
 import { useAuth } from '../context/AuthContext';
 import BarcodeLabelModal from '../components/common/BarcodeLabelModal';
@@ -35,8 +36,27 @@ import StatCard from '../components/common/StatCard';
 import StatusBadge from '../components/common/StatusBadge';
 import ActionMenu from '../components/common/ActionMenu';
 
+function generateProductCode(existingProducts = []) {
+  const existingSet = new Set(
+    (existingProducts || [])
+      .map(p => (p.sku || p.barcode || '').trim().toUpperCase())
+      .filter(Boolean)
+  );
+  let nextCode = '';
+  let attempts = 0;
+  do {
+    const num = Math.floor(100000 + Math.random() * 900000);
+    nextCode = `PRD-${num}`;
+    attempts++;
+  } while (existingSet.has(nextCode) && attempts < 1000);
+  return nextCode;
+}
+
 export default function Inventory() {
   const { isAdmin, canManageInventory } = useAuth();
+  const { terminology, isFrozenFood } = useTradeProfile();
+  const defaultStorageLocation = terminology?.defaultStorageLocation || (isFrozenFood ? 'Freezer #1' : 'Shelf #1');
+  const lotLabel = terminology?.lotLabel || (isFrozenFood ? 'Batch' : 'Lot');
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [units, setUnits] = useState([]);
@@ -80,7 +100,7 @@ export default function Inventory() {
     supplier_id: '',
     batch_no: '',
     expiry_date: '',
-    storage_location: 'Freezer #1'
+    storage_location: defaultStorageLocation
   });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [batches, setBatches] = useState([]);
@@ -115,11 +135,34 @@ export default function Inventory() {
     sale_price: '',
     wholesale_price: '',
     min_stock_level: '5',
-    storage_location: 'Freezer #1',
+    storage_location: defaultStorageLocation,
     opening_stock: '0',
     batch_no: '',
     expiry_date: ''
   });
+
+  const openAddProductModal = () => {
+    const nextCode = generateProductCode(products);
+    setFormData({
+      name: '',
+      sku: nextCode,
+      barcode: nextCode,
+      category_id: '',
+      brand: '',
+      supplier_id: '',
+      unit: 'pkt',
+      purchase_price: '',
+      sale_price: '',
+      wholesale_price: '',
+      min_stock_level: '5',
+      storage_location: defaultStorageLocation,
+      opening_stock: '0',
+      batch_no: '',
+      expiry_date: ''
+    });
+    setCustomBrandModeAdd(false);
+    setShowAddModal(true);
+  };
 
   const [editFormData, setEditFormData] = useState(null);
   const [customBrandModeAdd, setCustomBrandModeAdd] = useState(false);
@@ -149,11 +192,11 @@ export default function Inventory() {
         api.get('/parties/suppliers').catch(() => ({ success: false, suppliers: [] }))
       ]);
 
-      if (pRes.success) setProducts(pRes.products);
-      if (cRes.success) setCategories(cRes.categories);
-      if (uRes.success) setUnits(uRes.units);
-      if (bRes.success) setBrands(bRes.brands);
-      if (sRes.success) setSuppliers(sRes.suppliers);
+      if (pRes.success) setProducts(pRes.products || []);
+      if (cRes.success) setCategories(cRes.categories || []);
+      if (uRes.success) setUnits(uRes.units || []);
+      if (bRes.success) setBrands(bRes.brands || []);
+      if (sRes.success) setSuppliers(sRes.suppliers || []);
     } catch (err) {
       console.error('Inventory fetch error:', err);
     } finally {
@@ -185,7 +228,7 @@ export default function Inventory() {
   };
 
   const handleExportStock = () => {
-    exportToCSV('Latif_Traders_Inventory', products, [
+    exportToCSV('Inventory_Export', products, [
       { label: 'Product Name', key: 'name' },
       { label: 'SKU', key: 'sku' },
       { label: 'Barcode', key: 'barcode' },
@@ -220,7 +263,7 @@ export default function Inventory() {
           sale_price: '',
           wholesale_price: '',
           min_stock_level: '5',
-          storage_location: 'Freezer #1',
+          storage_location: defaultStorageLocation,
           opening_stock: '0',
           batch_no: '',
           expiry_date: ''
@@ -263,7 +306,7 @@ export default function Inventory() {
       supplier_id: p.supplier_id || '',
       batch_no: `LOT-${Date.now().toString().slice(-4)}`,
       expiry_date: '',
-      storage_location: p.storage_location || 'Freezer #1'
+      storage_location: p.storage_location || defaultStorageLocation
     });
     setShowRestockModal(true);
   };
@@ -468,13 +511,13 @@ export default function Inventory() {
     }
   };
 
-  const totalProducts = products.length;
-  const outOfStockCount = products.filter(p => Number(p.current_stock) <= 0).length;
-  const lowStockCount = products.filter(p => Number(p.current_stock) > 0 && Number(p.current_stock) <= Number(p.min_stock_level)).length;
-  const inStockCount = products.filter(p => Number(p.current_stock) > Number(p.min_stock_level)).length;
-  const totalStockValue = products.reduce((acc, p) => acc + ((Number(p.purchase_price) || 0) * (Number(p.current_stock) || 0)), 0);
+  const totalProducts = (products || []).length;
+  const outOfStockCount = (products || []).filter(p => Number(p.current_stock) <= 0).length;
+  const lowStockCount = (products || []).filter(p => Number(p.current_stock) > 0 && Number(p.current_stock) <= Number(p.min_stock_level)).length;
+  const inStockCount = (products || []).filter(p => Number(p.current_stock) > Number(p.min_stock_level)).length;
+  const totalStockValue = (products || []).reduce((acc, p) => acc + ((Number(p.purchase_price) || 0) * (Number(p.current_stock) || 0)), 0);
 
-  const filteredProducts = products.filter(p => {
+  const filteredProducts = (products || []).filter(p => {
     if (statusFilter === 'in_stock') return Number(p.current_stock) > Number(p.min_stock_level);
     if (statusFilter === 'low_stock') return Number(p.current_stock) > 0 && Number(p.current_stock) <= Number(p.min_stock_level);
     if (statusFilter === 'out_of_stock') return Number(p.current_stock) <= 0;
@@ -507,9 +550,9 @@ export default function Inventory() {
               <Home size={15} color="#10b981" />
             </span>
             <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>/</span>
-            <span style={{ color: '#10b981', fontWeight: 600, fontSize: '0.8125rem' }}>Products List</span>
+            <span style={{ color: '#10b981', fontWeight: 600, fontSize: '0.8125rem' }}>Products</span>
           </div>
-          <h1 className="page-header-title" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-title)', margin: '0 0 2px 0' }}>Products List</h1>
+          <h1 className="page-header-title" style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-title)', margin: '0 0 2px 0' }}>Products</h1>
           <p className="page-header-subtitle" style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>Here you can find all of your products</p>
         </div>
 
@@ -517,14 +560,11 @@ export default function Inventory() {
           {canManageInventory && (
             <button
               type="button"
-              onClick={() => {
-                setCustomBrandModeAdd(false);
-                setShowAddModal(true);
-              }}
+              onClick={openAddProductModal}
               className="btn-sadax-teal"
             >
               <Plus size={16} />
-              <span>+ Add Product</span>
+              <span>+ Add</span>
             </button>
           )}
 
@@ -538,7 +578,7 @@ export default function Inventory() {
               }}
               className="btn-sadax-white"
             >
-              <span>More Actions ···</span>
+              <span>Actions ···</span>
             </button>
 
             {moreActionsOpen && (
@@ -650,25 +690,25 @@ export default function Inventory() {
       {/* 2. STATS CARDS ROW (4 Cards matching SadaxCart reference style) */}
       <div className="sadax-stat-card-row">
         <StatCard
-          label="Total Products"
+          label="Total"
           value={totalProducts.toLocaleString()}
           trend="up"
           subtitle="Total Products last 365 days"
         />
         <StatCard
-          label="Products Sales"
+          label="Value"
           value={formatPKR(totalStockValue)}
           trend="neutral"
           subtitle="Total Products Sales last 365 days"
         />
         <StatCard
-          label="Stock Products"
+          label="In Stock"
           value={inStockCount.toLocaleString()}
           trend="up"
           subtitle="Available for immediate sale"
         />
         <StatCard
-          label="Out of Stock"
+          label="Out"
           value={outOfStockCount.toLocaleString()}
           trend="down"
           subtitle={`${lowStockCount} low stock alerts`}
@@ -951,8 +991,8 @@ export default function Inventory() {
           <table className="sadax-table" style={{ margin: 0 }}>
             <thead>
               <tr>
-                <th style={{ minWidth: '240px' }}>Product Name</th>
-                <th style={{ minWidth: '160px' }}>ID & Create Date</th>
+                <th style={{ minWidth: '240px' }}>Name</th>
+                <th style={{ minWidth: '160px' }}>ID</th>
                 <th style={{ minWidth: '140px' }}>Price</th>
                 <th style={{ minWidth: '120px' }}>Stock</th>
                 <th style={{ minWidth: '130px' }}>Status</th>
@@ -984,7 +1024,7 @@ export default function Inventory() {
                         Clear All Filters
                       </button>
                     ) : (
-                      <button onClick={() => setShowAddModal(true)} className="btn-sadax-teal btn-sm" style={{ height: '32px' }}>
+                      <button onClick={openAddProductModal} className="btn-sadax-teal btn-sm" style={{ height: '32px' }}>
                         + Add Product
                       </button>
                     )}
@@ -1072,7 +1112,7 @@ export default function Inventory() {
 
                       {/* Column 5: Status */}
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
-                        <StatusBadge status={isOut ? 'out-stock' : isLow ? 'low-stock' : 'published'} />
+                        <StatusBadge status={isOut ? 'out-stock' : isLow ? 'low-stock' : 'active'} label={isOut ? 'Out Stock' : isLow ? 'Low Stock' : 'Active'} />
                       </td>
 
                       {/* Column 6: Action */}
@@ -1159,7 +1199,7 @@ export default function Inventory() {
             <div className="modal-header">
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>
-                  Restock / Inward Stock Lot
+                  Restock
                 </h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
                   {restockProduct.name} • Current Stock: <strong>{restockProduct.current_stock} {restockProduct.unit}</strong> • Standard Sale: <strong>{formatPKR(restockProduct.sale_price)}</strong>
@@ -1178,7 +1218,7 @@ export default function Inventory() {
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Incoming Quantity ({restockProduct.unit}) *</label>
+                    <label className="form-label">Qty ({restockProduct.unit}) *</label>
                     <input
                       type="number"
                       className="form-control"
@@ -1192,13 +1232,13 @@ export default function Inventory() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Supplier / Vendor</label>
+                    <label className="form-label">Supplier</label>
                     <select
                       className="form-control"
                       value={restockForm.supplier_id}
                       onChange={(e) => setRestockForm({ ...restockForm, supplier_id: e.target.value })}
                     >
-                      <option value="">-- Select Vendor --</option>
+                      <option value="">-- Select Supplier --</option>
                       {suppliers.map(s => (
                         <option key={s.id} value={s.id}>{s.name} {s.company_name ? `(${s.company_name})` : ''}</option>
                       ))}
@@ -1208,7 +1248,7 @@ export default function Inventory() {
 
                 <div className="form-grid-3">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Purchase Cost (PKR) *</label>
+                    <label className="form-label">Cost (PKR) *</label>
                     <input
                       type="number"
                       className="form-control"
@@ -1221,7 +1261,7 @@ export default function Inventory() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">New Retail Price (PKR)</label>
+                    <label className="form-label">Price (PKR)</label>
                     <input
                       type="number"
                       className="form-control"
@@ -1233,7 +1273,7 @@ export default function Inventory() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">New Wholesale (PKR)</label>
+                    <label className="form-label">Wholesale (PKR)</label>
                     <input
                       type="number"
                       className="form-control"
@@ -1248,17 +1288,17 @@ export default function Inventory() {
 
                 <div className="form-grid-3">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Batch / Lot # (Auto-Generated)</label>
+                    <label className="form-label">{lotLabel}</label>
                     <input
                       type="text"
                       className="form-control mono"
-                      placeholder="Leave blank for Auto: LOT-YYMM-XXXX"
+                      placeholder="LOT-8792"
                       value={restockForm.batch_no}
                       onChange={(e) => setRestockForm({ ...restockForm, batch_no: e.target.value })}
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Expiry Date</label>
+                    <label className="form-label">Expiry</label>
                     <input
                       type="date"
                       className="form-control"
@@ -1267,11 +1307,11 @@ export default function Inventory() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Storage Location</label>
+                    <label className="form-label">Location</label>
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="e.g. Freezer #1"
+                      placeholder={defaultStorageLocation}
                       value={restockForm.storage_location}
                       onChange={(e) => setRestockForm({ ...restockForm, storage_location: e.target.value })}
                     />
@@ -1287,7 +1327,7 @@ export default function Inventory() {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary btn-sm" style={{ background: '#10b981', borderColor: '#059669', minWidth: '130px' }}>
-                  Save Inward Stock
+                  Save
                 </button>
               </div>
             </form>
@@ -1320,7 +1360,7 @@ export default function Inventory() {
                 {/* Row 1: Product Name & Brand */}
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Product Name *</label>
+                    <label className="form-label">Name *</label>
                     <input
                       type="text"
                       className="form-control"
@@ -1332,7 +1372,7 @@ export default function Inventory() {
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                      <label className="form-label" style={{ margin: 0 }}>Brand / Company</label>
+                      <label className="form-label" style={{ margin: 0 }}>{terminology?.brandLabel || 'Brand'}</label>
                       <button
                         type="button"
                         style={{ fontSize: '0.72rem', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontWeight: 600 }}
@@ -1362,7 +1402,7 @@ export default function Inventory() {
                           }
                         }}
                       >
-                        <option value="">-- Select Brand / Company --</option>
+                        <option value="">-- Select {terminology?.brandLabel || 'Brand'} --</option>
                         {brands.map(b => (
                           <option key={b.id || b.name} value={b.name}>{b.name}</option>
                         ))}
@@ -1409,17 +1449,18 @@ export default function Inventory() {
                 {/* Row 3: Item Code & Min Stock Alert */}
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Item Code</label>
+                    <label className="form-label">{terminology?.productCodeLabel || 'Code'}</label>
                     <input
                       type="text"
                       className="form-control mono"
-                      placeholder="auto"
                       value={formData.sku}
-                      onChange={(e) => setFormData({ ...formData, sku: e.target.value, barcode: e.target.value })}
+                      readOnly
+                      disabled
+                      style={{ background: 'var(--bg-card)', cursor: 'not-allowed', color: 'var(--text-title)', fontWeight: 600 }}
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Min Stock Level (Alert)</label>
+                    <label className="form-label">Alert</label>
                     <input
                       type="number"
                       className="form-control"
@@ -1434,7 +1475,7 @@ export default function Inventory() {
                 {/* Row 4: Pricing */}
                 <div className="form-grid-3">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Purchase Price / Cost (PKR)</label>
+                    <label className="form-label">Cost (PKR)</label>
                     <input
                       type="number"
                       className="form-control"
@@ -1446,7 +1487,7 @@ export default function Inventory() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Retail Sale Price * (PKR)</label>
+                    <label className="form-label">Price (PKR) *</label>
                     <input
                       type="number"
                       className="form-control"
@@ -1459,7 +1500,7 @@ export default function Inventory() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Wholesale Price (PKR)</label>
+                    <label className="form-label">Wholesale (PKR)</label>
                     <input
                       type="number"
                       className="form-control"
@@ -1493,7 +1534,7 @@ export default function Inventory() {
                       />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Batch / Lot No</label>
+                      <label className="form-label">{lotLabel}</label>
                       <input
                         type="text"
                         className="form-control mono"
@@ -1531,7 +1572,7 @@ export default function Inventory() {
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-title)' }}>{selectedProduct.name}</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                  Item Code: {selectedProduct.sku} • Brand: <strong>{selectedProduct.brand || 'Frozen'}</strong> • Unit: <strong>{selectedProduct.unit}</strong>
+                  Item Code: {selectedProduct.sku} • Brand: <strong>{selectedProduct.brand || '-'}</strong> • Unit: <strong>{selectedProduct.unit}</strong>
                 </div>
               </div>
               <button
@@ -1545,19 +1586,19 @@ export default function Inventory() {
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.4rem', color: 'var(--text-title)' }}>Active Batches (FIFO Lot Tracking)</h4>
+                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.4rem', color: 'var(--text-title)' }}>{lotLabel}s</h4>
                 <div className="table-responsive">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>Batch / Lot #</th>
+                        <th>{lotLabel}</th>
                         <th>Expiry Date</th>
                         <th style={{ textAlign: 'center' }}>Quantity</th>
                         <th style={{ textAlign: 'right' }}>Cost Rate</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {batches.length === 0 ? (
+                      {(batches || []).length === 0 ? (
                         <tr><td colSpan="4" style={{ textAlign: 'center' }}>No active batches found.</td></tr>
                       ) : (
                         batches.map(b => (
@@ -1575,7 +1616,7 @@ export default function Inventory() {
               </div>
 
               <div>
-                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.4rem', color: 'var(--text-title)' }}>Recent Stock Movements</h4>
+                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.4rem', color: 'var(--text-title)' }}>Movements</h4>
                 <div className="table-responsive" style={{ maxHeight: '180px', overflowY: 'auto' }}>
                   <table className="table">
                     <thead>
@@ -1588,7 +1629,7 @@ export default function Inventory() {
                       </tr>
                     </thead>
                     <tbody>
-                      {movements.map(m => (
+                      {(movements || []).map(m => (
                         <tr key={m.id}>
                           <td>{formatDate(m.created_at)}</td>
                           <td><span className="badge badge-info">{m.type}</span></td>
@@ -1636,7 +1677,7 @@ export default function Inventory() {
                 {/* Row 1: Product Name & Brand */}
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Product Name *</label>
+                    <label className="form-label">Name *</label>
                     <input
                       type="text"
                       className="form-control"
@@ -1648,7 +1689,7 @@ export default function Inventory() {
                   <div className="form-group" style={{ margin: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                       <label className="form-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span>Brand / Company</span>
+                        <span>Brand</span>
                         {isAdmin ? (
                           <span className="badge badge-success" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>Admin Edit</span>
                         ) : (
@@ -1690,7 +1731,7 @@ export default function Inventory() {
                         disabled={!isAdmin}
                         style={!isAdmin ? { background: '#f8fafc', color: '#64748b', cursor: 'not-allowed' } : {}}
                       >
-                        <option value="">-- Select Brand / Company --</option>
+                        <option value="">-- Select {terminology?.brandLabel || 'Brand'} --</option>
                         {brands.map(b => (
                           <option key={b.id || b.name} value={b.name}>{b.name}</option>
                         ))}
@@ -1730,20 +1771,21 @@ export default function Inventory() {
 
                 {/* Row 3: Item Code / SKU */}
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Item Code / SKU *</label>
+                  <label className="form-label">Code *</label>
                   <input
                     type="text"
                     className="form-control mono"
                     value={editFormData.sku}
-                    onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value, barcode: e.target.value })}
-                    required
+                    readOnly
+                    disabled
+                    style={{ background: 'var(--bg-table-head)', color: 'var(--text-muted)', cursor: 'not-allowed' }}
                   />
                 </div>
 
                 {/* Row 4: Pricing */}
                 <div className="form-grid-3">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Purchase / Cost (PKR)</label>
+                    <label className="form-label">Cost (PKR)</label>
                     <input
                       type="number"
                       className="form-control"
@@ -1754,7 +1796,7 @@ export default function Inventory() {
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Retail Sale (PKR) *</label>
+                    <label className="form-label">Price (PKR) *</label>
                     <input
                       type="number"
                       className="form-control"
@@ -1781,7 +1823,7 @@ export default function Inventory() {
                 {/* Row 5: Min Stock Alert & Status */}
                 <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Min Stock Alert Level</label>
+                    <label className="form-label">Alert</label>
                     <input
                       type="number"
                       className="form-control"
@@ -1817,13 +1859,13 @@ export default function Inventory() {
                       }}
                     >
                       <Trash2 size={13} />
-                      <span>Delete Product</span>
+                      <span>Delete</span>
                     </button>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.6rem' }}>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowEditModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Update Product</button>
+                  <button type="submit" className="btn btn-primary btn-sm" style={{ minWidth: '110px' }}>Save Changes</button>
                 </div>
               </div>
             </form>
@@ -1856,21 +1898,21 @@ export default function Inventory() {
                   onClick={() => setMetaTab('brands')}
                   className={`btn btn-sm ${metaTab === 'brands' ? 'btn-primary' : 'btn-secondary'}`}
                 >
-                  Frozen Brands ({brands.length})
+                  Brands ({(brands || []).length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setMetaTab('categories')}
                   className={`btn btn-sm ${metaTab === 'categories' ? 'btn-primary' : 'btn-secondary'}`}
                 >
-                  Categories ({categories.length})
+                  Categories ({(categories || []).length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setMetaTab('units')}
                   className={`btn btn-sm ${metaTab === 'units' ? 'btn-primary' : 'btn-secondary'}`}
                 >
-                  Units ({units.length})
+                  Units ({(units || []).length})
                 </button>
               </div>
 

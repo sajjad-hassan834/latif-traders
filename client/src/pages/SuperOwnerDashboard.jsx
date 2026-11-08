@@ -1,3 +1,4 @@
+import { BRAND_NAME } from '../config/brand';
 import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
@@ -116,7 +117,7 @@ export default function SuperOwnerDashboard() {
               </div>
               <div>
                 <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0F172A', margin: 0 }}>
-                  ShopOS Control Panel
+                  {BRAND_NAME} Control Panel
                 </h1>
                 <p style={{ fontSize: 13, color: '#64748B', margin: '2px 0 0' }}>
                   SuperOwner Master Console & Multi-Tenant Management
@@ -302,7 +303,7 @@ export default function SuperOwnerDashboard() {
                 ) : (
                   filteredTenants.map((t) => {
                     const isActive = t.is_active === 1;
-                    const isLatif = t.id === 'latif_001';
+                    const isBaseTenant = Number(t.is_default) === 1;
 
                     return (
                       <tr key={t.id} style={{ borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.15s' }}>
@@ -431,7 +432,7 @@ export default function SuperOwnerDashboard() {
                             </button>
 
                             {/* Delete (Confirmation Required) */}
-                            {!isLatif && (
+                            {!isBaseTenant && (
                               <button
                                 onClick={() => setConfirmDelete(t)}
                                 disabled={actionLoading === t.id}

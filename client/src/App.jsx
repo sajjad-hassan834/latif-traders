@@ -1,3 +1,5 @@
+import {
+  BRAND_NAME } from './config/brand';
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/layout/Sidebar';
@@ -18,8 +20,10 @@ import CashFlow from './pages/CashFlow';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import SuperOwnerDashboard from './pages/SuperOwnerDashboard';
+import ForcedPasswordChange from './components/auth/ForcedPasswordChange';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Sparkles, CheckCircle2, Circle, X } from 'lucide-react';
+import BrandPreview from './pages/BrandPreview';
+import { ShieldAlert, ArrowLeft, AlertTriangle, ArrowRight, Store, CheckCircle2, Circle, X } from 'lucide-react';
 import { api } from './utils/api';
 import { applyAppTheme as applyThemeHelper } from './utils/theme';
 
@@ -79,7 +83,7 @@ function resolveInitialTab() {
 }
 
 function MainApp() {
-  const { user, loading, role, roleLabel, defaultTab, hasTabAccess, tenant, plan, isSuperOwner, activeImpersonatedTenant, exitTenant, enterTenant } = useAuth();
+  const { user, loading, role, roleLabel, defaultTab, hasTabAccess, tenant, plan, isSuperOwner, activeImpersonatedTenant, exitTenant, enterTenant, mustChangePassword, completeForcedPasswordChange } = useAuth();
   const [superOwnerView, setSuperOwnerView] = useState(() => {
     return window.location.pathname === '/superowner/dashboard';
   });
@@ -172,7 +176,9 @@ function MainApp() {
         setSuperOwnerView(false);
       }
 
-      if (path === '/login') {
+      if (path === '/brand') {
+        setPublicView('brand');
+      } else if (path === '/login') {
         setPublicView('login');
       } else if (path === '/register') {
         setPublicView('register');
@@ -200,7 +206,7 @@ function MainApp() {
       } catch (_) {}
     } else if (!user) {
       const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
-      if (path !== '/' && path !== '/login' && path !== '/register') {
+      if (path !== '/' && path !== '/login' && path !== '/register' && path !== '/brand') {
         try {
           window.history.replaceState({}, '', '/login');
           setPublicView('login');
@@ -262,8 +268,8 @@ function MainApp() {
       api.get('/settings').then(res => {
         if (res && res.success && res.settings) {
           const shopName = res.settings.shop_name || res.settings.business_name || tenant?.business_name || 'Shop';
-          localStorage.setItem('lt_shop_name', shopName);
-          document.title = `${shopName} - ShopOS`;
+          // lt_shop_name removed
+          document.title = `${shopName} - ${BRAND_NAME}`;
           if (res.settings.tagline) localStorage.setItem('lt_shop_tagline', res.settings.tagline);
           if (res.settings.phone) localStorage.setItem('lt_phone', res.settings.phone);
           if (res.settings.email) localStorage.setItem('lt_email', res.settings.email);
@@ -361,9 +367,14 @@ function MainApp() {
         fontWeight: 600,
         fontSize: '15px'
       }}>
-        Loading ShopOS Workspace...
+        Loading ${BRAND_NAME} Workspace...
       </div>
     );
+  }
+
+  // ── Brand Preview Route (Dev Only) ──
+  if (publicView === 'brand' || window.location.pathname.toLowerCase().replace(/\/$/, '') === '/brand') {
+    return <BrandPreview />;
   }
 
   // ── Unauthenticated Views: Landing, Login, Register ──
@@ -390,6 +401,11 @@ function MainApp() {
         onNavigateRegister={() => navigatePublic('register')}
       />
     );
+  }
+
+  // ── Forced Password Change Screen ──
+  if (user && mustChangePassword) {
+    return <ForcedPasswordChange onSuccess={completeForcedPasswordChange} />;
   }
 
   // ── SuperOwner Direct Route ──
@@ -533,7 +549,7 @@ function MainApp() {
           )}
 
           {/* Welcome Onboarding Checklist for newly registered tenants (Dashboard only) */}
-          {showOnboarding && currentTab === 'dashboard' && tenant?.id !== 'latif_001' && (
+          {showOnboarding && currentTab === 'dashboard' && !tenant?.is_default && (
             <div style={{
               margin: '0 0 1.25rem 0',
               padding: '1.25rem',
@@ -562,9 +578,9 @@ function MainApp() {
                 <X size={16} />
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <Sparkles size={18} style={{ color: 'var(--primary)' }} />
+                <Store size={18} style={{ color: 'var(--primary)' }} />
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-title)' }}>
-                  Welcome to ShopOS, {tenant?.business_name || 'Partner'}! 🎉
+                  Welcome to {BRAND_NAME}, {tenant?.business_name || 'Partner'}! 🎉
                 </h3>
               </div>
               <p style={{ margin: '0 0 12px 0', fontSize: '0.825rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>

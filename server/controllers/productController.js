@@ -1,11 +1,13 @@
+const { resolveOpeningBatch } = require('../utils/tradeBatch');
+const { getPlanLimits } = require('../config/plans');
 const { db } = require('../config/database');
 const { logAudit } = require('../middleware/audit');
 
 // List all products with calculated stock, category, supplier and brand info
-exports.getProducts = (req, res) => {
+exports.getProducts = async (req, res) => {
   try {
     const { search, category_id, brand, supplier_id, low_stock, status } = req.query;
-    const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
 
     let query = `
       SELECT p.*, c.name as category_name, s.name as supplier_name,
@@ -32,7 +34,7 @@ exports.getProducts = (req, res) => {
     const params = [tenantId];
 
     if (search) {
-      query += ` AND (p.name LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ? OR p.brand LIKE ?)`;
+      query += ` AND (p.name ILIKE ? OR p.sku ILIKE ? OR p.barcode ILIKE ? OR p.brand ILIKE ?)`;
       const s = `%${search}%`;
       params.push(s, s, s, s);
     }
@@ -57,15 +59,15 @@ exports.getProducts = (req, res) => {
       params.push(status);
     }
 
-    query += ` GROUP BY p.id ORDER BY p.name ASC`;
+    query += ` GROUP BY p.id, c.name, s.name, fifo_b.purchase_price, fifo_b.sale_price, fifo_b.wholesale_price, fifo_b.id, fifo_b.batch_no, fifo_b.quantity ORDER BY p.name ASC`;
 
     // Fetch all active batches in strict FIFO order (id ASC)
-    const activeBatchesList = db.prepare(`
+    const activeBatchesList = await db.all(`
       SELECT id, product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location
       FROM batches
       WHERE status = 'active' AND quantity > 0 AND tenant_id = ?
       ORDER BY id ASC
-    `).all(tenantId);
+    `, [tenantId]);
 
     const batchesByProduct = {};
     for (const b of activeBatchesList) {
@@ -82,11 +84,9 @@ exports.getProducts = (req, res) => {
       });
     }
 
-    const products = db.prepare(query).all(...params).map(p => {
+    const rawProducts = await db.all(query, params);
+    const products = rawProducts.map(p => {
       const prodBatches = batchesByProduct[p.id] || [];
-
-      // Dynamic FIFO Active Batch Pricing:
-      // First active batch or fallback to catalog price
       const firstBatch = prodBatches.length > 0 ? prodBatches[0] : null;
 
       const activeSale = (firstBatch && firstBatch.sale_price > 0)
@@ -107,202 +107,220 @@ exports.getProducts = (req, res) => {
             ? Number(p.fifo_wholesale_price)
             : Number(p.wholesale_price));
 
+      const totalStock = prodBatches.reduce((acc, b) => acc + b.quantity, 0);
+
       return {
         ...p,
-        sale_price: activeSale,
-        purchase_price: activeCost,
-        wholesale_price: activeWholesale,
-        catalog_sale_price: p.sale_price,
-        catalog_purchase_price: p.purchase_price,
-        catalog_wholesale_price: p.wholesale_price,
-        fifo_batch_id: firstBatch ? firstBatch.id : p.fifo_batch_id,
-        fifo_batch_no: firstBatch ? firstBatch.batch_no : p.fifo_batch_no,
-        fifo_batch_qty: firstBatch ? firstBatch.quantity : p.fifo_batch_qty,
-        batches: prodBatches
+        current_stock: totalStock,
+        active_sale_price: activeSale,
+        active_cost_price: activeCost,
+        active_wholesale_price: activeWholesale,
+        active_batches: prodBatches
       };
     });
 
-    // Filter low stock if requested
-    const result = low_stock === 'true'
-      ? products.filter(p => p.current_stock <= p.min_stock_level)
-      : products;
+    let filtered = products;
+    if (low_stock === 'true') {
+      filtered = filtered.filter(p => Number(p.current_stock) <= Number(p.min_stock_level));
+    }
 
-    return res.json({ success: true, products: result });
+    return res.json({ success: true, products: filtered });
   } catch (err) {
     console.error('Error fetching products:', err);
     return res.status(500).json({ success: false, message: 'Failed to fetch products.' });
   }
 };
 
-exports.getProductById = (req, res) => {
+// Get single product with detailed batches and stock movements
+exports.getProductById = async (req, res) => {
   try {
     const { id } = req.params;
-    const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
 
-    const product = db.prepare(`
-      SELECT p.*, c.name as category_name, s.name as supplier_name,
-        COALESCE(SUM(b.quantity), 0) as current_stock
+    const product = await db.get(`
+      SELECT p.*, c.name as category_name, s.name as supplier_name
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN suppliers s ON p.supplier_id = s.id
-      LEFT JOIN batches b ON p.id = b.product_id AND b.status = 'active'
+
       WHERE p.id = ? AND p.tenant_id = ?
-      GROUP BY p.id
-    `).get(id, tenantId);
+    `, [String(id), tenantId]);
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found.' });
     }
 
-    // Return batches in strict FIFO order (id ASC) with vendor supplier details
-    const batches = db.prepare(`
-      SELECT b.*, s.name as supplier_name
+    const batches = await db.all(`
+      SELECT b.*, COALESCE(s.name, 'Default Vendor') as supplier_name
       FROM batches b
       LEFT JOIN suppliers s ON b.supplier_id = s.id
-      WHERE b.product_id = ? AND b.status = 'active' AND b.tenant_id = ?
+      WHERE b.product_id = ? AND b.status = 'active' AND b.quantity > 0 AND b.tenant_id = ?
       ORDER BY b.id ASC
-    `).all(id, tenantId);
+    `, [product.id, tenantId]);
 
-    const movements = db.prepare(`
-      SELECT m.*, u.full_name as user_name
+    const movements = await db.all(`
+      SELECT m.*, u.full_name as user_name, b.batch_no
       FROM inventory_movements m
       LEFT JOIN users u ON m.user_id = u.id
+      LEFT JOIN batches b ON m.batch_id = b.id
       WHERE m.product_id = ? AND m.tenant_id = ?
       ORDER BY m.created_at DESC
       LIMIT 50
-    `).all(id, tenantId);
+    `, [product.id, tenantId]);
 
-    return res.json({ success: true, product, batches, movements });
+    const totalStock = batches.reduce((sum, b) => sum + Number(b.quantity), 0);
+
+    return res.json({
+      success: true,
+      product: {
+        ...product,
+        current_stock: totalStock,
+        batches: batches || [],
+        recent_movements: movements || []
+      },
+      batches: batches || [],
+      movements: movements || []
+    });
   } catch (err) {
-    console.error('Error fetching product detail:', err);
+    console.error('Error fetching product details:', err);
     return res.status(500).json({ success: false, message: 'Failed to fetch product details.' });
   }
 };
 
-// Create a new product
-exports.createProduct = (req, res) => {
-  const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
-  const plan = req.user?.plan || 'free';
+// Create Product with opening batch
+exports.createProduct = async (req, res) => {
+  try {
+    const newId = await db.transaction(async () => {
 
-  // Enforce Free plan 50 products limit
-  if (plan === 'free') {
-    const pCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE tenant_id = ?').get(tenantId)?.count || 0;
-    if (pCount >= 50) {
-      return res.status(403).json({
-        success: false,
-        limitReached: 'products',
-        message: "You've reached the Free plan limit of 50 products. Upgrade to Pro for unlimited products and advanced features."
-      });
-    }
-  }
-
-  const transaction = db.transaction(() => {
-    const {
-      name, sku, barcode, category_id, brand, unit, supplier_id,
-      purchase_price, sale_price, wholesale_price,
-      min_stock_level, storage_location,
-      opening_stock, batch_no, expiry_date
-    } = req.body;
-
-    if (!name || !name.trim()) {
-      throw new Error('Product name is required.');
-    }
-
-    // Auto-generate clean unique SKU if not manually specified
-    let finalSku = sku ? sku.trim().toUpperCase() : '';
-    if (!finalSku) {
-      const brandClean = brand ? brand.replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase() : 'SKU';
-      const maxIdRes = db.prepare('SELECT MAX(id) as maxId, COUNT(*) as count FROM products WHERE tenant_id = ?').get(tenantId);
-      let seq = (maxIdRes?.maxId || maxIdRes?.count || 0) + 1;
-      finalSku = `${brandClean}-${String(seq).padStart(4, '0')}`;
-      while (db.prepare('SELECT id FROM products WHERE sku = ? AND tenant_id = ?').get(finalSku, tenantId)) {
-        seq++;
-        finalSku = `${brandClean}-${String(seq).padStart(4, '0')}`;
+      const tenantId = req.tenantId || req.tenant_id;
+      const plan = (req.user?.plan || req.tenant?.plan || 'free').toLowerCase();
+      const planLimits = getPlanLimits(plan);
+      if (planLimits.products !== null) {
+        const prodCountRes = await db.get('SELECT COUNT(*) as count FROM products WHERE tenant_id = ?', [tenantId]);
+        const currentCount = Number(prodCountRes?.count || 0);
+        if (currentCount >= planLimits.products) {
+          const err = new Error(`The ${plan.toUpperCase()} plan limit of ${planLimits.products} products has been reached. Upgrade to Pro for unlimited products.`);
+          err.statusCode = 403;
+          err.limitReached = 'products';
+          throw err;
+        }
       }
-    } else {
-      // Check unique SKU if manually specified within this tenant
-      const existing = db.prepare('SELECT id FROM products WHERE sku = ? AND tenant_id = ?').get(finalSku, tenantId);
-      if (existing) {
-        throw new Error(`SKU "${finalSku}" is already assigned to another product in your catalog.`);
-      }
-    }
-
-    // Auto-generate barcode matching SKU if empty
-    const finalBarcode = barcode && barcode.trim()
-      ? barcode.trim()
-      : finalSku.replace(/[^a-zA-Z0-9]/g, '');
-
-    const insertProd = db.prepare(`
-      INSERT INTO products (
+      const {
         name, sku, barcode, category_id, brand, unit, supplier_id,
         purchase_price, sale_price, wholesale_price,
-        min_stock_level, storage_location, status, tenant_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
-    `);
+        min_stock_level, storage_location,
+        opening_stock, batch_no, expiry_date
+      } = req.body;
 
-    const result = insertProd.run(
-      name.trim(),
-      finalSku,
-      finalBarcode,
-      category_id || null,
-      brand ? brand.trim() : null,
-      unit || 'pcs',
-      supplier_id ? Number(supplier_id) : null,
-      Number(purchase_price) || 0,
-      Number(sale_price) || 0,
-      Number(wholesale_price) || Number(sale_price) || 0,
-      Number(min_stock_level) || 5,
-      storage_location || null,
-      tenantId
-    );
+      if (!name || !name.trim()) {
+        throw new Error('Product name is required.');
+      }
 
-    const productId = result.lastInsertRowid;
+      let result;
+      let finalSku = sku ? sku.trim().toUpperCase() : '';
+      let finalBarcode = barcode && barcode.trim() ? barcode.trim() : null;
 
-    // If opening stock provided, create batch & movement
-    const qty = Number(opening_stock) || 0;
-    if (qty > 0) {
-      const today = new Date();
-      const yy = String(today.getFullYear()).slice(-2);
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const bNo = (batch_no && batch_no.trim())
-        ? batch_no.trim()
-        : `LOT-${yy}${mm}-${Date.now().toString().slice(-4)}`;
-      const expDate = expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
+      for (let attempt = 0; attempt < 10; attempt++) {
+        if (!finalSku || attempt > 0) {
+          const brandClean = brand ? brand.replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase() : 'SKU';
+          const maxIdRes = await db.get('SELECT MAX(id) as maxId, COUNT(*) as count FROM products WHERE tenant_id = ?', [tenantId]);
+          let seq = Number(maxIdRes?.maxId || maxIdRes?.count || 0) + 1 + attempt;
+          finalSku = `${brandClean}-${String(seq).padStart(4, '0')}`;
+          while (await db.get('SELECT id FROM products WHERE sku = ? AND tenant_id = ?', [finalSku, tenantId])) {
+            seq++;
+            finalSku = `${brandClean}-${String(seq).padStart(4, '0')}`;
+          }
+        } else {
+          const existing = await db.get('SELECT id FROM products WHERE sku = ? AND tenant_id = ?', [finalSku, tenantId]);
+          if (existing) {
+            do {
+              finalSku = `PRD-${Math.floor(100000 + Math.random() * 900000)}`;
+            } while (await db.get('SELECT id FROM products WHERE sku = ? AND tenant_id = ?', [finalSku, tenantId]));
+          }
+        }
 
-      const insertBatch = db.prepare(`
-        INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id, tenant_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      const bRes = insertBatch.run(
-        productId, bNo, expDate, qty,
-        Number(purchase_price) || 0,
-        Number(sale_price) || 0,
-        Number(wholesale_price) || Number(sale_price) || 0,
-        storage_location || null,
-        supplier_id ? Number(supplier_id) : null,
-        tenantId
-      );
+        const barcodeToSave = finalBarcode || finalSku.replace(/[^a-zA-Z0-9]/g, '');
 
-      db.prepare(`
-        INSERT INTO inventory_movements (product_id, batch_id, type, quantity_delta, unit_price, balance_after, reference_type, reason, user_id, tenant_id)
-        VALUES (?, ?, 'PURCHASE', ?, ?, ?, 'OPENING', 'Opening stock on product creation', ?, ?)
-      `).run(productId, bRes.lastInsertRowid, qty, Number(purchase_price) || 0, qty, req.user.id, tenantId);
-    }
+        try {
+          result = await db.run(`
+            INSERT INTO products (
+              name, sku, barcode, category_id, brand, unit, supplier_id,
+              purchase_price, sale_price, wholesale_price,
+              min_stock_level, storage_location, status, tenant_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
+          `, [
+            name.trim(),
+            finalSku,
+            barcodeToSave,
+            category_id ? Number(category_id) : null,
+            brand ? brand.trim() : null,
+            unit || 'pcs',
+            supplier_id ? Number(supplier_id) : null,
+            Number(purchase_price) || 0,
+            Number(sale_price) || 0,
+            Number(wholesale_price) || Number(sale_price) || 0,
+            Number(min_stock_level) || 5,
+            storage_location || null,
+            tenantId
+          ]);
+          break;
+        } catch (insertErr) {
+          const isUniqueViolation = 
+            (insertErr.message && insertErr.message.includes('UNIQUE constraint failed')) ||
+            insertErr.code === '23505' ||
+            insertErr.code === 'SQLITE_CONSTRAINT';
+          if (isUniqueViolation && attempt < 9) {
+            finalSku = '';
+            continue;
+          }
+          throw insertErr;
+        }
+      }
 
-    logAudit(req.user.id, req.user.full_name, 'CREATE', 'PRODUCT', productId, `Created product: ${name} (${finalSku})`, req);
-    return productId;
-  });
+      const productId = result.lastInsertRowid;
 
-  try {
-    const newId = transaction();
+      const qty = Number(opening_stock) || 0;
+      if (qty > 0) {
+        const today = new Date();
+        const yy = String(today.getFullYear()).slice(-2);
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const bNo = (batch_no && batch_no.trim())
+          ? batch_no.trim()
+          : `LOT-${yy}${mm}-${Date.now().toString().slice(-4)}`;
+        const expDate = expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
+
+        const bRes = await db.run(`
+          INSERT INTO batches (product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id, tenant_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          productId, bNo, expDate, qty,
+          Number(purchase_price) || 0,
+          Number(sale_price) || 0,
+          Number(wholesale_price) || Number(sale_price) || 0,
+          storage_location || null,
+          supplier_id ? Number(supplier_id) : null,
+          tenantId
+        ]);
+
+        await db.run(`
+          INSERT INTO inventory_movements (product_id, batch_id, type, quantity_delta, unit_price, balance_after, reference_type, reason, user_id, tenant_id)
+          VALUES (?, ?, 'PURCHASE', ?, ?, ?, 'OPENING', 'Opening stock on product creation', ?, ?)
+        `, [productId, bRes.lastInsertRowid, qty, Number(purchase_price) || 0, qty, req.user?.id || 1, tenantId]);
+      }
+
+      await logAudit(req.user?.id || 1, req.user?.full_name || 'Admin', 'CREATE', 'PRODUCT', productId, `Created product: ${name} (${finalSku})`, req);
+      return productId;
+    });
+
     return res.status(201).json({ success: true, message: 'Product created successfully.', id: newId });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
 // Update product
-exports.updateProduct = (req, res) => {
+exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -311,46 +329,47 @@ exports.updateProduct = (req, res) => {
       min_stock_level, storage_location, status
     } = req.body;
 
-    const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
-    const existing = db.prepare('SELECT * FROM products WHERE id = ? AND tenant_id = ?').get(id, tenantId);
+
+    const tenantId = req.tenantId || req.tenant_id;
+    const existing = await db.get('SELECT * FROM products WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Product not found in your catalog.' });
     }
 
     if (sku && sku !== existing.sku) {
-      const duplicate = db.prepare('SELECT id FROM products WHERE sku = ? AND id != ? AND tenant_id = ?').get(sku, id, tenantId);
+      const duplicate = await db.get('SELECT id FROM products WHERE sku = ? AND CAST(id AS TEXT) != ? AND tenant_id = ?', [sku, String(id), tenantId]);
       if (duplicate) {
         return res.status(400).json({ success: false, message: `SKU "${sku}" is already in use.` });
       }
     }
 
-    const isAdmin = req.user && req.user.role === 'admin';
+    const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'superowner');
     const updatedBrand = isAdmin && brand !== undefined ? (brand ? brand.trim() : null) : existing.brand;
 
     const finalPurchasePrice = (purchase_price !== undefined && purchase_price !== null && purchase_price !== '' && !isNaN(Number(purchase_price)))
       ? Number(purchase_price)
-      : existing.purchase_price;
+      : Number(existing.purchase_price);
 
     const finalSalePrice = (sale_price !== undefined && sale_price !== null && sale_price !== '' && !isNaN(Number(sale_price)))
       ? Number(sale_price)
-      : existing.sale_price;
+      : Number(existing.sale_price);
 
     const finalWholesalePrice = (wholesale_price !== undefined && wholesale_price !== null && wholesale_price !== '' && !isNaN(Number(wholesale_price)))
       ? Number(wholesale_price)
-      : existing.wholesale_price;
+      : Number(existing.wholesale_price);
 
     const finalMinStock = (min_stock_level !== undefined && min_stock_level !== null && min_stock_level !== '' && !isNaN(Number(min_stock_level)))
       ? Number(min_stock_level)
-      : existing.min_stock_level;
+      : Number(existing.min_stock_level);
 
-    db.prepare(`
+    await db.run(`
       UPDATE products SET
         name = ?, sku = ?, barcode = ?, category_id = ?, brand = ?, unit = ?, supplier_id = ?,
         purchase_price = ?, sale_price = ?, wholesale_price = ?,
         min_stock_level = ?, storage_location = ?, status = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ? AND tenant_id = ?
-    `).run(
+    `, [
       name ? name.trim() : existing.name,
       sku ? sku.trim() : existing.sku,
       barcode !== undefined ? barcode : existing.barcode,
@@ -364,25 +383,24 @@ exports.updateProduct = (req, res) => {
       finalMinStock,
       storage_location !== undefined ? storage_location : existing.storage_location,
       status || existing.status,
-      id,
+      existing.id,
       tenantId
-    );
+    ]);
 
-    // Admin: Also update all active batch prices for this product so existing stock sells at new rates
     if (isAdmin) {
-      const priceChanged = finalPurchasePrice !== existing.purchase_price || finalSalePrice !== existing.sale_price || finalWholesalePrice !== existing.wholesale_price;
+      const priceChanged = finalPurchasePrice !== Number(existing.purchase_price) || finalSalePrice !== Number(existing.sale_price) || finalWholesalePrice !== Number(existing.wholesale_price);
       if (priceChanged) {
-        db.prepare(`
+        await db.run(`
           UPDATE batches SET
             purchase_price = ?,
             sale_price = ?,
             wholesale_price = ?
           WHERE product_id = ? AND status = 'active' AND tenant_id = ?
-        `).run(finalPurchasePrice, finalSalePrice, finalWholesalePrice, id, tenantId);
+        `, [finalPurchasePrice, finalSalePrice, finalWholesalePrice, existing.id, tenantId]);
       }
     }
 
-    logAudit(req.user.id, req.user.full_name, 'UPDATE', 'PRODUCT', id, `Updated product #${id}`, req);
+    await logAudit(req.user?.id || 1, req.user?.full_name || 'Admin', 'UPDATE', 'PRODUCT', existing.id, `Updated product #${existing.id}`, req);
 
     return res.json({ success: true, message: 'Product updated successfully.' });
   } catch (err) {
@@ -392,30 +410,34 @@ exports.updateProduct = (req, res) => {
 };
 
 // Delete product
-exports.deleteProduct = (req, res) => {
+exports.deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const { force, archive } = req.query;
-    const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
 
-    const product = db.prepare('SELECT * FROM products WHERE id = ? AND tenant_id = ?').get(id, tenantId);
+
+    const product = await db.get('SELECT * FROM products WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found in your catalog.' });
     }
 
-    // If archiving requested
     if (archive === 'true') {
-      db.prepare("UPDATE products SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?").run(id, tenantId);
-      logAudit(req.user.id, req.user.full_name, 'ARCHIVE', 'PRODUCT', id, `Archived product #${id}: ${product.name}`, req);
+      await db.run("UPDATE products SET status = 'inactive', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?", [product.id, tenantId]);
+      await logAudit(req.user?.id || 1, req.user?.full_name || 'Admin', 'ARCHIVE', 'PRODUCT', product.id, `Archived product #${product.id}: ${product.name}`, req);
       return res.json({ success: true, message: `Product "${product.name}" has been marked as Inactive.` });
     }
 
-    // Check if product is referenced in transactions
-    const salesCount = db.prepare('SELECT COUNT(*) as c FROM sale_items WHERE product_id = ?').get(id)?.c || 0;
-    const purchasesCount = db.prepare('SELECT COUNT(*) as c FROM purchase_items WHERE product_id = ?').get(id)?.c || 0;
-    const adjustmentsCount = db.prepare('SELECT COUNT(*) as c FROM stock_adjustments WHERE product_id = ?').get(id)?.c || 0;
-    const returnsCount = db.prepare('SELECT COUNT(*) as c FROM return_items WHERE product_id = ?').get(id)?.c || 0;
+    const salesRow = await db.get('SELECT COUNT(*) as c FROM sale_items WHERE product_id = ?', [product.id]);
+    const purchasesRow = await db.get('SELECT COUNT(*) as c FROM purchase_items WHERE product_id = ?', [product.id]);
 
+    const adjustmentsRow = await db.get('SELECT COUNT(*) as c FROM stock_adjustments WHERE product_id = ? AND tenant_id = ?', [product.id, tenantId]);
+    const returnsRow = await db.get('SELECT COUNT(*) as c FROM return_items WHERE product_id = ?', [product.id]);
+
+    const salesCount = Number(salesRow?.c || 0);
+    const purchasesCount = Number(purchasesRow?.c || 0);
+    const adjustmentsCount = Number(adjustmentsRow?.c || 0);
+    const returnsCount = Number(returnsRow?.c || 0);
     const totalReferences = salesCount + purchasesCount + adjustmentsCount + returnsCount;
 
     if (totalReferences > 0 && force !== 'true') {
@@ -430,22 +452,22 @@ exports.deleteProduct = (req, res) => {
       });
     }
 
-    const transaction = db.transaction(() => {
+    await db.transaction(async () => {
       if (totalReferences > 0 && force === 'true') {
-        db.prepare('DELETE FROM return_items WHERE product_id = ?').run(id);
-        db.prepare('DELETE FROM stock_adjustments WHERE product_id = ?').run(id);
-        db.prepare('DELETE FROM sale_items WHERE product_id = ?').run(id);
-        db.prepare('DELETE FROM purchase_items WHERE product_id = ?').run(id);
+        await db.run('DELETE FROM return_items WHERE product_id = ?', [product.id]);
+
+        await db.run('DELETE FROM stock_adjustments WHERE product_id = ? AND tenant_id = ?', [product.id, tenantId]);
+        await db.run('DELETE FROM sale_items WHERE product_id = ?', [product.id]);
+        await db.run('DELETE FROM purchase_items WHERE product_id = ?', [product.id]);
       }
 
-      db.prepare('DELETE FROM inventory_movements WHERE product_id = ?').run(id);
-      db.prepare('DELETE FROM batches WHERE product_id = ? AND tenant_id = ?').run(id, tenantId);
-      db.prepare('DELETE FROM products WHERE id = ? AND tenant_id = ?').run(id, tenantId);
 
-      logAudit(req.user.id, req.user.full_name, 'DELETE', 'PRODUCT', id, `Deleted product #${id}: ${product.name} (${product.sku})`, req);
+      await db.run('DELETE FROM inventory_movements WHERE product_id = ? AND tenant_id = ?', [product.id, tenantId]);
+      await db.run('DELETE FROM batches WHERE product_id = ? AND tenant_id = ?', [product.id, tenantId]);
+      await db.run('DELETE FROM products WHERE id = ? AND tenant_id = ?', [product.id, tenantId]);
+
+      await logAudit(req.user?.id || 1, req.user?.full_name || 'Admin', 'DELETE', 'PRODUCT', product.id, `Deleted product #${product.id}: ${product.name} (${product.sku})`, req);
     });
-
-    transaction();
 
     return res.json({
       success: true,
@@ -458,94 +480,81 @@ exports.deleteProduct = (req, res) => {
 };
 
 // Stock Adjustment (damage, melted, sample, counting difference)
-exports.adjustStock = (req, res) => {
-  const transaction = db.transaction(() => {
-    const { product_id, batch_id, type, quantity, reason } = req.body;
-    const tenantId = req.tenant_id || req.user?.tenant_id || 'latif_001';
-
-    if (!product_id || !type || !quantity || !reason) {
-      throw new Error('Product, adjustment type, quantity, and reason are required.');
-    }
-
-    const qty = Number(quantity);
-    if (qty <= 0) {
-      throw new Error('Adjustment quantity must be greater than 0.');
-    }
-
-    const product = db.prepare('SELECT * FROM products WHERE id = ? AND tenant_id = ?').get(product_id, tenantId);
-    if (!product) {
-      throw new Error('Product not found.');
-    }
-
-    let targetBatch = null;
-    if (batch_id) {
-      targetBatch = db.prepare('SELECT * FROM batches WHERE id = ? AND product_id = ? AND tenant_id = ?').get(batch_id, product_id, tenantId);
-    } else {
-      targetBatch = db.prepare("SELECT * FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ? ORDER BY expiry_date ASC LIMIT 1").get(product_id, tenantId);
-    }
-
-    if (!targetBatch) {
-      throw new Error('No active batch found for this product.');
-    }
-
-    // Adjust batch quantity: if DAMAGE, EXPIRED, MELTED, SAMPLE -> decrease.
-    // If COUNT_DIFF, can increase or decrease (specified in type or notes).
-    const isReduction = ['DAMAGE', 'EXPIRED', 'MELTED', 'SAMPLE', 'LOST', 'COUNT_REDUCE'].includes(type);
-    const delta = isReduction ? -qty : qty;
-
-    if (isReduction && targetBatch.quantity < qty) {
-      throw new Error(`Cannot adjust ${qty} units. Batch ${targetBatch.batch_no} currently has only ${targetBatch.quantity} units available.`);
-    }
-
-    const newBatchQty = targetBatch.quantity + delta;
-    db.prepare('UPDATE batches SET quantity = ? WHERE id = ? AND tenant_id = ?').run(newBatchQty, targetBatch.id, tenantId);
-
-    // Calculate new total stock
-    const totalStock = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ?").get(product_id, tenantId).s;
-
-    // Record adjustment: per-tenant ADJ-YYYYMMDD-XXXX (starts at 0001)
-    const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-    const existingAdjustments = db.prepare('SELECT adjustment_no FROM stock_adjustments WHERE adjustment_no LIKE ? AND tenant_id = ?').all(`ADJ-${dateStr}-%`, tenantId);
-    let maxSuffix = 0;
-    for (const adj of existingAdjustments) {
-      const parts = adj.adjustment_no.split('-');
-      if (parts.length === 3) {
-        const suffix = parseInt(parts[2], 10);
-        if (!isNaN(suffix) && suffix > maxSuffix) {
-          maxSuffix = suffix;
-        }
-      }
-    }
-    const adjNo = `ADJ-${dateStr}-${String(maxSuffix + 1).padStart(4, '0')}`;
-    db.prepare(`
-      INSERT INTO stock_adjustments (tenant_id, adjustment_no, product_id, batch_id, type, quantity, unit_cost, reason, user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(tenantId, adjNo, product_id, targetBatch.id, type, qty, targetBatch.purchase_price, reason, req.user.id);
-
-    // Record inventory movement
-    db.prepare(`
-      INSERT INTO inventory_movements (tenant_id, product_id, batch_id, type, quantity_delta, unit_price, balance_after, reference_type, reason, user_id)
-      VALUES (?, ?, ?, 'ADJUSTMENT', ?, ?, ?, 'STOCK_ADJUSTMENT', ?, ?)
-    `).run(tenantId, product_id, targetBatch.id, delta, targetBatch.purchase_price, totalStock, `${type}: ${reason}`, req.user.id);
-
-    logAudit(req.user.id, req.user.full_name, 'ADJUST', 'STOCK', product_id, `Stock adjustment ${adjNo}: ${delta} units (${type}) for ${product.name}`, req);
-
-    return { adjustment_no: adjNo, new_stock: totalStock };
-  });
-
+exports.adjustStock = async (req, res) => {
   try {
-    const result = transaction();
+    const result = await db.transaction(async () => {
+      const { product_id, batch_id, type, quantity, reason } = req.body;
+
+      const tenantId = req.tenantId || req.tenant_id;
+
+      if (!product_id || !type || !quantity || !reason) {
+        throw new Error('Product, adjustment type, quantity, and reason are required.');
+      }
+
+      const qty = Number(quantity);
+      if (qty <= 0) {
+        throw new Error('Adjustment quantity must be greater than 0.');
+      }
+
+      const product = await db.get('SELECT * FROM products WHERE id = ? AND tenant_id = ?', [product_id, tenantId]);
+      if (!product) {
+        throw new Error('Product not found.');
+      }
+
+      let targetBatch = null;
+      if (batch_id) {
+        targetBatch = await db.get('SELECT * FROM batches WHERE id = ? AND product_id = ? AND tenant_id = ?', [batch_id, product_id, tenantId]);
+      } else {
+        targetBatch = await db.get("SELECT * FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ? ORDER BY (expiry_date IS NULL), expiry_date, created_at, id LIMIT 1", [product_id, tenantId]);
+      }
+
+      if (!targetBatch) {
+        throw new Error('No active batch found for this product.');
+      }
+
+      const isReduction = ['DAMAGE', 'EXPIRED', 'MELTED', 'SAMPLE', 'LOST', 'COUNT_REDUCE'].includes(type);
+      const delta = isReduction ? -qty : qty;
+
+      if (isReduction && Number(targetBatch.quantity) < qty) {
+        throw new Error(`Cannot adjust ${qty} units. Batch ${targetBatch.batch_no} currently has only ${targetBatch.quantity} units available.`);
+      }
+
+      const newBatchQty = Number(targetBatch.quantity) + delta;
+      await db.run('UPDATE batches SET quantity = ? WHERE id = ? AND tenant_id = ?', [newBatchQty, targetBatch.id, tenantId]);
+
+      const stockRow = await db.get("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ?", [product_id, tenantId]);
+      const totalStock = Number(stockRow?.s || 0);
+
+      const adjNo = await db.getNextNumber(tenantId, 'stock_adjustment', 'ADJ');
+
+      await db.run(`
+        INSERT INTO stock_adjustments (tenant_id, adjustment_no, product_id, batch_id, type, quantity, unit_cost, reason, user_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [tenantId, adjNo, product_id, targetBatch.id, type, qty, targetBatch.purchase_price, reason, req.user?.id || 1]);
+
+      await db.run(`
+        INSERT INTO inventory_movements (tenant_id, product_id, batch_id, type, quantity_delta, unit_price, balance_after, reference_type, reason, user_id)
+        VALUES (?, ?, ?, 'ADJUSTMENT', ?, ?, ?, 'STOCK_ADJUSTMENT', ?, ?)
+      `, [tenantId, product_id, targetBatch.id, delta, targetBatch.purchase_price, totalStock, `${type}: ${reason}`, req.user?.id || 1]);
+
+      await logAudit(req.user?.id || 1, req.user?.full_name || 'Admin', 'ADJUST', 'STOCK', product_id, `Stock adjustment ${adjNo}: ${delta} units (${type}) for ${product.name}`, req);
+
+      return { adjustment_no: adjNo, new_stock: totalStock };
+    });
+
     return res.json({ success: true, message: 'Stock adjustment recorded successfully.', data: result });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
 // Get stock adjustments history
-exports.getAdjustments = (req, res) => {
+exports.getAdjustments = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
-    const adjustments = db.prepare(`
+
+    const tenantId = req.tenantId || req.tenant_id;
+    const adjustments = await db.all(`
       SELECT sa.*, p.name as product_name, p.sku, p.unit, b.batch_no, u.full_name as user_name
       FROM stock_adjustments sa
       JOIN products p ON sa.product_id = p.id
@@ -554,7 +563,7 @@ exports.getAdjustments = (req, res) => {
       WHERE sa.tenant_id = ?
       ORDER BY sa.created_at DESC
       LIMIT 100
-    `).all(tenantId);
+    `, [tenantId]);
 
     return res.json({ success: true, adjustments });
   } catch (err) {
@@ -562,78 +571,77 @@ exports.getAdjustments = (req, res) => {
   }
 };
 
-// Quick Restock Product (Inward new batch with FIFO & price update)
-exports.restockProduct = (req, res) => {
-  const transaction = db.transaction(() => {
-    const tenantId = req.tenant_id || 'latif_001';
-    const { id } = req.params;
-    const { quantity, purchase_price, sale_price, wholesale_price, supplier_id, batch_no, expiry_date, storage_location } = req.body;
-
-    const qty = Number(quantity);
-    if (!qty || qty <= 0) throw new Error('Quantity must be greater than 0.');
-
-    const product = db.prepare('SELECT * FROM products WHERE id = ? AND tenant_id = ?').get(id, tenantId);
-    if (!product) throw new Error('Product not found.');
-
-    const pPrice = purchase_price !== undefined && purchase_price !== '' ? Number(purchase_price) : product.purchase_price;
-    const sPrice = sale_price !== undefined && sale_price !== '' ? Number(sale_price) : product.sale_price;
-    const wPrice = wholesale_price !== undefined && wholesale_price !== '' ? Number(wholesale_price) : product.wholesale_price;
-    const today = new Date();
-    const yy = String(today.getFullYear()).slice(-2);
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const batchCode = (batch_no && batch_no.trim())
-      ? batch_no.trim()
-      : `LOT-${yy}${mm}-${Date.now().toString().slice(-4)}`;
-    const exp = expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
-
-    // Create new FIFO batch with its own cost and selling prices
-    const bRes = db.prepare(`
-      INSERT INTO batches (tenant_id, product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
-    `).run(tenantId, id, batchCode, exp, qty, pPrice, sPrice, wPrice, storage_location || product.storage_location, supplier_id ? Number(supplier_id) : (product.supplier_id || null));
-
-    // Update product latest purchase price and optional new sale_price
-    db.prepare(`
-      UPDATE products SET
-        purchase_price = ?,
-        sale_price = ?,
-        wholesale_price = ?,
-        supplier_id = COALESCE(?, supplier_id),
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND tenant_id = ?
-    `).run(
-      pPrice,
-      sPrice,
-      wPrice,
-      supplier_id ? Number(supplier_id) : null,
-      id,
-      tenantId
-    );
-
-    // Record inventory movement
-    const newTotal = db.prepare("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ?").get(id, tenantId).s;
-
-    db.prepare(`
-      INSERT INTO inventory_movements (
-        tenant_id, product_id, batch_id, type, quantity_delta, unit_price,
-        balance_after, reference_type, reason, user_id
-      ) VALUES (?, ?, ?, 'PURCHASE', ?, ?, ?, 'DIRECT_RESTOCK', ?, ?)
-    `).run(
-      tenantId,
-      id,
-      bRes.lastInsertRowid,
-      qty,
-      pPrice,
-      newTotal,
-      `Inward Restock Lot ${batchCode} (+${qty} ${product.unit})`,
-      req.user.id
-    );
-
-    return { success: true, message: `Successfully added ${qty} ${product.unit} to ${product.name}! Available stock is now ${newTotal} ${product.unit}.` };
-  });
-
+// Quick Restock Product
+exports.restockProduct = async (req, res) => {
   try {
-    const result = transaction();
+    const result = await db.transaction(async () => {
+
+      const tenantId = req.tenantId || req.tenant_id;
+      const { id } = req.params;
+      const { quantity, purchase_price, sale_price, wholesale_price, supplier_id, batch_no, expiry_date, storage_location } = req.body;
+
+      const qty = Number(quantity);
+      if (!qty || qty <= 0) throw new Error('Quantity must be greater than 0.');
+
+
+      const product = await db.get('SELECT * FROM products WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
+      if (!product) throw new Error('Product not found.');
+
+      const pPrice = purchase_price !== undefined && purchase_price !== '' ? Number(purchase_price) : Number(product.purchase_price);
+      const sPrice = sale_price !== undefined && sale_price !== '' ? Number(sale_price) : Number(product.sale_price);
+      const wPrice = wholesale_price !== undefined && wholesale_price !== '' ? Number(wholesale_price) : Number(product.wholesale_price);
+      const today = new Date();
+      const yy = String(today.getFullYear()).slice(-2);
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const batchCode = (batch_no && batch_no.trim())
+        ? batch_no.trim()
+        : `LOT-${yy}${mm}-${Date.now().toString().slice(-4)}`;
+      const exp = expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
+
+      const bRes = await db.run(`
+        INSERT INTO batches (tenant_id, product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')
+      `, [tenantId, product.id, batchCode, exp, qty, pPrice, sPrice, wPrice, storage_location || product.storage_location, supplier_id ? Number(supplier_id) : (product.supplier_id || null)]);
+
+      await db.run(`
+        UPDATE products SET
+          purchase_price = ?,
+          sale_price = ?,
+          wholesale_price = ?,
+          supplier_id = COALESCE(?, supplier_id),
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND tenant_id = ?
+      `, [
+        pPrice,
+        sPrice,
+        wPrice,
+        supplier_id ? Number(supplier_id) : null,
+        product.id,
+        tenantId
+      ]);
+
+      const stockRow = await db.get("SELECT COALESCE(SUM(quantity), 0) as s FROM batches WHERE product_id = ? AND status = 'active' AND tenant_id = ?", [product.id, tenantId]);
+      const newTotal = Number(stockRow?.s || 0);
+
+      await db.run(`
+        INSERT INTO inventory_movements (
+          tenant_id, product_id, batch_id, type, quantity_delta, unit_price,
+          balance_after, reference_type, reason, user_id
+        ) VALUES (?, ?, ?, 'PURCHASE', ?, ?, ?, 'DIRECT_RESTOCK', ?, ?)
+      `, [
+        tenantId,
+        product.id,
+        bRes.lastInsertRowid,
+        qty,
+        pPrice,
+        newTotal,
+        `Inward Restock Lot ${batchCode} (+${qty} ${product.unit})`,
+        req.user?.id || 1
+      ]);
+
+      return { success: true, message: `Successfully added ${qty} ${product.unit} to ${product.name}! Available stock is now ${newTotal} ${product.unit}.` };
+    });
+
     return res.json(result);
   } catch (err) {
     console.error('Restock error:', err);
@@ -642,90 +650,154 @@ exports.restockProduct = (req, res) => {
 };
 
 // Categories CRUD
-exports.getCategories = (req, res) => {
+exports.getCategories = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
-    const categories = db.prepare(`
+
+    const tenantId = req.tenantId || req.tenant_id;
+    const categories = await db.all(`
       SELECT c.*, COUNT(p.id) as product_count
       FROM categories c
       LEFT JOIN products p ON c.id = p.category_id AND p.tenant_id = c.tenant_id
       WHERE c.tenant_id = ?
       GROUP BY c.id
       ORDER BY c.name ASC
-    `).all(tenantId);
+    `, [tenantId]);
     return res.json({ success: true, categories });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Failed to fetch categories.' });
   }
 };
 
-exports.createCategory = (req, res) => {
+exports.createCategory = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { name, description } = req.body;
     if (!name) return res.status(400).json({ success: false, message: 'Category name is required.' });
 
-    const stmt = db.prepare('INSERT INTO categories (tenant_id, name, description) VALUES (?, ?, ?)');
-    const result = stmt.run(tenantId, name.trim(), description ? description.trim() : null);
+    const result = await db.run('INSERT INTO categories (tenant_id, name, description) VALUES (?, ?, ?)',
+      [tenantId, name.trim(), description ? description.trim() : null]);
 
     return res.status(201).json({ success: true, id: result.lastInsertRowid, message: 'Category added.' });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
+  }
+};
+
+exports.updateCategory = async (req, res) => {
+  try {
+
+    const tenantId = req.tenantId || req.tenant_id;
+    const { id } = req.params;
+    const { name, description } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Category name is required.' });
+    await db.run('UPDATE categories SET name = ?, description = ? WHERE id = ? AND tenant_id = ?',
+      [name.trim(), description ? description.trim() : null, String(id), tenantId]);
+    return res.json({ success: true, message: 'Category updated successfully.' });
+  } catch (err) {
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
+  }
+};
+
+exports.deleteCategory = async (req, res) => {
+  try {
+
+    const tenantId = req.tenantId || req.tenant_id;
+    const { id } = req.params;
+    await db.run('UPDATE products SET category_id = NULL WHERE category_id = ? AND tenant_id = ?', [String(id), tenantId]);
+    await db.run('DELETE FROM categories WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
+    return res.json({ success: true, message: 'Category deleted successfully.' });
+  } catch (err) {
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
 // Units CRUD
-exports.getUnits = (req, res) => {
+exports.getUnits = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
-    const units = db.prepare('SELECT * FROM units WHERE tenant_id = ? ORDER BY name ASC').all(tenantId);
+
+    const tenantId = req.tenantId || req.tenant_id;
+    const units = await db.all('SELECT * FROM units WHERE tenant_id = ? ORDER BY name ASC', [tenantId]);
     return res.json({ success: true, units });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Failed to fetch units.' });
   }
 };
 
-exports.createUnit = (req, res) => {
+exports.createUnit = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { name, short_code } = req.body;
     if (!name || !short_code) return res.status(400).json({ success: false, message: 'Unit name and short code required.' });
 
-    const stmt = db.prepare('INSERT INTO units (tenant_id, name, short_code) VALUES (?, ?, ?)');
-    const result = stmt.run(tenantId, name.trim(), short_code.trim().toLowerCase());
+    const result = await db.run('INSERT INTO units (tenant_id, name, short_code) VALUES (?, ?, ?)',
+      [tenantId, name.trim(), short_code.trim().toLowerCase()]);
 
     return res.status(201).json({ success: true, id: result.lastInsertRowid, message: 'Unit added.' });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
+  }
+};
+
+exports.updateUnit = async (req, res) => {
+  try {
+
+    const tenantId = req.tenantId || req.tenant_id;
+    const { id } = req.params;
+    const { name, short_code } = req.body;
+    if (!name || !short_code) return res.status(400).json({ success: false, message: 'Name and short code required.' });
+    await db.run('UPDATE units SET name = ?, short_code = ? WHERE id = ? AND tenant_id = ?',
+      [name.trim(), short_code.trim().toLowerCase(), String(id), tenantId]);
+    return res.json({ success: true, message: 'Unit updated successfully.' });
+  } catch (err) {
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
+  }
+};
+
+exports.deleteUnit = async (req, res) => {
+  try {
+
+    const tenantId = req.tenantId || req.tenant_id;
+    const { id } = req.params;
+    await db.run('DELETE FROM units WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
+    return res.json({ success: true, message: 'Unit deleted successfully.' });
+  } catch (err) {
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
 // Brands CRUD
-exports.getBrands = (req, res) => {
+exports.getBrands = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
-    const brands = db.prepare(`
+
+    const tenantId = req.tenantId || req.tenant_id;
+    const brands = await db.all(`
       SELECT b.*, COUNT(p.id) as product_count
       FROM brands b
       LEFT JOIN products p ON b.name = p.brand AND p.tenant_id = b.tenant_id
       WHERE b.tenant_id = ?
       GROUP BY b.id
       ORDER BY b.name ASC
-    `).all(tenantId);
+    `, [tenantId]);
     return res.json({ success: true, brands });
   } catch (err) {
     return res.status(500).json({ success: false, message: 'Failed to fetch brands.' });
   }
 };
 
-exports.createBrand = (req, res) => {
+exports.createBrand = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { name, description } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Brand name is required.' });
 
-    const stmt = db.prepare('INSERT INTO brands (tenant_id, name, description) VALUES (?, ?, ?)');
-    const result = stmt.run(tenantId, name.trim(), description ? description.trim() : null);
+    const result = await db.run('INSERT INTO brands (tenant_id, name, description) VALUES (?, ?, ?)',
+      [tenantId, name.trim(), description ? description.trim() : null]);
 
     return res.status(201).json({ success: true, id: result.lastInsertRowid, message: 'Brand added successfully.' });
   } catch (err) {
@@ -733,83 +805,39 @@ exports.createBrand = (req, res) => {
   }
 };
 
-exports.updateCategory = (req, res) => {
+exports.updateBrand = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
-    const { id } = req.params;
-    const { name, description } = req.body;
-    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Category name is required.' });
-    db.prepare('UPDATE categories SET name = ?, description = ? WHERE id = ? AND tenant_id = ?').run(name.trim(), description ? description.trim() : null, id, tenantId);
-    return res.json({ success: true, message: 'Category updated successfully.' });
-  } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
-  }
-};
 
-exports.deleteCategory = (req, res) => {
-  try {
-    const tenantId = req.tenant_id || 'latif_001';
-    const { id } = req.params;
-    db.prepare('UPDATE products SET category_id = NULL WHERE category_id = ? AND tenant_id = ?').run(id, tenantId);
-    db.prepare('DELETE FROM categories WHERE id = ? AND tenant_id = ?').run(id, tenantId);
-    return res.json({ success: true, message: 'Category deleted successfully.' });
-  } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
-  }
-};
-
-exports.updateUnit = (req, res) => {
-  try {
-    const tenantId = req.tenant_id || 'latif_001';
-    const { id } = req.params;
-    const { name, short_code } = req.body;
-    if (!name || !short_code) return res.status(400).json({ success: false, message: 'Name and short code required.' });
-    db.prepare('UPDATE units SET name = ?, short_code = ? WHERE id = ? AND tenant_id = ?').run(name.trim(), short_code.trim().toLowerCase(), id, tenantId);
-    return res.json({ success: true, message: 'Unit updated successfully.' });
-  } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
-  }
-};
-
-exports.deleteUnit = (req, res) => {
-  try {
-    const tenantId = req.tenant_id || 'latif_001';
-    const { id } = req.params;
-    db.prepare('DELETE FROM units WHERE id = ? AND tenant_id = ?').run(id, tenantId);
-    return res.json({ success: true, message: 'Unit deleted successfully.' });
-  } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
-  }
-};
-
-exports.updateBrand = (req, res) => {
-  try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
     const { name, description } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Brand name is required.' });
-    const existing = db.prepare('SELECT name FROM brands WHERE id = ? AND tenant_id = ?').get(id, tenantId);
+    const existing = await db.get('SELECT name FROM brands WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
     if (existing && existing.name !== name.trim()) {
-      db.prepare('UPDATE products SET brand = ? WHERE brand = ? AND tenant_id = ?').run(name.trim(), existing.name, tenantId);
+      await db.run('UPDATE products SET brand = ? WHERE brand = ? AND tenant_id = ?', [name.trim(), existing.name, tenantId]);
     }
-    db.prepare('UPDATE brands SET name = ?, description = ? WHERE id = ? AND tenant_id = ?').run(name.trim(), description ? description.trim() : null, id, tenantId);
+    await db.run('UPDATE brands SET name = ?, description = ? WHERE id = ? AND tenant_id = ?',
+      [name.trim(), description ? description.trim() : null, String(id), tenantId]);
     return res.json({ success: true, message: 'Brand updated successfully.' });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };
 
-exports.deleteBrand = (req, res) => {
+exports.deleteBrand = async (req, res) => {
   try {
-    const tenantId = req.tenant_id || 'latif_001';
+    const tenantId = req.tenantId || req.tenant_id;
     const { id } = req.params;
-    const existing = db.prepare('SELECT name FROM brands WHERE id = ? AND tenant_id = ?').get(id, tenantId);
+
+    const existing = await db.get('SELECT name FROM brands WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
     if (existing) {
-      db.prepare('UPDATE products SET brand = NULL WHERE brand = ? AND tenant_id = ?').run(existing.name, tenantId);
+      await db.run('UPDATE products SET brand = NULL WHERE brand = ? AND tenant_id = ?', [existing.name, tenantId]);
     }
-    db.prepare('DELETE FROM brands WHERE id = ? AND tenant_id = ?').run(id, tenantId);
+    await db.run('DELETE FROM brands WHERE id = ? AND tenant_id = ?', [String(id), tenantId]);
     return res.json({ success: true, message: 'Brand deleted successfully.' });
   } catch (err) {
-    return res.status(400).json({ success: false, message: err.message });
+    const status = err.status || (err.limitReached ? 403 : 400);
+    return res.status(status).json({ success: false, message: err.message, limitReached: err.limitReached });
   }
 };

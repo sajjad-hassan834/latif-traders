@@ -1,5 +1,5 @@
-/* LATIF TRADERS - World-Class POS & ERP Design System */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* ShoppyOS - World-Class POS & ERP Design System */
+/* Self-hosted fonts loaded via @fontsource in main.jsx */
 @import './styles/public-theme.css';
 @import './styles/app-theme.css';
 
@@ -9,12 +9,12 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Brand Colors - Logo Vibrant Royal Blue & Electric Blue */
-  --primary: #0266fe;
-  --primary-hover: #0052cc;
+  --primary: #0F4D3A;
+  --primary-hover: #0A3528;
   --primary-light: #eff6ff;
   --primary-border: #bfdbfe;
-  --primary-dark: #1d4ed8;
-  --primary-gradient: linear-gradient(135deg, #0266fe 0%, #1d4ed8 100%);
+  --primary-dark: #0A3528;
+  --primary-gradient: linear-gradient(135deg, #0F4D3A 0%, #1B7A5A 100%);
   
   --secondary: #475569;
   --secondary-light: #f8fafc;
@@ -2837,7 +2837,8 @@ select.form-control option {
     visibility: hidden;
   }
 
-  .printable-area, .printable-area * {
+  .printable-area, .printable-area *,
+  .receipt-print-area, .receipt-print-area * {
     visibility: visible;
   }
 

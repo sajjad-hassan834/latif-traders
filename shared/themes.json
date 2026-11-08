@@ -1,0 +1,11 @@
+{
+  "defaultTheme": "brand",
+  "allowedThemes": ["brand", "classic", "dark", "green", "indigo"],
+  "themes": [
+    { "id": "brand", "name": "ShoppyOS Brand", "icon": "🌿", "color": "#0F4D3A" },
+    { "id": "classic", "name": "Classic Light", "icon": "☀️", "color": "#0284C7" },
+    { "id": "dark", "name": "Midnight Dark", "icon": "🌙", "color": "#0EA5E9" },
+    { "id": "green", "name": "Emerald Green", "icon": "🍃", "color": "#059669" },
+    { "id": "indigo", "name": "Royal Indigo", "icon": "🔮", "color": "#4F46E5" }
+  ]
+}

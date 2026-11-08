@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const reportController = require('../controllers/reportController');
 const { authenticate, requireRoles } = require('../middleware/auth');
+const { tenantContext } = require('../middleware/tenantContext');
 
 router.use(authenticate);
+router.use(tenantContext);
 
 router.get('/dashboard', reportController.getDashboardMetrics);
 router.get('/profit-loss', requireRoles('accountant'), reportController.getProfitAndLoss);

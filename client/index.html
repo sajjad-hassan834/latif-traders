@@ -3,8 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ShopOS – Business Management & POS</title>
-    <link rel="icon" type="image/png" href="/logo.png" />
+    <title>ShoppyOS – Run the whole dukaan from one screen</title>
+    <meta name="description" content="Inventory, fast receipts and automated customer udhaar khata in one cloud system, built for Pakistani shops, marts and wholesalers." />
+    <meta name="theme-color" content="#0F4D3A" />
+
+    <!-- Favicon & PWA Suite -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon.svg" sizes="any" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Open Graph / Social Meta -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.shoppyos.com/" />
+    <meta property="og:title" content="ShoppyOS – Run the whole dukaan from one screen" />
+    <meta property="og:description" content="Inventory, fast receipts and automated customer udhaar khata in one cloud system, built for Pakistani shops, marts and wholesalers." />
+    <meta property="og:image" content="/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ShoppyOS – Run the whole dukaan from one screen" />
+    <meta name="twitter:description" content="Inventory, fast receipts and automated customer udhaar khata in one cloud system, built for Pakistani shops, marts and wholesalers." />
+    <meta name="twitter:image" content="/og-image.png" />
     <script>
       /* Pre-mount zero-flash theme initialization */
       (function() {
@@ -14,16 +32,17 @@
           var isExplicitPublic = path === '/login' || path === '/register' || (!token && path === '');
           
           if (isExplicitPublic || !token) {
-            var pubTheme = localStorage.getItem('shopos-public-theme') || 'light';
+            var params = new URLSearchParams(window.location.search);
+            var pubTheme = params.get('theme') || localStorage.getItem('shopos-public-theme') || 'light';
             if (pubTheme !== 'dark') pubTheme = 'light';
             document.documentElement.removeAttribute('data-app-theme');
             document.documentElement.setAttribute('data-public-theme', pubTheme);
             document.documentElement.style.colorScheme = pubTheme;
           } else {
-            var appTheme = localStorage.getItem('shopos-app-theme') || localStorage.getItem('lt_theme') || 'classic';
+            var appTheme = localStorage.getItem('shopos-app-theme') || localStorage.getItem('lt_theme') || 'brand';
             if (appTheme === 'light') appTheme = 'classic';
             if (appTheme === 'emerald') appTheme = 'green';
-            if (['classic', 'dark', 'green', 'indigo'].indexOf(appTheme) === -1) appTheme = 'classic';
+            if (['brand', 'classic', 'dark', 'green', 'indigo'].indexOf(appTheme) === -1) appTheme = 'brand';
             document.documentElement.removeAttribute('data-public-theme');
             document.documentElement.setAttribute('data-app-theme', appTheme);
             document.documentElement.style.colorScheme = (appTheme === 'dark' ? 'dark' : 'light');

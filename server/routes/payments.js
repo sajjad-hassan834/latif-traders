@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const paymentController = require('../controllers/paymentController');
 const { authenticate, requireRoles } = require('../middleware/auth');
+const { tenantContext } = require('../middleware/tenantContext');
 
 router.use(authenticate);
+router.use(tenantContext);
 
 router.get('/', requireRoles('accountant'), paymentController.getPayments);
 router.post('/customer-receipt', requireRoles('sales', 'accountant'), paymentController.recordCustomerReceipt);

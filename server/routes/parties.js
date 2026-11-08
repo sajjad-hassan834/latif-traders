@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const partyController = require('../controllers/partyController');
 const { authenticate, requireRoles } = require('../middleware/auth');
+const { tenantContext } = require('../middleware/tenantContext');
 
 router.use(authenticate);
+router.use(tenantContext);
 
 // Customers
 router.get('/customers', partyController.getCustomers);

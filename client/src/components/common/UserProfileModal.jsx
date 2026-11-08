@@ -311,7 +311,7 @@ export default function UserProfileModal({ isOpen, onClose, initialTab = 'profil
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@latiftraders.com"
+                placeholder="owner@example.com"
                 style={inputStyle}
                 onFocus={handleInputFocus}
                 onBlur={handleInputBlur}

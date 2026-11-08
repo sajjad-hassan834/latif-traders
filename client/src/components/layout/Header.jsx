@@ -1,3 +1,4 @@
+import { BRAND_NAME, SUPPORT_EMAIL } from '../../config/brand';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Menu,
@@ -33,6 +34,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../utils/api';
 import { formatDate } from '../../utils/formatters';
+import { resolveTradeId } from '../../utils/tradeCapabilities';
 import { applyAppTheme, getSavedAppTheme, APP_THEMES } from '../../utils/theme';
 import UserProfileModal from '../common/UserProfileModal';
 import NotificationCenter from '../common/NotificationCenter';
@@ -57,7 +59,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileModalTab, setProfileModalTab] = useState('profile');
   const [supportModal, setSupportModal] = useState(null); // 'help' | 'contact' | 'bug' | null
-  const [bugCategory, setBugCategory] = useState('Interface / Display');
+  const [bugCategory, setBugCategory] = useState('Display');
   const [bugDescription, setBugDescription] = useState('');
   const [bugSubmitted, setBugSubmitted] = useState(false);
   const [contactMessage, setContactMessage] = useState('');
@@ -130,17 +132,17 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
 
   const tabMetadata = {
     dashboard: { section: 'Overview', title: 'Dashboard' },
-    pos: { section: 'Sales', title: 'New Sale (POS)' },
-    sales: { section: 'Orders', title: 'Orders Management' },
-    inventory: { section: 'Inventory', title: 'Products & Stock' },
-    'stock-adjust': { section: 'Inventory', title: 'Stock Adjustments' },
-    purchases: { section: 'Inventory', title: 'Purchase Invoices' },
-    customers: { section: 'Parties', title: 'Customers & Udhaar' },
-    suppliers: { section: 'Parties', title: 'Suppliers & Dues' },
-    expenses: { section: 'Finance', title: 'Operating Expenses' },
-    cashflow: { section: 'Finance', title: 'Daily Cashbook' },
-    reports: { section: 'Reports', title: 'Analytics & Profit' },
-    settings: { section: 'System', title: 'Shop Settings' }
+    pos: { section: 'Sales', title: 'POS' },
+    sales: { section: 'Orders', title: 'Orders' },
+    inventory: { section: 'Inventory', title: 'Products' },
+    'stock-adjust': { section: 'Inventory', title: 'Adjustments' },
+    purchases: { section: 'Inventory', title: 'Purchases' },
+    customers: { section: 'Parties', title: 'Customers' },
+    suppliers: { section: 'Parties', title: 'Suppliers' },
+    expenses: { section: 'Finance', title: 'Expenses' },
+    cashflow: { section: 'Finance', title: 'Cashbook' },
+    reports: { section: 'Reports', title: 'Analytics' },
+    settings: { section: 'System', title: 'Settings' }
   };
 
   const getSettingsSubTitle = (overrideTab = null) => {
@@ -195,7 +197,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
 
   const userInitial = user?.full_name?.charAt(0) || user?.username?.charAt(0) || 'U';
   const userEmail = user?.email || (user?.username ? `${user.username}@shop.local` : '');
-  const businessType = tenant?.business_type || 'retail_general';
+  const businessType = resolveTradeId(tenant?.business_type);
   const businessTypeLabel = BUSINESS_TYPE_NAMES[businessType] || 'Retail & Trade';
   const currentPlan = plan || 'free';
 
@@ -464,10 +466,10 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               onClick={() => setTab('pos')}
               className="btn btn-primary btn-sm"
               style={{ padding: '0 0.65rem', height: '30px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-              title="Open POS Terminal"
+              title="Open New Sale (POS)"
             >
               <PlusCircle size={14} />
-              <span><span className="hide-mobile">New Sale </span>POS</span>
+              <span>New Sale</span>
             </button>
           )}
 
@@ -495,7 +497,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               >
                 <span>🔧 SuperOwner Mode</span>
                 <span style={{ color: '#D97706', fontWeight: 400 }}>|</span>
-                <span>Viewing: <strong>{tenant?.business_name || 'Latif Traders'}</strong></span>
+                <span>Viewing: <strong>{tenant?.business_name || BRAND_NAME}</strong></span>
                 <ChevronDown size={13} />
               </button>
               {superOwnerDropdownOpen && (
@@ -766,7 +768,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                         gap: '3px'
                       }}
                     >
-                      {currentPlan === 'enterprise' && <><span>ENTERPRISE</span> <Sparkles size={9} /></>}
+                      {currentPlan === 'enterprise' && <><span>ENTERPRISE</span> <ShieldCheck size={10} /></>}
                       {currentPlan === 'pro' && <><span>PRO</span> ⭐</>}
                       {currentPlan === 'free' && 'FREE PLAN'}
                     </span>
@@ -1233,7 +1235,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
       <Modal
         isOpen={supportModal === 'help'}
         onClose={() => setSupportModal(null)}
-        title="ShopOS Knowledge Base & User Guide"
+        title={`${BRAND_NAME} Knowledge Base & User Guide`}
         subtitle="Quick reference guide, workflows, and hotkeys"
         icon={<BookOpen size={22} color="#0F766E" />}
         maxWidth="560px"
@@ -1275,7 +1277,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               </span>
             </div>
             <p style={{ margin: '6px 0 0 0', color: '#374151', fontSize: '14px', lineHeight: 1.6 }}>
-              Manage multiple expiry dates and batch lots per item. ShopOS enforces FIFO (First In, First Out) deduction and displays alert badges for items near expiry in the top notification tray.
+              Manage multiple expiry dates and batch lots per item. ${BRAND_NAME} enforces FIFO (First In, First Out) deduction and displays alert badges for items near expiry in the top notification tray.
             </p>
           </div>
 
@@ -1291,7 +1293,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '16px' }}>📒</span>
               <span style={{ color: '#7C3AED', fontWeight: 600, fontSize: '15px' }}>
-                3. Customer Ledgers & Udhaar Recovery
+                3. Customer Ledgers
               </span>
             </div>
             <p style={{ margin: '6px 0 0 0', color: '#374151', fontSize: '14px', lineHeight: 1.6 }}>
@@ -1360,7 +1362,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
       <Modal
         isOpen={supportModal === 'contact'}
         onClose={() => setSupportModal(null)}
-        title="Contact ShopOS Support"
+        title={`Contact ${BRAND_NAME} Support`}
         subtitle="Dedicated assistance for your store operations"
         icon={<MessageSquare size={22} color="#0F766E" />}
         maxWidth="520px"
@@ -1465,10 +1467,12 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                 <span>📱</span>
                 <span><strong>WhatsApp:</strong> +92 300 0746767</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>📧</span>
-                <span><strong>Email:</strong> support@shopos.pk</span>
-              </div>
+              {SUPPORT_EMAIL && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📧</span>
+                  <span><strong>Email:</strong> {SUPPORT_EMAIL}</span>
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>🕐</span>
                 <span><strong>Hours:</strong> Mon – Sat: 9:00 AM – 10:00 PM PKT</span>
@@ -1585,7 +1589,7 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
               Issue Report Logged!
             </h4>
             <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 20px 0', lineHeight: 1.5 }}>
-              Thank you for helping us improve ShopOS. Our engineering team has received your report with diagnostic details.
+              Thank you for helping us improve ${BRAND_NAME}. Our engineering team has received your report with diagnostic details.
             </p>
             <button
               type="button"
@@ -1649,11 +1653,11 @@ export default function Header({ currentTab, setTab, toggleSidebar, sidebarColla
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
-                  <option>Interface / Display</option>
+                  <option>Display</option>
                   <option>POS Terminal & Invoicing</option>
                   <option>Barcode & Thermal Printing</option>
                   <option>Inventory & Stock Batches</option>
-                  <option>Customers & Udhaar Balances</option>
+                  <option>Customers</option>
                   <option>Performance or Slowness</option>
                   <option>Other Feedback</option>
                 </select>

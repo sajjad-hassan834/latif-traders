@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Printer, X, Check, DollarSign } from 'lucide-react';
 import { formatPKR, formatDate, formatDateTime } from '../../utils/formatters';
+import { BRAND_NAME } from '../../config/brand';
 
 // Safe PKR formatter
 const safeFormatPKR = (amt) => {
@@ -112,7 +113,7 @@ export default function ReceiptVoucherModal({ receipt, party, tenantSettings = {
               }}
             >
               <Printer size={13} />
-              <span>Print Receipt</span>
+              <span>Print</span>
             </button>
             <button
               type="button"
@@ -139,7 +140,7 @@ export default function ReceiptVoucherModal({ receipt, party, tenantSettings = {
         {/* Voucher Body (Printable Area) */}
         <div
           ref={printRef}
-          className="receipt-print-area"
+          className="receipt-print-area printable-area"
           style={{
             padding: '28px 32px',
             overflowY: 'auto',
@@ -152,11 +153,13 @@ export default function ReceiptVoucherModal({ receipt, party, tenantSettings = {
           {/* Header */}
           <div style={{ textAlign: 'center', borderBottom: '2px dashed #D1D5DB', paddingBottom: '16px', marginBottom: '20px' }}>
             <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#111827', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-              {tenantSettings.shop_name || 'LATIF TRADERS'}
+              {tenantSettings.shop_name || BRAND_NAME}
             </h2>
-            <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
-              {tenantSettings.tagline || 'Frozen Food Wholesalers & Retailers'}
-            </div>
+            {tenantSettings.tagline && (
+              <div style={{ fontSize: '12px', color: '#4B5563', marginTop: '2px' }}>
+                {tenantSettings.tagline}
+              </div>
+            )}
             {tenantSettings.address && (
               <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '3px' }}>
                 {tenantSettings.address}
@@ -244,7 +247,7 @@ export default function ReceiptVoucherModal({ receipt, party, tenantSettings = {
           {/* Notes & Account Balance */}
           <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '14px', fontSize: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ color: '#6B7280', fontWeight: 600 }}>Description / Notes:</span>
+              <span style={{ color: '#6B7280', fontWeight: 600 }}>Notes:</span>
               <span style={{ color: '#111827', fontWeight: 500, textAlign: 'right', maxWidth: '65%' }}>
                 {notes}
               </span>
@@ -324,7 +327,7 @@ export default function ReceiptVoucherModal({ receipt, party, tenantSettings = {
             }}
           >
             <Printer size={13} />
-            <span>Print Voucher</span>
+            <span>Print</span>
           </button>
         </div>
       </div>

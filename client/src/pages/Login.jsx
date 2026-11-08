@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BrandLogo from '../components/common/BrandLogo';
 import { 
   Lock, 
   User, 
@@ -14,7 +15,9 @@ import {
   CheckCircle2,
   Clock,
   Send,
-  Loader2
+  Loader2,
+  Copy,
+  Check
 } from 'lucide-react';
 import PublicThemeToggle from '../components/common/PublicThemeToggle';
 import { useAuth } from '../context/AuthContext';
@@ -43,7 +46,8 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
       if (e?.detail) setTheme(e.detail);
     };
     window.addEventListener('public_theme_changed', handleThemeSync);
-    return () => window.removeEventListener('public_theme_changed', handleThemeSync);
+
+  return () => window.removeEventListener('public_theme_changed', handleThemeSync);
   }, []);
 
   const toggleTheme = () => {
@@ -53,22 +57,31 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
   };
 
   const t = {
-    pageBg: isDark ? '#0b1120' : '#F0F4F8',
-    textColor: isDark ? '#f8fafc' : '#111827',
-    headerBg: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-    headerBorder: isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0',
-    cardBg: isDark ? '#131d31' : '#FFFFFF',
-    cardBorder: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
-    cardShadow: isDark ? '0 25px 60px -15px rgba(0, 0, 0, 0.7)' : '0 4px 24px rgba(0,0,0,0.08)',
-    inputBg: isDark ? '#0f172a' : '#ffffff',
-    inputBorder: isDark ? 'rgba(255, 255, 255, 0.14)' : '#E5E7EB',
-    inputText: isDark ? '#ffffff' : '#111827',
-    labelColor: isDark ? '#cbd5e1' : '#374151',
-    subText: isDark ? '#94a3b8' : '#6B7280',
-    titleColor: isDark ? '#ffffff' : '#111827',
-    noticeBg: isDark ? '#0f172a' : '#F9FAFB',
-    noticeBorder: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6'
+    pageBg: 'var(--bg)',
+    textColor: 'var(--ink)',
+    headerBg: 'color-mix(in srgb, var(--bg) 92%, transparent)',
+    headerBorder: 'var(--line)',
+    cardBg: 'var(--paper)',
+    cardBorder: 'var(--line)',
+    cardShadow: 'var(--pub-card-shadow)',
+    inputBg: 'var(--pub-input-bg)',
+    inputBorder: 'var(--line)',
+    inputText: 'var(--ink)',
+    labelColor: 'var(--ink)',
+    subText: 'var(--mut)',
+    titleColor: 'var(--ink)',
+    noticeBg: 'var(--soft)',
+    noticeBorder: 'var(--line)'
   };
+
+  const [authNotice, setAuthNotice] = useState(() => {
+    const notice = sessionStorage.getItem('auth_notice');
+    if (notice) {
+      sessionStorage.removeItem('auth_notice');
+      return notice;
+    }
+    return '';
+  });
 
   // Forgot Password Modal State
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -78,7 +91,10 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
   const [forgotContact, setForgotContact] = useState('');
   const [forgotSubmitting, setForgotSubmitting] = useState(false);
   const [forgotSuccessMsg, setForgotSuccessMsg] = useState('');
+  const [forgotToken, setForgotToken] = useState('');
+  const [tokenCopied, setTokenCopied] = useState(false);
   const [forgotErrorMsg, setForgotErrorMsg] = useState('');
+  const [statusTokenInput, setStatusTokenInput] = useState('');
   const [statusResult, setStatusResult] = useState(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
@@ -119,6 +135,10 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
 
       if (res.success) {
         setForgotSuccessMsg(res.message);
+        if (res.reset_token) {
+          setForgotToken(res.reset_token);
+          setStatusTokenInput(res.reset_token);
+        }
       } else {
         setForgotErrorMsg(res.message || 'Failed to submit reset request.');
       }
@@ -132,26 +152,23 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
   const handleCheckStatus = async (e) => {
     e.preventDefault();
     setForgotErrorMsg('');
-    if (!forgotUsername.trim()) {
-      setForgotErrorMsg('Please enter your staff username.');
+    const tokenToCheck = (statusTokenInput || forgotToken || '').trim();
+    if (!tokenToCheck) {
+      setForgotErrorMsg('Please enter your Reset Token.');
       return;
     }
 
     try {
       setStatusLoading(true);
       setStatusResult(null);
-      const res = await api.get(`/auth/forgot-password-status/${encodeURIComponent(forgotUsername.trim())}`);
-      if (res.success) {
-        if (!res.request) {
-          setForgotErrorMsg(`No reset requests found for "${forgotUsername}".`);
-        } else {
-          setStatusResult(res.request);
-        }
+      const res = await api.get(`/auth/forgot-password-status?token=${encodeURIComponent(tokenToCheck)}`);
+      if (res && res.success) {
+        setStatusResult(res);
       } else {
         setForgotErrorMsg(res.message || 'Failed to check status.');
       }
     } catch (err) {
-      setForgotErrorMsg(err.message || 'Error checking status.');
+      setForgotErrorMsg(err.message || 'Invalid or expired reset token.');
     } finally {
       setStatusLoading(false);
     }
@@ -160,9 +177,13 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
   return (
     <div style={{
       minHeight: '100vh',
+      width: '100%',
+      maxWidth: '100vw',
+      boxSizing: 'border-box',
+      overflowX: 'hidden',
       background: t.pageBg,
       color: t.textColor,
-      fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+      fontFamily: 'var(--font-body)',
       display: 'flex',
       flexDirection: 'column'
     }}>
@@ -171,7 +192,9 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        padding: '16px 32px',
+        width: '100%',
+        boxSizing: 'border-box',
+        padding: '12px 16px',
         borderBottom: `1px solid ${t.headerBorder}`,
         display: 'flex',
         alignItems: 'center',
@@ -183,22 +206,9 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
       }}>
         <div
           onClick={onNavigateLanding}
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
         >
-          <img
-            src="/logo.png"
-            alt="ShopOS Logo"
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '9px',
-              objectFit: 'contain',
-              boxShadow: '0 2px 8px rgba(2, 102, 254, 0.25)'
-            }}
-          />
-          <span style={{ fontSize: '20px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
-            Shop<span style={{ color: '#0266FE' }}>OS</span>
-          </span>
+          <BrandLogo variant="horizontal" size={32} />
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '14px' }}>
@@ -208,17 +218,11 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
             style={{
               padding: '8px 18px',
               borderRadius: '8px',
-              border: '1px solid #0266FE',
-              background: '#0266FE',
-              color: '#ffffff',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: '13px',
-              boxShadow: '0 2px 8px rgba(2, 102, 254, 0.25)',
-              transition: 'background 0.2s'
+              border: 'none',
+              background: 'var(--gold)', color: '#241800', fontWeight: 600, cursor: 'pointer', fontSize: '13px', borderRadius: '999px', border: 'none', transition: 'transform 0.15s'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = '#0052cc'}
-            onMouseLeave={e => e.currentTarget.style.background = '#0266FE'}
+            onMouseEnter={e => e.currentTarget.style.filter = 'brightness(0.95)'}
+            onMouseLeave={e => e.currentTarget.style.filter = 'none'}
           >
             Sign Up
           </button>
@@ -228,19 +232,24 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
       {/* ═════════ CENTERED CARD CONTAINER ═════════ */}
       <main style={{
         flex: 1,
+        width: '100%',
+        maxWidth: '100vw',
+        boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: '36px 20px'
+        justifyContent: 'flex-start',
+        padding: '32px 16px 48px',
+        overflowX: 'hidden'
       }}>
         <div style={{
-          width: '480px',
-          maxWidth: '90vw',
+          width: 'min(440px, 100%)',
+          maxWidth: '100%',
+          margin: 'auto 0',
           background: t.cardBg,
           borderRadius: '16px',
           boxShadow: t.cardShadow,
-          padding: '40px 48px',
+          padding: '32px 24px',
           border: `1px solid ${t.cardBorder}`,
           boxSizing: 'border-box'
         }}>
@@ -256,28 +265,33 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '12px',
               marginBottom: '8px'
             }}>
-              <img
-                src="/logo.png"
-                alt="ShopOS Logo"
-                style={{
-                  width: '46px',
-                  height: '46px',
-                  borderRadius: '12px',
-                  objectFit: 'contain',
-                  boxShadow: '0 4px 14px rgba(2, 102, 254, 0.28)'
-                }}
-              />
-              <span style={{ fontSize: '24px', fontWeight: 800, color: t.titleColor, letterSpacing: '-0.5px' }}>
-                Shop<span style={{ color: '#0266FE' }}>OS</span>
-              </span>
+              <BrandLogo variant="horizontal" size={40} />
             </div>
             <div style={{ fontSize: '13px', color: t.subText, margin: 0, textAlign: 'center' }}>
               Sign in to your account
             </div>
           </div>
+
+          {/* AUTH NOTICE / SESSION REVOCATION BANNER */}
+          {authNotice && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '12px 14px',
+              borderRadius: '8px',
+              background: 'rgba(245, 158, 11, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              color: '#d97706',
+              fontSize: '13px',
+              marginBottom: '20px'
+            }}>
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <span>{authNotice}</span>
+            </div>
+          )}
 
           {/* ERROR ALERT BANNER */}
           {errorMsg && (
@@ -317,8 +331,12 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   style={{
                     position: 'absolute',
                     left: '14px',
-                    top: '15px',
-                    color: focusedField === 'username' ? '#0266FE' : '#9CA3AF',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: focusedField === 'username' ? 'var(--deep)' : 'var(--mut)',
                     transition: 'color 0.2s'
                   }}
                 />
@@ -335,8 +353,8 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                     width: '100%',
                     height: '48px',
                     borderRadius: '10px',
-                    border: focusedField === 'username' ? '1px solid #0266FE' : `1px solid ${t.inputBorder}`,
-                    boxShadow: focusedField === 'username' ? '0 0 0 3px rgba(2, 102, 254, 0.15)' : 'none',
+                    border: focusedField === 'username' ? '2px solid var(--gold)' : '1px solid var(--line)',
+                    boxShadow: focusedField === 'username' ? '0 0 0 3px rgba(244, 166, 42, 0.25)' : 'none',
                     background: t.inputBg,
                     color: t.inputText,
                     fontSize: '14px',
@@ -366,7 +384,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   }}
                   style={{
                     fontSize: '12px',
-                    color: '#0266FE',
+                    color: 'var(--leaf)',
                     fontWeight: 600,
                     background: 'none',
                     border: 'none',
@@ -384,8 +402,12 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   style={{
                     position: 'absolute',
                     left: '14px',
-                    top: '15px',
-                    color: focusedField === 'password' ? '#0266FE' : '#9CA3AF',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: focusedField === 'password' ? 'var(--deep)' : 'var(--mut)',
                     transition: 'color 0.2s'
                   }}
                 />
@@ -401,8 +423,8 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                     width: '100%',
                     height: '48px',
                     borderRadius: '10px',
-                    border: focusedField === 'password' ? '1px solid #0266FE' : `1px solid ${t.inputBorder}`,
-                    boxShadow: focusedField === 'password' ? '0 0 0 3px rgba(2, 102, 254, 0.15)' : 'none',
+                    border: focusedField === 'password' ? '2px solid var(--gold)' : '1px solid var(--line)',
+                    boxShadow: focusedField === 'password' ? '0 0 0 3px rgba(244, 166, 42, 0.25)' : 'none',
                     background: t.inputBg,
                     color: t.inputText,
                     fontSize: '14px',
@@ -418,7 +440,8 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   style={{
                     position: 'absolute',
                     right: '14px',
-                    top: '15px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
                     color: '#9CA3AF',
@@ -443,7 +466,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
                 style={{
-                  accentColor: '#0266FE',
+                  accentColor: 'var(--deep)',
                   width: '16px',
                   height: '16px',
                   cursor: 'pointer',
@@ -472,21 +495,12 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                 height: '48px',
                 borderRadius: '10px',
                 border: 'none',
-                background: '#0266FE',
-                color: '#ffffff',
-                fontSize: '15px',
-                fontWeight: 600,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                boxShadow: '0 4px 14px rgba(2, 102, 254, 0.35)',
+                background: 'var(--gold)', color: '#241800', fontSize: '15px', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', borderRadius: '999px', border: 'none', boxShadow: '0 4px 14px rgba(244, 166, 42, 0.35)',
                 transition: 'background 0.2s, opacity 0.2s',
                 opacity: loading ? 0.8 : 1
               }}
-              onMouseEnter={e => !loading && (e.currentTarget.style.background = '#0052cc')}
-              onMouseLeave={e => !loading && (e.currentTarget.style.background = '#0266FE')}
+              onMouseEnter={e => !loading && (e.currentTarget.style.background = '#e59920')}
+              onMouseLeave={e => !loading && (e.currentTarget.style.background = 'var(--gold)')}
             >
               {loading ? (
                 <>
@@ -521,7 +535,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#0266FE',
+                color: 'var(--leaf)',
                 fontWeight: 600,
                 cursor: 'pointer',
                 padding: 0
@@ -561,11 +575,11 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   flex: 1,
                   padding: '0.75rem',
                   border: 'none',
-                  borderBottom: forgotTab === 'request' ? '2px solid #0266FE' : '2px solid transparent',
+                  borderBottom: forgotTab === 'request' ? '2px solid var(--primary, #0F4D3A)' : '2px solid transparent',
                   background: 'none',
                   fontWeight: 600,
                   fontSize: '0.8rem',
-                  color: forgotTab === 'request' ? '#0266FE' : '#64748b',
+                  color: forgotTab === 'request' ? 'var(--primary, #0F4D3A)' : '#64748b',
                   cursor: 'pointer'
                 }}
               >
@@ -578,11 +592,11 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                   flex: 1,
                   padding: '0.75rem',
                   border: 'none',
-                  borderBottom: forgotTab === 'status' ? '2px solid #0266FE' : '2px solid transparent',
+                  borderBottom: forgotTab === 'status' ? '2px solid var(--primary, #0F4D3A)' : '2px solid transparent',
                   background: 'none',
                   fontWeight: 600,
                   fontSize: '0.8rem',
-                  color: forgotTab === 'status' ? '#0266FE' : '#64748b',
+                  color: forgotTab === 'status' ? 'var(--primary, #0F4D3A)' : '#64748b',
                   cursor: 'pointer'
                 }}
               >
@@ -612,21 +626,71 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
 
               {forgotSuccessMsg && (
                 <div style={{
-                  padding: '0.75rem 0.9rem',
+                  padding: '0.85rem 1rem',
                   background: '#f0fdf4',
                   border: '1px solid #bbf7d0',
-                  borderRadius: '6px',
-                  color: '#15803d',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  marginBottom: '1rem',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '0.5rem',
-                  lineHeight: 1.4
+                  borderRadius: '8px',
+                  marginBottom: '1rem'
                 }}>
-                  <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-                  <span>{forgotSuccessMsg}</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', color: '#15803d', fontSize: '0.8rem', fontWeight: 600, lineHeight: 1.4, marginBottom: forgotToken ? '0.75rem' : 0 }}>
+                    <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <span>{forgotSuccessMsg}</span>
+                  </div>
+
+                  {forgotToken && (
+                    <div style={{ background: '#ffffff', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid #dcfce7' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginBottom: '4px' }}>Your Reset Tracking Token:</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <code style={{ fontSize: '0.75rem', wordBreak: 'break-all', fontFamily: 'monospace', color: '#0f172a', flex: 1, background: '#f8fafc', padding: '4px 6px', borderRadius: '4px' }}>
+                          {forgotToken}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(forgotToken);
+                            setTokenCopied(true);
+                            setTimeout(() => setTokenCopied(false), 2000);
+                          }}
+                          style={{
+                            padding: '4px 8px',
+                            background: tokenCopied ? '#15803d' : 'var(--primary, #0F4D3A)',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.72rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {tokenCopied ? <Check size={12} /> : <Copy size={12} />}
+                          <span>{tokenCopied ? 'Copied!' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForgotTab('status');
+                          setStatusTokenInput(forgotToken);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '0.45rem',
+                          background: '#0F766E',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Check Approval Status for this Token →
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -689,7 +753,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                       justifyContent: 'center',
                       alignItems: 'center',
                       gap: '0.5rem',
-                      background: '#0266FE'
+                      background: 'var(--primary, #0F4D3A)'
                     }}
                   >
                     <Send size={16} />
@@ -699,7 +763,7 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
               ) : (
                 <div>
                   <p style={{ fontSize: '0.785rem', color: '#64748b', margin: '0 0 1rem', lineHeight: 1.4 }}>
-                    Check if your Administrator has approved your password reset request.
+                    Enter your Reset Token to check if your Administrator has approved your request.
                   </p>
 
                   <form onSubmit={handleCheckStatus} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -707,15 +771,16 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                       type="text"
                       className="login-input"
                       required
-                      placeholder="Enter username to check"
-                      value={forgotUsername}
-                      onChange={(e) => setForgotUsername(e.target.value)}
+                      placeholder="Paste your reset token"
+                      value={statusTokenInput}
+                      onChange={(e) => setStatusTokenInput(e.target.value)}
+                      style={{ fontSize: '0.75rem', fontFamily: 'monospace' }}
                     />
                     <button
                       type="submit"
                       disabled={statusLoading}
                       className="login-submit-btn"
-                      style={{ padding: '0 1rem', whiteSpace: 'nowrap', width: 'auto', background: '#0266FE' }}
+                      style={{ padding: '0 1rem', whiteSpace: 'nowrap', width: 'auto', background: 'var(--primary, #0F4D3A)' }}
                     >
                       {statusLoading ? 'Checking...' : 'Check Status'}
                     </button>
@@ -736,14 +801,14 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                           statusResult.status === 'approved' ? 'badge-success' :
                           statusResult.status === 'pending' ? 'badge-warning' : 'badge-danger'
                         }`}>
-                          {statusResult.status.toUpperCase()}
+                          {statusResult.status ? statusResult.status.toUpperCase() : 'UNKNOWN'}
                         </span>
                       </div>
 
                       {statusResult.status === 'pending' && (
                         <div style={{ color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <Clock size={15} />
-                          <span>Request is awaiting review by Administrator.</span>
+                          <span>Your request is pending review by your Administrator.</span>
                         </div>
                       )}
 
@@ -752,23 +817,15 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
                           <div style={{ color: '#15803d', fontWeight: 600, marginBottom: '0.35rem' }}>
                             ✓ Request Approved by Admin!
                           </div>
-                          {statusResult.temporary_password && (
-                            <div style={{ background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #bbf7d0', marginBottom: '0.5rem' }}>
-                              <span style={{ color: '#64748b', fontSize: '0.75rem' }}>Your New Password:</span><br />
-                              <strong style={{ fontSize: '1rem', color: '#0f172a', letterSpacing: '1px' }}>{statusResult.temporary_password}</strong>
-                            </div>
-                          )}
-                          {statusResult.admin_note && (
-                            <div style={{ color: '#334155', fontSize: '0.75rem' }}>
-                              <strong>Note from Admin:</strong> {statusResult.admin_note}
-                            </div>
-                          )}
+                          <div style={{ background: '#ffffff', padding: '0.65rem 0.75rem', borderRadius: '6px', border: '1px solid #bbf7d0', marginBottom: '0.5rem', color: '#166534', fontSize: '0.785rem' }}>
+                            Your Administrator has generated a temporary password. For security, temporary passwords are provided directly by your administrator. Please contact your administrator to receive it, then sign in.
+                          </div>
                         </div>
                       )}
 
                       {statusResult.status === 'rejected' && (
                         <div style={{ color: '#b91c1c' }}>
-                          <strong>Request Rejected:</strong> {statusResult.admin_note || 'Please contact Administrator directly.'}
+                          <strong>Request Declined:</strong> Your password reset request was not approved. Please contact your Administrator directly.
                         </div>
                       )}
                     </div>
