@@ -470,8 +470,20 @@ export default function Suppliers() {
                     <td style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{s.phone || '-'}</td>
                     <td><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{s.address || '-'}</span></td>
                     <td style={{ textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                      {s.current_balance > 0 ? (
+                      {Number(s.current_balance) > 0 ? (
                         <span style={{ color: '#ef4444' }}>{formatPKR(s.current_balance)}</span>
+                      ) : Number(s.current_balance) < 0 ? (
+                        <span style={{ 
+                          display: 'inline-block',
+                          padding: '2px 8px', 
+                          borderRadius: '12px', 
+                          background: '#E0F2FE', 
+                          color: '#0369A1', 
+                          fontSize: '0.8rem',
+                          fontWeight: 700
+                        }}>
+                          Adv: {formatPKR(Math.abs(s.current_balance))}
+                        </span>
                       ) : (
                         <span style={{ color: '#10b981' }}>Settled</span>
                       )}

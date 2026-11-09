@@ -177,6 +177,13 @@ exports.getSuppliers = async (req, res) => {
   try {
     const tenantId = req.tenantId || req.tenant_id;
     const { search } = req.query;
+    // Auto-reconcile supplier balances with verified double-entry ledger closing balances
+    try {
+      await ledgerService.syncSupplierBalances(tenantId);
+    } catch (syncErr) {
+      console.warn('Supplier balance background sync notice:', syncErr.message);
+    }
+
     let query = 'SELECT * FROM suppliers WHERE tenant_id = ?';
     const params = [tenantId];
 

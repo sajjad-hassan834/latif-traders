@@ -31,6 +31,39 @@ function ReportsContent({ initialReport }) {
   const { user, isAdmin, canSell, canManageInventory, canViewFinances, role, tenant } = useAuth();
 
   const [productSalesPage, setProductSalesPage] = useState(1);
+  const [productSalesPageSize, setProductSalesPageSize] = useState(25);
+
+  const [dailyPage, setDailyPage] = useState(1);
+  const [dailyPageSize, setDailyPageSize] = useState(25);
+
+  const [stockPage, setStockPage] = useState(1);
+  const [stockPageSize, setStockPageSize] = useState(25);
+
+  const [expiryPage, setExpiryPage] = useState(1);
+  const [expiryPageSize, setExpiryPageSize] = useState(25);
+
+  const [purchasesPage, setPurchasesPage] = useState(1);
+  const [purchasesPageSize, setPurchasesPageSize] = useState(25);
+
+  const [supplierPurchasesPage, setSupplierPurchasesPage] = useState(1);
+  const [supplierPurchasesPageSize, setSupplierPurchasesPageSize] = useState(25);
+
+  const [productPurchasesPage, setProductPurchasesPage] = useState(1);
+  const [productPurchasesPageSize, setProductPurchasesPageSize] = useState(25);
+
+  const [movementsPage, setMovementsPage] = useState(1);
+  const [movementsPageSize, setMovementsPageSize] = useState(25);
+
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  const handlePrint = () => {
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setIsPrinting(false), 500);
+    }, 150);
+  };
+
   const [activeReport, setActiveReport] = useState(() => {
     if (initialReport) return initialReport;
     if (role === 'sales') return 'register';
@@ -49,6 +82,18 @@ function ReportsContent({ initialReport }) {
   });
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [registerDate, setRegisterDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Reset pagination to page 1 whenever active tab, date filters, or subviews change
+  useEffect(() => {
+    setDailyPage(1);
+    setStockPage(1);
+    setExpiryPage(1);
+    setPurchasesPage(1);
+    setSupplierPurchasesPage(1);
+    setProductPurchasesPage(1);
+    setProductSalesPage(1);
+    setMovementsPage(1);
+  }, [activeReport, startDate, endDate, registerDate, purchasesView]);
 
   // Data states
   const [settings, setSettings] = useState(() => ({
@@ -427,7 +472,7 @@ function ReportsContent({ initialReport }) {
             <span>Export CSV</span>
           </button>
 
-          <button onClick={() => window.print()} className="btn btn-primary btn-sm" style={{ height: '34px', fontSize: '0.8rem', fontWeight: 600, padding: '0 1rem' }} title="Print Official Report">
+          <button onClick={handlePrint} className="btn btn-primary btn-sm" style={{ height: '34px', fontSize: '0.8rem', fontWeight: 600, padding: '0 1rem' }} title="Print Official Report">
             <Printer size={14} />
             <span>Print Report</span>
           </button>
@@ -828,7 +873,10 @@ function ReportsContent({ initialReport }) {
                       </td>
                     </tr>
                   ) : (
-                    dailySales.map((row, idx) => (
+                    (isPrinting || dailyPageSize === 'All'
+                      ? dailySales
+                      : dailySales.slice((dailyPage - 1) * Number(dailyPageSize), dailyPage * Number(dailyPageSize))
+                    ).map((row, idx) => (
                       <tr key={idx}>
                         <td style={{ fontWeight: 600 }}>{formatDate(row.sale_date || row.date)}</td>
                         <td style={{ textAlign: 'center' }}><span className="badge badge-info">{row.invoice_count || 0}</span></td>
@@ -843,6 +891,15 @@ function ReportsContent({ initialReport }) {
                 </tbody>
               </table>
             </div>
+
+            <Pagination
+              currentPage={dailyPage}
+              totalItems={dailySales.length}
+              itemsPerPage={dailyPageSize}
+              onPageChange={setDailyPage}
+              pageSizeOptions={[15, 25, 50, 100, 'All']}
+              onPageSizeChange={(sz) => { setDailyPageSize(sz); setDailyPage(1); }}
+            />
           </div>
         )}
 
@@ -1043,7 +1100,10 @@ function ReportsContent({ initialReport }) {
                         </td>
                       </tr>
                     ) : (
-                      stockItems.map(item => (
+                      (isPrinting || stockPageSize === 'All'
+                        ? stockItems
+                        : stockItems.slice((stockPage - 1) * Number(stockPageSize), stockPage * Number(stockPageSize))
+                      ).map(item => (
                         <tr key={item.id}>
                           <td style={{ fontWeight: 600 }}>{item.name}</td>
                           <td>{item.category_name || '-'}</td>
@@ -1059,6 +1119,15 @@ function ReportsContent({ initialReport }) {
                   </tbody>
                 </table>
               </div>
+
+              <Pagination
+                currentPage={stockPage}
+                totalItems={stockItems.length}
+                itemsPerPage={stockPageSize}
+                onPageChange={setStockPage}
+                pageSizeOptions={[25, 50, 100, 'All']}
+                onPageSizeChange={(sz) => { setStockPageSize(sz); setStockPage(1); }}
+              />
             </div>
           </div>
         )}
@@ -1093,7 +1162,10 @@ function ReportsContent({ initialReport }) {
                       </td>
                     </tr>
                   ) : (
-                    expiryBatches.map(b => (
+                    (isPrinting || expiryPageSize === 'All'
+                      ? expiryBatches
+                      : expiryBatches.slice((expiryPage - 1) * Number(expiryPageSize), expiryPage * Number(expiryPageSize))
+                    ).map(b => (
                       <tr key={b.id}>
                         <td style={{ fontWeight: 600 }}>{b.product_name}</td>
                         <td className="mono">{b.batch_no}</td>
@@ -1117,6 +1189,15 @@ function ReportsContent({ initialReport }) {
                 </tbody>
               </table>
             </div>
+
+            <Pagination
+              currentPage={expiryPage}
+              totalItems={expiryBatches.length}
+              itemsPerPage={expiryPageSize}
+              onPageChange={setExpiryPage}
+              pageSizeOptions={[15, 25, 50, 'All']}
+              onPageSizeChange={(sz) => { setExpiryPageSize(sz); setExpiryPage(1); }}
+            />
           </div>
         )}
 
@@ -1213,7 +1294,10 @@ function ReportsContent({ initialReport }) {
                       {!purchasesReport?.purchases?.length ? (
                         <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No purchase invoices found in date range.</td></tr>
                       ) : (
-                        purchasesReport.purchases.map(p => (
+                        (isPrinting || purchasesPageSize === 'All'
+                          ? purchasesReport.purchases
+                          : purchasesReport.purchases.slice((purchasesPage - 1) * Number(purchasesPageSize), purchasesPage * Number(purchasesPageSize))
+                        ).map(p => (
                           <tr key={p.id}>
                             <td className="mono" style={{ fontWeight: 700, color: '#0284c7' }}>{p.invoice_no}</td>
                             <td>{formatDate(p.purchase_date)}</td>
@@ -1231,6 +1315,15 @@ function ReportsContent({ initialReport }) {
                     </tbody>
                   </table>
                 </div>
+
+                <Pagination
+                  currentPage={purchasesPage}
+                  totalItems={purchasesReport?.purchases?.length || 0}
+                  itemsPerPage={purchasesPageSize}
+                  onPageChange={setPurchasesPage}
+                  pageSizeOptions={[15, 25, 50, 'All']}
+                  onPageSizeChange={(sz) => { setPurchasesPageSize(sz); setPurchasesPage(1); }}
+                />
               </div>
             )}
 
@@ -1262,7 +1355,10 @@ function ReportsContent({ initialReport }) {
                       {supplierPurchasesReport.length === 0 ? (
                         <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No supplier procurement found for this date range.</td></tr>
                       ) : (
-                        supplierPurchasesReport.map((s, idx) => (
+                        (isPrinting || supplierPurchasesPageSize === 'All'
+                          ? supplierPurchasesReport
+                          : supplierPurchasesReport.slice((supplierPurchasesPage - 1) * Number(supplierPurchasesPageSize), supplierPurchasesPage * Number(supplierPurchasesPageSize))
+                        ).map((s, idx) => (
                           <tr key={idx}>
                             <td>
                               <div style={{ fontWeight: 700, color: '#0f172a' }}>{s.supplier_name}</div>
@@ -1295,6 +1391,15 @@ function ReportsContent({ initialReport }) {
                     </tbody>
                   </table>
                 </div>
+
+                <Pagination
+                  currentPage={supplierPurchasesPage}
+                  totalItems={supplierPurchasesReport.length}
+                  itemsPerPage={supplierPurchasesPageSize}
+                  onPageChange={setSupplierPurchasesPage}
+                  pageSizeOptions={[15, 25, 50, 'All']}
+                  onPageSizeChange={(sz) => { setSupplierPurchasesPageSize(sz); setSupplierPurchasesPage(1); }}
+                />
               </div>
             )}
 
@@ -1324,7 +1429,10 @@ function ReportsContent({ initialReport }) {
                       {productPurchasesReport.length === 0 ? (
                         <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No product procurement records found for this period.</td></tr>
                       ) : (
-                        productPurchasesReport.map((p, idx) => (
+                        (isPrinting || productPurchasesPageSize === 'All'
+                          ? productPurchasesReport
+                          : productPurchasesReport.slice((productPurchasesPage - 1) * Number(productPurchasesPageSize), productPurchasesPage * Number(productPurchasesPageSize))
+                        ).map((p, idx) => (
                           <tr key={idx}>
                             <td style={{ fontWeight: 700, color: '#0f172a' }}>{p.product_name}</td>
                             <td>
@@ -1350,6 +1458,15 @@ function ReportsContent({ initialReport }) {
                     </tbody>
                   </table>
                 </div>
+
+                <Pagination
+                  currentPage={productPurchasesPage}
+                  totalItems={productPurchasesReport.length}
+                  itemsPerPage={productPurchasesPageSize}
+                  onPageChange={setProductPurchasesPage}
+                  pageSizeOptions={[15, 25, 50, 'All']}
+                  onPageSizeChange={(sz) => { setProductPurchasesPageSize(sz); setProductPurchasesPage(1); }}
+                />
               </div>
             )}
           </div>
@@ -1407,9 +1524,10 @@ function ReportsContent({ initialReport }) {
                     {!productSalesReport?.report?.length ? (
                       <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No product sales recorded in date range.</td></tr>
                     ) : (
-                      productSalesReport.report
-                        .slice((productSalesPage - 1) * 15, productSalesPage * 15)
-                        .map((r) => (
+                      (isPrinting || productSalesPageSize === 'All'
+                        ? productSalesReport.report
+                        : productSalesReport.report.slice((productSalesPage - 1) * Number(productSalesPageSize), productSalesPage * Number(productSalesPageSize))
+                      ).map((r) => (
                         <tr key={r.id}>
                           <td style={{ fontWeight: 600 }}>
                             <div>{r.name}</div>
@@ -1427,16 +1545,14 @@ function ReportsContent({ initialReport }) {
                   </tbody>
                 </table>
               </div>
-              {productSalesReport?.report?.length > 15 && (
-                <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                  <Pagination
-                    currentPage={productSalesPage}
-                    totalItems={productSalesReport.report.length}
-                    itemsPerPage={15}
-                    onPageChange={setProductSalesPage}
-                  />
-                </div>
-              )}
+              <Pagination
+                currentPage={productSalesPage}
+                totalItems={productSalesReport?.report?.length || 0}
+                itemsPerPage={productSalesPageSize}
+                onPageChange={setProductSalesPage}
+                pageSizeOptions={[15, 25, 50, 100, 'All']}
+                onPageSizeChange={(sz) => { setProductSalesPageSize(sz); setProductSalesPage(1); }}
+              />
             </div>
           </div>
         )}
@@ -1464,7 +1580,10 @@ function ReportsContent({ initialReport }) {
                   {!movementsReport?.length ? (
                     <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No stock movements recorded in date range.</td></tr>
                   ) : (
-                    movementsReport.map(m => {
+                    (isPrinting || movementsPageSize === 'All'
+                      ? movementsReport
+                      : movementsReport.slice((movementsPage - 1) * Number(movementsPageSize), movementsPage * Number(movementsPageSize))
+                    ).map(m => {
                       const isPositive = m.quantity_delta > 0;
                       const dateObj = new Date(m.created_at);
                       const dateStr = !isNaN(dateObj.getTime())
@@ -1585,6 +1704,15 @@ function ReportsContent({ initialReport }) {
                 </tbody>
               </table>
             </div>
+
+            <Pagination
+              currentPage={movementsPage}
+              totalItems={movementsReport?.length || 0}
+              itemsPerPage={movementsPageSize}
+              onPageChange={setMovementsPage}
+              pageSizeOptions={[25, 50, 100, 'All']}
+              onPageSizeChange={(sz) => { setMovementsPageSize(sz); setMovementsPage(1); }}
+            />
 
             {/* DETAILS SIDE PANEL (Drawer) */}
             {selectedMovement && (

@@ -2870,8 +2870,8 @@ select.form-control option {
 /* Print Styles */
 @media print {
   @page {
-    size: auto;
-    margin: 5mm;
+    size: A4 portrait;
+    margin: 8mm 10mm;
   }
 
   body {
@@ -2891,9 +2891,8 @@ select.form-control option {
   }
 
   .printable-area {
-    position: absolute;
-    left: 0;
-    top: 0;
+    position: static !important;
+    display: block !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
@@ -2960,9 +2959,11 @@ select.form-control option {
   .report-print-header {
     display: flex !important;
     flex-direction: column !important;
-    gap: 0.75rem !important;
-    padding-bottom: 0.75rem !important;
+    gap: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
     border-bottom: 2px solid #0f172a !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   .report-brand-row {
@@ -2975,10 +2976,12 @@ select.form-control option {
   .report-print-footer {
     display: flex !important;
     flex-direction: column !important;
-    gap: 1rem !important;
-    margin-top: 1.5rem !important;
-    padding-top: 1rem !important;
+    gap: 0.6rem !important;
+    margin-top: 0.85rem !important;
+    padding-top: 0.6rem !important;
     border-top: 1px solid #cbd5e1 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   .report-watermark {
@@ -3011,13 +3014,31 @@ select.form-control option {
   .card {
     box-shadow: none !important;
     border: 1px solid #cbd5e1 !important;
-    page-break-inside: avoid;
-    break-inside: avoid;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .printable-area .card {
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    margin-bottom: 6px !important;
   }
 
   table {
     border-collapse: collapse !important;
     width: 100% !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tfoot {
+    display: table-footer-group !important;
   }
 
   table th, table td {
