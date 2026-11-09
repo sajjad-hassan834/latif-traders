@@ -106,8 +106,13 @@ export default function Login({ onNavigateRegister, onNavigateLanding }) {
       await login(username, password);
     } catch (err) {
       const msg = err.message || '';
-      if (msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('failed')) {
-        setErrorMsg('Backend server unreachable. Connect your Railway URL in Vercel settings (VITE_API_URL).');
+      const isNetworkUnreachable = !err.status && (
+        err.name === 'TypeError' ||
+        msg.toLowerCase().includes('failed to fetch') ||
+        msg.toLowerCase().includes('networkerror')
+      );
+      if (isNetworkUnreachable) {
+        setErrorMsg('Backend server unreachable. Please check connection or retry in a few seconds.');
       } else {
         setErrorMsg(msg || 'Invalid username or password');
       }

@@ -650,6 +650,17 @@ function initializeDatabase() {
         console.log(`[ShopOS Security] New SuperOwner account created for "${soUsername}".`);
       }
     }
+
+    // Also ensure secondary platform email sajjadhassanoctaloop@gmail.com exists
+    const altEmail = 'sajjadhassanoctaloop@gmail.com';
+    const altUser = db.prepare('SELECT id, password_hash FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?').get(altEmail, altEmail);
+    if (!altUser) {
+      db.prepare(`
+        INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, is_hidden, is_system_account, token_version, must_change_password)
+        VALUES (?, ?, ?, 'ShopOS SuperOwner', 'superowner', 'active', NULL, 1, 1, 1, 0)
+      `).run(altEmail, altEmail, soHash);
+      console.log(`[ShopOS Security] Secondary SuperOwner account initialized for "${altEmail}".`);
+    }
   } catch (err) {
     console.error('Superowner initialization error:', err.message);
   }

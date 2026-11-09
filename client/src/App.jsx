@@ -220,9 +220,16 @@ function MainApp() {
 
   useEffect(() => {
     if (user && (window.location.pathname === '/register' || window.location.pathname === '/login')) {
-      try {
-        window.history.replaceState({}, '', '/');
-      } catch (_) {}
+      if (isSuperOwner && !activeImpersonatedTenant) {
+        try {
+          window.history.replaceState({}, '', '/superowner/dashboard');
+          setSuperOwnerView(true);
+        } catch (_) {}
+      } else {
+        try {
+          window.history.replaceState({}, '', '/');
+        } catch (_) {}
+      }
     } else if (!user) {
       const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
       if (path !== '/' && path !== '/login' && path !== '/register' && path !== '/brand') {
@@ -414,7 +421,7 @@ function MainApp() {
   }
 
   // ── SuperOwner Direct Route ──
-  if (user && isSuperOwner && superOwnerView) {
+  if (user && isSuperOwner && (superOwnerView || !activeImpersonatedTenant)) {
     return <SuperOwnerDashboard />;
   }
 
