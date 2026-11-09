@@ -46,7 +46,7 @@ export default function Suppliers() {
         });
         return;
       }
-      if (row.id && (row.type === 'PURCHASE' || (row.ref_no && row.ref_no.startsWith('PO-')))) {
+      if (row.id && (row.type === 'PURCHASE' || row.type === 'PURCHASE_BILL' || (row.ref_no && (row.ref_no.startsWith('PUR-') || row.ref_no.startsWith('PO-'))))) {
         const res = await api.get(`/purchases/${row.id}`);
         if (res.success) {
           setViewingPurchase(res);
@@ -663,9 +663,13 @@ export default function Suppliers() {
                   <span>📅</span> Supplier since: {ledgerData.supplier.created_at ? formatDate(ledgerData.supplier.created_at) : 'Active'}
                 </div>
                 <div style={{ background: '#F3F4F6', color: '#374151', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                  <span>📦</span> Total Purchases: {formatPKR(ledgerData.summary.total_credit || 0)}
+                  <span>📦</span> Total Purchases: {formatPKR(ledgerData.summary.total_purchases ?? ledgerData.summary.total_credit ?? ledgerData.summary.total_billed ?? 0)}
                 </div>
-                {Number(ledgerData.summary.closing_balance || 0) <= 0 ? (
+                {Number(ledgerData.summary.closing_balance || 0) < 0 ? (
+                  <div style={{ background: '#E0F2FE', color: '#0369A1', border: '1px solid #BAE6FD', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    🔵 Advance: {formatPKR(Math.abs(ledgerData.summary.closing_balance))} (Credit)
+                  </div>
+                ) : Number(ledgerData.summary.closing_balance || 0) === 0 ? (
                   <div style={{ background: '#D1FAE5', color: '#065F46', fontSize: '12px', padding: '4px 10px', borderRadius: '20px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                     ✓ Fully Settled
                   </div>
@@ -736,14 +740,14 @@ export default function Suppliers() {
                       <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Description</th>
                       <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Amount</th>
                       <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Paid</th>
-                      <th style={{ width: '110px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Balance</th>
+                      <th style={{ width: '130px', padding: '10px 16px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Running Balance</th>
                       <th style={{ width: '80px', padding: '10px 16px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: '#6B7280', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ledgerData.ledger.map((row, idx) => {
                       const isOpening = row.type === 'OPENING' || row.ref_no === 'OPN-BAL';
-                      const isPurchase = row.type === 'PURCHASE' || (row.ref_no && row.ref_no.startsWith('PO-'));
+                      const isPurchase = row.type === 'PURCHASE' || row.type === 'PURCHASE_BILL' || (row.ref_no && (row.ref_no.startsWith('PUR-') || row.ref_no.startsWith('PO-')));
 
                       let dot = '•';
                       let descText = row.notes || 'Transaction';
@@ -753,22 +757,26 @@ export default function Suppliers() {
                         dot = '⚫';
                         descText = 'Account Opening Balance';
                         descColor = '#6B7280';
-                      } else if (row.type === 'PAYMENT' || (!row.credit && row.debit > 0)) {
+                      } else if (row.type === 'PAYMENT' || row.type === 'SUPPLIER_PAYMENT' || (!row.credit && row.debit > 0)) {
                         dot = '🔵';
                         descText = 'Payment Disbursed';
                         descColor = '#0F766E';
                       } else if (row.credit > 0) {
-                        if (row.debit >= row.credit) {
+                        if (row.debit > row.credit) {
+                          dot = '🔵';
+                          descText = `Overpaid (Advance ₨ ${(row.debit - row.credit).toLocaleString()})`;
+                          descColor = '#0284C7';
+                        } else if (row.debit === row.credit) {
                           dot = '🟢';
                           descText = 'Paid in Full';
                           descColor = '#16A34A';
                         } else if (row.debit > 0) {
                           dot = '🟡';
-                          descText = 'Partial Payment';
+                          descText = `Partial Payment (₨ ${(row.credit - row.debit).toLocaleString()} due)`;
                           descColor = '#D97706';
                         } else {
                           dot = '🔴';
-                          descText = 'Credit Purchase';
+                          descText = `Credit Purchase (₨ ${row.credit.toLocaleString()} due)`;
                           descColor = '#DC2626';
                         }
                       }
@@ -807,17 +815,44 @@ export default function Suppliers() {
                             <td style={{ padding: '0 16px', textAlign: 'right', fontSize: '14px', color: '#9CA3AF' }}>—</td>
                             <td style={{ padding: '0 16px', textAlign: 'right', fontSize: '14px', color: '#9CA3AF' }}>—</td>
                             <td style={{ padding: '0 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              <span style={{
-                                background: row.balance > 0 ? '#FEE2E2' : '#D1FAE5',
-                                color: row.balance > 0 ? '#991B1B' : '#065F46',
-                                borderRadius: '6px',
-                                padding: '2px 8px',
-                                fontWeight: 700,
-                                fontSize: '12px',
-                                display: 'inline-block'
-                              }}>
-                                {row.balance > 0 ? formatPKR(row.balance) : 'Rs 0 ✓'}
-                              </span>
+                              {Math.abs(row.balance || 0) < 0.01 ? (
+                                <span style={{
+                                  background: '#D1FAE5',
+                                  color: '#065F46',
+                                  borderRadius: '6px',
+                                  padding: '2px 8px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  display: 'inline-block'
+                                }}>
+                                  Rs 0 ✓
+                                </span>
+                              ) : row.balance < 0 ? (
+                                <span style={{
+                                  background: '#E0F2FE',
+                                  color: '#0369A1',
+                                  border: '1px solid #BAE6FD',
+                                  borderRadius: '6px',
+                                  padding: '2px 8px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  display: 'inline-block'
+                                }} title="Advance balance with supplier">
+                                  Adv: {formatPKR(Math.abs(row.balance))}
+                                </span>
+                              ) : (
+                                <span style={{
+                                  background: '#FEE2E2',
+                                  color: '#991B1B',
+                                  borderRadius: '6px',
+                                  padding: '2px 8px',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  display: 'inline-block'
+                                }}>
+                                  {formatPKR(row.balance)}
+                                </span>
+                              )}
                             </td>
                             <td style={{ padding: '0 16px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>—</td>
                           </tr>
@@ -877,7 +912,7 @@ export default function Suppliers() {
                             {row.debit > 0 ? formatPKR(row.debit) : <span style={{ color: '#9CA3AF' }}>—</span>}
                           </td>
                           <td style={{ padding: '0 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            {row.balance <= 0 ? (
+                            {Math.abs(row.balance || 0) < 0.01 ? (
                               <span style={{
                                 background: '#D1FAE5',
                                 color: '#065F46',
@@ -888,6 +923,19 @@ export default function Suppliers() {
                                 display: 'inline-block'
                               }}>
                                 Rs 0 ✓
+                              </span>
+                            ) : row.balance < 0 ? (
+                              <span style={{
+                                background: '#E0F2FE',
+                                color: '#0369A1',
+                                border: '1px solid #BAE6FD',
+                                borderRadius: '6px',
+                                padding: '2px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                display: 'inline-block'
+                              }} title="Advance balance with supplier">
+                                Adv: {formatPKR(Math.abs(row.balance))}
                               </span>
                             ) : (
                               <span style={{
@@ -952,7 +1000,13 @@ export default function Suppliers() {
               borderTop: '1px solid var(--border)'
             }}>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                {ledgerData.ledger.length} transactions  •  Total Purchases: <strong style={{ color: 'var(--text-title)' }}>{formatPKR(ledgerData.summary.total_credit || 0)}</strong>  •  Total Paid: <strong style={{ color: '#16A34A' }}>{formatPKR(ledgerData.summary.total_debit || 0)}</strong>  •  Closing Payable: <strong style={{ color: ledgerData.summary.closing_balance > 0 ? '#DC2626' : '#16A34A' }}>{formatPKR(ledgerData.summary.closing_balance)}</strong>
+                {ledgerData.ledger.length} transactions  •  Total Purchases: <strong style={{ color: 'var(--text-title)' }}>{formatPKR(ledgerData.summary.total_purchases ?? ledgerData.summary.total_credit ?? ledgerData.summary.total_billed ?? 0)}</strong>  •  Total Paid: <strong style={{ color: '#16A34A' }}>{formatPKR(ledgerData.summary.total_paid ?? ledgerData.summary.total_debit ?? 0)}</strong>  •  {Number(ledgerData.summary.closing_balance || 0) < 0 ? (
+                  <span>Advance Balance: <strong style={{ color: '#0369A1' }}>{formatPKR(Math.abs(ledgerData.summary.closing_balance))} (Credit)</strong></span>
+                ) : Number(ledgerData.summary.closing_balance || 0) === 0 ? (
+                  <span>Closing Balance: <strong style={{ color: '#16A34A' }}>Rs 0 (Settled)</strong></span>
+                ) : (
+                  <span>Closing Payable: <strong style={{ color: '#DC2626' }}>{formatPKR(ledgerData.summary.closing_balance)}</strong></span>
+                )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
