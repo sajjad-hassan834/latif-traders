@@ -195,8 +195,13 @@ export function AuthProvider({ children }) {
   };
 
   const exitTenant = () => {
+    try {
+      const tid = localStorage.getItem('lt_superowner_tenant_id');
+      if (tid) api.post('/superowner/impersonate/end', { tenant_id: tid }).catch(() => {});
+    } catch (_) {}
     localStorage.removeItem('lt_superowner_tenant_id');
     localStorage.removeItem('lt_superowner_tenant_name');
+    localStorage.removeItem('lt_impersonate_reason');
     setActiveImpersonatedTenant(null);
   };
 

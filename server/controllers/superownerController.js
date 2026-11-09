@@ -29,12 +29,15 @@ exports.getStats = async (req, res) => {
     const mRow = await db.get("SELECT COALESCE(SUM(grand_total), 0) as total FROM sales WHERE CAST(sale_date AS TEXT) LIKE ?", [`${currentMonth}%`]);
     const monthlySales = mRow?.total || 0;
 
-    // Subscription estimated MRR based on plans
-    const pRow = await db.get("SELECT COUNT(*) as count FROM tenants WHERE plan = 'pro' AND is_active = 1");
+    // Subscription estimated MRR in PKR and USD (Standardized Pakistani Retail Pricing)
+    const pRow = await db.get("SELECT COUNT(*) as count FROM tenants WHERE plan = 'pro' AND is_active = 1 AND (deleted_at IS NULL)");
     const proTenants = pRow?.count || 0;
-    const eRow = await db.get("SELECT COUNT(*) as count FROM tenants WHERE plan = 'enterprise' AND is_active = 1");
+    const eRow = await db.get("SELECT COUNT(*) as count FROM tenants WHERE plan = 'enterprise' AND is_active = 1 AND (deleted_at IS NULL)");
     const entTenants = eRow?.count || 0;
-    const estimatedMRR = (proTenants * 29) + (entTenants * 79);
+    const proRatePkr = 4999;
+    const entRatePkr = 14999;
+    const estimatedMRRPkr = (proTenants * proRatePkr) + (entTenants * entRatePkr);
+    const estimatedMRRUsd = (proTenants * 18) + (entTenants * 54);
 
     return res.json({
       success: true,
@@ -43,7 +46,9 @@ exports.getStats = async (req, res) => {
         activeTenants,
         totalSales,
         monthlySales,
-        monthlyRevenue: estimatedMRR,
+        monthlyRevenue: estimatedMRRPkr,
+        monthlyRevenuePkr: estimatedMRRPkr,
+        monthlyRevenueUsd: estimatedMRRUsd,
         proTenants,
         entTenants
       }
@@ -58,6 +63,17 @@ exports.getStats = async (req, res) => {
 exports.getTenants = async (req, res) => {
   try {
     const currentMonth = new Date().toISOString().slice(0, 7);
+    const filterStatus = req.query.status || 'all'; // 'all', 'active', 'archived'
+
+    let whereClause = '';
+    if (filterStatus === 'archived') {
+      whereClause = 'WHERE t.deleted_at IS NOT NULL';
+    } else if (filterStatus === 'active') {
+      whereClause = 'WHERE (t.deleted_at IS NULL) AND t.is_active = 1';
+    } else {
+      whereClause = 'WHERE (t.deleted_at IS NULL)';
+    }
+
     const tenants = await db.all(`
       SELECT 
         t.id,
@@ -68,6 +84,11 @@ exports.getTenants = async (req, res) => {
         t.phone,
         t.plan,
         t.is_active,
+        t.deleted_at,
+        t.feature_flags,
+        t.max_users,
+        t.max_products,
+        t.storage_quota_mb,
         COALESCE(t.is_default, CASE WHEN t.id = '${LEGACY_TENANT_ID}' THEN 1 ELSE 0 END) as is_default,
         t.created_at,
         (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id AND (u.is_hidden IS NULL OR u.is_hidden = 0) AND u.role != 'superowner') as user_count,
@@ -77,6 +98,7 @@ exports.getTenants = async (req, res) => {
         (SELECT MAX(s.sale_date) FROM sales s WHERE s.tenant_id = t.id) as last_sale_date,
         (SELECT MAX(a.created_at) FROM audit_logs a WHERE a.user_id IN (SELECT id FROM users WHERE tenant_id = t.id)) as last_active
       FROM tenants t
+      ${whereClause}
       ORDER BY t.created_at DESC
     `, [`${currentMonth}%`]);
 
@@ -84,6 +106,238 @@ exports.getTenants = async (req, res) => {
   } catch (err) {
     console.error('Superowner getTenants error:', err);
     return res.status(500).json({ success: false, message: 'Failed to retrieve tenants list.' });
+  }
+};
+
+// POST /api/superowner/tenants/:id/archive (Soft-Delete with Typed Business Name Confirmation)
+exports.archiveTenant = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { confirm_business_name } = req.body || {};
+
+    const tenant = await db.get('SELECT * FROM tenants WHERE id = ?', [id]);
+    if (!tenant) {
+      return res.status(404).json({ success: false, message: 'Tenant not found.' });
+    }
+
+    if (id === LEGACY_TENANT_ID) {
+      return res.status(400).json({ success: false, message: 'The primary base tenant cannot be archived. You can suspend it instead.' });
+    }
+
+    if (!confirm_business_name || confirm_business_name.trim().toLowerCase() !== tenant.business_name.trim().toLowerCase()) {
+      return res.status(400).json({
+        success: false,
+        message: `Confirmation mismatch. You must type the exact business name "${tenant.business_name}" to archive.`
+      });
+    }
+
+    await db.transaction(async () => {
+      await db.run('UPDATE tenants SET deleted_at = CURRENT_TIMESTAMP, is_active = 0, deleted_by = ? WHERE id = ?', [req.user?.id || 1, id]);
+      await db.run("UPDATE users SET status = 'inactive', token_version = COALESCE(token_version, 1) + 1 WHERE tenant_id = ?", [id]);
+    });
+
+    await logAudit(
+      req.user?.id,
+      req.user?.full_name,
+      'ARCHIVE_TENANT',
+      'TENANT',
+      null,
+      `SuperOwner archived tenant "${tenant.business_name}" (ID: ${id}). Sessions revoked.`,
+      req
+    );
+
+    return res.json({
+      success: true,
+      message: `Tenant "${tenant.business_name}" has been safely archived. Financial ledgers and history preserved. You can restore it anytime from the Archived tab.`
+    });
+  } catch (err) {
+    console.error('Superowner archiveTenant error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to archive tenant: ' + err.message });
+  }
+};
+
+// POST /api/superowner/tenants/:id/restore (One-Click Tenant Restoration)
+exports.restoreTenant = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenant = await db.get('SELECT * FROM tenants WHERE id = ?', [id]);
+    if (!tenant) {
+      return res.status(404).json({ success: false, message: 'Tenant not found.' });
+    }
+
+    await db.transaction(async () => {
+      await db.run('UPDATE tenants SET deleted_at = NULL, is_active = 1, deleted_by = NULL WHERE id = ?', [id]);
+      await db.run("UPDATE users SET status = 'active' WHERE tenant_id = ? AND role = 'admin'", [id]);
+    });
+
+    await logAudit(
+      req.user?.id,
+      req.user?.full_name,
+      'RESTORE_TENANT',
+      'TENANT',
+      null,
+      `SuperOwner restored tenant "${tenant.business_name}" (ID: ${id}).`,
+      req
+    );
+
+    return res.json({
+      success: true,
+      message: `Tenant "${tenant.business_name}" has been restored and is now active.`
+    });
+  } catch (err) {
+    console.error('Superowner restoreTenant error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to restore tenant: ' + err.message });
+  }
+};
+
+// POST /api/superowner/impersonate/start (Governed Impersonation with Mandatory Reason)
+exports.startImpersonation = async (req, res) => {
+  try {
+    const { tenant_id, reason_code, notes } = req.body;
+    if (!tenant_id || !reason_code) {
+      return res.status(400).json({ success: false, message: 'Tenant ID and Reason Code are required.' });
+    }
+
+    const tenant = await db.get('SELECT id, business_name FROM tenants WHERE id = ?', [tenant_id]);
+    if (!tenant) {
+      return res.status(404).json({ success: false, message: 'Target tenant not found.' });
+    }
+
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
+    const insRes = await db.run(`
+      INSERT INTO impersonation_logs (superowner_id, tenant_id, reason_code, notes, started_at, ip_address)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+    `, [req.user?.id || 1, tenant_id, reason_code, notes || null, String(ip).split(',')[0].trim()]);
+
+    await logAudit(
+      req.user?.id,
+      req.user?.full_name,
+      'IMPERSONATE_START',
+      'TENANT',
+      null,
+      `SuperOwner initiated impersonation of "${tenant.business_name}" (ID: ${tenant_id}). Reason: ${reason_code}`,
+      req
+    );
+
+    return res.json({
+      success: true,
+      sessionId: insRes.lastInsertRowid,
+      tenant
+    });
+  } catch (err) {
+    console.error('Superowner startImpersonation error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to initiate impersonation: ' + err.message });
+  }
+};
+
+// POST /api/superowner/impersonate/end
+exports.endImpersonation = async (req, res) => {
+  try {
+    const { sessionId, tenant_id } = req.body;
+    if (sessionId) {
+      await db.run('UPDATE impersonation_logs SET ended_at = CURRENT_TIMESTAMP WHERE id = ?', [sessionId]);
+    } else if (tenant_id) {
+      await db.run('UPDATE impersonation_logs SET ended_at = CURRENT_TIMESTAMP WHERE tenant_id = ? AND ended_at IS NULL', [tenant_id]);
+    }
+
+    await logAudit(
+      req.user?.id,
+      req.user?.full_name,
+      'IMPERSONATE_END',
+      'TENANT',
+      null,
+      `SuperOwner concluded impersonation session for tenant ${tenant_id || ''}`,
+      req
+    );
+
+    return res.json({ success: true, message: 'Impersonation session concluded.' });
+  } catch (err) {
+    console.error('Superowner endImpersonation error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to conclude impersonation: ' + err.message });
+  }
+};
+
+// POST /api/superowner/support/reset-link (Support Desk One-Click Reset Link)
+exports.generateResetLink = async (req, res) => {
+  try {
+    const crypto = require('crypto');
+    const { user_id, username } = req.body;
+
+    let targetUser;
+    if (user_id) {
+      targetUser = await db.get('SELECT * FROM users WHERE id = ?', [user_id]);
+    } else if (username) {
+      targetUser = await db.get('SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?', [username.toLowerCase(), username.toLowerCase()]);
+    }
+
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'Staff user account not found.' });
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    await db.run(`
+      INSERT INTO password_reset_requests (user_id, username, reset_token_hash, expires_at, status, is_used, request_note)
+      VALUES (?, ?, ?, ?, 'Approved', 0, 'Generated by SuperOwner Support Desk')
+    `, [targetUser.id, targetUser.username, tokenHash, expiresAt]);
+
+    const frontendBase = process.env.FRONTEND_URL || 'https://shoppyos.com';
+    const resetUrl = `${frontendBase}/reset-password?token=${resetToken}`;
+
+    await logAudit(
+      req.user?.id,
+      req.user?.full_name,
+      'GENERATE_RESET_LINK',
+      'USER',
+      targetUser.id,
+      `SuperOwner generated password reset link for user "${targetUser.username}"`,
+      req
+    );
+
+    return res.json({
+      success: true,
+      message: 'Password reset link successfully generated. Valid for 24 hours.',
+      reset_token: resetToken,
+      reset_url: resetUrl,
+      username: targetUser.username,
+      full_name: targetUser.full_name
+    });
+  } catch (err) {
+    console.error('Superowner generateResetLink error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to generate reset link: ' + err.message });
+  }
+};
+
+// POST /api/superowner/support/force-logout
+exports.forceLogout = async (req, res) => {
+  try {
+    const { user_id, tenant_id } = req.body;
+    if (!user_id && !tenant_id) {
+      return res.status(400).json({ success: false, message: 'User ID or Tenant ID is required.' });
+    }
+
+    if (user_id) {
+      await db.run('UPDATE users SET token_version = COALESCE(token_version, 1) + 1 WHERE id = ?', [user_id]);
+    } else if (tenant_id) {
+      await db.run('UPDATE users SET token_version = COALESCE(token_version, 1) + 1 WHERE tenant_id = ?', [tenant_id]);
+    }
+
+    await logAudit(
+      req.user?.id,
+      req.user?.full_name,
+      'FORCE_LOGOUT',
+      user_id ? 'USER' : 'TENANT',
+      user_id || null,
+      `SuperOwner revoked active sessions for ${user_id ? `user ID ${user_id}` : `tenant ${tenant_id}`}`,
+      req
+    );
+
+    return res.json({ success: true, message: 'Active login sessions successfully terminated across all devices.' });
+  } catch (err) {
+    console.error('Superowner forceLogout error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to force logout: ' + err.message });
   }
 };
 

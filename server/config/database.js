@@ -571,13 +571,35 @@ function initializeDatabase() {
     if (!saleCols.includes('patient_cnic')) db.prepare('ALTER TABLE sales ADD COLUMN patient_cnic TEXT').run();
   } catch (_) {}
 
-  // Add is_default column to tenants table
+  // Add is_default column and modern SuperAdmin columns to tenants table
   try {
-    const tenantCols = db.prepare('PRAGMA table_info("tenants")').all();
-    if (!tenantCols.some(c => c.name === 'is_default')) {
+    const tenantCols = db.prepare('PRAGMA table_info("tenants")').all().map(c => c.name);
+    if (!tenantCols.includes('is_default')) {
       db.prepare('ALTER TABLE tenants ADD COLUMN is_default INTEGER DEFAULT 0').run();
       db.prepare(`UPDATE tenants SET is_default = 1 WHERE id = '${LEGACY_TENANT_ID}'`).run();
     }
+    if (!tenantCols.includes('deleted_at')) db.prepare('ALTER TABLE tenants ADD COLUMN deleted_at DATETIME NULL').run();
+    if (!tenantCols.includes('deleted_by')) db.prepare('ALTER TABLE tenants ADD COLUMN deleted_by INTEGER NULL').run();
+    if (!tenantCols.includes('feature_flags')) db.prepare("ALTER TABLE tenants ADD COLUMN feature_flags TEXT DEFAULT '{}'").run();
+    if (!tenantCols.includes('max_users')) db.prepare('ALTER TABLE tenants ADD COLUMN max_users INTEGER DEFAULT 10').run();
+    if (!tenantCols.includes('max_products')) db.prepare('ALTER TABLE tenants ADD COLUMN max_products INTEGER DEFAULT 5000').run();
+    if (!tenantCols.includes('storage_quota_mb')) db.prepare('ALTER TABLE tenants ADD COLUMN storage_quota_mb INTEGER DEFAULT 500').run();
+    if (!tenantCols.includes('maintenance_mode')) db.prepare('ALTER TABLE tenants ADD COLUMN maintenance_mode INTEGER DEFAULT 0').run();
+    if (!tenantCols.includes('maintenance_message')) db.prepare('ALTER TABLE tenants ADD COLUMN maintenance_message TEXT NULL').run();
+
+    // Impersonation audit table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS impersonation_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        superowner_id INTEGER,
+        tenant_id TEXT NOT NULL,
+        reason_code TEXT NOT NULL,
+        notes TEXT,
+        started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        ended_at DATETIME,
+        ip_address TEXT
+      )
+    `);
   } catch (_) {}
 
   // Seed / synchronize superowner account from environment variables or platform owner

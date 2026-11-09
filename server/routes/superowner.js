@@ -17,7 +17,17 @@ router.get('/stats', superownerController.getStats);
 router.get('/tenants', superownerController.getTenants);
 router.post('/tenants/:id/status', superownerController.updateTenantStatus);
 router.post('/tenants/:id/plan', superownerController.updateTenantPlan);
+router.post('/tenants/:id/archive', superownerController.archiveTenant);
+router.post('/tenants/:id/restore', superownerController.restoreTenant);
 router.delete('/tenants/:id', superownerController.deleteTenant);
+
+// Governed Impersonation
+router.post('/impersonate/start', superownerController.startImpersonation);
+router.post('/impersonate/end', superownerController.endImpersonation);
+
+// Support Operations Desk
+router.post('/support/reset-link', superownerController.generateResetLink);
+router.post('/support/force-logout', superownerController.forceLogout);
 
 // Full system database backup and recovery (SuperOwner only)
 router.post('/backup/create', superownerController.createFullDatabaseBackup);

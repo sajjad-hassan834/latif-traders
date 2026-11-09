@@ -601,7 +601,9 @@ export default function StockAdjustment({ setTab }) {
                     ? `${formatDate(startDate)} to ${formatDate(endDate)}`
                     : startDate
                       ? `From ${formatDate(startDate)}`
-                      : '01 Jan, 2024 to 31 Dec, 2024'}
+                      : endDate
+                        ? `Up to ${formatDate(endDate)}`
+                        : 'All Time'}
                 </span>
                 <ChevronDown size={13} color="#9ca3af" />
               </button>

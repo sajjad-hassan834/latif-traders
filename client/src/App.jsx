@@ -458,7 +458,7 @@ function MainApp() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <AlertTriangle size={15} color="#D97706" />
-              <span>⚠️ Viewing as: <strong>{tenant?.business_name || 'Selected Tenant'}</strong> (SuperOwner)</span>
+              <span>⚠️ Viewing as: <strong>{tenant?.business_name || 'Selected Tenant'}</strong> (SuperOwner){localStorage.getItem('lt_impersonate_reason') ? ` • Reason: ${localStorage.getItem('lt_impersonate_reason')}` : ''}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
