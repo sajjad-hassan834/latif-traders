@@ -580,35 +580,75 @@ function initializeDatabase() {
     }
   } catch (_) {}
 
-  // Seed superowner account from environment variables if not already existing
+  // Seed / synchronize superowner account from environment variables or platform owner
   try {
-    const soUsername = process.env.SUPEROWNER_USERNAME;
-    const soPassword = process.env.SUPEROWNER_PASSWORD;
+    const rawSoUsername = (process.env.SUPEROWNER_USERNAME || '').trim();
+    const rawSoPassword = (process.env.SUPEROWNER_PASSWORD || '').trim();
 
-    if (!soUsername || !soPassword) {
-      console.warn('[SECURITY WARNING] SUPEROWNER_USERNAME or SUPEROWNER_PASSWORD environment variable is not set. Superowner account initialization skipped.');
-    } else {
-      const disallowedDefaults = ['superowner', 'shopos_superowner'];
-      const normSO = soUsername.trim().toLowerCase();
-      if (disallowedDefaults.includes(normSO)) {
-        const errMsg = `[FATAL SECURITY ERROR] SUPEROWNER_USERNAME cannot be set to legacy default username "${soUsername}". You must configure a unique, secure custom username in production.`;
-        console.error(errMsg);
-        if (process.env.NODE_ENV === 'production') {
-          process.exit(1);
-        }
-        throw new Error(errMsg);
+    // Default to platform owner credentials if env vars not explicitly passed
+    const soUsername = rawSoUsername || 'sajjadhassan45678@gmail.com';
+    const soPassword = rawSoPassword || 'fD#Sj_Er)SLd*cu+*T%+YY';
+
+    const disallowedDefaults = ['superowner', 'shopos_superowner'];
+    const normSO = soUsername.toLowerCase();
+    if (disallowedDefaults.includes(normSO)) {
+      const errMsg = `[FATAL SECURITY ERROR] SUPEROWNER_USERNAME cannot be set to legacy default username "${soUsername}". You must configure a unique, secure custom username in production.`;
+      console.error(errMsg);
+      if (process.env.NODE_ENV === 'production') {
+        process.exit(1);
       }
-      const existingSO = db.prepare('SELECT id FROM users WHERE role = ? OR username = ?').get('superowner', soUsername);
-      if (!existingSO) {
-        const salt = bcrypt.genSaltSync(12);
-        const soHash = bcrypt.hashSync(soPassword, salt);
+      throw new Error(errMsg);
+    }
+
+    const isEmail = soUsername.includes('@');
+    const soEmail = isEmail ? soUsername.toLowerCase() : `${soUsername.toLowerCase()}@shopos.system`;
+    const salt = bcrypt.genSaltSync(12);
+    const soHash = bcrypt.hashSync(soPassword, salt);
+
+    // 1. Check if user already exists with this exact username or email
+    const exactSO = db.prepare('SELECT id, password_hash FROM users WHERE LOWER(username) = ? OR LOWER(email) = ?').get(soUsername.toLowerCase(), soEmail);
+
+    if (exactSO) {
+      const matches = bcrypt.compareSync(soPassword, exactSO.password_hash);
+      if (!matches) {
+        db.prepare(`
+          UPDATE users 
+          SET username = ?, 
+              email = ?, 
+              password_hash = ?, 
+              role = 'superowner', 
+              status = 'active', 
+              tenant_id = NULL,
+              token_version = COALESCE(token_version, 1) + 1 
+          WHERE id = ?
+        `).run(soUsername, soEmail, soHash, exactSO.id);
+        console.log(`[ShopOS Security] SuperOwner credentials for "${soUsername}" successfully synchronized.`);
+      }
+    } else {
+      // 2. Check if a legacy placeholder superowner (e.g. shopos_superowner or id 15) exists to claim
+      const legacySO = db.prepare("SELECT id FROM users WHERE role = 'superowner' AND (username = 'shopos_superowner' OR username = 'superowner' OR email = 'superowner@shopos.system') LIMIT 1").get();
+      if (legacySO) {
+        db.prepare(`
+          UPDATE users 
+          SET username = ?, 
+              email = ?, 
+              password_hash = ?, 
+              full_name = 'ShopOS SuperOwner', 
+              role = 'superowner', 
+              status = 'active', 
+              tenant_id = NULL,
+              token_version = COALESCE(token_version, 1) + 1 
+          WHERE id = ?
+        `).run(soUsername, soEmail, soHash, legacySO.id);
+        console.log(`[ShopOS Security] Legacy SuperOwner account claimed and upgraded to "${soUsername}".`);
+      } else {
+        // 3. Otherwise insert fresh superowner row
         db.prepare(`
           INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, is_hidden, is_system_account, token_version, must_change_password)
-          VALUES (?, 'superowner@shopos.system', ?, 'ShopOS SuperOwner', 'superowner', 'active', NULL, 1, 1, 1, 0)
-        `).run(soUsername, soHash);
-        console.log('[ShopOS Security] SuperOwner account initialized from environment.');
+          VALUES (?, ?, ?, 'ShopOS SuperOwner', 'superowner', 'active', NULL, 1, 1, 1, 0)
+        `).run(soUsername, soEmail, soHash);
+        console.log(`[ShopOS Security] New SuperOwner account created for "${soUsername}".`);
       }
-      // Note: We intentionally do NOT reset superowner password on startup. Use rotate_credentials.js for rotation.
     }
   } catch (err) {
     console.error('Superowner initialization error:', err.message);
