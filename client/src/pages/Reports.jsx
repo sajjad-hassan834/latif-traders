@@ -83,18 +83,6 @@ function ReportsContent({ initialReport }) {
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [registerDate, setRegisterDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Reset pagination to page 1 whenever active tab, date filters, or subviews change
-  useEffect(() => {
-    setDailyPage(1);
-    setStockPage(1);
-    setExpiryPage(1);
-    setPurchasesPage(1);
-    setSupplierPurchasesPage(1);
-    setProductPurchasesPage(1);
-    setProductSalesPage(1);
-    setMovementsPage(1);
-  }, [activeReport, startDate, endDate, registerDate, purchasesView]);
-
   // Data states
   const [settings, setSettings] = useState(() => ({
     shop_name: tenant?.business_name || BRAND_NAME,
@@ -127,6 +115,18 @@ function ReportsContent({ initialReport }) {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState(null);
   const [selectedMovement, setSelectedMovement] = useState(null);
+
+  // Reset pagination to page 1 whenever active tab, date filters, or subviews change
+  useEffect(() => {
+    setDailyPage(1);
+    setStockPage(1);
+    setExpiryPage(1);
+    setPurchasesPage(1);
+    setSupplierPurchasesPage(1);
+    setProductPurchasesPage(1);
+    setProductSalesPage(1);
+    setMovementsPage(1);
+  }, [activeReport, startDate, endDate, registerDate, purchasesView]);
 
   const getReportMeta = () => {
     switch (activeReport) {
