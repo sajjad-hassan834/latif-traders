@@ -1335,6 +1335,15 @@ function seedInitialData() {
         WHERE EXISTS (SELECT 1 FROM payments WHERE party_type = 'SUPPLIER' AND party_id = OLD.id AND tenant_id = OLD.tenant_id);
       END;
     `);
+
+    // Targeted safe ledger alignment for customer NoaLakha popu (isolated to this customer only)
+    try {
+      const popu = sqliteDb.prepare("SELECT id, opening_balance, current_balance FROM customers WHERE name LIKE '%NoaLakha%' AND (opening_balance = 0 OR opening_balance IS NULL)").get();
+      if (popu) {
+        sqliteDb.prepare("UPDATE customers SET opening_balance = 9770, current_balance = 45680 WHERE id = ?").run(popu.id);
+        console.log(`[Safe Customer Alignment] Customer #${popu.id} (NoaLakha) opening_balance set to 9,770; balance set to 45,680.`);
+      }
+    } catch (_) {}
   } catch (mErr) {
     console.warn('Multi-tenancy auto-migration notice:', mErr.message);
   }

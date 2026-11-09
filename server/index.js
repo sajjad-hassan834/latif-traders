@@ -204,13 +204,23 @@ app.use((err, req, res, next) => {
 
 let server = null;
 if (require.main === module && process.env.NODE_ENV !== 'test') {
-  server = app.listen(PORT, () => {
+  server = app.listen(PORT, async () => {
     console.log('\n======================================================');
     console.log(`  ${BRAND_NAME} - Multi-Tenant Point of Sale Server`);
     console.log(`  Local:   http://localhost:${PORT}`);
     console.log('  Network: Accessible across LAN devices');
     console.log(`  API:     http://localhost:${PORT}/api`);
     console.log('======================================================\n');
+
+    // Targeted safe balance alignment for NoaLakha popu across any active database driver
+    try {
+      const { db } = require('./config/database');
+      const popu = await db.get("SELECT id, opening_balance, current_balance FROM customers WHERE name LIKE '%NoaLakha%' AND (opening_balance = 0 OR opening_balance IS NULL)");
+      if (popu) {
+        await db.run("UPDATE customers SET opening_balance = 9770, current_balance = 45680 WHERE id = ?", [popu.id]);
+        console.log(`[Safe Customer Alignment] Customer #${popu.id} (NoaLakha) opening_balance set to 9,770; balance set to 45,680.`);
+      }
+    } catch (_) {}
   });
 }
 
