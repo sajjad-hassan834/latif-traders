@@ -201,6 +201,160 @@ export default function Customers() {
     }
   };
 
+  const handlePrintStatement = () => {
+    if (!ledgerData) return;
+    try {
+      const cust = ledgerData.customer || {};
+      const summary = ledgerData.summary || {};
+      // For formal statement print, chronological order (oldest to newest) is preferred
+      const rawEntries = ledgerData.chronological_ledger || (ledgerData.ledger ? [...ledgerData.ledger].reverse() : []);
+      const shopName = tenant?.business_name || user?.business_name || 'Store Account';
+      const shopPhone = tenant?.phone || '';
+      const shopAddress = tenant?.address || '';
+
+      let iframe = document.getElementById('ledger-print-frame');
+      if (iframe) iframe.remove();
+
+      iframe = document.createElement('iframe');
+      iframe.id = 'ledger-print-frame';
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '210mm';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      const rowsHtml = rawEntries.map((r, i) => {
+        const isDebit = (r.debit || r.bill_amount || 0) > 0;
+        const isCredit = (r.credit || r.received_amount || 0) > 0;
+        const billStr = isDebit ? `Rs. ${Number(r.debit || r.bill_amount).toLocaleString('en-PK')}` : '—';
+        const recStr = isCredit ? `Rs. ${Number(r.credit || r.received_amount).toLocaleString('en-PK')}` : '—';
+        const balStr = `Rs. ${Number(r.running_balance || 0).toLocaleString('en-PK')}`;
+        const desc = r.notes || (r.type === 'SALE_INVOICE' ? 'Sale Invoice' : r.type === 'OPENING' ? 'Opening Balance' : 'Payment');
+        return `
+          <tr style="border-bottom: 1px solid #E2E8F0; background: ${i % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
+            <td style="padding: 7px 10px; font-size: 11px; white-space: nowrap;">${formatDate(r.date)}</td>
+            <td style="padding: 7px 10px; font-size: 11px; font-weight: 600; white-space: nowrap;">${r.ref_no || '—'}</td>
+            <td style="padding: 7px 10px; font-size: 11px;">${desc}</td>
+            <td style="padding: 7px 10px; font-size: 11px; text-align: right; font-weight: ${isDebit ? '600' : 'normal'};">${billStr}</td>
+            <td style="padding: 7px 10px; font-size: 11px; text-align: right; color: #16A34A; font-weight: ${isCredit ? '600' : 'normal'};">${recStr}</td>
+            <td style="padding: 7px 10px; font-size: 11px; text-align: right; font-weight: 700; color: ${(r.running_balance || 0) > 0 ? '#DC2626' : '#16A34A'};">${balStr}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const statementDate = new Date().toLocaleDateString('en-GB');
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Customer Statement - ${cust.name || 'Account'}</title>
+          <style>
+            @page { size: A4 portrait; margin: 10mm; }
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; color: #0F172A; font-size: 12px; background: #FFFFFF; }
+            .header-bar { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12px; border-bottom: 2px solid #0F766E; margin-bottom: 14px; }
+            .shop-title { font-size: 20px; font-weight: 800; color: #0F766E; margin: 0; }
+            .doc-title { font-size: 15px; font-weight: 700; color: #0F172A; text-align: right; margin: 0; }
+            .cust-box { display: flex; justify-content: space-between; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; }
+            .cust-name { font-size: 15px; font-weight: 700; color: #0F172A; margin: 0 0 4px; }
+            .balance-chip { text-align: right; }
+            .bal-label { font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; }
+            .bal-amount { font-size: 18px; font-weight: 800; color: ${(summary.closing_balance || 0) > 0 ? '#DC2626' : '#16A34A'}; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+            th { background: #0F766E; color: #FFFFFF; padding: 8px 10px; font-size: 11px; text-transform: uppercase; font-weight: 700; text-align: left; }
+            th.right { text-align: right; }
+            .summary-box { display: flex; justify-content: flex-end; margin-bottom: 24px; }
+            .summary-table { width: 280px; border: 1px solid #E2E8F0; border-radius: 6px; overflow: hidden; }
+            .summary-table td { padding: 6px 12px; font-size: 11px; }
+            .footer-sign { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; padding-top: 15px; border-top: 1px solid #CBD5E1; font-size: 10px; color: #64748B; }
+          </style>
+        </head>
+        <body>
+          <div class="header-bar">
+            <div>
+              <h1 class="shop-title">${shopName}</h1>
+              ${shopAddress ? `<div style="font-size: 11px; color: #475569; margin-top: 2px;">${shopAddress}</div>` : ''}
+              ${shopPhone ? `<div style="font-size: 11px; color: #475569;">Tel: ${shopPhone}</div>` : ''}
+            </div>
+            <div style="text-align: right;">
+              <h2 class="doc-title">CUSTOMER KHATA STATEMENT</h2>
+              <div style="font-size: 11px; color: #64748B; margin-top: 2px;">Date: ${statementDate}</div>
+              <div style="font-size: 10px; color: #94A3B8;">Transactions: ${rawEntries.length}</div>
+            </div>
+          </div>
+
+          <div class="cust-box">
+            <div>
+              <div class="cust-name">${cust.name || 'Customer'}</div>
+              <div style="font-size: 11px; color: #475569;">${cust.customer_type ? `${cust.customer_type} Customer` : 'Retail Customer'}${cust.phone ? ` • Tel: ${cust.phone}` : ''}</div>
+              ${cust.address ? `<div style="font-size: 11px; color: #64748B;">Address: ${cust.address}</div>` : ''}
+            </div>
+            <div class="balance-chip">
+              <div class="bal-label">Outstanding Balance</div>
+              <div class="bal-amount">Rs. ${Number(summary.closing_balance || 0).toLocaleString('en-PK')}</div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 85px;">Date</th>
+                <th style="width: 120px;">Reference</th>
+                <th>Description</th>
+                <th class="right" style="width: 100px;">Bill (Dr)</th>
+                <th class="right" style="width: 100px;">Received (Cr)</th>
+                <th class="right" style="width: 110px;">Running Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+
+          <div class="summary-box">
+            <table class="summary-table">
+              <tr style="background: #F8FAFC;">
+                <td style="color: #475569;">Total Billed:</td>
+                <td style="text-align: right; font-weight: 600;">Rs. ${Number(summary.total_billed || 0).toLocaleString('en-PK')}</td>
+              </tr>
+              <tr style="background: #FFFFFF;">
+                <td style="color: #475569;">Total Received:</td>
+                <td style="text-align: right; font-weight: 600; color: #16A34A;">Rs. ${Number(summary.total_received || 0).toLocaleString('en-PK')}</td>
+              </tr>
+              <tr style="background: #0F766E; color: #FFFFFF;">
+                <td style="font-weight: 700;">Net Balance Due:</td>
+                <td style="text-align: right; font-weight: 800;">Rs. ${Number(summary.closing_balance || 0).toLocaleString('en-PK')}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="footer-sign">
+            <div>This is a verified computer-generated statement issued by ${shopName}.</div>
+            <div style="text-align: center; border-top: 1px dashed #64748B; width: 180px; padding-top: 4px;">Authorized Signature / Stamp</div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const doc = iframe.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
+
+      setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      }, 250);
+    } catch (err) {
+      console.error('Print statement error:', err);
+      window.print();
+    }
+  };
+
   const openPaymentModal = (cust) => {
     setSelectedCust(cust);
     setPayAmount(String(cust.current_balance > 0 ? cust.current_balance : ''));
@@ -1218,7 +1372,7 @@ export default function Customers() {
 
                   <button
                     type="button"
-                    onClick={() => window.print()}
+                    onClick={handlePrintStatement}
                     className="btn btn-secondary btn-sm"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px' }}
                     title="Print verified customer ledger statement"
