@@ -421,8 +421,20 @@ function MainApp() {
   }
 
   // ── SuperOwner Direct Route ──
-  if (user && isSuperOwner && (superOwnerView || !activeImpersonatedTenant)) {
-    return <SuperOwnerDashboard />;
+  if (user && isSuperOwner && superOwnerView) {
+    return (
+      <SuperOwnerDashboard
+        onEnterApp={(target) => {
+          if (target) {
+            enterTenant(target);
+          }
+          setSuperOwnerView(false);
+          try {
+            window.history.pushState({}, '', '/');
+          } catch (_) {}
+        }}
+      />
+    );
   }
 
   const isTabAllowed = hasTabAccess(currentTab);
@@ -483,7 +495,8 @@ function MainApp() {
                 <button
                   onClick={() => {
                     exitTenant();
-                    window.location.reload();
+                    window.history.pushState({}, '', '/superowner/dashboard');
+                    setSuperOwnerView(true);
                   }}
                   style={{
                     padding: '4px 10px',

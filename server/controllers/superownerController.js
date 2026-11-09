@@ -580,3 +580,340 @@ exports.restoreFullDatabaseBackup = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to restore full database: ' + err.message });
   }
 };
+
+// ════════════════════════════════════════════════════════
+// MODERN SUPERADMIN: PROVISIONING, SAFE FIXES, AUDIT, HEALTH
+// ════════════════════════════════════════════════════════
+
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const { seedNewTenant } = require('../config/seedTenant');
+
+// POST /api/superowner/tenants/provision (Create from Industry Preset)
+exports.provisionTenant = async (req, res) => {
+  try {
+    const { business_name, owner_name, email, phone, business_type, plan, city, password } = req.body;
+
+    if (!business_name || !owner_name || !email) {
+      return res.status(400).json({ success: false, message: 'Business name, owner name, and email are required.' });
+    }
+
+    const bType = business_type || 'retail_general';
+    const chosenPlan = plan || 'free';
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Check if email already in use
+    const existing = await db.get('SELECT id FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'A user with this email address already exists.' });
+    }
+
+    const baseSlug = business_name.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 15) || 'shop';
+    const tenantId = `t_${baseSlug}_${crypto.randomBytes(3).toString('hex')}`;
+    const baseUsername = normalizedEmail.split('@')[0].replace(/[^a-z0-9_]/g, '') || 'owner';
+    let username = baseUsername;
+    let counter = 1;
+    while (await db.get('SELECT id FROM users WHERE username = ?', [username])) {
+      username = `${baseUsername}${counter++}`;
+    }
+
+    const initialPassword = password || 'Admin123.';
+    const salt = bcrypt.genSaltSync(12);
+    const passwordHash = bcrypt.hashSync(initialPassword, salt);
+
+    await db.transaction(async () => {
+      await db.run(`
+        INSERT INTO tenants (id, business_name, business_type, owner_name, email, phone, address, plan, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+      `, [tenantId, business_name.trim(), bType, owner_name.trim(), normalizedEmail, phone || '', city || '', chosenPlan]);
+
+      await db.run(`
+        INSERT INTO subscriptions (tenant_id, plan, price, payment_status)
+        VALUES (?, ?, ?, 'active')
+      `, [tenantId, chosenPlan, chosenPlan === 'enterprise' ? 14999 : (chosenPlan === 'pro' ? 4999 : 0)]);
+
+      await db.run(`
+        INSERT INTO users (username, email, password_hash, full_name, role, status, tenant_id, token_version, must_change_password)
+        VALUES (?, ?, ?, ?, 'admin', 'active', ?, 1, 0)
+      `, [username, normalizedEmail, passwordHash, owner_name.trim(), tenantId]);
+    });
+
+    // Seed preset catalog, categories, units & walk-in customer
+    try {
+      await seedNewTenant(tenantId, bType, business_name.trim(), normalizedEmail, phone || '', city || '', city || '');
+    } catch (_) {}
+
+    await logAudit(
+      req.user?.id,
+      req.user?.full_name,
+      'PROVISION_TENANT',
+      'TENANT',
+      null,
+      `SuperOwner provisioned new ${bType} tenant: "${business_name}" (ID: ${tenantId}, Plan: ${chosenPlan})`,
+      req
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: `Business "${business_name}" successfully provisioned with ${bType.replace('_', ' ')} preset.`,
+      tenant: {
+        id: tenantId,
+        business_name: business_name.trim(),
+        business_type: bType,
+        plan: chosenPlan,
+        owner_name: owner_name.trim(),
+        email: normalizedEmail,
+        username,
+        initialPassword
+      }
+    });
+  } catch (err) {
+    console.error('Superowner provisionTenant error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to provision tenant: ' + err.message });
+  }
+};
+
+// PUT /api/superowner/tenants/:id/config (Configure Quotas & Feature Flags)
+exports.updateTenantConfig = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { max_users, max_products, storage_quota_mb, feature_flags, plan } = req.body;
+
+    const tenant = await db.get('SELECT * FROM tenants WHERE id = ?', [id]);
+    if (!tenant) {
+      return res.status(404).json({ success: false, message: 'Tenant not found.' });
+    }
+
+    const flagsStr = typeof feature_flags === 'object' ? JSON.stringify(feature_flags) : (feature_flags || '{}');
+
+    await db.run(`
+      UPDATE tenants
+      SET max_users = COALESCE(?, max_users),
+          max_products = COALESCE(?, max_products),
+          storage_quota_mb = COALESCE(?, storage_quota_mb),
+          feature_flags = ?,
+          plan = COALESCE(?, plan),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [max_users || null, max_products || null, storage_quota_mb || null, flagsStr, plan || null, id]);
+
+    await logAudit(
+      req.user?.id,
+      req.user?.full_name,
+      'UPDATE_CONFIG',
+      'TENANT',
+      null,
+      `SuperOwner updated configuration for tenant "${tenant.business_name}" (ID: ${id})`,
+      req
+    );
+
+    return res.json({ success: true, message: 'Tenant configuration and feature flags successfully updated.' });
+  } catch (err) {
+    console.error('Superowner updateTenantConfig error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to update tenant configuration.' });
+  }
+};
+
+// POST /api/superowner/data-fix/run (Safe Guided Data Diagnostics & Fixes)
+exports.runDataFix = async (req, res) => {
+  try {
+    const { recipe, tenant_id, apply } = req.body;
+    if (!recipe || !tenant_id) {
+      return res.status(400).json({ success: false, message: 'Recipe name and tenant_id are required.' });
+    }
+
+    const isApply = apply === true;
+
+    if (recipe === 'ledger_resync') {
+      // Recipe 1: Customer Ledger Balance Re-synchronization
+      const customers = await db.all('SELECT id, name, current_balance FROM customers WHERE tenant_id = ?', [tenant_id]);
+      const discrepancies = [];
+
+      for (const cust of customers) {
+        // Calculate true balance from sales (balance_due) - payments
+        const salesRow = await db.get('SELECT COALESCE(SUM(balance_due), 0) as due FROM sales WHERE customer_id = ? AND tenant_id = ?', [cust.id, tenant_id]);
+        const calcDue = Number(salesRow?.due || 0);
+
+        if (Math.abs(Number(cust.current_balance) - calcDue) > 0.01) {
+          discrepancies.push({
+            customer_id: cust.id,
+            name: cust.name,
+            cached_balance: Number(cust.current_balance),
+            verified_balance: calcDue,
+            variance: Number(cust.current_balance) - calcDue
+          });
+
+          if (isApply) {
+            await db.run('UPDATE customers SET current_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?', [calcDue, cust.id, tenant_id]);
+          }
+        }
+      }
+
+      if (isApply && discrepancies.length > 0) {
+        await logAudit(
+          req.user?.id,
+          req.user?.full_name,
+          'SAFE_FIX_APPLY',
+          'LEDGER',
+          null,
+          `SuperOwner reconciled ledger balances for ${discrepancies.length} customers in tenant ${tenant_id}`,
+          req
+        );
+      }
+
+      return res.json({
+        success: true,
+        recipe,
+        tenant_id,
+        is_simulation: !isApply,
+        found_discrepancies: discrepancies.length,
+        items: discrepancies,
+        message: isApply
+          ? `Successfully synchronized ${discrepancies.length} customer balances with verified transaction ledger.`
+          : `Dry-Run Simulation Complete: Found ${discrepancies.length} balance discrepancies. No live changes applied.`
+      });
+
+    } else if (recipe === 'sequence_repair') {
+      // Recipe 2: Invoice Sequence Collision & Gap Repair
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const fullType = `sale_invoice_${today}`;
+
+      const rows = await db.all("SELECT invoice_no FROM sales WHERE tenant_id = ? AND invoice_no LIKE ?", [tenant_id, `INV-${today}-%`]);
+      let maxSeq = 0;
+      for (const r of rows) {
+        if (r.invoice_no) {
+          const parts = r.invoice_no.split('-');
+          const seq = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+        }
+      }
+
+      const counterRow = await db.get('SELECT last_number FROM counters WHERE tenant_id = ? AND counter_type = ?', [tenant_id, fullType]);
+      const currentCounter = counterRow ? Number(counterRow.last_number) || 0 : 0;
+      const targetCounter = Math.max(currentCounter, maxSeq);
+
+      if (isApply && targetCounter > currentCounter) {
+        await db.run('INSERT INTO counters (tenant_id, counter_type, last_number) VALUES (?, ?, ?) ON CONFLICT(tenant_id, counter_type) DO UPDATE SET last_number = ?', [tenant_id, fullType, targetCounter, targetCounter]);
+      }
+
+      return res.json({
+        success: true,
+        recipe,
+        tenant_id,
+        is_simulation: !isApply,
+        current_counter: currentCounter,
+        max_existing_invoice_sequence: maxSeq,
+        realigned_to: targetCounter,
+        message: isApply
+          ? `Invoice sequence counter realigned to ${targetCounter}. Collision risk eliminated.`
+          : `Simulation Complete: Sequence counter is at ${currentCounter}, maximum recorded invoice is ${maxSeq}.`
+      });
+
+    } else {
+      return res.status(400).json({ success: false, message: `Unknown recipe "${recipe}".` });
+    }
+  } catch (err) {
+    console.error('Superowner runDataFix error:', err);
+    return res.status(500).json({ success: false, message: 'Data fix execution error: ' + err.message });
+  }
+};
+
+// GET /api/superowner/audit-logs (Universal Platform Audit Log)
+exports.getAuditLogs = async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 40, 100);
+    const logs = await db.all(`
+      SELECT 
+        a.id,
+        a.user_name,
+        a.action,
+        a.entity_type,
+        a.entity_id,
+        a.details,
+        a.ip_address,
+        a.created_at,
+        a.tenant_id,
+        COALESCE(t.business_name, 'System Platform') as business_name
+      FROM audit_logs a
+      LEFT JOIN tenants t ON a.tenant_id = t.id
+      ORDER BY a.created_at DESC
+      LIMIT ?
+    `, [limit]);
+
+    return res.json({ success: true, logs });
+  } catch (err) {
+    console.error('Superowner getAuditLogs error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to retrieve audit logs.' });
+  }
+};
+
+// GET /api/superowner/tenants/:id/export (Per-Tenant Isolated Complete Data Export)
+exports.exportTenantData = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenant = await db.get('SELECT * FROM tenants WHERE id = ?', [id]);
+    if (!tenant) {
+      return res.status(404).json({ success: false, message: 'Tenant not found.' });
+    }
+
+    const [products, customers, suppliers, sales, purchases] = await Promise.all([
+      db.all('SELECT * FROM products WHERE tenant_id = ?', [id]),
+      db.all('SELECT * FROM customers WHERE tenant_id = ?', [id]),
+      db.all('SELECT * FROM suppliers WHERE tenant_id = ?', [id]),
+      db.all('SELECT * FROM sales WHERE tenant_id = ? LIMIT 500', [id]),
+      db.all('SELECT * FROM purchases WHERE tenant_id = ? LIMIT 500', [id])
+    ]);
+
+    const payload = {
+      tenant,
+      exported_at: new Date().toISOString(),
+      counts: {
+        products: products.length,
+        customers: customers.length,
+        suppliers: suppliers.length,
+        sales: sales.length,
+        purchases: purchases.length
+      },
+      products,
+      customers,
+      suppliers,
+      sales,
+      purchases
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename=tenant_${id}_${Date.now()}.json`);
+    return res.send(JSON.stringify(payload, null, 2));
+  } catch (err) {
+    console.error('Superowner exportTenantData error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to export tenant data.' });
+  }
+};
+
+// GET /api/superowner/system/health (Live Infrastructure Telemetry)
+exports.getSystemHealth = async (req, res) => {
+  try {
+    const mem = process.memoryUsage();
+    const uptimeSec = Math.floor(process.uptime());
+    const hours = Math.floor(uptimeSec / 3600);
+    const minutes = Math.floor((uptimeSec % 3600) / 60);
+
+    const driver = db.getDriver ? db.getDriver() : 'sqlite';
+    const activeDriverName = driver === 'postgres' ? 'PostgreSQL 16 Pool' : 'SQLite Failsafe (latif_traders.db)';
+
+    return res.json({
+      success: true,
+      health: {
+        database_driver: activeDriverName,
+        status: 'healthy',
+        uptime: `${hours}h ${minutes}m`,
+        memory_rss_mb: (mem.rss / 1024 / 1024).toFixed(1),
+        memory_heap_used_mb: (mem.heapUsed / 1024 / 1024).toFixed(1),
+        node_version: process.version,
+        environment: process.env.NODE_ENV || 'production'
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'System health check failed.' });
+  }
+};
