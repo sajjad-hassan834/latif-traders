@@ -46,7 +46,7 @@ export default function Customers() {
   const [ledgerTypeFilter, setLedgerTypeFilter] = useState('ALL');
   const [ledgerStatusFilter, setLedgerStatusFilter] = useState('ALL');
   const [ledgerPage, setLedgerPage] = useState(1);
-  const LEDGER_PER_PAGE = 25;
+  const [ledgerPageSize, setLedgerPageSize] = useState('all'); // 'all' | '25' | '50' | '100'
 
 
   const handleViewInvoiceDetails = async (invoiceNo) => {
@@ -629,8 +629,16 @@ export default function Customers() {
         });
 
         const totalFiltered = filteredEntries.length;
-        const totalPages = Math.ceil(totalFiltered / LEDGER_PER_PAGE) || 1;
-        const paginatedEntries = filteredEntries.slice((ledgerPage - 1) * LEDGER_PER_PAGE, ledgerPage * LEDGER_PER_PAGE);
+        const pageSizeNum = ledgerPageSize === 'all' ? (totalFiltered || 1) : parseInt(ledgerPageSize, 10);
+        const totalPages = Math.ceil(totalFiltered / pageSizeNum) || 1;
+        const safePage = Math.min(Math.max(1, ledgerPage), totalPages);
+        const startIndex = ledgerPageSize === 'all' ? 0 : (safePage - 1) * pageSizeNum;
+        const endIndex = ledgerPageSize === 'all' ? totalFiltered : Math.min(startIndex + pageSizeNum, totalFiltered);
+        const paginatedEntries = filteredEntries.slice(startIndex, endIndex);
+
+        // Older entries not visible on this page (for brought forward balance)
+        const olderEntries = filteredEntries.slice(endIndex);
+        const broughtForwardBalance = olderEntries.length > 0 ? (olderEntries[0].running_balance || 0) : null;
 
         const hasValidPhone = ledgerData.customer.phone && ledgerData.customer.phone !== 'None' && ledgerData.customer.phone.trim().length >= 7;
 
@@ -1041,8 +1049,111 @@ export default function Customers() {
                         );
                       })
                     )}
+                    {broughtForwardBalance !== null && (
+                      <tr style={{ background: 'var(--bg-hover, #F8FAFC)', borderTop: '2px dashed var(--border)' }}>
+                        <td colSpan={3} style={{ padding: '10px 16px', color: 'var(--text-muted)', fontSize: '12px', fontStyle: 'italic' }}>
+                          ↳ Earlier Balance Brought Forward (from {olderEntries.length} older transaction{olderEntries.length > 1 ? 's' : ''} on next page)
+                        </td>
+                        <td style={{ textAlign: 'right', padding: '10px 16px', color: 'var(--text-muted)', fontSize: '12px' }}>—</td>
+                        <td style={{ textAlign: 'right', padding: '10px 16px', color: 'var(--text-muted)', fontSize: '12px' }}>—</td>
+                        <td style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 700, color: broughtForwardBalance > 0 ? '#DC2626' : '#16A34A', fontSize: '12px' }}>
+                          {formatPKR(broughtForwardBalance)}
+                        </td>
+                        <td></td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* TRANSACTION COUNTER & PAGINATION TOOLBAR */}
+              <div
+                style={{
+                  padding: '8px 24px',
+                  background: 'var(--bg-hover, #F9FAFB)',
+                  borderTop: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '10px',
+                  fontSize: '12px',
+                  color: 'var(--text-muted)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <span>
+                    {ledgerPageSize === 'all'
+                      ? `Showing all ${totalFiltered} transaction${totalFiltered !== 1 ? 's' : ''}`
+                      : `Showing ${startIndex + 1}–${endIndex} of ${totalFiltered} transactions`}
+                  </span>
+                  <span style={{ color: 'var(--border)' }}>•</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <span>View:</span>
+                    {['all', '25', '50', '100'].map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => {
+                          setLedgerPageSize(size);
+                          setLedgerPage(1);
+                        }}
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          border: ledgerPageSize === size ? '1px solid var(--primary, #0F766E)' : '1px solid var(--border)',
+                          background: ledgerPageSize === size ? 'var(--primary, #0F766E)' : '#FFFFFF',
+                          color: ledgerPageSize === size ? '#FFFFFF' : 'var(--text-main)',
+                          fontSize: '11px',
+                          fontWeight: ledgerPageSize === size ? 700 : 500,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {size === 'all' ? 'All' : size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {totalPages > 1 && ledgerPageSize !== 'all' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      type="button"
+                      disabled={safePage <= 1}
+                      onClick={() => setLedgerPage((p) => Math.max(1, p - 1))}
+                      style={{
+                        padding: '3px 10px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--border)',
+                        background: safePage <= 1 ? 'var(--bg-hover, #F1F5F9)' : '#FFFFFF',
+                        color: safePage <= 1 ? 'var(--text-muted, #94A3B8)' : 'var(--text-main, #334155)',
+                        cursor: safePage <= 1 ? 'not-allowed' : 'pointer',
+                        fontSize: '11px',
+                        fontWeight: 600
+                      }}
+                    >
+                      ‹ Previous
+                    </button>
+                    <span style={{ fontWeight: 600 }}>Page {safePage} of {totalPages}</span>
+                    <button
+                      type="button"
+                      disabled={safePage >= totalPages}
+                      onClick={() => setLedgerPage((p) => Math.min(totalPages, p + 1))}
+                      style={{
+                        padding: '3px 10px',
+                        borderRadius: '4px',
+                        border: '1px solid var(--border)',
+                        background: safePage >= totalPages ? 'var(--bg-hover, #F1F5F9)' : '#FFFFFF',
+                        color: safePage >= totalPages ? 'var(--text-muted, #94A3B8)' : 'var(--text-main, #334155)',
+                        cursor: safePage >= totalPages ? 'not-allowed' : 'pointer',
+                        fontSize: '11px',
+                        fontWeight: 600
+                      }}
+                    >
+                      Next ›
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* MODAL FOOTER: Sticky summary totals and distinct single actions */}

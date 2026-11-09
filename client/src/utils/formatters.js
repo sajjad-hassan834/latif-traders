@@ -12,8 +12,8 @@ export function formatDate(dateString) {
   if (!dateString) return '-';
   try {
     const str = String(dateString).trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-      const [y, m, d] = str.split('-');
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+      const [y, m, d] = str.slice(0, 10).split('-');
       return `${d}/${m}/${y}`;
     }
     let dateToParse = str;
