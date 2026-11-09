@@ -30,7 +30,10 @@ import {
   LayoutGrid,
   Mic,
   MicOff,
-  Sparkles
+  Sparkles,
+  Lock,
+  ShieldCheck,
+  UtensilsCrossed
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { formatPKR, formatDate } from '../utils/formatters';
@@ -990,6 +993,30 @@ export default function PosSales() {
                 <FileText size={12} color="#6366f1" />
                 <span>Receipts</span>
               </button>
+
+              <button
+                type="button"
+                onClick={handleToggleVoice}
+                className={`btn ${isListening ? 'btn-danger' : 'btn-secondary'} btn-sm`}
+                title="AI Voice-to-Bill: Speak order in Urdu or English (e.g. 'Do Panadol aur teen bread')"
+                style={{
+                  flex: 1,
+                  height: '26px',
+                  fontSize: '0.725rem',
+                  padding: '0 0.45rem',
+                  justifyContent: 'center',
+                  background: isListening ? '#ef4444' : 'rgba(2, 132, 199, 0.08)',
+                  borderColor: isListening ? '#dc2626' : 'rgba(2, 132, 199, 0.25)',
+                  color: isListening ? '#ffffff' : '#0284c7',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontWeight: 600
+                }}
+              >
+                {isListening ? <MicOff size={12} /> : <Mic size={12} />}
+                <span>{isListening ? 'Listening...' : 'Voice Bill'}</span>
+              </button>
             </div>
           </div>
 
@@ -1214,21 +1241,65 @@ export default function PosSales() {
               <span><strong>[F7]</strong> Hold Order</span>
             </div>
 
-            <button
-              type="button"
-              onClick={handleToggleSound}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                color: muted ? '#94a3b8' : '#10b981',
-                fontWeight: 600
-              }}
-              title="Toggle Audio Feedback"
-            >
-              {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
-              <span>{muted ? 'Muted' : 'Beep ON'}</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setShowShiftCloseModal(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  color: '#64748b',
+                  fontWeight: 600,
+                  fontSize: '0.675rem',
+                  cursor: 'pointer',
+                  background: 'none',
+                  border: 'none',
+                  padding: '0 4px'
+                }}
+                title="Blind Cash Count & Shift Reconciliation"
+              >
+                <Lock size={12} color="#f59e0b" />
+                <span>Shift Close</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowManagerPinModal(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  color: '#64748b',
+                  fontWeight: 600,
+                  fontSize: '0.675rem',
+                  cursor: 'pointer',
+                  background: 'none',
+                  border: 'none',
+                  padding: '0 4px'
+                }}
+                title="Manager PIN Override for Discounts & Voids"
+              >
+                <ShieldCheck size={12} color="#0284c7" />
+                <span>Manager PIN</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleToggleSound}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  color: muted ? '#94a3b8' : '#10b981',
+                  fontWeight: 600
+                }}
+                title="Toggle Audio Feedback"
+              >
+                {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+                <span>{muted ? 'Muted' : 'Beep ON'}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1279,6 +1350,17 @@ export default function PosSales() {
                   </button>
                 )}
 
+                {(enableTablesKOT || isRestaurant) && cart.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowKotModal(true)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: '0.675rem', padding: '1px 5px', height: '22px', display: 'flex', alignItems: 'center', gap: '2px', color: '#10b981', borderColor: 'rgba(16,185,129,0.3)' }}
+                    title="Print Kitchen Order Ticket (KOT)"
+                  >
+                    <UtensilsCrossed size={11} /> KOT
+                  </button>
+                )}
                 {cart.length > 0 && (
                   <button
                     type="button"
@@ -1290,6 +1372,44 @@ export default function PosSales() {
                 )}
               </div>
             </div>
+
+            {/* RESTAURANT DINING MODE & TABLE SELECTOR */}
+            {(enableTablesKOT || isRestaurant) && (
+              <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', background: 'rgba(2, 132, 199, 0.05)', padding: '4px 6px', borderRadius: '6px', border: '1px solid rgba(2, 132, 199, 0.15)', marginBottom: '0.35rem' }}>
+                <div style={{ display: 'flex', gap: '2px', background: '#e2e8f0', padding: '1px', borderRadius: '4px' }}>
+                  {['dine_in', 'takeaway', 'delivery'].map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setDiningMode(m)}
+                      style={{
+                        padding: '2px 6px',
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        border: 'none',
+                        borderRadius: '3px',
+                        cursor: 'pointer',
+                        background: diningMode === m ? '#0284c7' : 'transparent',
+                        color: diningMode === m ? '#ffffff' : '#475569'
+                      }}
+                    >
+                      {m === 'dine_in' ? 'Dine In' : m === 'takeaway' ? 'Takeaway' : 'Delivery'}
+                    </button>
+                  ))}
+                </div>
+                {diningMode === 'dine_in' && (
+                  <select
+                    value={selectedTable}
+                    onChange={(e) => setSelectedTable(e.target.value)}
+                    style={{ fontSize: '0.7rem', padding: '2px 4px', height: '22px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff' }}
+                  >
+                    {['Table 1', 'Table 2', 'Table 3', 'Table 4', 'Table 5', 'Table 6', 'Terrace 1', 'Terrace 2', 'Family Hall'].map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
 
             {/* CUSTOMER SELECT & QUICK ADD CUSTOMER */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.25rem', alignItems: 'center' }}>
@@ -1396,6 +1516,32 @@ export default function PosSales() {
                           title="Direct manual selling rate per KG / Packet"
                         />
                         <span style={{ fontSize: '0.62rem', color: '#64748b' }}>/{item.unit || 'unit'}</span>
+                      {enableStripTabletUnits && (
+                        <div style={{ display: 'inline-flex', gap: '2px', background: '#e2e8f0', padding: '1px', borderRadius: '3px', marginLeft: '3px' }}>
+                          {['box', 'strip', 'tablet'].map(u => (
+                            <button
+                              key={u}
+                              type="button"
+                              onClick={() => {
+                                setCart(cart.map((ci, cidx) => cidx === idx ? { ...ci, unit: u } : ci));
+                              }}
+                              style={{
+                                padding: '1px 3px',
+                                fontSize: '0.58rem',
+                                fontWeight: 700,
+                                border: 'none',
+                                borderRadius: '2px',
+                                cursor: 'pointer',
+                                background: item.unit === u ? '#0284c7' : 'transparent',
+                                color: item.unit === u ? '#ffffff' : '#475569',
+                                textTransform: 'uppercase'
+                              }}
+                            >
+                              {u}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       </div>
                       <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>•</span>
                       <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-title)' }}>
