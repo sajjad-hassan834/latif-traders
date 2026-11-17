@@ -1095,10 +1095,10 @@ export default function Inventory() {
                       {/* Column 3: Price */}
                       <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
                         <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-title)' }}>
-                          {formatPKR(p.sale_price)}
+                          {formatPKR(Number(p.active_sale_price) > 0 ? p.active_sale_price : p.sale_price)}
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          Cost: {formatPKR(p.purchase_price)}
+                          Cost: {formatPKR(Number(p.active_cost_price) > 0 ? p.active_cost_price : p.purchase_price)}
                         </div>
                       </td>
 

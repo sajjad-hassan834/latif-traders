@@ -238,7 +238,25 @@ exports.createSale = async (req, res) => {
           throw new Error(`Insufficient stock for "${prod.name}". Available: ${totalAvailable}, Requested: ${qty}. Sale blocked by negative-stock policy.`);
         }
 
-        const fallbackRate = Number(item.unit_price) ?? (sale_type === 'Wholesale' ? prod.wholesale_price : prod.sale_price);
+        const unitPriceNum = Number(item.unit_price);
+        let fallbackRate = (!isNaN(unitPriceNum) && unitPriceNum > 0) ? unitPriceNum : 0;
+        if (fallbackRate <= 0) {
+          const fifoBatch = await db.get(`
+            SELECT sale_price, wholesale_price FROM batches
+            WHERE product_id = ? AND status = 'active' AND quantity > 0 AND tenant_id = ?
+            ORDER BY (expiry_date IS NULL), expiry_date, created_at, id ASC
+            LIMIT 1
+          `, [item.product_id, tenantId]);
+          if (sale_type === 'Wholesale') {
+            fallbackRate = (fifoBatch && Number(fifoBatch.wholesale_price) > 0)
+              ? Number(fifoBatch.wholesale_price)
+              : (Number(prod.wholesale_price) > 0 ? Number(prod.wholesale_price) : (fifoBatch && Number(fifoBatch.sale_price) > 0 ? Number(fifoBatch.sale_price) : Number(prod.sale_price)));
+          } else {
+            fallbackRate = (fifoBatch && Number(fifoBatch.sale_price) > 0)
+              ? Number(fifoBatch.sale_price)
+              : Number(prod.sale_price);
+          }
+        }
         const rawLineTotal = (item.total_price !== undefined && item.total_price !== null && !isNaN(Number(item.total_price)) && Number(item.total_price) > 0)
           ? Number(item.total_price)
           : (qty * fallbackRate);

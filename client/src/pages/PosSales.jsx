@@ -315,26 +315,36 @@ export default function PosSales() {
   // Dynamic FIFO Tiered Multi-Batch Pricing Calculator
   const calculateFifoTieredPricing = (product, requestedQty, currentSaleType = saleType) => {
     const qty = Number(requestedQty) || 0;
+    const defaultRetail = Number(product.active_sale_price) > 0 ? Number(product.active_sale_price) : Number(product.sale_price || 0);
+    const defaultWholesale = Number(product.active_wholesale_price) > 0 ? Number(product.active_wholesale_price) : (Number(product.wholesale_price) > 0 ? Number(product.wholesale_price) : defaultRetail);
+    const defaultCost = Number(product.active_cost_price) > 0 ? Number(product.active_cost_price) : Number(product.purchase_price || 0);
+    const defaultRate = currentSaleType === 'Wholesale' && defaultWholesale > 0 ? defaultWholesale : defaultRetail;
+
     if (qty <= 0) {
-      const baseSale = currentSaleType === 'Wholesale' && Number(product.wholesale_price) > 0 ? Number(product.wholesale_price) : Number(product.sale_price);
       return {
         totalSale: 0,
         totalCost: 0,
-        effectiveRate: baseSale,
-        effectiveCost: Number(product.purchase_price) || 0,
+        effectiveRate: defaultRate,
+        effectiveCost: defaultCost,
         breakdownText: ''
       };
     }
 
-    const activeBatches = (product.batches && product.batches.length > 0)
+    const rawBatches = (product.batches && product.batches.length > 0)
       ? product.batches
+      : (product.active_batches && product.active_batches.length > 0)
+        ? product.active_batches
+        : null;
+
+    const activeBatches = (rawBatches && rawBatches.length > 0)
+      ? rawBatches
       : [{
           id: product.fifo_batch_id || 0,
           batch_no: product.fifo_batch_no || 'Standard',
           quantity: product.current_stock || 999999,
-          sale_price: product.sale_price,
-          wholesale_price: product.wholesale_price,
-          purchase_price: product.purchase_price
+          sale_price: defaultRetail,
+          wholesale_price: defaultWholesale,
+          purchase_price: defaultCost
         }];
 
     let remaining = qty;
@@ -348,8 +358,10 @@ export default function PosSales() {
       if (bQty <= 0) continue;
       const take = Math.min(bQty, remaining);
 
-      const bRate = currentSaleType === 'Wholesale' && Number(b.wholesale_price) > 0 ? Number(b.wholesale_price) : Number(b.sale_price);
-      const bCost = Number(b.purchase_price) || 0;
+      const bSale = Number(b.sale_price) > 0 ? Number(b.sale_price) : defaultRetail;
+      const bWholesale = Number(b.wholesale_price) > 0 ? Number(b.wholesale_price) : (defaultWholesale || bSale);
+      const bRate = currentSaleType === 'Wholesale' && bWholesale > 0 ? bWholesale : bSale;
+      const bCost = Number(b.purchase_price) > 0 ? Number(b.purchase_price) : defaultCost;
 
       totalSale += (take * bRate);
       totalCost += (take * bCost);
@@ -367,10 +379,10 @@ export default function PosSales() {
     // If requested quantity exceeds active batches (e.g. negative stock allowed or extra qty)
     if (remaining > 0) {
       const lastBatch = activeBatches[activeBatches.length - 1];
-      const fallbackRate = currentSaleType === 'Wholesale' && Number(lastBatch?.wholesale_price || product.wholesale_price) > 0
-        ? Number(lastBatch?.wholesale_price || product.wholesale_price)
-        : Number(lastBatch?.sale_price || product.sale_price);
-      const fallbackCost = Number(lastBatch?.purchase_price || product.purchase_price) || 0;
+      const fallbackSale = Number(lastBatch?.sale_price) > 0 ? Number(lastBatch.sale_price) : defaultRetail;
+      const fallbackWholesale = Number(lastBatch?.wholesale_price) > 0 ? Number(lastBatch.wholesale_price) : (defaultWholesale || fallbackSale);
+      const fallbackRate = currentSaleType === 'Wholesale' && fallbackWholesale > 0 ? fallbackWholesale : fallbackSale;
+      const fallbackCost = Number(lastBatch?.purchase_price) > 0 ? Number(lastBatch.purchase_price) : defaultCost;
 
       totalSale += (remaining * fallbackRate);
       totalCost += (remaining * fallbackCost);
@@ -442,7 +454,7 @@ export default function PosSales() {
         supplier_name: product.supplier_name,
         unit_price: fifo.effectiveRate,
         total_price: fifo.totalSale,
-        original_price: product.sale_price,
+        original_price: fifo.effectiveRate,
         purchase_price: fifo.effectiveCost,
         fifo_batch_no: product.fifo_batch_no,
         fifo_batch_qty: product.fifo_batch_qty,
@@ -1088,7 +1100,10 @@ export default function PosSales() {
               filteredProducts.map(p => {
                 const inStock = p.current_stock > 0;
                 const isLow = p.current_stock <= p.min_stock_level;
-                const displayPrice = saleType === 'Wholesale' && p.wholesale_price > 0 ? p.wholesale_price : p.sale_price;
+                const effectiveSale = Number(p.active_sale_price) > 0 ? Number(p.active_sale_price) : Number(p.sale_price);
+                const effectiveWholesale = Number(p.active_wholesale_price) > 0 ? Number(p.active_wholesale_price) : (Number(p.wholesale_price) > 0 ? Number(p.wholesale_price) : effectiveSale);
+                const displayPrice = saleType === 'Wholesale' && effectiveWholesale > 0 ? effectiveWholesale : effectiveSale;
+                const displayCost = Number(p.active_cost_price) > 0 ? Number(p.active_cost_price) : Number(p.purchase_price || 0);
 
                 if (catalogView === 'list') {
                   return (
@@ -1173,7 +1188,7 @@ export default function PosSales() {
                       <div className="pos-item-price">{formatPKR(displayPrice)}</div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', marginTop: '1px' }}>
                         <span className="pos-item-unit">per {p.unit}</span>
-                        {p.purchase_price > 0 && (
+                        {displayCost > 0 && (
                           <span
                             style={{
                               fontSize: '0.62rem',
@@ -1186,7 +1201,7 @@ export default function PosSales() {
                             }}
                             title="Actual Kharid / Cost Price (For shop reference only)"
                           >
-                            Cost: ₨{p.purchase_price}
+                            Cost: ₨{displayCost}
                           </span>
                         )}
                       </div>

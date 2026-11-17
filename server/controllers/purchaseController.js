@@ -247,9 +247,26 @@ exports.createPurchase = async (req, res) => {
         `, [item.product_id, itemBatchNo, supplier_id, tenantId]);
 
         if (existingBatch) {
-          await db.run('UPDATE batches SET quantity = quantity + ?, purchase_price = ? WHERE id = ? AND tenant_id = ?',
-            [qty, rate, existingBatch.id, tenantId]);
-          batchId = existingBatch.id;
+          const priceMatches = (
+            Math.abs(Number(existingBatch.purchase_price) - Number(rate)) < 0.01 &&
+            Math.abs(Number(existingBatch.sale_price) - Number(batchSalePrice)) < 0.01 &&
+            Math.abs(Number(existingBatch.wholesale_price) - Number(batchWholesalePrice)) < 0.01
+          );
+
+          if (priceMatches || Number(existingBatch.quantity) <= 0) {
+            await db.run('UPDATE batches SET quantity = quantity + ?, purchase_price = ?, sale_price = ?, wholesale_price = ? WHERE id = ? AND tenant_id = ?',
+              [qty, rate, batchSalePrice, batchWholesalePrice, existingBatch.id, tenantId]);
+            batchId = existingBatch.id;
+          } else {
+            // Price is different and old batch still has active stock: keep separate batch for FIFO pricing
+            const newBatchNo = `${itemBatchNo}-${Date.now().toString().slice(-4)}`;
+            const exp = item.expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
+            const bRes = await db.run(`
+              INSERT INTO batches (tenant_id, product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location, supplier_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [tenantId, item.product_id, newBatchNo, exp, qty, rate, batchSalePrice, batchWholesalePrice, item.storage_location || null, supplier_id]);
+            batchId = bRes.lastInsertRowid;
+          }
         } else {
           const exp = item.expiry_date || new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0];
           const bRes = await db.run(`

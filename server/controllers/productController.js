@@ -26,7 +26,7 @@ exports.getProducts = async (req, res) => {
       LEFT JOIN batches fifo_b ON fifo_b.id = (
         SELECT b2.id FROM batches b2
         WHERE b2.product_id = p.id AND b2.status = 'active' AND b2.quantity > 0
-        ORDER BY b2.id ASC
+        ORDER BY (b2.expiry_date IS NULL), b2.expiry_date, b2.created_at, b2.id ASC
         LIMIT 1
       )
       WHERE p.tenant_id = ?
@@ -61,12 +61,12 @@ exports.getProducts = async (req, res) => {
 
     query += ` GROUP BY p.id, c.name, s.name, fifo_b.purchase_price, fifo_b.sale_price, fifo_b.wholesale_price, fifo_b.id, fifo_b.batch_no, fifo_b.quantity ORDER BY p.name ASC`;
 
-    // Fetch all active batches in strict FIFO order (id ASC)
+    // Fetch all active batches in strict FIFO / FEFO order
     const activeBatchesList = await db.all(`
       SELECT id, product_id, batch_no, expiry_date, quantity, purchase_price, sale_price, wholesale_price, storage_location
       FROM batches
       WHERE status = 'active' AND quantity > 0 AND tenant_id = ?
-      ORDER BY id ASC
+      ORDER BY (expiry_date IS NULL), expiry_date, created_at, id ASC
     `, [tenantId]);
 
     const batchesByProduct = {};
@@ -102,13 +102,14 @@ exports.getProducts = async (req, res) => {
             ? Number(p.fifo_purchase_price)
             : Number(p.purchase_price));
 
-      const activeWholesale = (firstBatch && firstBatch.wholesale_price > 0)
-        ? firstBatch.wholesale_price
+      const activeWholesale = (firstBatch && Number(firstBatch.wholesale_price) > 0)
+        ? Number(firstBatch.wholesale_price)
         : ((p.fifo_wholesale_price !== null && p.fifo_wholesale_price !== undefined && Number(p.fifo_wholesale_price) > 0)
             ? Number(p.fifo_wholesale_price)
-            : Number(p.wholesale_price));
+            : (Number(p.wholesale_price) > 0 ? Number(p.wholesale_price) : activeSale));
 
       const totalStock = prodBatches.reduce((acc, b) => acc + b.quantity, 0);
+      const safeBatches = isSalesOnly ? prodBatches.map(b => ({ ...b, purchase_price: null })) : prodBatches;
 
       return {
         ...p,
@@ -118,7 +119,8 @@ exports.getProducts = async (req, res) => {
         current_stock: totalStock,
         active_sale_price: activeSale,
         active_wholesale_price: activeWholesale,
-        active_batches: isSalesOnly ? prodBatches.map(b => ({ ...b, purchase_price: null })) : prodBatches
+        active_batches: safeBatches,
+        batches: safeBatches
       };
     });
 
